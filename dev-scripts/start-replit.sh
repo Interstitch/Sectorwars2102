@@ -205,14 +205,34 @@ setup_python() {
   # If we have pip, use it safely with --user flag to avoid permission issues
   if [ -n "$PIP_CMD" ]; then
     echo "Using $PIP_CMD to install Python packages..."
-    cd "$REPO_ROOT/services/gameserver"
+    cd "$REPO_ROOT"
     
     # Suppress pip version check to avoid the error
     export PIP_DISABLE_PIP_VERSION_CHECK=1
     
-    # Install dependencies with --user flag to avoid permission issues
-    $PIP_CMD install --user uvicorn fastapi || echo "Failed to install core Python dependencies"
+    # Install core dependencies explicitly
+    echo "Installing core Python packages..."
+    $PIP_CMD install --user uvicorn==0.23.2 fastapi==0.103.1 || echo "Failed to install core Python dependencies"
+    
+    # Install the rest of dependencies
+    cd "$REPO_ROOT/services/gameserver"
     $PIP_CMD install --user -r requirements.txt --no-warn-script-location || echo "Failed to install some Python dependencies"
+    
+    # Verify uvicorn installation
+    if python3 -c "import uvicorn" &>/dev/null; then
+      echo "✅ uvicorn installed successfully"
+    else
+      echo "❌ uvicorn not found, trying to install directly..."
+      $PIP_CMD install --user uvicorn
+    fi
+    
+    # Verify fastapi installation
+    if python3 -c "import fastapi" &>/dev/null; then
+      echo "✅ fastapi installed successfully"
+    else
+      echo "❌ fastapi not found, trying to install directly..."
+      $PIP_CMD install --user fastapi
+    fi
   else
     echo "WARNING: Skipping Python dependencies installation due to missing pip."
   fi
@@ -241,12 +261,33 @@ test_python_server() {
   cd "$REPO_ROOT/services/gameserver"
   
   # Try running the game server directly
-  python3 -c "import uvicorn; print('uvicorn available')" && \
-  python3 -c "from fastapi import FastAPI; print('FastAPI available')" && \
-  echo "Python environment ready for game server"
+  if python3 -c "import uvicorn; print('uvicorn available')" && \
+     python3 -c "from fastapi import FastAPI; print('FastAPI available')"; then
+    echo "✅ Python environment ready for game server"
+    return 0
+  else
+    echo "❌ Python environment not ready for game server"
+    return 1
+  fi
 }
 
 test_python_server
+
+# Check for port 5000 availability
+check_port_5000() {
+  echo "Checking if port 5000 is available..."
+  
+  # Try to bind to port 5000
+  if python3 -c "import socket; s=socket.socket(); s.bind(('0.0.0.0', 5000)); s.close(); print('Port 5000 is available')" 2>/dev/null; then
+    echo "✅ Port 5000 is available"
+    return 0
+  else
+    echo "❌ Port 5000 is not available"
+    return 1
+  fi
+}
+
+check_port_5000 || echo "Warning: Port 5000 may be in use or restricted"
 
 # Run services directly (fallback method) if PM2 is not available
 run_services_directly() {

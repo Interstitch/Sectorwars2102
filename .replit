@@ -33,6 +33,14 @@ PORT = "5000"
 [nix]
 channel = "stable-22_11"
 
+# Package manager configuration
+[packager]
+language = "python3"
+
+[packager.features]
+packageSearch = true
+guessImports = true
+
 # Editor configuration
 [editor]
 tabSize = 2
@@ -63,5 +71,8 @@ setup = "bash ./dev-scripts/replit-setup.sh"
 update-npm = "npm install -g npm@9.9.0 --prefix=$HOME/.local"
 install-pm2 = "npm install pm2 --prefix=$HOME/.local && ln -sf $HOME/.local/node_modules/.bin/pm2 $HOME/.local/bin/pm2"
 upgrade-node = "source ./nvm/nvm.sh && nvm install 18 && nvm use 18 && nvm alias default 18"
-python-setup = "python3 -m ensurepip --user && export PIP_DISABLE_PIP_VERSION_CHECK=1 && python3 -m pip install --user -r services/gameserver/requirements.txt"
+python-setup = "pip3 install --user uvicorn==0.23.2 fastapi==0.103.1 sqlalchemy==2.0.20 python-multipart==0.0.6 python-jose[cryptography]==3.3.0"
 direct-start = "bash -c 'cd ./services/gameserver && python3 -m uvicorn src.main:app --host 0.0.0.0 --port 5000'"
+test-api = "python3 services/gameserver/test_server.py"
+simple-api = "bash -c 'cd services/gameserver && python3 -c \"import socket; s=socket.socket(); s.bind((\\\"0.0.0.0\\\", 5000)); print(\\\"Listening on port 5000\\\"); s.listen(); conn, addr = s.accept(); print(f\\\"Connection from {addr}\\\"); conn.send(b\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Length: 13\\\\r\\\\n\\\\r\\\\nHello, World!\\\"); conn.close(); s.close()\"'"
+install-uvicorn = "pip3 install --user uvicorn"

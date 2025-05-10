@@ -27,28 +27,56 @@ Replit provides several predefined commands to help you manage the application:
 
 # Start Game API Server directly (emergency fallback)
 /run direct-start
+
+# Run a simple test API server
+/run test-api
+
+# Run a very basic socket server on port 5000
+/run simple-api
 ```
 
-## Port Issues
+## Port 5000 Issues
 
-If some ports aren't showing in the Replit interface:
+If port 5000 (Game API Server) isn't showing in the Replit interface:
 
-1. First, check if the services are actually running:
+1. First, check if any services can bind to port 5000:
    ```bash
-   pm2 status
+   /run simple-api
+   ```
+   (This runs a basic socket server on port 5000)
+
+2. If the simple-api works, try the test API server:
+   ```bash
+   /run test-api
    ```
 
-2. If the Game API Server (port 5000) is not starting properly:
-   ```bash
-   pm2 logs game-api-server
-   ```
-
-3. Try starting the Game API Server directly:
+3. If those tests work but the main API server doesn't, try:
    ```bash
    /run direct-start
    ```
 
-4. Refresh your Replit browser window, which may help Replit detect all running ports
+4. Restart Replit or refresh your browser window
+   
+5. Make sure you don't have any other service using port 5000 in Replit
+
+### Possible Port 5000 Restrictions
+
+Some cloud providers (including Replit) may restrict or proxy port 5000 because:
+- Port 5000 is commonly used by development servers
+- It may conflict with Replit's internal services
+- Some providers give special treatment to this port
+
+If none of the above commands make port 5000 available, try modifying the Game API Server to use port 8080 instead:
+
+1. Edit the PM2 config:
+   ```bash
+   vim pm2.replit.config.js
+   ```
+   And change the port to 8080 in the game-api-server section.
+
+2. Edit the frontend services to point to port 8080 instead of 5000.
+
+3. Add port 8080 in the .replit configuration.
 
 ## Node.js/NPM Version Issues
 
@@ -144,9 +172,9 @@ If the Game API Server isn't starting properly:
    pm2 kill
    ```
 
-3. Try running the server directly without PM2:
+3. Try the test server:
    ```bash
-   /run direct-start
+   /run test-api
    ```
 
 4. If it works directly, the issue might be with PM2. Restart the full application:
@@ -175,7 +203,10 @@ If you need to completely reset your Replit environment:
 
 4. Try starting each component individually:
    ```bash
-   # Game server first
+   # Game server first - try the test server first
+   /run test-api
+   
+   # If that works, try the regular server
    /run direct-start
    
    # In a separate shell tab, start player client
