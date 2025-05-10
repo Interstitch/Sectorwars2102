@@ -1,29 +1,49 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import dns from 'dns'
+
+// This is critical: configure DNS to use IPv4 instead of IPv6
+dns.setDefaultResultOrder('ipv4first')
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: '0.0.0.0',
-    port: 3001, // Corrected port for admin-ui
+    host: true, // Listen on all addresses
+    port: 3001, // Correct port for admin-ui
+    strictPort: true,
+
+    // Completely disable host checking in development mode
+    hmr: {
+      clientPort: 443,
+      host: '0.0.0.0'
+    },
+
+    // Direct configuration to allow any host
+    cors: true,
+
+    // Add explicit wildcard for all hosts - most important setting
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      '.replit.dev',
+      '.repl.co',
+      '0.0.0.0',
+      '*', // Wildcard to allow everything
+      'all' // Another way to allow everything
+    ],
+
+    // Don't check origin at all
+    origin: '*',
+
     watch: {
       usePolling: true,
     },
-    // Allow connections from any hostname in Replit
-    hmr: {
-      clientPort: process.env.REPL_SLUG ? 443 : 3001,
-      // Allow connections from any host for HMR
-      host: '0.0.0.0',
-    },
-    // Explicitly allow all hosts to solve blocked request issue
-    cors: true,
-    strictPort: true,
-    allowedHosts: 'all',
-    // Remove origin check to prevent CORS issues
-    origin: 'http://localhost:3001',
+
+    // Disable FS restriction
     fs: {
       strict: false,
+      allow: ['..'],
     },
   },
 })

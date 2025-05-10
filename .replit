@@ -88,3 +88,6 @@ fix-pythonpath = "bash -c 'PYTHON_USER_SITE=$(python3 -m site --user-site); mkdi
 pm2-simple = "pm2 start pm2.replit.config.js --only simple-test-server"
 test-direct = "bash -c 'cd ./services/gameserver && chmod +x simple_server.py && ./simple_server.py'"
 switch-direct = "cp .replit.direct .replit && echo 'Switched to direct execution mode (bypassing PM2)'"
+no-host-check = "bash ./dev-scripts/start-replit-nohost.sh"
+player-nohost = "cd services/player-client && node disable-host-check.js"
+admin-nohost = "cd services/admin-ui && node disable-host-check.js"

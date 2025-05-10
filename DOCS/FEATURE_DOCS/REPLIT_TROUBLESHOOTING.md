@@ -210,9 +210,21 @@ Our Vite configuration has been updated to accept any Replit-generated hostname 
    allowedHosts: 'all',
    ```
 
-4. If the issue persists, try using the direct execution mode:
+4. If the issue persists, try our special no-host-check mode:
    ```bash
-   /run switch-direct
+   /run no-host-check
+   ```
+
+   Or run the services individually with host checking disabled:
+   ```bash
+   # Player Client with no host checking
+   /run player-nohost
+
+   # Admin UI with no host checking
+   /run admin-nohost
+
+   # Simple server for the API
+   /run simple-server
    ```
 
 ### Problem: "Game API Server not running on port 8080"
