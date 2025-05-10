@@ -25,6 +25,7 @@ ENVIRONMENT = "replit"
 NODE_ENV = "development"
 PYTHONUNBUFFERED = "1"
 PATH = "${PATH}:${HOME}/.local/bin"
+PIP_DISABLE_PIP_VERSION_CHECK = "1"
 
 # Nix configuration for dependencies (using simplified version)
 [nix]
@@ -51,6 +52,7 @@ externalPort = 3001
 [commands]
 start = "bash ./dev-scripts/start-replit.sh"
 setup = "bash ./dev-scripts/replit-setup.sh"
-update-npm = "npm install -g npm@10.2.4 --prefix=$HOME/.local"
+update-npm = "npm install -g npm@9.9.0 --prefix=$HOME/.local"
 install-pm2 = "npm install pm2 --prefix=$HOME/.local && ln -sf $HOME/.local/node_modules/.bin/pm2 $HOME/.local/bin/pm2"
 upgrade-node = "source ./nvm/nvm.sh && nvm install 18 && nvm use 18 && nvm alias default 18"
+python-setup = "python3 -m ensurepip --user && export PIP_DISABLE_PIP_VERSION_CHECK=1 && python3 -m pip install --user -r services/gameserver/requirements.txt"

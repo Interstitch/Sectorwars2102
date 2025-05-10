@@ -13,7 +13,7 @@ Replit provides several predefined commands to help you manage the application:
 # Run the setup script
 /run setup 
 
-# Update npm to the latest version
+# Update npm to the latest version compatible with Node.js 18
 /run update-npm
 
 # Install PM2 in user space
@@ -21,6 +21,9 @@ Replit provides several predefined commands to help you manage the application:
 
 # Upgrade Node.js to version 18 (using NVM)
 /run upgrade-node
+
+# Set up Python and install requirements
+/run python-setup
 ```
 
 ## Node.js/NPM Version Issues
@@ -34,15 +37,34 @@ If you're experiencing issues with old Node.js or npm versions:
 
 2. Restart your Replit shell to load the new Node.js version
    
-3. After upgrading Node.js, you can use the latest npm:
+3. After upgrading Node.js, update npm to a compatible version:
    ```bash
-   npm install -g npm@latest --prefix=$HOME/.local
+   /run update-npm
    ```
 
 4. Verify the upgraded versions:
    ```bash
    node -v
    npm -v
+   ```
+
+## Python and Pip Issues
+
+If you encounter Python-related errors:
+
+1. Disable pip version checking to avoid errors:
+   ```bash
+   export PIP_DISABLE_PIP_VERSION_CHECK=1
+   ```
+
+2. Use the user-space install to avoid permission issues:
+   ```bash
+   /run python-setup
+   ```
+
+3. If pip modules aren't in your PATH, run:
+   ```bash
+   export PATH="$HOME/.local/bin:$PATH"
    ```
 
 ## Common Issues
@@ -90,22 +112,20 @@ Use the user-space installation command:
 
 This installs PM2 in your home directory, avoiding permission issues with Nix store directories.
 
-### Problem: "pip command isn't found"
+### Problem: "ERROR: No Python interpreter found"
 
-If you see errors about pip not being found:
+If the Python interpreter cannot be found:
 
 **Solution:**
-The scripts now automatically handle various pip command situations:
+1. Verify Python is installed:
+   ```bash
+   python3 --version
+   ```
 
-1. Tries `pip3` first, then `pip`
-2. If neither is found, attempts to install pip from python
-3. Uses `--user` flag to avoid permission issues
-4. Properly reports which pip version is being used
-
-If you still have issues, you can manually install pip:
-```bash
-python3 -m ensurepip --user
-```
+2. If not, run the Python setup:
+   ```bash
+   /run python-setup
+   ```
 
 ### Problem: Services Fail to Start
 
@@ -132,23 +152,6 @@ If one or more services (Game API Server, Player Client, Admin UI) fail to start
    pm2 restart game-api-server
    pm2 restart player-client
    pm2 restart admin-ui
-   ```
-
-### Problem: "Command not found" Errors
-
-If you see errors about commands not being found after installation:
-
-**Solution:**
-The PATH environment variable needs to be updated:
-
-1. Refresh your terminal session:
-   ```bash
-   source ~/.bashrc
-   ```
-
-2. Or manually add to PATH:
-   ```bash
-   export PATH="$HOME/.local/bin:$PATH"
    ```
 
 ## Manual Recovery
@@ -181,5 +184,5 @@ If you continue experiencing issues:
 
 1. Check the PM2 logs: `pm2 logs`
 2. Monitor PM2 processes in real-time: `pm2 monit` 
-3. Note any specific error messages for troubleshooting
-4. Verify your Replit account has sufficient resources for this project
+3. Look at raw process logs in `/tmp/*.log` files
+4. Try running services individually to isolate problems

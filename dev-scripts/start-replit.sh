@@ -82,18 +82,20 @@ update_npm() {
     NODE_VERSION=$(node -v | cut -d 'v' -f 2 | cut -d '.' -f 1)
     
     # Choose npm version based on Node.js version
-    if [ "$NODE_VERSION" -ge 18 ]; then
-      NPM_VERSION="latest"
+    if [ "$NODE_VERSION" -ge 20 ]; then
+      NPM_VERSION="9.9.0"  # Compatible with Node.js 20+
+    elif [ "$NODE_VERSION" -ge 18 ]; then
+      NPM_VERSION="9.9.0"  # Compatible with Node.js 18
     elif [ "$NODE_VERSION" -ge 16 ]; then
-      NPM_VERSION="10.2.4"
+      NPM_VERSION="8.19.4"  # Compatible with Node.js 16
     else
-      NPM_VERSION="8.19.4"  # Last version for Node.js 14
+      NPM_VERSION="8.5.5"  # Last version for older Node.js
     fi
     
     echo "Installing npm $NPM_VERSION for Node.js v$NODE_VERSION..."
   else
     # Default to a conservative version if node not found
-    NPM_VERSION="10.2.4"
+    NPM_VERSION="8.19.4"
     echo "Node.js version not detected, installing npm $NPM_VERSION..."
   fi
   
@@ -172,7 +174,7 @@ install_dependencies() {
   install_pm2
 }
 
-# Check Python setup
+# Check Python setup safely
 setup_python() {
   # Check if pip3 exists, otherwise try pip
   if command_exists pip3; then
@@ -195,12 +197,16 @@ setup_python() {
     fi
   fi
 
-  # If we have pip, use it
+  # If we have pip, use it safely with --user flag to avoid permission issues
   if [ -n "$PIP_CMD" ]; then
     echo "Using $PIP_CMD to install Python packages..."
     cd "$REPO_ROOT/services/gameserver"
-    $PIP_CMD install --user --upgrade pip
-    $PIP_CMD install --user -r requirements.txt
+    
+    # Suppress pip version check to avoid the error
+    export PIP_DISABLE_PIP_VERSION_CHECK=1
+    
+    # Install dependencies with --user flag to avoid permission issues
+    $PIP_CMD install --user -r requirements.txt --no-warn-script-location || echo "Failed to install some Python dependencies"
   else
     echo "WARNING: Skipping Python dependencies installation due to missing pip."
   fi
@@ -327,6 +333,7 @@ if check_for_pm2; then
   
   # Start all services using PM2
   echo "Starting all services with PM2..."
+  cd "$REPO_ROOT"
   pm2 start "$REPO_ROOT/pm2.replit.config.js"
   
   # Display PM2 status
