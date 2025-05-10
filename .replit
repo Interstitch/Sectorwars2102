@@ -35,17 +35,23 @@ channel = "stable-22_11"
 [editor]
 tabSize = 2
 
-# Ports to expose
+# Ports to expose - need explicit configuration
 [[ports]]
 localPort = 3000
-externalPort = 80
+name = "Player Client"
+description = "The main player interface"
+externalPort = 3000
 
 [[ports]]
-localPort = 5000
+localPort = 5000 
+name = "Game API Server"
+description = "Backend API server"
 externalPort = 5000
 
 [[ports]]
 localPort = 3001
+name = "Admin UI"
+description = "Administration interface"
 externalPort = 3001
 
 # Commands
