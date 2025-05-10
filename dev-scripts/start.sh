@@ -31,8 +31,14 @@ if command -v docker-compose &>/dev/null; then
 elif command -v docker &>/dev/null && docker compose version &>/dev/null; then
     DOCKER_COMPOSE_CMD="docker compose"
 else
-    echo "Neither docker-compose nor docker compose commands are available. Please install Docker and Docker Compose."
-    exit 1
+    if [ "$DEV_ENVIRONMENT" = "replit" ]; then
+        echo "Docker not available in Replit. Using non-Docker fallback mode."
+        ./dev-scripts/start-replit.sh
+        exit $?
+    else
+        echo "Neither docker-compose nor docker compose commands are available. Please install Docker and Docker Compose."
+        exit 1
+    fi
 fi
 
 # Set environment variables based on detected environment

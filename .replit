@@ -8,9 +8,46 @@ REPL_ID = "sectorwars2102"
 DEBUG = "true"
 ENVIRONMENT = "replit"
 NODE_ENV = "development"
+PYTHONUNBUFFERED = "1"
 
+# Add package management
+[packager]
+language = "python3"
+  [packager.features]
+  enabledForHosting = false
+  packageSearch = true
+  guessImports = true
+
+# Enable Node.js for frontend
+[languages.javascript]
+pattern = "**/{*.js,*.jsx,*.ts,*.tsx}"
+  [languages.javascript.languageServer]
+  start = ["typescript-language-server", "--stdio"]
+
+# Enable Python for backend
+[languages.python]
+pattern = "**/*.py"
+  [languages.python.languageServer]
+  start = ["pylsp"]
+
+# Configure Nix to include all required dependencies
 [nix]
 channel = "stable-23_11"
+  [nix.packages]
+  nodejs = "nodejs"
+  yarn = "yarn"
+  python = "python311"
+  pip = "python311Packages.pip"
+  fastapi = "python311Packages.fastapi"
+  uvicorn = "python311Packages.uvicorn"
+  pydantic = "python311Packages.pydantic"
+  sqlalchemy = "python311Packages.sqlalchemy"
+  psycopg2 = "python311Packages.psycopg2"
+  alembic = "python311Packages.alembic"
+
+# UI configuration
+[editor]
+tabSize = 2
 
 [deployment]
 run = "./dev-scripts/start.sh"
