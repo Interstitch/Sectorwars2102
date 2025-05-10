@@ -14,5 +14,13 @@ export default defineConfig({
     hmr: {
       clientPort: process.env.REPL_SLUG ? 443 : 3000,
     },
+    // Add allowedHosts: all to solve blocked request issue
+    cors: true,
+    strictPort: true,
+    // Remove origin check to prevent CORS issues
+    origin: 'http://localhost:3000',
+    fs: {
+      strict: false,
+    },
   },
 })

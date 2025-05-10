@@ -23,10 +23,11 @@ command_exists() {
   type "$1" &> /dev/null
 }
 
-# Update npm to latest version in user space
+# Update npm to a compatible version in user space
 update_npm() {
-  echo "Updating npm to latest version..."
-  npm install -g npm@latest --prefix=$HOME/.local || echo "Warning: Could not update npm globally"
+  echo "Updating npm to compatible version..."
+  # Use 10.2.4 which is compatible with Node.js 16
+  npm install -g npm@10.2.4 --prefix=$HOME/.local || echo "Warning: Could not update npm"
   export PATH="$HOME/.local/bin:$PATH"
 }
 
@@ -48,7 +49,7 @@ install_pm2() {
   export PATH="$HOME/.local/bin:$PATH"
   
   # Add to PATH permanently
-  echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+  grep -q 'export PATH="$HOME/.local/bin:$PATH"' ~/.bashrc || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 }
 
 # Install basic dependencies
@@ -60,8 +61,36 @@ update_npm
 # Install Python dependencies
 echo "Installing Python dependencies..."
 cd "$REPO_ROOT/services/gameserver"
-pip install --upgrade pip
-pip install -r requirements.txt
+
+# Check if pip3 exists, otherwise try pip
+if command_exists pip3; then
+  PIP_CMD="pip3"
+elif command_exists pip; then
+  PIP_CMD="pip"
+else
+  echo "WARNING: pip not found."
+  # Try to install pip if python is available
+  if command_exists python3; then
+    echo "Attempting to install pip..."
+    python3 -m ensurepip || python3 -m ensurepip --user || echo "Could not install pip"
+    if command_exists pip3; then
+      PIP_CMD="pip3"
+    elif command_exists pip; then
+      PIP_CMD="pip"
+    fi
+  else
+    echo "Python not found. Cannot proceed with pip installation."
+  fi
+fi
+
+# If we have pip, use it
+if [ -n "$PIP_CMD" ]; then
+  echo "Using $PIP_CMD to install Python packages..."
+  $PIP_CMD install --user --upgrade pip
+  $PIP_CMD install --user -r requirements.txt
+else
+  echo "WARNING: Skipping Python dependencies installation due to missing pip."
+fi
 
 # Install Node.js dependencies
 echo "Installing Node.js dependencies..."
@@ -98,3 +127,4 @@ fi
 
 echo "Setup complete! Run './dev-scripts/start-replit.sh' to start the application."
 echo "Note: You may need to refresh your terminal session to access PM2."
+echo "You can also use '/run start' to start the application."

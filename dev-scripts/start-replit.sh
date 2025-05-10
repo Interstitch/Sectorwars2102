@@ -30,11 +30,75 @@ command_exists() {
   type "$1" &> /dev/null
 }
 
-# Update npm to latest version
+# Try to upgrade Node.js using NVM if available
+upgrade_node() {
+  echo "Checking for Node.js upgrade possibilities..."
+  
+  if [ -f "$REPO_ROOT/nvm/nvm.sh" ]; then
+    echo "NVM found, attempting to upgrade Node.js..."
+    
+    # Source NVM
+    source "$REPO_ROOT/nvm/nvm.sh"
+    
+    # Get current version
+    CURRENT_NODE_VERSION=$(node -v)
+    echo "Current Node.js version: $CURRENT_NODE_VERSION"
+    
+    # Install Node.js 18 LTS (more recent but stable)
+    echo "Installing Node.js 18 LTS..."
+    nvm install 18 || echo "Failed to install Node.js 18, continuing with current version"
+    
+    # If installation succeeded, use it
+    if nvm list | grep -q "v18"; then
+      echo "Setting Node.js 18 as default..."
+      nvm use 18
+      nvm alias default 18
+      
+      # Verify the new version
+      NEW_NODE_VERSION=$(node -v)
+      echo "Upgraded Node.js version: $NEW_NODE_VERSION"
+      
+      # Set environment path to include the new Node.js version
+      export PATH="$(dirname $(which node)):$PATH"
+      
+      # Report npm version
+      echo "NPM version: $(npm -v)"
+      
+      return 0
+    fi
+  else
+    echo "NVM not found, skipping Node.js upgrade"
+  fi
+  
+  return 1
+}
+
+# Update npm to a compatible version in user space
 update_npm() {
-  echo "Updating npm to latest version..."
+  echo "Updating npm to compatible version..."
+  
+  # Get current node version to determine compatible npm version
+  if command_exists node; then
+    NODE_VERSION=$(node -v | cut -d 'v' -f 2 | cut -d '.' -f 1)
+    
+    # Choose npm version based on Node.js version
+    if [ "$NODE_VERSION" -ge 18 ]; then
+      NPM_VERSION="latest"
+    elif [ "$NODE_VERSION" -ge 16 ]; then
+      NPM_VERSION="10.2.4"
+    else
+      NPM_VERSION="8.19.4"  # Last version for Node.js 14
+    fi
+    
+    echo "Installing npm $NPM_VERSION for Node.js v$NODE_VERSION..."
+  else
+    # Default to a conservative version if node not found
+    NPM_VERSION="10.2.4"
+    echo "Node.js version not detected, installing npm $NPM_VERSION..."
+  fi
+  
   # Use local installation to avoid permission issues
-  npm install -g npm@latest --prefix=$HOME/.local || echo "Warning: Could not update npm globally"
+  npm install -g npm@$NPM_VERSION --prefix=$HOME/.local || echo "Warning: Could not update npm"
   export PATH="$HOME/.local/bin:$PATH"
 }
 
@@ -42,9 +106,6 @@ update_npm() {
 install_pm2() {
   if ! command_exists pm2; then
     echo "Installing PM2 process manager..."
-    
-    # First update npm
-    update_npm
     
     # Try local installation to avoid permission issues
     mkdir -p "$HOME/.local/bin"
@@ -69,13 +130,19 @@ install_pm2() {
 install_dependencies() {
   echo "Installing basic dependencies..."
   
+  # Try to upgrade Node.js if possible
+  upgrade_node
+  
+  # Update npm to compatible version
+  update_npm
+  
   # Try to install Python if not available
   if ! command_exists python3; then
     echo "Python not found, installing..."
     apt-get update && apt-get install -y python3 python3-pip || true
   fi
   
-  # Try to install Node.js if not available
+  # Try to install Node.js if not available and upgrade failed
   if ! command_exists node; then
     echo "Node.js not found, installing..."
     # Use NVM if available
@@ -105,13 +172,45 @@ install_dependencies() {
   install_pm2
 }
 
+# Check Python setup
+setup_python() {
+  # Check if pip3 exists, otherwise try pip
+  if command_exists pip3; then
+    PIP_CMD="pip3"
+  elif command_exists pip; then
+    PIP_CMD="pip"
+  else
+    echo "WARNING: pip not found."
+    # Try to install pip if python is available
+    if command_exists python3; then
+      echo "Attempting to install pip..."
+      python3 -m ensurepip || python3 -m ensurepip --user || echo "Could not install pip"
+      if command_exists pip3; then
+        PIP_CMD="pip3"
+      elif command_exists pip; then
+        PIP_CMD="pip"
+      fi
+    else
+      echo "Python not found. Cannot proceed with pip installation."
+    fi
+  fi
+
+  # If we have pip, use it
+  if [ -n "$PIP_CMD" ]; then
+    echo "Using $PIP_CMD to install Python packages..."
+    cd "$REPO_ROOT/services/gameserver"
+    $PIP_CMD install --user --upgrade pip
+    $PIP_CMD install --user -r requirements.txt
+  else
+    echo "WARNING: Skipping Python dependencies installation due to missing pip."
+  fi
+}
+
 # Install dependencies if needed
 install_dependencies
 
-# Install Python dependencies for Game API Server
-echo "Installing Python dependencies..."
-cd "$REPO_ROOT/services/gameserver"
-python3 -m pip install -r requirements.txt
+# Setup Python
+setup_python
 
 # Install frontend dependencies
 echo "Installing frontend dependencies..."
@@ -131,7 +230,19 @@ run_services_directly() {
   # Start Game API Server
   echo "Starting Game API Server..."
   cd "$REPO_ROOT/services/gameserver"
-  python3 -m uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload > /tmp/gameserver.log 2>&1 &
+  
+  # Determine which Python command to use
+  if command_exists python3; then
+    PYTHON_CMD="python3"
+  elif command_exists python; then
+    PYTHON_CMD="python"
+  else
+    echo "ERROR: No Python interpreter found. Cannot start Game API Server."
+    return 1
+  fi
+  
+  # Start the server
+  $PYTHON_CMD -m uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload > /tmp/gameserver.log 2>&1 &
   GAMESERVER_PID=$!
   echo "Game API Server started with PID: $GAMESERVER_PID"
   
@@ -179,8 +290,36 @@ run_services_directly() {
   tail -f /dev/null
 }
 
-# Check if PM2 is available in path
-if command_exists pm2; then
+# Check for PM2 in all possible locations
+check_for_pm2() {
+  # Check in PATH
+  if command_exists pm2; then
+    return 0
+  fi
+  
+  # Check in HOME/.local/bin
+  if [ -f "$HOME/.local/bin/pm2" ]; then
+    export PATH="$HOME/.local/bin:$PATH"
+    return 0
+  fi
+  
+  # Check in node_modules
+  if [ -f "$HOME/.local/node_modules/.bin/pm2" ]; then
+    export PATH="$HOME/.local/node_modules/.bin:$PATH"
+    return 0
+  fi
+  
+  # Check in project node_modules
+  if [ -f "$REPO_ROOT/node_modules/.bin/pm2" ]; then
+    export PATH="$REPO_ROOT/node_modules/.bin:$PATH"
+    return 0
+  fi
+  
+  return 1
+}
+
+# Check if PM2 is available in any location
+if check_for_pm2; then
   echo "PM2 found at: $(which pm2)"
   
   # Kill existing PM2 processes if any
