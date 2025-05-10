@@ -1,7 +1,22 @@
-run = "./dev-scripts/start.sh"
+run = "bash ./dev-scripts/start.sh"
 entrypoint = "dev-scripts/start.sh"
-modules = ["python-3.11:v18-20240328-3f08513", "nodejs-20:v8-20230920-bd784b9"]
 
+# Language configurations
+[languages]
+
+[languages.javascript]
+pattern = "**/{*.js,*.jsx,*.ts,*.tsx}"
+
+[languages.javascript.languageServer]
+start = "typescript-language-server --stdio"
+
+[languages.python]
+pattern = "**/*.py"
+
+[languages.python.languageServer]
+start = "pylsp"
+
+# Environment variables
 [env]
 REPL_SLUG = "SectorWars2102"
 REPL_ID = "sectorwars2102"
@@ -10,45 +25,19 @@ ENVIRONMENT = "replit"
 NODE_ENV = "development"
 PYTHONUNBUFFERED = "1"
 
-# Add package management
-[packager]
-language = "python3"
-  [packager.features]
-  enabledForHosting = false
-  packageSearch = true
-  guessImports = true
-
-# Enable Node.js for frontend
-[languages.javascript]
-pattern = "**/{*.js,*.jsx,*.ts,*.tsx}"
-  [languages.javascript.languageServer]
-  start = ["typescript-language-server", "--stdio"]
-
-# Enable Python for backend
-[languages.python]
-pattern = "**/*.py"
-  [languages.python.languageServer]
-  start = ["pylsp"]
-
-# Configure Nix to include all required dependencies
+# Nix configuration for dependencies
 [nix]
 channel = "stable-23_11"
-  [nix.packages]
-  nodejs = "nodejs"
-  yarn = "yarn"
-  python = "python311"
-  pip = "python311Packages.pip"
-  fastapi = "python311Packages.fastapi"
-  uvicorn = "python311Packages.uvicorn"
-  pydantic = "python311Packages.pydantic"
-  sqlalchemy = "python311Packages.sqlalchemy"
-  psycopg2 = "python311Packages.psycopg2"
-  alembic = "python311Packages.alembic"
 
-# UI configuration
+# Editor configuration
 [editor]
 tabSize = 2
 
+# Deployment configuration
 [deployment]
-run = "./dev-scripts/start.sh"
+run = "bash ./dev-scripts/start.sh"
 deploymentTarget = "cloudrun"
+
+# Host visibility
+[hosting]
+route = "/"

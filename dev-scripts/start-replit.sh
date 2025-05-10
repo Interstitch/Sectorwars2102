@@ -8,6 +8,9 @@ export ENVIRONMENT=replit
 export NODE_ENV=development
 export PYTHONUNBUFFERED=1
 
+# Create data directories if they don't exist
+mkdir -p /tmp/sectorwars/data
+
 # Check if .env file exists, create from example if not
 if [ ! -f .env ]; then
   echo "Creating .env file from example..."
@@ -20,51 +23,36 @@ echo "Installing Python dependencies..."
 cd /home/runner/Sectorwars2102/services/gameserver
 pip install -r requirements.txt
 
-# Set up Game API Server in background
+# Start Game API Server
 echo "Starting Game API Server..."
 cd /home/runner/Sectorwars2102/services/gameserver
-uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload &
-GAME_SERVER_PID=$!
+python -m uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload > /tmp/gameserver.log 2>&1 &
 
-# Wait for Game API Server to start
-echo "Waiting for Game API Server to start..."
-sleep 5
+# Install Node.js dependencies if needed and start frontends
+echo "Setting up frontends..."
+cd /home/runner/Sectorwars2102
+npm install -g npm@latest
 
-# Install Node.js dependencies for both frontends if not already installed
-echo "Installing Node.js dependencies for frontends..."
-if [ ! -d "/home/runner/Sectorwars2102/services/player-client/node_modules" ]; then
-  cd /home/runner/Sectorwars2102/services/player-client
-  npm install
-fi
-
-if [ ! -d "/home/runner/Sectorwars2102/services/admin-ui/node_modules" ]; then
-  cd /home/runner/Sectorwars2102/services/admin-ui
-  npm install
-fi
-
-# Start Player Client (port 3000)
-echo "Starting Player Client..."
+# Player Client
 cd /home/runner/Sectorwars2102/services/player-client
-npm run dev -- --host 0.0.0.0 --port 3000 &
-PLAYER_CLIENT_PID=$!
+npm install
+npm run dev -- --host 0.0.0.0 --port 3000 > /tmp/player-client.log 2>&1 &
 
-# Start Admin UI (port 3001)
-echo "Starting Admin UI..."
+# Admin UI
 cd /home/runner/Sectorwars2102/services/admin-ui
-npm run dev -- --host 0.0.0.0 --port 3001 &
-ADMIN_UI_PID=$!
+npm install
+npm run dev -- --host 0.0.0.0 --port 3001 > /tmp/admin-ui.log 2>&1 &
 
-# Display URLs for services
+# Display access information
 echo ""
-echo "Services started successfully!"
-echo "Game API Server: http://localhost:5000"
-echo "Player Client: http://localhost:3000"
-echo "Admin UI: http://localhost:3001"
+echo "Services started in background:"
+echo "Game API Server: http://localhost:5000 (logs: /tmp/gameserver.log)"
+echo "Player Client: http://localhost:3000 (logs: /tmp/player-client.log)"
+echo "Admin UI: http://localhost:3001 (logs: /tmp/admin-ui.log)"
 echo ""
-echo "Press Ctrl+C to stop all services"
+echo "Use 'tail -f /tmp/*.log' to view service logs"
+echo "Services will continue running in background..."
+echo ""
 
-# Wait for all processes to complete (or until user interrupts)
-wait $GAME_SERVER_PID $PLAYER_CLIENT_PID $ADMIN_UI_PID
-
-# Clean up on exit
-trap "kill $GAME_SERVER_PID $PLAYER_CLIENT_PID $ADMIN_UI_PID 2>/dev/null" EXIT
+# Keep script alive to allow services to continue running
+tail -f /dev/null
