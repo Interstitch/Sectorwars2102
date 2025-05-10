@@ -46,7 +46,7 @@ cp .env.example .env
 # Edit .env with your Neon database URL and other settings
 
 # Start all services (auto-detects environment)
-./dev-scripts/start.sh
+./dev-scripts/start-unified.sh
 
 # Or manually with Docker Compose
 docker-compose up

@@ -36,10 +36,9 @@ FILES:
   ├── pm2.config.js               # PM2 configuration for Docker environment
   ├── pm2.replit.config.js        # PM2 configuration for Replit environment
   ├── dev-scripts/
-  │   ├── start.sh                # Unified start script with environment detection
-  │   ├── replit-setup.sh         # Replit setup with PM2
-  │   ├── replit-setup-simple.sh  # Simplified Replit setup without Nix
-  │   └── start-replit.sh         # Replit-specific startup with PM2
+  │   ├── start-unified.sh        # Universal entry point with environment detection
+  │   ├── setup.sh                # Unified setup script for all environments
+  │   └── start-replit-unified.sh # Replit-specific startup with PM2
   └── .env.example                # Example environment variables
 
 SCHEMA:
@@ -65,7 +64,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"  # Game API Server
+      - "8080:8080"  # Game API Server
       - "3000:3000"  # Player Client
       - "3001:3001"  # Admin UI
     environment:
@@ -82,7 +81,7 @@ module.exports = {
       name: 'game-api-server',
       cwd: './services/gameserver',
       script: 'python3',
-      args: '-m uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload',
+      args: '-m uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload',
       env: {
         PYTHONUNBUFFERED: 1,
         DATABASE_URL: process.env.DATABASE_URL
@@ -96,7 +95,7 @@ module.exports = {
       script: 'npm',
       args: 'run dev -- --host 0.0.0.0 --port 3000',
       env: {
-        API_URL: 'http://localhost:5000'
+        API_URL: 'http://localhost:8080'
       },
       autorestart: true
     },
@@ -106,7 +105,7 @@ module.exports = {
       script: 'npm',
       args: 'run dev -- --host 0.0.0.0 --port 3001',
       env: {
-        API_URL: 'http://localhost:5000'
+        API_URL: 'http://localhost:8080'
       },
       autorestart: true
     }
@@ -133,7 +132,7 @@ case "$ENV" in
     if command -v docker &> /dev/null; then
       docker-compose -f docker-compose.yml -f docker-compose.replit.yml up
     else
-      ./dev-scripts/start-replit.sh
+      ./dev-scripts/start-replit-unified.sh
     fi
     ;;
   "codespaces"|"local")

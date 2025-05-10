@@ -1,5 +1,5 @@
-run = "bash ./dev-scripts/start-replit.sh"
-entrypoint = "dev-scripts/start-replit.sh"
+run = "bash ./dev-scripts/start-unified.sh"
+entrypoint = "dev-scripts/start-unified.sh"
 
 # Language configurations
 [languages]

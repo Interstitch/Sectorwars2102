@@ -80,31 +80,31 @@ docker-compose -f docker-compose.combined.yml up
 1. Open the project in Replit
 2. Run the setup script (first time only):
    ```bash
-   ./dev-scripts/replit-setup.sh
+   ./dev-scripts/setup.sh
    ```
 3. Start the services:
    ```bash
-   ./dev-scripts/start-replit.sh
+   ./dev-scripts/start-unified.sh
    ```
 
 ### Auto-detection
 
-For convenience, you can use the main start script which detects your environment:
+Our main start script automatically detects your environment and configures everything appropriately:
 
 ```bash
-./dev-scripts/start.sh
+./dev-scripts/start-unified.sh
 ```
 
 ### Accessing Services
 
-- **Game API Server**: http://localhost:5000
+- **Game API Server**: http://localhost:8080
 - **Player Client**: http://localhost:3000
 - **Admin UI**: http://localhost:3001
 
 ## Service Endpoints
 
 ### Game API Server
-- **Base URL**: http://localhost:5000
+- **Base URL**: http://localhost:8080
 - **Health Check**: GET /health
 - **API Documentation**: GET /docs (Swagger UI)
 
