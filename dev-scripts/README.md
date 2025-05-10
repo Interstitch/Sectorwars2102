@@ -21,9 +21,8 @@ start-unified.sh [--no-host-check]
   ├── [First run] -> setup.sh (environment-specific configuration)
   ├── [Local/Codespaces] -> docker-compose up
   └── [Replit] -> start-replit-unified.sh [--no-host-check]
-                   ├── [PM2 available] -> PM2 process management
-                   ├── [PM2 unavailable] -> Direct process management
-                   └── [--no-host-check] -> Host-check disabled mode
+                   ├── [Standard mode] -> PM2 with standard config
+                   └── [--no-host-check] -> PM2 with host-check disabled
 ```
 
 ## Using the Scripts
@@ -66,8 +65,8 @@ This will detect your environment and perform the appropriate setup.
 - Consistent environment across development machines
 
 ### Replit Environment
-- PM2-based process management (when available)
-- Direct process management fallback
+- PM2-based process management
+- Auto-install of PM2 if not found
 - Node.js version management via NVM
 - Python dependency management in user space
 - Port availability diagnostics (8080)
@@ -96,8 +95,9 @@ Unified setup script that:
 
 ### start-replit-unified.sh
 Replit-specific unified script that:
-- Supports both PM2 and direct process management
+- Uses PM2 for process management (installs it if not found)
 - Provides host-check disable option (--no-host-check)
+- Creates a special PM2 config for no-host-check mode
 - Tests port availability
 - Runs setup if needed
 - Starts all services appropriately for the Replit environment

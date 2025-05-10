@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Unified Replit startup script for Sector Wars 2102
-# Supports both PM2 and direct process management with host-check toggle
+# Runs services with PM2 process management, with an option to disable host checking
 
 # Parse command-line options
 NO_HOST_CHECK=false
@@ -73,119 +73,85 @@ check_port_8080() {
 
 check_port_8080 || echo "Warning: Port 8080 may be in use or restricted"
 
-# Direct mode with no host checking
-run_services_no_host_check() {
-  echo "Starting services with host checking disabled..."
+# No-host-check mode with PM2
+run_with_no_host_check() {
+  echo "Starting with PM2 and host-check disabled..."
   
-  # Run gameserver in background
-  cd "$REPO_ROOT/services/gameserver"
-  chmod +x simple_server.py
-  ./simple_server.py > /tmp/gameserver.log 2>&1 &
-  GAMESERVER_PID=$!
-  echo "Game API Server (port 8080) started with PID: $GAMESERVER_PID"
+  # Kill existing PM2 processes if any
+  pm2 kill || true
   
-  # Run player-client with host checking disabled
-  cd "$REPO_ROOT/services/player-client"
-  node disable-host-check.js > /tmp/player-client.log 2>&1 &
-  PLAYER_CLIENT_PID=$!
-  echo "Player Client (port 3000) started with PID: $PLAYER_CLIENT_PID"
+  # Get config file based on host-check setting
+  local CONFIG_FILE="$REPO_ROOT/pm2.replit-nohost.config.js"
   
-  # Run admin-ui with host checking disabled
-  cd "$REPO_ROOT/services/admin-ui"
-  node disable-host-check.js > /tmp/admin-ui.log 2>&1 &
-  ADMIN_UI_PID=$!
-  echo "Admin UI (port 3001) started with PID: $ADMIN_UI_PID"
+  # If config file doesn't exist, create it
+  if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Creating no-host-check PM2 config..."
+    cat > "$CONFIG_FILE" << EOF
+module.exports = {
+  apps: [
+    {
+      name: 'simple-test-server',
+      cwd: './services/gameserver',
+      script: './simple_server.py',
+      env: {
+        PYTHONUNBUFFERED: 1,
+        PATH: process.env.PATH || '',
+        PYTHONPATH: '/home/runner/.local/lib/python3.10/site-packages:/home/runner/Sectorwars2102/services/gameserver',
+        ENVIRONMENT: 'replit',
+        DATABASE_URL: process.env.DATABASE_URL
+      },
+      watch: false,
+      autorestart: true,
+      max_restarts: 10,
+      interpreter: '/usr/bin/env',
+      interpreter_args: 'python3',
+    },
+    {
+      name: 'player-client-nohost',
+      cwd: './services/player-client',
+      script: 'node',
+      args: 'disable-host-check.js',
+      env: {
+        API_URL: 'http://localhost:8080',
+        NODE_ENV: process.env.NODE_ENV || 'development',
+      },
+      autorestart: true,
+      max_restarts: 5,
+    },
+    {
+      name: 'admin-ui-nohost',
+      cwd: './services/admin-ui',
+      script: 'node',
+      args: 'disable-host-check.js',
+      env: {
+        API_URL: 'http://localhost:8080',
+        NODE_ENV: process.env.NODE_ENV || 'development',
+      },
+      autorestart: true,
+      max_restarts: 5,
+    },
+  ],
+};
+EOF
+  fi
   
-  # Save PIDs for cleanup
-  echo "$GAMESERVER_PID $PLAYER_CLIENT_PID $ADMIN_UI_PID" > /tmp/sectorwars-pids.txt
+  # Start services with PM2 and no-host-check config
+  cd "$REPO_ROOT"
+  pm2 start "$CONFIG_FILE"
+  
+  # Display PM2 status
+  pm2 status
   
   # Display access information
   echo ""
-  echo "Services started in background with host checking disabled:"
-  echo "Game API Server: http://localhost:8080 (logs: /tmp/gameserver.log)"
-  echo "Player Client: http://localhost:3000 (logs: /tmp/player-client.log)"
-  echo "Admin UI: http://localhost:3001 (logs: /tmp/admin-ui.log)"
+  echo "Services started with PM2 (host-check disabled):"
+  echo "Game API Server: http://localhost:8080"
+  echo "Player Client: http://localhost:3000"
+  echo "Admin UI: http://localhost:3001"
   echo ""
-  echo "Use 'tail -f /tmp/gameserver.log' to view the game server logs"
-}
-
-# Run services directly (fallback method)
-run_services_directly() {
-  echo "Running services directly without PM2..."
-  
-  # Start Game API Server
-  echo "Starting Game API Server..."
-  cd "$REPO_ROOT/services/gameserver"
-  
-  # Determine which Python command to use
-  if command_exists python3; then
-    PYTHON_CMD="python3"
-  elif command_exists python; then
-    PYTHON_CMD="python"
-  else
-    echo "ERROR: No Python interpreter found. Cannot start Game API Server."
-    return 1
-  fi
-  
-  # Try to start the server with various methods
-
-  # Method 1: Try the simple server first (most likely to work)
-  if [ -f "simple_server.py" ]; then
-    echo "Starting simple test server first (most reliable)..."
-    $PYTHON_CMD simple_server.py > /tmp/gameserver.log 2>&1 &
-    GAMESERVER_PID=$!
-    echo "Simple test server started with PID: $GAMESERVER_PID"
-
-    # Wait a short time to see if it stays running
-    sleep 3
-    if kill -0 $GAMESERVER_PID 2>/dev/null; then
-      echo "✅ Simple test server is running on port 8080"
-    else
-      echo "❌ Simple test server failed to start or stay running, checking logs..."
-      cat /tmp/gameserver.log
-      return 1
-    fi
-  else
-    # Method 2: Try the regular server with uvicorn module
-    echo "Starting game server with $PYTHON_CMD -m uvicorn..."
-    PYTHONPATH="$PYTHON_USER_SITE:$REPO_ROOT/services/gameserver" $PYTHON_CMD -m uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload > /tmp/gameserver.log 2>&1 &
-    GAMESERVER_PID=$!
-    echo "Game API Server started with PID: $GAMESERVER_PID"
-
-    # Wait a short time to see if it stays running
-    sleep 3
-    if ! kill -0 $GAMESERVER_PID 2>/dev/null; then
-      echo "❌ Game API Server failed to start or stay running, checking logs..."
-      cat /tmp/gameserver.log
-      return 1
-    fi
-  fi
-  
-  # Player Client
-  echo "Setting up Player Client..."
-  cd "$REPO_ROOT/services/player-client"
-  npm run dev -- --host 0.0.0.0 --port 3000 > /tmp/player-client.log 2>&1 &
-  PLAYER_CLIENT_PID=$!
-  echo "Player Client started with PID: $PLAYER_CLIENT_PID"
-  
-  # Admin UI
-  echo "Setting up Admin UI..."
-  cd "$REPO_ROOT/services/admin-ui"
-  npm run dev -- --host 0.0.0.0 --port 3001 > /tmp/admin-ui.log 2>&1 &
-  ADMIN_UI_PID=$!
-  echo "Admin UI started with PID: $ADMIN_UI_PID"
-  
-  # Save PIDs for cleanup
-  echo "$GAMESERVER_PID $PLAYER_CLIENT_PID $ADMIN_UI_PID" > /tmp/sectorwars-pids.txt
-  
-  # Display access information
-  echo ""
-  echo "Services started in background:"
-  echo "Game API Server: http://localhost:8080 (logs: /tmp/gameserver.log)"
-  echo "Player Client: http://localhost:3000 (logs: /tmp/player-client.log)"
-  echo "Admin UI: http://localhost:3001 (logs: /tmp/admin-ui.log)"
-  echo ""
-  echo "Use 'tail -f /tmp/gameserver.log' to view the game server logs"
+  echo "Use 'pm2 logs' to view all logs or 'pm2 logs [service-name]' for specific service logs"
+  echo "Use 'pm2 monit' for a real-time dashboard"
+  echo "Services will continue running in background..."
 }
 
 # Check for PM2 in all possible locations
@@ -216,18 +182,37 @@ check_for_pm2() {
   return 1
 }
 
-# Register cleanup handler for direct mode
-cleanup_direct() {
-  echo "Stopping services..."
-  if [ -f /tmp/sectorwars-pids.txt ]; then
-    cat /tmp/sectorwars-pids.txt | xargs kill -15 2>/dev/null || true
-    rm /tmp/sectorwars-pids.txt
+# Install PM2 if it's not available
+install_pm2() {
+  echo "PM2 not found. Installing PM2..."
+  # Try local installation to avoid permission issues
+  mkdir -p "$HOME/.local/bin"
+  npm install pm2 --prefix=$HOME/.local || echo "WARNING: Could not install PM2 locally"
+  export PATH="$HOME/.local/bin:$PATH"
+  
+  # Create symlink to make pm2 available
+  if [ -f "$HOME/.local/node_modules/.bin/pm2" ]; then
+    ln -sf "$HOME/.local/node_modules/.bin/pm2" "$HOME/.local/bin/pm2"
   fi
-  echo "Services stopped"
-  exit 0
+  
+  # If still not found, try project-level installation
+  if ! command_exists pm2; then
+    cd "$REPO_ROOT"
+    npm install pm2
+    export PATH="$REPO_ROOT/node_modules/.bin:$PATH"
+  fi
+  
+  # Check if it's now available
+  if command_exists pm2; then
+    echo "PM2 installed successfully at: $(which pm2)"
+    return 0
+  else
+    echo "ERROR: Failed to install PM2. Please install it manually."
+    return 1
+  fi
 }
 
-# Register cleanup handler for PM2 mode
+# Register cleanup handler
 cleanup_pm2() {
   echo "Script terminated. PM2 processes continue to run."
   echo "Use 'pm2 kill' to stop all services if needed."
@@ -235,20 +220,20 @@ cleanup_pm2() {
 }
 
 # Main execution logic
+if ! check_for_pm2; then
+  install_pm2 || { echo "Cannot continue without PM2."; exit 1; }
+fi
+
+echo "PM2 found at: $(which pm2)"
+
+# Kill existing PM2 processes if any
+pm2 kill || true
+
+# Start services based on host-check setting
 if [ "$NO_HOST_CHECK" = true ]; then
-  echo "Starting with host checks disabled (emergency mode)..."
-  run_services_no_host_check
-  trap cleanup_direct INT TERM
-  # Keep script alive to allow services to continue running
-  echo "Press Ctrl+C to stop all services"
-  tail -f /dev/null
-elif check_for_pm2; then
-  echo "PM2 found at: $(which pm2)"
-  
-  # Kill existing PM2 processes if any
-  pm2 kill || true
-  
-  # Start all services using PM2
+  run_with_no_host_check
+else
+  # Start all services using standard PM2 config
   echo "Starting all services with PM2..."
   cd "$REPO_ROOT"
   pm2 start "$REPO_ROOT/pm2.replit.config.js"
@@ -266,19 +251,12 @@ elif check_for_pm2; then
   echo "Use 'pm2 logs' to view all logs or 'pm2 logs [service-name]' for specific service logs"
   echo "Use 'pm2 monit' for a real-time dashboard"
   echo "Services will continue running in background..."
-  echo ""
-  
-  # Register cleanup handler
-  trap cleanup_pm2 INT TERM
-  
-  # Wait indefinitely (PM2 processes will keep running)
-  echo "Press Ctrl+C to exit (services will continue running)"
-  tail -f /dev/null
-else
-  echo "PM2 is not available. Using direct process management..."
-  run_services_directly
-  trap cleanup_direct INT TERM
-  # Keep script alive to allow services to continue running
-  echo "Press Ctrl+C to stop all services"
-  tail -f /dev/null
 fi
+
+# Register cleanup handler
+trap cleanup_pm2 INT TERM
+
+# Wait indefinitely (PM2 processes will keep running)
+echo ""
+echo "Press Ctrl+C to exit (services will continue running)"
+tail -f /dev/null
