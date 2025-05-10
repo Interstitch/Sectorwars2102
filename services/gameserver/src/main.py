@@ -1,6 +1,14 @@
+#!/usr/bin/env python3
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import sys
+
+# Print environment information to help debugging
+print(f"Python version: {sys.version}")
+print(f"Current directory: {os.getcwd()}")
+print(f"sys.path: {sys.path}")
+print(f"PYTHONPATH: {os.environ.get('PYTHONPATH', 'Not set')}")
 
 # Create FastAPI app
 app = FastAPI(

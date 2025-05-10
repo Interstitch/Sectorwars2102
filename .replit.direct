@@ -1,5 +1,9 @@
-run = "bash ./dev-scripts/start-replit.sh"
-entrypoint = "dev-scripts/start-replit.sh"
+# Direct execution version of .replit
+# Copy this file to .replit to directly run the services
+# This bypasses PM2 for more reliable execution
+
+run = "bash -c './services/gameserver/simple_server.py & cd services/player-client && npm run dev -- --host 0.0.0.0 --port 3000 & cd ../admin-ui && npm run dev -- --host 0.0.0.0 --port 3001'"
+entrypoint = "services/gameserver/simple_server.py"
 
 # Language configurations
 [languages]
@@ -29,7 +33,7 @@ PIP_DISABLE_PIP_VERSION_CHECK = "1"
 PYTHONPATH = "./services/gameserver:${PYTHONPATH}"
 PORT = "8080"
 
-# Nix configuration for dependencies (using simplified version)
+# Nix configuration for dependencies
 [nix]
 channel = "stable-22_11"
 
@@ -45,7 +49,7 @@ guessImports = true
 [editor]
 tabSize = 2
 
-# Ports to expose - need explicit configuration
+# Ports to expose
 [[ports]]
 localPort = 3000
 name = "Player Client"
@@ -66,7 +70,7 @@ protocol = "http"
 
 # Commands
 [commands]
-start = "bash ./dev-scripts/start-replit.sh"
+start = "bash -c './services/gameserver/simple_server.py & cd services/player-client && npm run dev -- --host 0.0.0.0 --port 3000 & cd ../admin-ui && npm run dev -- --host 0.0.0.0 --port 3001'"
 setup = "bash ./dev-scripts/replit-setup.sh"
 update-npm = "npm install -g npm@9.9.0 --prefix=$HOME/.local"
 install-pm2 = "npm install pm2 --prefix=$HOME/.local && ln -sf $HOME/.local/node_modules/.bin/pm2 $HOME/.local/bin/pm2"
@@ -82,6 +86,4 @@ install-uvicorn = "pip3 install --user uvicorn"
 verify-python = "python3 services/gameserver/verify_imports.py"
 simple-server = "python3 services/gameserver/simple_server.py"
 fix-pythonpath = "bash -c 'PYTHON_USER_SITE=$(python3 -m site --user-site); mkdir -p $PYTHON_USER_SITE; echo \"/home/runner/Sectorwars2102/services/gameserver\" > \"$PYTHON_USER_SITE/sectorwars.pth\"; echo \"Created .pth file to fix Python module imports\"'"
-pm2-simple = "pm2 start pm2.replit.config.js --only simple-test-server"
-test-direct = "bash -c 'cd ./services/gameserver && chmod +x simple_server.py && ./simple_server.py'"
-switch-direct = "cp .replit.direct .replit && echo 'Switched to direct execution mode (bypassing PM2)'"
+test-direct = "bash -c 'cd ./services/gameserver && ./simple_server.py'"

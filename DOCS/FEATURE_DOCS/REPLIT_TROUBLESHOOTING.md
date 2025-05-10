@@ -214,11 +214,11 @@ If the Game API Server isn't starting properly:
    python3 simple_server.py
    ```
 
-4. If the simple server works but the main server doesn't, try with explicit PYTHONPATH:
+4. If you see "ELF syntax error" in the PM2 logs, try direct execution instead:
    ```bash
-   PYTHON_USER_SITE=$(python3 -m site --user-site)
    cd services/gameserver
-   PYTHONPATH="$PYTHON_USER_SITE:/home/runner/Sectorwars2102/services/gameserver" python3 -m uvicorn src.main:app --host 0.0.0.0 --port 5000
+   chmod +x simple_server.py
+   ./simple_server.py
    ```
 
 5. Start with PM2 using the simple server configuration:
@@ -230,6 +230,44 @@ If the Game API Server isn't starting properly:
    ```bash
    /run start
    ```
+
+### PM2 "ELF" Syntax Errors
+
+If you see errors like this in the PM2 logs:
+```
+ELF
+^
+SyntaxError: invalid syntax
+```
+
+This means PM2 is trying to execute the Python binary as a script rather than using it as an interpreter. To fix:
+
+1. Use the direct approach by setting the script to the Python file and using a proper interpreter:
+   ```javascript
+   // In pm2.replit.config.js
+   {
+     script: './simple_server.py',
+     interpreter: '/usr/bin/env',
+     interpreter_args: 'python3',
+   }
+   ```
+
+2. Make your Python scripts executable:
+   ```bash
+   chmod +x services/gameserver/simple_server.py
+   chmod +x services/gameserver/src/main.py
+   ```
+
+3. Ensure your Python scripts have the proper shebang line:
+   ```python
+   #!/usr/bin/env python3
+   ```
+
+4. If all else fails, bypass PM2 entirely using:
+   ```bash
+   cp .replit.direct .replit
+   ```
+   This configuration runs services directly without PM2.
 
 ## Manual Recovery
 

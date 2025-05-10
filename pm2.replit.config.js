@@ -3,8 +3,7 @@ module.exports = {
     {
       name: 'simple-test-server',
       cwd: './services/gameserver',
-      script: 'python3',
-      args: 'simple_server.py',
+      script: './simple_server.py',
       env: {
         PYTHONUNBUFFERED: 1,
         PATH: process.env.PATH || '',
@@ -16,13 +15,13 @@ module.exports = {
       watch: false,
       autorestart: true,
       max_restarts: 10,
-      interpreter: 'python3',
+      interpreter: '/usr/bin/env',
+      interpreter_args: 'python3',
     },
     {
       name: 'game-api-server',
       cwd: './services/gameserver',
-      script: 'python3',
-      args: '-m uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload',
+      script: './src/main.py',
       env: {
         PYTHONUNBUFFERED: 1,
         PATH: process.env.PATH || '',
