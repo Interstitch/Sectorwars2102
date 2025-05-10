@@ -490,7 +490,7 @@ if check_for_pm2; then
   # Display access information
   echo ""
   echo "Services started with PM2:"
-  echo "Game API Server: http://localhost:5000"
+  echo "Game API Server: http://localhost:8080"
   echo "Player Client: http://localhost:3000"
   echo "Admin UI: http://localhost:3001"
   echo ""

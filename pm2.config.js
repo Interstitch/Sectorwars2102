@@ -4,7 +4,7 @@ module.exports = {
       name: 'game-api-server',
       cwd: '/app/gameserver',
       script: 'uvicorn',
-      args: 'src.main:app --host 0.0.0.0 --port 5000 --reload',
+      args: 'src.main:app --host 0.0.0.0 --port 8080 --reload',
       interpreter: 'python3',
       env: {
         PYTHONUNBUFFERED: 1,
@@ -18,9 +18,9 @@ module.exports = {
       script: 'npm',
       args: 'run dev -- --host 0.0.0.0 --port 3000',
       env: {
-        API_URL: process.env.ENVIRONMENT === 'replit' 
-          ? 'http://localhost:5000' 
-          : 'http://localhost:5000',
+        API_URL: process.env.ENVIRONMENT === 'replit'
+          ? 'http://localhost:8080'
+          : 'http://localhost:8080',
       },
       autorestart: true,
     },
@@ -30,9 +30,9 @@ module.exports = {
       script: 'npm',
       args: 'run dev -- --host 0.0.0.0 --port 3001',
       env: {
-        API_URL: process.env.ENVIRONMENT === 'replit' 
-          ? 'http://localhost:5000' 
-          : 'http://localhost:5000',
+        API_URL: process.env.ENVIRONMENT === 'replit'
+          ? 'http://localhost:8080'
+          : 'http://localhost:8080',
       },
       autorestart: true,
     },

@@ -8,8 +8,8 @@ function App() {
   const [apiEnvironment, setApiEnvironment] = useState<string>('')
   
   useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
-    
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+
     const checkApiStatus = async () => {
       try {
         const response = await axios.get(`${apiUrl}/`)

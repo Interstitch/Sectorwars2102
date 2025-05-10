@@ -66,23 +66,23 @@ services:
   gameserver:
     build: ./services/gameserver
     ports:
-      - "5000:5000"
+      - "8080:8080"
     environment:
       - DATABASE_URL=${DATABASE_URL}
-  
+
   player-client:
     build: ./services/player-client
     ports:
       - "3000:3000"
     environment:
-      - API_URL=http://gameserver:5000
-  
+      - API_URL=http://gameserver:8080
+
   admin-ui:
     build: ./services/admin-ui
     ports:
-      - "3001:3000"
+      - "3001:3001"
     environment:
-      - API_URL=http://gameserver:5000
+      - API_URL=http://gameserver:8080
 ```
 
 ```
@@ -94,7 +94,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"  # Game API Server
+      - "8080:8080"  # Game API Server
       - "3000:3000"  # Player Client
       - "3001:3001"  # Admin UI
     environment:
@@ -111,7 +111,7 @@ module.exports = {
       name: 'game-api-server',
       cwd: './services/gameserver',
       script: 'python3',
-      args: '-m uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload',
+      args: '-m uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload',
       env: {
         PYTHONUNBUFFERED: 1,
         DATABASE_URL: process.env.DATABASE_URL
@@ -124,7 +124,7 @@ module.exports = {
       script: 'npm',
       args: 'run dev -- --host 0.0.0.0 --port 3000',
       env: {
-        API_URL: 'http://localhost:5000'
+        API_URL: 'http://localhost:8080'
       },
       autorestart: true
     },
@@ -134,7 +134,7 @@ module.exports = {
       script: 'npm',
       args: 'run dev -- --host 0.0.0.0 --port 3001',
       env: {
-        API_URL: 'http://localhost:5000'
+        API_URL: 'http://localhost:8080'
       },
       autorestart: true
     }

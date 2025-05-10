@@ -1,10 +1,8 @@
-version: '3.8'
-
 services:
   gameserver:
     build: ./services/gameserver
     ports:
-      - "5000:5000"
+      - "8080:8080"
     volumes:
       - ./services/gameserver:/app
     environment:
@@ -24,7 +22,7 @@ services:
       - ./services/player-client:/app
       - /app/node_modules
     environment:
-      - API_URL=http://gameserver:5000
+      - API_URL=http://gameserver:8080
       - NODE_ENV=${NODE_ENV:-development}
     restart: unless-stopped
     depends_on:
@@ -35,12 +33,12 @@ services:
   admin-ui:
     build: ./services/admin-ui
     ports:
-      - "3001:3000"
+      - "3001:3001"
     volumes:
       - ./services/admin-ui:/app
       - /app/node_modules
     environment:
-      - API_URL=http://gameserver:5000
+      - API_URL=http://gameserver:8080
       - NODE_ENV=${NODE_ENV:-development}
     restart: unless-stopped
     depends_on:
