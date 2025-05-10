@@ -6,19 +6,22 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 3000,
+    port: 3001, // Corrected port for admin-ui
     watch: {
       usePolling: true,
     },
     // Allow connections from any hostname in Replit
     hmr: {
-      clientPort: process.env.REPL_SLUG ? 443 : 3000,
+      clientPort: process.env.REPL_SLUG ? 443 : 3001,
+      // Allow connections from any host for HMR
+      host: '0.0.0.0',
     },
-    // Add allowedHosts: all to solve blocked request issue
+    // Explicitly allow all hosts to solve blocked request issue
     cors: true,
     strictPort: true,
+    allowedHosts: 'all',
     // Remove origin check to prevent CORS issues
-    origin: 'http://localhost:3000',
+    origin: 'http://localhost:3001',
     fs: {
       strict: false,
     },

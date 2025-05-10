@@ -181,17 +181,39 @@ The application will automatically detect Nix issues and fall back to a simplifi
 
 ### Problem: "Blocked request. This host is not allowed"
 
-If you see errors in the browser about blocked hosts:
+If you see errors in the browser about blocked hosts like:
+```
+Blocked request. This host ("[your-replit-id].spock.replit.dev") is not allowed.
+```
 
 **Solution:**
-The Vite configuration has been updated to accept any Replit-generated hostname. If you still encounter this issue:
+Our Vite configuration has been updated to accept any Replit-generated hostname using `allowedHosts: 'all'`. If you still encounter this issue:
 
 1. Restart the application:
    ```bash
    /run start
    ```
 
-2. If it persists, check if any of the services failed to start properly in the logs.
+2. Verify all ports have `externalPort` set in the .replit file:
+   ```
+   [[ports]]
+   localPort = 3000
+   externalPort = 3000  # This must be specified!
+   ```
+
+3. Make sure both frontend services have these settings in their vite.config.ts:
+   ```typescript
+   hmr: {
+     clientPort: process.env.REPL_SLUG ? 443 : 3000,
+     host: '0.0.0.0',
+   },
+   allowedHosts: 'all',
+   ```
+
+4. If the issue persists, try using the direct execution mode:
+   ```bash
+   /run switch-direct
+   ```
 
 ### Problem: "Game API Server not running on port 8080"
 

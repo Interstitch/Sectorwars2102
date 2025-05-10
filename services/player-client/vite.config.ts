@@ -13,10 +13,13 @@ export default defineConfig({
     // Allow connections from any hostname in Replit
     hmr: {
       clientPort: process.env.REPL_SLUG ? 443 : 3000,
+      // Allow connections from any host for HMR
+      host: '0.0.0.0',
     },
-    // Add allowedHosts: all to solve blocked request issue
+    // Explicitly allow all hosts to solve blocked request issue
     cors: true,
     strictPort: true,
+    allowedHosts: 'all',
     // Remove origin check to prevent CORS issues
     origin: 'http://localhost:3000',
     fs: {

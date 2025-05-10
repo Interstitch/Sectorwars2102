@@ -52,18 +52,21 @@ tabSize = 2
 # Ports to expose
 [[ports]]
 localPort = 3000
+externalPort = 3000
 name = "Player Client"
 description = "The main player interface"
 protocol = "http"
 
 [[ports]]
 localPort = 8080
+externalPort = 8080
 name = "Game API Server"
 description = "Backend API server"
 protocol = "http"
 
 [[ports]]
 localPort = 3001
+externalPort = 3001
 name = "Admin UI"
 description = "Administration interface"
 protocol = "http"
