@@ -51,5 +51,6 @@ externalPort = 3001
 [commands]
 start = "bash ./dev-scripts/start-replit.sh"
 setup = "bash ./dev-scripts/replit-setup.sh"
-update-npm = "npm install -g npm@latest --prefix=$HOME/.local"
+update-npm = "npm install -g npm@10.2.4 --prefix=$HOME/.local"
 install-pm2 = "npm install pm2 --prefix=$HOME/.local && ln -sf $HOME/.local/node_modules/.bin/pm2 $HOME/.local/bin/pm2"
+upgrade-node = "source ./nvm/nvm.sh && nvm install 18 && nvm use 18 && nvm alias default 18"
