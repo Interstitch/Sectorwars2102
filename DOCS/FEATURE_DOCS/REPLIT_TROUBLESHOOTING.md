@@ -24,7 +24,31 @@ Replit provides several predefined commands to help you manage the application:
 
 # Set up Python and install requirements
 /run python-setup
+
+# Start Game API Server directly (emergency fallback)
+/run direct-start
 ```
+
+## Port Issues
+
+If some ports aren't showing in the Replit interface:
+
+1. First, check if the services are actually running:
+   ```bash
+   pm2 status
+   ```
+
+2. If the Game API Server (port 5000) is not starting properly:
+   ```bash
+   pm2 logs game-api-server
+   ```
+
+3. Try starting the Game API Server directly:
+   ```bash
+   /run direct-start
+   ```
+
+4. Refresh your Replit browser window, which may help Replit detect all running ports
 
 ## Node.js/NPM Version Issues
 
@@ -67,6 +91,11 @@ If you encounter Python-related errors:
    export PATH="$HOME/.local/bin:$PATH"
    ```
 
+4. If the Python path isn't properly set:
+   ```bash
+   export PYTHONPATH="./services/gameserver:$PYTHONPATH"
+   ```
+
 ## Common Issues
 
 ### Problem: "Could not get Nix environment building"
@@ -100,82 +129,60 @@ The Vite configuration has been updated to accept any Replit-generated hostname.
 
 2. If it persists, check if any of the services failed to start properly in the logs.
 
-### Problem: PM2 Installation Issues
+### Problem: "Game API Server not running"
 
-If PM2 fails to install with permission errors:
-
-**Solution:**
-Use the user-space installation command:
-```bash
-/run install-pm2
-```
-
-This installs PM2 in your home directory, avoiding permission issues with Nix store directories.
-
-### Problem: "ERROR: No Python interpreter found"
-
-If the Python interpreter cannot be found:
+If the Game API Server isn't starting properly:
 
 **Solution:**
-1. Verify Python is installed:
+1. Check the PM2 logs:
    ```bash
-   python3 --version
-   ```
-
-2. If not, run the Python setup:
-   ```bash
-   /run python-setup
-   ```
-
-### Problem: Services Fail to Start
-
-If one or more services (Game API Server, Player Client, Admin UI) fail to start:
-
-**Solution:**
-1. Check the log files:
-   ```bash
-   pm2 logs
-   # Or for specific service
    pm2 logs game-api-server
    ```
-
-2. For Node.js services, try clearing npm cache:
+   
+2. Kill all running PM2 processes:
    ```bash
-   cd /services/player-client
-   rm -rf node_modules
-   npm cache clean --force
-   npm install
+   pm2 kill
    ```
 
-3. Restart individual services:
+3. Try running the server directly without PM2:
    ```bash
-   pm2 restart game-api-server
-   pm2 restart player-client
-   pm2 restart admin-ui
+   /run direct-start
+   ```
+
+4. If it works directly, the issue might be with PM2. Restart the full application:
+   ```bash
+   /run start
    ```
 
 ## Manual Recovery
 
 If you need to completely reset your Replit environment:
 
-1. Upgrade Node.js first:
+1. Kill all processes:
+   ```bash
+   pm2 kill
+   ```
+   
+2. Upgrade Node.js first:
    ```bash
    /run upgrade-node
    ```
 
-2. Run the setup script again:
+3. Run the setup script again:
    ```bash
    /run setup
    ```
 
-3. Kill any running PM2 processes:
+4. Try starting each component individually:
    ```bash
-   pm2 kill
-   ```
-
-4. Restart the application:
-   ```bash
-   /run start
+   # Game server first
+   /run direct-start
+   
+   # In a separate shell tab, start player client
+   cd services/player-client && npm run dev -- --host 0.0.0.0 --port 3000
+   
+   # In a third shell tab, start admin UI
+   cd services/admin-ui && npm run dev -- --host 0.0.0.0 --port 3001
    ```
 
 ## Getting Help

@@ -7,6 +7,11 @@ echo "Starting Sector Wars 2102 in Replit using PM2..."
 export ENVIRONMENT=replit
 export NODE_ENV=development
 export PYTHONUNBUFFERED=1
+export PYTHONPATH="./services/gameserver:$PYTHONPATH"
+
+# Ensure python user base is in PATH
+PYTHON_USER_BASE=$(python3 -m site --user-base)
+export PATH="$PYTHON_USER_BASE/bin:$PATH"
 
 # Get the correct path for the repository root
 if [ -d "/home/runner/Sectorwars2102" ]; then
@@ -206,6 +211,7 @@ setup_python() {
     export PIP_DISABLE_PIP_VERSION_CHECK=1
     
     # Install dependencies with --user flag to avoid permission issues
+    $PIP_CMD install --user uvicorn fastapi || echo "Failed to install core Python dependencies"
     $PIP_CMD install --user -r requirements.txt --no-warn-script-location || echo "Failed to install some Python dependencies"
   else
     echo "WARNING: Skipping Python dependencies installation due to missing pip."
@@ -229,6 +235,19 @@ npm install
 # Go back to root directory
 cd "$REPO_ROOT"
 
+# Test if Python can run the game server directly
+test_python_server() {
+  echo "Testing if Python can run the game server directly..."
+  cd "$REPO_ROOT/services/gameserver"
+  
+  # Try running the game server directly
+  python3 -c "import uvicorn; print('uvicorn available')" && \
+  python3 -c "from fastapi import FastAPI; print('FastAPI available')" && \
+  echo "Python environment ready for game server"
+}
+
+test_python_server
+
 # Run services directly (fallback method) if PM2 is not available
 run_services_directly() {
   echo "Running services directly without PM2..."
@@ -247,7 +266,8 @@ run_services_directly() {
     return 1
   fi
   
-  # Start the server
+  # Start the server directly
+  echo "Starting game server with $PYTHON_CMD -m uvicorn..."
   $PYTHON_CMD -m uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload > /tmp/gameserver.log 2>&1 &
   GAMESERVER_PID=$!
   echo "Game API Server started with PID: $GAMESERVER_PID"
@@ -323,6 +343,10 @@ check_for_pm2() {
   
   return 1
 }
+
+# Force direct mode for debugging
+#run_services_directly
+#exit
 
 # Check if PM2 is available in any location
 if check_for_pm2; then

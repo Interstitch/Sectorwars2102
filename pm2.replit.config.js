@@ -7,11 +7,14 @@ module.exports = {
       args: '-m uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload',
       env: {
         PYTHONUNBUFFERED: 1,
+        PATH: process.env.PATH || '',
+        PYTHONPATH: './services/gameserver',
         DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@db.example.com:5432/sectorwars',
       },
-      watch: process.env.ENVIRONMENT === 'development' ? ['src'] : false,
+      watch: false,  // Disable watching to prevent conflicts
       autorestart: true,
       max_restarts: 5,
+      interpreter: 'python3',  // Explicitly use python3
     },
     {
       name: 'player-client',

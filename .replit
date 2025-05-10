@@ -26,6 +26,8 @@ NODE_ENV = "development"
 PYTHONUNBUFFERED = "1"
 PATH = "${PATH}:${HOME}/.local/bin"
 PIP_DISABLE_PIP_VERSION_CHECK = "1"
+PYTHONPATH = "./services/gameserver:${PYTHONPATH}"
+PORT = "5000"
 
 # Nix configuration for dependencies (using simplified version)
 [nix]
@@ -40,19 +42,19 @@ tabSize = 2
 localPort = 3000
 name = "Player Client"
 description = "The main player interface"
-externalPort = 3000
+protocol = "http"
 
 [[ports]]
 localPort = 5000 
 name = "Game API Server"
 description = "Backend API server"
-externalPort = 5000
+protocol = "http"
 
 [[ports]]
 localPort = 3001
 name = "Admin UI"
 description = "Administration interface"
-externalPort = 3001
+protocol = "http"
 
 # Commands
 [commands]
@@ -62,3 +64,4 @@ update-npm = "npm install -g npm@9.9.0 --prefix=$HOME/.local"
 install-pm2 = "npm install pm2 --prefix=$HOME/.local && ln -sf $HOME/.local/node_modules/.bin/pm2 $HOME/.local/bin/pm2"
 upgrade-node = "source ./nvm/nvm.sh && nvm install 18 && nvm use 18 && nvm alias default 18"
 python-setup = "python3 -m ensurepip --user && export PIP_DISABLE_PIP_VERSION_CHECK=1 && python3 -m pip install --user -r services/gameserver/requirements.txt"
+direct-start = "bash -c 'cd ./services/gameserver && python3 -m uvicorn src.main:app --host 0.0.0.0 --port 5000'"
