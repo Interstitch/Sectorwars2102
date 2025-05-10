@@ -114,14 +114,41 @@ If you encounter Python-related errors:
    /run python-setup
    ```
 
-3. If pip modules aren't in your PATH, run:
+3. Verify Python module imports with the verification script:
+   ```bash
+   cd services/gameserver
+   python3 verify_imports.py
+   ```
+
+4. If modules are not found, install them with specific versions:
+   ```bash
+   pip3 install --user uvicorn==0.23.2 fastapi==0.103.1 pydantic==1.10.8 starlette==0.27.0
+   ```
+
+5. Try running the simple test server directly:
+   ```bash
+   cd services/gameserver
+   python3 simple_server.py
+   ```
+
+6. If pip modules aren't in your PATH, run:
    ```bash
    export PATH="$HOME/.local/bin:$PATH"
    ```
 
-4. If the Python path isn't properly set:
+7. Check and fix Python path settings:
    ```bash
-   export PYTHONPATH="./services/gameserver:$PYTHONPATH"
+   # Display Python path configuration
+   python3 -m site
+
+   # Get user site-packages directory
+   PYTHON_USER_SITE=$(python3 -m site --user-site)
+
+   # Set PYTHONPATH to include user site-packages and app directory
+   export PYTHONPATH="$PYTHON_USER_SITE:/home/runner/Sectorwars2102/services/gameserver:$PYTHONPATH"
+
+   # Create a .pth file to permanently add your project path
+   echo "/home/runner/Sectorwars2102/services/gameserver" > "$PYTHON_USER_SITE/sectorwars.pth"
    ```
 
 ## Common Issues
@@ -166,18 +193,31 @@ If the Game API Server isn't starting properly:
    ```bash
    pm2 logs game-api-server
    ```
-   
+
 2. Kill all running PM2 processes:
    ```bash
    pm2 kill
    ```
 
-3. Try the test server:
+3. Try the simple server first (most likely to work):
    ```bash
-   /run test-api
+   cd services/gameserver
+   python3 simple_server.py
    ```
 
-4. If it works directly, the issue might be with PM2. Restart the full application:
+4. If the simple server works but the main server doesn't, try with explicit PYTHONPATH:
+   ```bash
+   PYTHON_USER_SITE=$(python3 -m site --user-site)
+   cd services/gameserver
+   PYTHONPATH="$PYTHON_USER_SITE:/home/runner/Sectorwars2102/services/gameserver" python3 -m uvicorn src.main:app --host 0.0.0.0 --port 5000
+   ```
+
+5. Start with PM2 using the simple server configuration:
+   ```bash
+   pm2 start pm2.replit.config.js --only simple-test-server
+   ```
+
+6. If it works directly, the issue might be with PM2. Restart the full application:
    ```bash
    /run start
    ```

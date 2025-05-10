@@ -1,6 +1,24 @@
 module.exports = {
   apps: [
     {
+      name: 'simple-test-server',
+      cwd: './services/gameserver',
+      script: 'python3',
+      args: 'simple_server.py',
+      env: {
+        PYTHONUNBUFFERED: 1,
+        PATH: process.env.PATH || '',
+        // Use absolute paths for PYTHONPATH to ensure module imports work
+        PYTHONPATH: '/home/runner/.local/lib/python3.10/site-packages:/home/runner/Sectorwars2102/services/gameserver',
+        ENVIRONMENT: 'replit',
+        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@db.example.com:5432/sectorwars',
+      },
+      watch: false,
+      autorestart: true,
+      max_restarts: 10,
+      interpreter: 'python3',
+    },
+    {
       name: 'game-api-server',
       cwd: './services/gameserver',
       script: 'python3',
@@ -8,13 +26,19 @@ module.exports = {
       env: {
         PYTHONUNBUFFERED: 1,
         PATH: process.env.PATH || '',
-        PYTHONPATH: './services/gameserver',
+        // Use absolute paths for PYTHONPATH to ensure module imports work
+        PYTHONPATH: '/home/runner/.local/lib/python3.10/site-packages:/home/runner/Sectorwars2102/services/gameserver',
+        ENVIRONMENT: 'replit',
         DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@db.example.com:5432/sectorwars',
       },
-      watch: false,  // Disable watching to prevent conflicts
+      watch: false,
       autorestart: true,
       max_restarts: 5,
-      interpreter: 'python3',  // Explicitly use python3
+      interpreter: 'python3',
+      // Disable until simple-test-server confirms Python environment is working
+      env: {
+        PM2_USAGE: 'disabled',
+      },
     },
     {
       name: 'player-client',

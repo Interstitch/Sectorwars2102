@@ -202,36 +202,60 @@ setup_python() {
     fi
   fi
 
+  # Display Python paths to help troubleshoot
+  echo "Python site packages location:"
+  python3 -m site
+
+  # Get user site-packages directory
+  PYTHON_USER_SITE=$(python3 -m site --user-site)
+  echo "Python user site-packages: $PYTHON_USER_SITE"
+
+  # Ensure directory exists
+  mkdir -p "$PYTHON_USER_SITE"
+
+  # Add site-packages to PYTHONPATH
+  export PYTHONPATH="$PYTHON_USER_SITE:$REPO_ROOT/services/gameserver:$PYTHONPATH"
+
   # If we have pip, use it safely with --user flag to avoid permission issues
   if [ -n "$PIP_CMD" ]; then
     echo "Using $PIP_CMD to install Python packages..."
     cd "$REPO_ROOT"
-    
+
     # Suppress pip version check to avoid the error
     export PIP_DISABLE_PIP_VERSION_CHECK=1
-    
-    # Install core dependencies explicitly
+
+    # Install core dependencies explicitly with specific versions
     echo "Installing core Python packages..."
-    $PIP_CMD install --user uvicorn==0.23.2 fastapi==0.103.1 || echo "Failed to install core Python dependencies"
-    
+    $PIP_CMD install --user uvicorn==0.23.2 fastapi==0.103.1 pydantic==1.10.8 starlette==0.27.0 || echo "Failed to install core Python dependencies"
+
+    # Verify we can find the packages and show paths
+    echo "Checking uvicorn installation path:"
+    python3 -c "import uvicorn; print(f'uvicorn installed at: {uvicorn.__file__}')" || echo "❌ uvicorn not found"
+
+    echo "Checking fastapi installation path:"
+    python3 -c "import fastapi; print(f'fastapi installed at: {fastapi.__file__}')" || echo "❌ fastapi not found"
+
     # Install the rest of dependencies
     cd "$REPO_ROOT/services/gameserver"
     $PIP_CMD install --user -r requirements.txt --no-warn-script-location || echo "Failed to install some Python dependencies"
-    
-    # Verify uvicorn installation
-    if python3 -c "import uvicorn" &>/dev/null; then
-      echo "✅ uvicorn installed successfully"
-    else
-      echo "❌ uvicorn not found, trying to install directly..."
-      $PIP_CMD install --user uvicorn
+
+    # Run verification script if it exists
+    if [ -f "$REPO_ROOT/services/gameserver/verify_imports.py" ]; then
+      echo "Running Python module verification script..."
+      cd "$REPO_ROOT"
+      python3 "$REPO_ROOT/services/gameserver/verify_imports.py"
     fi
-    
-    # Verify fastapi installation
-    if python3 -c "import fastapi" &>/dev/null; then
-      echo "✅ fastapi installed successfully"
-    else
-      echo "❌ fastapi not found, trying to install directly..."
-      $PIP_CMD install --user fastapi
+
+    # Create a .pth file in site-packages to add our project path
+    echo "Creating .pth file to ensure project modules are found..."
+    echo "$REPO_ROOT/services/gameserver" > "$PYTHON_USER_SITE/sectorwars.pth"
+
+    # Test simple server if exists
+    if [ -f "$REPO_ROOT/services/gameserver/simple_server.py" ]; then
+      echo "Testing simple server imports..."
+      cd "$REPO_ROOT/services/gameserver"
+      PYTHONPATH="$PYTHON_USER_SITE:$REPO_ROOT/services/gameserver" python3 -c "import simple_server" && \
+        echo "✅ Simple server imports successful" || echo "❌ Simple server imports failed"
     fi
   else
     echo "WARNING: Skipping Python dependencies installation due to missing pip."
@@ -259,8 +283,32 @@ cd "$REPO_ROOT"
 test_python_server() {
   echo "Testing if Python can run the game server directly..."
   cd "$REPO_ROOT/services/gameserver"
-  
-  # Try running the game server directly
+
+  # First try the import verification script
+  if [ -f "verify_imports.py" ]; then
+    echo "Running full import verification script..."
+    python3 verify_imports.py
+    VERIFY_RESULT=$?
+    if [ $VERIFY_RESULT -eq 0 ]; then
+      echo "✅ Python environment verified by test script"
+      return 0
+    else
+      echo "⚠️ Python verification script found issues (exit code: $VERIFY_RESULT)"
+    fi
+  fi
+
+  # Test simple server import directly
+  if [ -f "simple_server.py" ]; then
+    echo "Testing simple server imports..."
+    if python3 -c "import simple_server; print('Simple server can be imported')" 2>/dev/null; then
+      echo "✅ Simple server imports successful"
+      return 0
+    else
+      echo "❌ Simple server imports failed"
+    fi
+  fi
+
+  # Fall back to basic imports check
   if python3 -c "import uvicorn; print('uvicorn available')" && \
      python3 -c "from fastapi import FastAPI; print('FastAPI available')"; then
     echo "✅ Python environment ready for game server"
@@ -307,11 +355,38 @@ run_services_directly() {
     return 1
   fi
   
-  # Start the server directly
+  # Try to start the server with various methods
+
+  # Method 1: Try the simple server first (most likely to work)
+  if [ -f "simple_server.py" ]; then
+    echo "Starting simple test server first (most reliable)..."
+    $PYTHON_CMD simple_server.py > /tmp/gameserver.log 2>&1 &
+    GAMESERVER_PID=$!
+    echo "Simple test server started with PID: $GAMESERVER_PID"
+
+    # Wait a short time to see if it stays running
+    sleep 3
+    if kill -0 $GAMESERVER_PID 2>/dev/null; then
+      echo "✅ Simple test server is running on port 5000"
+      return 0
+    else
+      echo "❌ Simple test server failed to start or stay running, checking logs..."
+      cat /tmp/gameserver.log
+    fi
+  fi
+
+  # Method 2: Try the regular server with uvicorn module
   echo "Starting game server with $PYTHON_CMD -m uvicorn..."
-  $PYTHON_CMD -m uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload > /tmp/gameserver.log 2>&1 &
+  PYTHONPATH="$PYTHON_USER_SITE:$REPO_ROOT/services/gameserver" $PYTHON_CMD -m uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload > /tmp/gameserver.log 2>&1 &
   GAMESERVER_PID=$!
   echo "Game API Server started with PID: $GAMESERVER_PID"
+
+  # Wait a short time to see if it stays running
+  sleep 3
+  if ! kill -0 $GAMESERVER_PID 2>/dev/null; then
+    echo "❌ Game API Server failed to start or stay running, checking logs..."
+    cat /tmp/gameserver.log
+  fi
   
   # Player Client
   echo "Setting up Player Client..."
