@@ -30,17 +30,37 @@ command_exists() {
   type "$1" &> /dev/null
 }
 
+# Update npm to latest version
+update_npm() {
+  echo "Updating npm to latest version..."
+  # Use local installation to avoid permission issues
+  npm install -g npm@latest --prefix=$HOME/.local || echo "Warning: Could not update npm globally"
+  export PATH="$HOME/.local/bin:$PATH"
+}
+
 # Install PM2 if not available
 install_pm2() {
   if ! command_exists pm2; then
     echo "Installing PM2 process manager..."
-    npm install -g pm2 || echo "WARNING: Could not install PM2 globally"
     
-    # Try local installation if global fails
+    # First update npm
+    update_npm
+    
+    # Try local installation to avoid permission issues
+    mkdir -p "$HOME/.local/bin"
+    npm install pm2 --prefix=$HOME/.local || echo "WARNING: Could not install PM2 locally"
+    export PATH="$HOME/.local/bin:$PATH"
+    
+    # Create symlink to make pm2 available
+    if [ -f "$HOME/.local/node_modules/.bin/pm2" ]; then
+      ln -sf "$HOME/.local/node_modules/.bin/pm2" "$HOME/.local/bin/pm2"
+    fi
+    
+    # If still not found, try project-level installation
     if ! command_exists pm2; then
       cd "$REPO_ROOT"
-      npm install pm2 || echo "WARNING: Could not install PM2 locally"
-      export PATH="$PATH:$REPO_ROOT/node_modules/.bin"
+      npm install pm2
+      export PATH="$REPO_ROOT/node_modules/.bin:$PATH"
     fi
   fi
 }
@@ -104,46 +124,9 @@ npm install
 # Go back to root directory
 cd "$REPO_ROOT"
 
-# Check if PM2 is available
-if command_exists pm2; then
-  # Kill existing PM2 processes if any
-  pm2 kill || true
-  
-  # Start all services using PM2
-  echo "Starting all services with PM2..."
-  pm2 start pm2.replit.config.js
-  
-  # Display PM2 status
-  pm2 status
-  
-  # Display access information
-  echo ""
-  echo "Services started with PM2:"
-  echo "Game API Server: http://localhost:5000"
-  echo "Player Client: http://localhost:3000"
-  echo "Admin UI: http://localhost:3001"
-  echo ""
-  echo "Use 'pm2 logs' to view all logs or 'pm2 logs [service-name]' for specific service logs"
-  echo "Use 'pm2 monit' for a real-time dashboard"
-  echo "Services will continue running in background..."
-  echo ""
-  
-  # Keep script alive to keep PM2 processes running
-  echo "Press Ctrl+C to exit (services will continue running)"
-  
-  # Register cleanup handler
-  cleanup() {
-    echo "Script terminated. PM2 processes continue to run."
-    echo "Use 'pm2 kill' to stop all services if needed."
-    exit 0
-  }
-  
-  trap cleanup INT TERM
-  
-  # Wait indefinitely (PM2 processes will keep running)
-  tail -f /dev/null
-else
-  echo "ERROR: PM2 is not available. Using fallback process management..."
+# Run services directly (fallback method) if PM2 is not available
+run_services_directly() {
+  echo "Running services directly without PM2..."
   
   # Start Game API Server
   echo "Starting Game API Server..."
@@ -179,7 +162,7 @@ else
   echo "Use 'tail -f /tmp/gameserver.log' to view the game server logs"
   
   # Register cleanup handler
-  cleanup() {
+  cleanup_direct() {
     echo "Stopping services..."
     if [ -f /tmp/sectorwars-pids.txt ]; then
       cat /tmp/sectorwars-pids.txt | xargs kill -15 2>/dev/null || true
@@ -189,9 +172,54 @@ else
     exit 0
   }
   
-  trap cleanup INT TERM
+  trap cleanup_direct INT TERM
   
   # Keep script alive to allow services to continue running
   echo "Press Ctrl+C to stop all services"
   tail -f /dev/null
+}
+
+# Check if PM2 is available in path
+if command_exists pm2; then
+  echo "PM2 found at: $(which pm2)"
+  
+  # Kill existing PM2 processes if any
+  pm2 kill || true
+  
+  # Start all services using PM2
+  echo "Starting all services with PM2..."
+  pm2 start "$REPO_ROOT/pm2.replit.config.js"
+  
+  # Display PM2 status
+  pm2 status
+  
+  # Display access information
+  echo ""
+  echo "Services started with PM2:"
+  echo "Game API Server: http://localhost:5000"
+  echo "Player Client: http://localhost:3000"
+  echo "Admin UI: http://localhost:3001"
+  echo ""
+  echo "Use 'pm2 logs' to view all logs or 'pm2 logs [service-name]' for specific service logs"
+  echo "Use 'pm2 monit' for a real-time dashboard"
+  echo "Services will continue running in background..."
+  echo ""
+  
+  # Keep script alive to keep PM2 processes running
+  echo "Press Ctrl+C to exit (services will continue running)"
+  
+  # Register cleanup handler
+  cleanup() {
+    echo "Script terminated. PM2 processes continue to run."
+    echo "Use 'pm2 kill' to stop all services if needed."
+    exit 0
+  }
+  
+  trap cleanup INT TERM
+  
+  # Wait indefinitely (PM2 processes will keep running)
+  tail -f /dev/null
+else
+  echo "ERROR: PM2 is not available. Using fallback process management..."
+  run_services_directly
 fi
