@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  gameserver:
+    build: ./services/gameserver
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./services/gameserver:/app
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/sectorwars}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
+      - DEBUG=${DEBUG:-true}
+    restart: unless-stopped
+    networks:
+      - sectorwars-network
+
+  player-client:
+    build: ./services/player-client
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./services/player-client:/app
+      - /app/node_modules
+    environment:
+      - API_URL=http://gameserver:5000
+      - NODE_ENV=${NODE_ENV:-development}
+    restart: unless-stopped
+    depends_on:
+      - gameserver
+    networks:
+      - sectorwars-network
+
+  admin-ui:
+    build: ./services/admin-ui
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./services/admin-ui:/app
+      - /app/node_modules
+    environment:
+      - API_URL=http://gameserver:5000
+      - NODE_ENV=${NODE_ENV:-development}
+    restart: unless-stopped
+    depends_on:
+      - gameserver
+    networks:
+      - sectorwars-network
+
+networks:
+  sectorwars-network:
+    driver: bridge

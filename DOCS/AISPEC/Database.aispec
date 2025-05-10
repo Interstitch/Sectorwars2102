@@ -1,0 +1,113 @@
+OVERVIEW:
+PostgreSQL database hosted on Neon provides persistent storage across all development environments, with SQLAlchemy ORM for database operations and Alembic for migrations.
+
+FACTS:
+* Remote database ensures consistent data across development environments
+* PostgreSQL 16 provides advanced features and performance
+* SQLAlchemy ORM abstracts database operations
+* Alembic handles database migrations automatically
+* Connection pooling optimizes database performance
+* Separate test database used for automated testing
+* Environment variables control database connection parameters
+* Soft deletion implemented for data recovery capabilities
+
+TERMINOLOGY:
+* ORM: Object-Relational Mapping (SQLAlchemy)
+* Migration: Database schema change managed by Alembic
+* Connection Pool: Reusable set of database connections
+* Soft Delete: Records marked as deleted but not physically removed
+
+FILES:
+- /services/gameserver/
+  ├── src/
+  │   ├── models/
+  │   │   ├── __init__.py
+  │   │   ├── user.py
+  │   │   ├── sector.py
+  │   │   ├── cargo.py
+  │   │   └── ship.py
+  │   ├── database.py       # Database connection configuration
+  │   └── migrations/       # Alembic migration scripts
+  └── alembic.ini          # Alembic configuration
+
+SCHEMA:
+User:
+  id: Integer, primary key
+  username: String(80), unique, nullable=False
+  email: String(120), unique, nullable=False
+  password_hash: String(256)
+  is_admin: Boolean, default=False
+  credits: Integer, default=1000
+  location: Integer, default=1
+  ship_id: Integer, ForeignKey('ship.id')
+  fighters: Integer, default=0
+  turns: Integer, default=100
+  docked: Boolean, default=False
+  landed: Boolean, default=False
+  created_at: DateTime, default=utcnow
+  last_login: DateTime
+  deleted: Boolean, default=False
+
+Ship:
+  id: Integer, primary key
+  name: String(80)
+  type: String(80)
+  cargo_capacity: Integer
+  fighter_capacity: Integer
+  owner_id: Integer, ForeignKey('user.id')
+
+Cargo:
+  id: Integer, primary key
+  user_id: Integer, ForeignKey('user.id')
+  commodity: String(80)
+  amount: Integer
+  
+Sector:
+  id: Integer, primary key
+  name: String(80)
+  has_planet: Boolean, default=False
+  planet_owner_id: Integer, ForeignKey('user.id')
+  port_data: JSON
+  links: JSON
+  planet_fighters: Integer, default=0
+  sector_fighters: Integer, default=0
+  is_earth: Boolean, default=False
+  x_position: Float
+  y_position: Float
+
+CONSTRAINTS:
+* Database connection strings must be stored in environment variables
+* Passwords must be hashed before storage
+* No raw SQL queries (use SQLAlchemy)
+* Transactions must be used for operations affecting multiple records
+* Database schema changes require migrations
+* Database should be accessed only through Game API Server
+
+EXAMPLES:
+```python
+# Database connection example
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+import os
+
+DATABASE_URL = os.environ.get('DATABASE_URL')
+engine = create_engine(DATABASE_URL)
+Session = sessionmaker(bind=engine)
+
+# Model example (User)
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
+
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = 'users'
+    
+    id = Column(Integer, primary_key=True)
+    username = Column(String(80), unique=True, nullable=False)
+    email = Column(String(120), unique=True, nullable=False)
+    password_hash = Column(String(256))
+    credits = Column(Integer, default=1000)
+    created_at = Column(DateTime, default=datetime.utcnow)
+```

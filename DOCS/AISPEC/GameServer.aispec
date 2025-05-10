@@ -1,0 +1,156 @@
+OVERVIEW:
+Game API Server built with FastAPI provides core game logic, database operations, and RESTful API endpoints for player actions, built with Python and containerized in Docker.
+
+FACTS:
+* FastAPI replaced Flask for improved performance and typing
+* RESTful API with JSON responses for all game actions
+* JWT authentication for API security
+* SQLAlchemy ORM for database operations
+* Pydantic models for request/response validation
+* Fully containerized for cross-environment compatibility
+* Automatic API documentation with Swagger/OpenAPI
+* Rate limiting for security
+* Asynchronous handlers for improved concurrency
+* Dependency injection pattern for services
+
+TERMINOLOGY:
+* FastAPI: Python web framework optimized for API development
+* JWT: JSON Web Token for authentication
+* Pydantic: Data validation library
+* Dependency Injection: Design pattern for service management
+* Rate Limiting: Restricting request frequency
+* RESTful: Architectural style for APIs based on HTTP methods
+
+FILES:
+- /services/gameserver/
+  ├── Dockerfile
+  ├── requirements.txt
+  ├── src/
+  │   ├── main.py                # FastAPI application entry point
+  │   ├── api/
+  │   │   ├── __init__.py
+  │   │   ├── routes/
+  │   │   │   ├── auth.py        # Authentication endpoints
+  │   │   │   ├── sectors.py     # Sector management endpoints
+  │   │   │   ├── trading.py     # Trading endpoints
+  │   │   │   ├── ships.py       # Ship management endpoints
+  │   │   │   └── admin.py       # Admin endpoints
+  │   │   └── middleware/
+  │   │       ├── auth.py        # JWT authentication middleware
+  │   │       └── rate_limit.py  # Rate limiting middleware
+  │   ├── models/                # Database models (see Database.aispec)
+  │   ├── schemas/               # Pydantic models for API
+  │   │   ├── user.py
+  │   │   ├── sector.py
+  │   │   ├── trading.py
+  │   │   └── ships.py
+  │   ├── services/              # Business logic
+  │   │   ├── user_service.py
+  │   │   ├── sector_service.py
+  │   │   ├── trading_service.py
+  │   │   └── ship_service.py
+  │   ├── database.py            # Database connection
+  │   └── config.py              # Application configuration
+  └── alembic/                   # Database migrations
+
+SCHEMA:
+See Database.aispec for database schema details.
+
+API Endpoints:
+- /api/auth/register [POST] - Register new user
+- /api/auth/login [POST] - Login user
+- /api/auth/refresh [POST] - Refresh JWT token
+- /api/sectors [GET] - Get all sectors
+- /api/sectors/{id} [GET] - Get sector details
+- /api/sectors/{id}/move [POST] - Move to sector
+- /api/trading/buy [POST] - Buy commodities
+- /api/trading/sell [POST] - Sell commodities
+- /api/ships [GET] - Get available ships
+- /api/ships/buy [POST] - Buy new ship
+- /api/ships/upgrade [POST] - Upgrade ship
+- /api/admin/sectors [GET] - Admin sector management
+- /api/admin/users [GET] - Admin user management
+
+CONSTRAINTS:
+* API must follow RESTful design principles
+* Responses must include appropriate HTTP status codes
+* Authentication required for all game action endpoints
+* Admin endpoints must verify admin privileges
+* Rate limiting must be applied to prevent abuse
+* API versioning must be implemented for future compatibility
+* Error responses must be standardized
+* Database operations must use transactions for consistency
+
+EXAMPLES:
+```python
+# FastAPI route example
+from fastapi import APIRouter, Depends, HTTPException
+from ..schemas.trading import TradeRequest, TradeResponse
+from ..services.trading_service import TradingService
+from ..middleware.auth import get_current_user
+
+router = APIRouter()
+
+@router.post("/buy", response_model=TradeResponse)
+async def buy_commodity(
+    trade: TradeRequest,
+    current_user = Depends(get_current_user),
+    trading_service: TradingService = Depends()
+):
+    try:
+        result = await trading_service.buy_commodity(
+            user_id=current_user.id,
+            commodity=trade.commodity,
+            amount=trade.amount
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+```
+
+```python
+# Service layer example
+from ..models.user import User
+from ..models.cargo import Cargo
+from ..models.sector import Sector
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from ..database import get_db
+
+class TradingService:
+    def __init__(self, db: Session = Depends(get_db)):
+        self.db = db
+        
+    async def buy_commodity(self, user_id: int, commodity: str, amount: int):
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise ValueError("User not found")
+            
+        sector = self.db.query(Sector).filter(Sector.id == user.location).first()
+        if not sector.port_data:
+            raise ValueError("No port in this sector")
+            
+        price = sector.port_data["sell"].get(commodity)
+        if not price:
+            raise ValueError("Commodity not available")
+            
+        total_cost = price * amount
+        if user.credits < total_cost:
+            raise ValueError("Not enough credits")
+            
+        # Process transaction
+        user.credits -= total_cost
+        cargo = self.db.query(Cargo).filter(
+            Cargo.user_id == user_id,
+            Cargo.commodity == commodity
+        ).first()
+        
+        if cargo:
+            cargo.amount += amount
+        else:
+            cargo = Cargo(user_id=user_id, commodity=commodity, amount=amount)
+            self.db.add(cargo)
+            
+        self.db.commit()
+        return {"success": True, "credits": user.credits, "commodity": commodity, "amount": amount}
+```

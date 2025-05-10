@@ -1,0 +1,38 @@
+version: '3.8'
+
+# Override configuration for Replit environment
+services:
+  gameserver:
+    # Replit-specific configuration
+    environment:
+      - ENVIRONMENT=replit
+      - PYTHONUNBUFFERED=1
+    # Use host network on Replit for simpler networking
+    network_mode: host
+    ports:
+      - "5000:5000"
+
+  player-client:
+    # Replit-specific configuration
+    environment:
+      - NODE_ENV=development
+      - API_URL=http://localhost:5000
+    # Use host network on Replit for simpler networking
+    network_mode: host
+    ports:
+      - "3000:3000"
+
+  admin-ui:
+    # Replit-specific configuration
+    environment:
+      - NODE_ENV=development
+      - API_URL=http://localhost:5000
+    # Use host network on Replit for simpler networking
+    network_mode: host
+    ports:
+      - "3001:3000"
+
+# Remove the default network to use host network
+networks:
+  sectorwars-network:
+    external: false

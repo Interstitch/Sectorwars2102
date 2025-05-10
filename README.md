@@ -1,64 +1,103 @@
+# Sector Wars 2102
 
-# Space Trader Game
-
-A web-based space trading simulation game built with Flask and PostgreSQL.
+A web-based space trading simulation game built with a microservices architecture and modern technology stack.
 
 ## Overview
 
-Space Trader is a turn-based trading game where players navigate through different sectors, trade commodities, manage ships, and colonize planets.
+Sector Wars 2102 is a turn-based space trading game where players navigate through different sectors, trade commodities, manage ships, and colonize planets. The game features a dynamic universe with interconnected sectors, a robust trading system, and planet colonization mechanics.
+
+## Architecture
+
+The project uses a microservices architecture with three main components:
+
+1. **Game API Server**: Core backend service containing all game logic, database operations, and API endpoints
+2. **Player Client**: Web interface for playing the game
+3. **Admin UI**: Specialized interface for game administration and universe management
+
+All services are containerized using Docker for consistent development and deployment across environments.
 
 ## Technical Stack
 
-- **Backend**: Flask (Python)
-- **Database**: PostgreSQL 16
+- **Backend**: FastAPI (Python 3.11)
+- **Database**: PostgreSQL 16 via Neon
 - **ORM**: SQLAlchemy
-- **Authentication**: Flask-Login
-- **Web Server**: Gunicorn
-- **Frontend**: HTML/CSS with vanilla JavaScript
+- **Authentication**: JWT-based
+- **Frontend**: React with TypeScript
+- **Visualization**: D3.js (Admin UI)
+- **Testing**: Pytest (backend) and Cypress (frontend)
+- **Containerization**: Docker with Docker Compose
 
-## Database Schema 222
+## Multi-Environment Support
 
-The game uses PostgreSQL with the following main tables:
+The project is designed to work seamlessly across three development environments:
 
-### User Table
-- Stores player information
-- Tracks credits, location, ship details
-- Manages authentication and admin status
+1. **Local Development**: MacBook with Cursor IDE and Docker Desktop
+2. **GitHub Codespaces**: Remote development with VS Code
+3. **Replit**: iPad-compatible development environment
 
-### Cargo Table
-- Tracks player inventory
-- Links to users through foreign key relationships
-- Manages commodity quantities
+## Quick Start
 
-### Sector Table
-- Stores universe structure
-- Tracks planet ownership
-- Contains port and trading data
+### Prerequisites
 
-## Game Features
+- Docker and Docker Compose
+- Git
 
-- Multiple ship types with different capacities
-- Dynamic trading system with fluctuating prices
-- Planet colonization system
-- Turn-based movement between sectors
-- Admin panel for universe management
+### Steps to Run
 
-## Development Setup
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/Sectorwars2102.git
+   cd Sectorwars2102
+   ```
 
-1. The project uses PostgreSQL 16 (automatically configured in Replit)
-2. Database initializes automatically on first run
-3. Default admin credentials:
-   - Username: admin
-   - Password: admin
+2. Start the services:
+   ```bash
+   # This will detect your environment and start the appropriate services
+   ./dev-scripts/start.sh
+   ```
 
-## Running the Game
+3. Access the services:
+   - **Game API Server**: http://localhost:5000
+   - **Player Client**: http://localhost:3000
+   - **Admin UI**: http://localhost:3001
 
-The game runs on port 81 in development and port 5000 in production. Gunicorn is configured to handle the web server duties.
+## Service Endpoints
 
-## Database Migrations
+### Game API Server
+- **Base URL**: http://localhost:5000
+- **Health Check**: GET /health
+- **API Documentation**: GET /docs (Swagger UI)
 
-The project uses Flask-Migrate for database schema changes. Migrations are handled automatically through the SQLAlchemy ORM.
+### Player Client
+- **URL**: http://localhost:3000
 
-## Game Rules
+### Admin UI
+- **URL**: http://localhost:3001
 
-See GAME_RULES.md for detailed gameplay mechanics and rules.
+## Development
+
+Each service can be developed independently:
+
+```bash
+# Game API Server
+cd services/gameserver
+# Start with poetry
+poetry install
+poetry run uvicorn src.main:app --reload
+
+# Player Client
+cd services/player-client
+npm install
+npm run dev
+
+# Admin UI
+cd services/admin-ui
+npm install
+npm run dev
+```
+
+## Documentation
+
+- **Developer Documentation**: See [CLAUDE.md](./CLAUDE.md) for development guide
+- **AI Specification**: See [DOCS/AISPEC/](./DOCS/AISPEC/) for detailed architecture specifications
+- **Development Journal**: See [DEV_JOURNAL/](./DEV_JOURNAL/) for project evolution history

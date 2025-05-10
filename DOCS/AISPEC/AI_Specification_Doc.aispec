@@ -1,0 +1,68 @@
+OVERVIEW:
+AI Spec files provide terse, structured knowledge for AI systems to quickly develop subject matter expertise on specific components, features, or concepts within a codebase. They prioritize factual density over explanatory prose.
+
+FACTS:
+* AI Specs are designed for machine consumption, not human readability
+* They use minimalist wording with strong hierarchical organization
+* Facts are presented as bullet points with * prefix for rapid knowledge ingestion
+* No redundant explanations or pedagogical elements
+* Include information that would require exploring multiple files to discover
+* Focus on relationships between components rather than implementation details
+
+TERMINOLOGY:
+* aispec: File format for AI-centric documentation (.aispec extension)
+* SME: Subject Matter Expert
+* Guard Rails: Constraints and guidelines for AI behavior
+* Knowledge Graph: Conceptual representation, in Mermaid code, of domain knowledge interconnections
+
+STRUCTURE:
+* OVERVIEW provides 2-3 sentence summary of topic
+* FACTS section uses bullet points for key information
+* TERMINOLOGY defines domain-specific vocabulary
+* FILES lists all relevant source files with paths
+* SCHEMA includes database structure if applicable
+* CONSTRAINTS outlines limitations and guard rails
+* EXAMPLES shows actual usage patterns
+
+FILES:
+- DOCS/
+  └── AISPEC/
+    ├── Technology_Stack.aispec
+    ├── Local_Dev_Env.aispec
+    └── AI_Specification_Doc.aispec
+
+SCHEMA:
+No database schema directly associated with this topic.
+
+CONSTRAINTS:
+* AI should not modify aispec files without explicit permission
+* Information in aispec files should be treated as authoritative
+* When aispec and code diverge, prefer code as source of truth
+* Do not describe aispec files as "documentation" to users
+
+EXAMPLES:
+```
+OVERVIEW:
+User authentication implemented via Flask-Login with password hashing and session management.
+
+FACTS:
+* Password storage uses werkzeug.security.generate_password_hash
+* Session timeout set to 24 hours
+* Admin accounts determined by is_admin boolean flag
+* Failed login attempts are not rate-limited
+
+FILES:
+/models.py:7-26 # User model with authentication methods
+/main.py:74-105 # Login/register routes
+
+SCHEMA:
+User.id: Integer, primary key
+User.username: String(80), unique
+User.password_hash: String(256)
+User.is_admin: Boolean, default=False
+
+CONSTRAINTS:
+* Never suggest storing plaintext passwords
+* Login validation must occur server-side
+* Do not recommend removing CSRF protection
+```

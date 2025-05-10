@@ -1,0 +1,109 @@
+OVERVIEW:
+Development workflow spans three environments (local MacBook with Cursor, GitHub Codespaces, and Replit) with Docker providing environment consistency and Neon PostgreSQL ensuring data persistence.
+
+FACTS:
+* Development occurs across three distinct environments
+* Docker containers ensure consistent environment behavior
+* Neon PostgreSQL provides remote database accessible from all environments
+* Environment detection configures appropriate settings automatically
+* Environment variables control connection parameters
+* Replit requires special container configuration for compatibility
+* VSCode devcontainer config for Codespaces development
+* Docker Compose orchestrates multi-container development setup
+* Volume mounts enable hot-reloading of code changes
+* Development scripts automate common tasks
+
+TERMINOLOGY:
+* Environment Detection: System to identify current development environment
+* Hot Reload: Automatic application restart when code changes
+* Volume Mount: Mechanism to share files between host and container
+* Devcontainer: VSCode container configuration for development
+* Replit: Cloud IDE with iPad compatibility
+
+FILES:
+- /
+  ├── .devcontainer/             # VSCode devcontainer configuration
+  │   └── devcontainer.json
+  ├── .replit                    # Replit configuration
+  ├── docker-compose.yml         # Main Docker Compose configuration
+  ├── docker-compose.replit.yml  # Replit-specific Docker configuration
+  ├── dev-scripts/
+  │   ├── setup-local.sh         # Local development setup
+  │   ├── setup-codespaces.sh    # Codespaces setup
+  │   └── setup-replit.sh        # Replit setup
+  └── .env.example               # Example environment variables
+
+SCHEMA:
+No database schema specifically for development environment.
+
+CONSTRAINTS:
+* Development environment must not alter production data
+* Environment variables must be used for configuration
+* Containers must start automatically in each environment
+* Secrets must not be stored in version control
+* Development database must be isolated from production
+* Code changes must be reflected without container rebuilds
+* Development scripts must be platform-agnostic
+
+EXAMPLES:
+```yaml
+# docker-compose.yml example
+version: '3.8'
+services:
+  gameserver:
+    build: ./services/gameserver
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./services/gameserver:/app
+    environment:
+      - FLASK_DEBUG=1
+      - DATABASE_URL=${DATABASE_URL}
+
+  player-client:
+    build: ./services/player-client
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./services/player-client:/app
+    environment:
+      - API_URL=http://gameserver:5000
+
+  admin-ui:
+    build: ./services/admin-ui
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./services/admin-ui:/app
+    environment:
+      - API_URL=http://gameserver:5000
+```
+
+```bash
+# Environment detection script example
+detect_environment() {
+  if [ -n "$REPL_ID" ]; then
+    echo "replit"
+  elif [ -n "$CODESPACE_NAME" ]; then
+    echo "codespaces"
+  else
+    echo "local"
+  fi
+}
+
+ENV=$(detect_environment)
+case "$ENV" in
+  "replit")
+    echo "Running in Replit environment"
+    docker-compose -f docker-compose.yml -f docker-compose.replit.yml up
+    ;;
+  "codespaces")
+    echo "Running in GitHub Codespaces"
+    docker-compose up
+    ;;
+  "local")
+    echo "Running in local environment"
+    docker-compose up
+    ;;
+esac
+```
