@@ -27,17 +27,21 @@ PYTHONUNBUFFERED = "1"
 
 # Nix configuration for dependencies
 [nix]
-channel = "stable-23_11"
+channel = "stable-22_11"
 
 # Editor configuration
 [editor]
 tabSize = 2
 
-# Deployment configuration
-[deployment]
-run = "bash ./dev-scripts/start.sh"
-deploymentTarget = "cloudrun"
+# Ports to expose
+[[ports]]
+localPort = 3000
+externalPort = 80
 
-# Host visibility
-[hosting]
-route = "/"
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
+localPort = 3001
+externalPort = 3001

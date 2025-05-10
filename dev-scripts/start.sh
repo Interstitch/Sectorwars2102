@@ -18,34 +18,46 @@ detect_environment() {
 export DEV_ENVIRONMENT=${DEV_ENVIRONMENT:-$(detect_environment)}
 echo "Detected environment: $DEV_ENVIRONMENT"
 
+# Get the correct path for the repository root
+if [ "$DEV_ENVIRONMENT" = "replit" ] && [ -d "/home/runner/Sectorwars2102" ]; then
+  REPO_ROOT="/home/runner/Sectorwars2102"
+else
+  REPO_ROOT=$(pwd)
+fi
+
 # Check if running in Replit environment
 if [ "$DEV_ENVIRONMENT" = "replit" ]; then
-  # Handle Replit-specific paths
-  REPO_ROOT="/home/runner/Sectorwars2102"
+  # If we're in Replit, check for Nix issues
+  if [ -f "$REPO_ROOT/nix-env-error" ] || ! command -v nix-shell &>/dev/null; then
+    # Nix environment is not working, use simplified mode
+    echo "Nix environment not available in Replit. Using simplified mode."
+    
+    # Run one-time setup if needed
+    if [ ! -f "$REPO_ROOT/.replit_simple_setup_done" ]; then
+      echo "Running one-time simplified setup..."
+      bash "$REPO_ROOT/dev-scripts/replit-setup-simple.sh"
+      touch "$REPO_ROOT/.replit_simple_setup_done"
+    fi
+    
+    # Launch simplified version
+    bash "$REPO_ROOT/dev-scripts/start-replit.sh"
+    exit $?
+  fi
   
-  # If we're in Replit and Docker is not available, use non-Docker mode
+  # If Docker is not available, use non-Docker mode
   if ! command -v docker &> /dev/null && ! command -v docker-compose &> /dev/null; then
     echo "Docker not available in Replit. Using non-Docker fallback mode."
     
-    # Check if we're in the correct path
-    if [ -f "./dev-scripts/start-replit.sh" ]; then
-      bash ./dev-scripts/start-replit.sh
-    elif [ -f "$REPO_ROOT/dev-scripts/start-replit.sh" ]; then
-      bash "$REPO_ROOT/dev-scripts/start-replit.sh"
-    else
-      echo "Error: Cannot find start-replit.sh script."
-      exit 1
-    fi
+    # Launch non-Docker version
+    bash "$REPO_ROOT/dev-scripts/start-replit.sh"
     exit $?
   fi
-else
-  REPO_ROOT="$(pwd)"
 fi
 
 # Check if .env file exists, create from example if not
-if [ ! -f .env ] && [ -f .env.example ]; then
+if [ ! -f "$REPO_ROOT/.env" ] && [ -f "$REPO_ROOT/.env.example" ]; then
   echo "Creating .env file from example..."
-  cp .env.example .env
+  cp "$REPO_ROOT/.env.example" "$REPO_ROOT/.env"
   echo "Created .env file from example. Please review the settings."
 fi
 
