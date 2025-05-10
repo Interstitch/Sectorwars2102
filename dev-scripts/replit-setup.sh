@@ -13,6 +13,7 @@ fi
 # Create necessary directories
 mkdir -p ~/.config
 mkdir -p /tmp/sectorwars/data
+mkdir -p "$HOME/.local/bin"
 
 # Make all scripts executable
 chmod +x "$REPO_ROOT/dev-scripts/"*.sh
@@ -22,8 +23,39 @@ command_exists() {
   type "$1" &> /dev/null
 }
 
+# Update npm to latest version in user space
+update_npm() {
+  echo "Updating npm to latest version..."
+  npm install -g npm@latest --prefix=$HOME/.local || echo "Warning: Could not update npm globally"
+  export PATH="$HOME/.local/bin:$PATH"
+}
+
+# Install PM2 in user space (avoiding permission issues)
+install_pm2() {
+  echo "Installing PM2 in user space..."
+  # Install PM2 to user's home directory to avoid permission issues
+  npm install pm2 --prefix=$HOME/.local || echo "WARNING: Could not install PM2 locally"
+  
+  # Create symlink to make pm2 available
+  if [ -f "$HOME/.local/node_modules/.bin/pm2" ]; then
+    ln -sf "$HOME/.local/node_modules/.bin/pm2" "$HOME/.local/bin/pm2"
+    echo "PM2 installed at $HOME/.local/bin/pm2"
+  else
+    echo "Warning: PM2 installation incomplete"
+  fi
+  
+  # Add to PATH for this session
+  export PATH="$HOME/.local/bin:$PATH"
+  
+  # Add to PATH permanently
+  echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+}
+
 # Install basic dependencies
 echo "Installing basic dependencies..."
+
+# Update npm
+update_npm
 
 # Install Python dependencies
 echo "Installing Python dependencies..."
@@ -34,16 +66,11 @@ pip install -r requirements.txt
 # Install Node.js dependencies
 echo "Installing Node.js dependencies..."
 cd "$REPO_ROOT"
-npm install -g typescript@latest vite@latest
+npm install typescript vite --prefix=$HOME/.local
 
 # Install PM2 for process management
 if ! command_exists pm2; then
-  echo "Installing PM2 globally..."
-  npm install -g pm2
-  
-  # Install locally as fallback
-  cd "$REPO_ROOT"
-  npm install pm2 --save-dev
+  install_pm2
 fi
 
 # Install frontend dependencies
@@ -70,3 +97,4 @@ if [ ! -f "$REPO_ROOT/.env" ] && [ -f "$REPO_ROOT/.env.example" ]; then
 fi
 
 echo "Setup complete! Run './dev-scripts/start-replit.sh' to start the application."
+echo "Note: You may need to refresh your terminal session to access PM2."
