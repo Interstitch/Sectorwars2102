@@ -118,8 +118,12 @@ update_npm() {
   npm install -g npm@$NPM_VERSION --prefix=$HOME/.local || echo "Warning: Could not update npm"
   export PATH="$HOME/.local/bin:$PATH"
   
-  # Add to PATH permanently (if not already there)
-  grep -q 'export PATH="$HOME/.local/bin:$PATH"' ~/.bashrc || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+  # Add to PATH permanently (if we have write access)
+  if [ -w "$HOME/.bashrc" ]; then
+    grep -q 'export PATH="$HOME/.local/bin:$PATH"' "$HOME/.bashrc" || echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+  else
+    echo "Note: Could not modify .bashrc (permission denied). PATH changes will only apply to current session."
+  fi
 }
 
 # Function to install PM2
