@@ -10,5 +10,9 @@ export default defineConfig({
     watch: {
       usePolling: true,
     },
+    // Allow connections from any hostname in Replit
+    hmr: {
+      clientPort: process.env.REPL_SLUG ? 443 : 3000,
+    },
   },
 })
