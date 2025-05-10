@@ -3,7 +3,7 @@ PostgreSQL database hosted on Neon provides persistent storage across all develo
 
 FACTS:
 * Remote database ensures consistent data across development environments
-* PostgreSQL 16 provides advanced features and performance
+* PostgreSQL 17 provides advanced features and performance
 * SQLAlchemy ORM abstracts database operations
 * Alembic handles database migrations automatically
 * Connection pooling optimizes database performance
@@ -23,9 +23,6 @@ FILES:
   │   ├── models/
   │   │   ├── __init__.py
   │   │   ├── user.py
-  │   │   ├── sector.py
-  │   │   ├── cargo.py
-  │   │   └── ship.py
   │   ├── database.py       # Database connection configuration
   │   └── migrations/       # Alembic migration scripts
   └── alembic.ini          # Alembic configuration
@@ -37,43 +34,9 @@ User:
   email: String(120), unique, nullable=False
   password_hash: String(256)
   is_admin: Boolean, default=False
-  credits: Integer, default=1000
-  location: Integer, default=1
-  ship_id: Integer, ForeignKey('ship.id')
-  fighters: Integer, default=0
-  turns: Integer, default=100
-  docked: Boolean, default=False
-  landed: Boolean, default=False
   created_at: DateTime, default=utcnow
   last_login: DateTime
   deleted: Boolean, default=False
-
-Ship:
-  id: Integer, primary key
-  name: String(80)
-  type: String(80)
-  cargo_capacity: Integer
-  fighter_capacity: Integer
-  owner_id: Integer, ForeignKey('user.id')
-
-Cargo:
-  id: Integer, primary key
-  user_id: Integer, ForeignKey('user.id')
-  commodity: String(80)
-  amount: Integer
-  
-Sector:
-  id: Integer, primary key
-  name: String(80)
-  has_planet: Boolean, default=False
-  planet_owner_id: Integer, ForeignKey('user.id')
-  port_data: JSON
-  links: JSON
-  planet_fighters: Integer, default=0
-  sector_fighters: Integer, default=0
-  is_earth: Boolean, default=False
-  x_position: Float
-  y_position: Float
 
 CONSTRAINTS:
 * Database connection strings must be stored in environment variables
@@ -108,6 +71,5 @@ class User(Base):
     username = Column(String(80), unique=True, nullable=False)
     email = Column(String(120), unique=True, nullable=False)
     password_hash = Column(String(256))
-    credits = Column(Integer, default=1000)
     created_at = Column(DateTime, default=datetime.utcnow)
 ```

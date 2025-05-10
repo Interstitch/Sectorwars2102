@@ -1,0 +1,463 @@
+OVERVIEW:
+Authentication system for Sector Wars 2102 using OAuth 2.0 providers (Steam, GitHub, Google) for player authentication, JWT token-based API access, and integrated admin credentials. Centralized in the Game API Server with clear separation between authentication and authorization concerns.
+
+FACTS:
+* Authentication providers include Steam, GitHub, and Google OAuth2
+* No direct email/password registration option available to regular users
+* Default admin account created automatically at first server start
+* JWT tokens used for API authorization with FastAPI
+* Token validation occurs in FastAPI middleware
+* Refresh tokens enabled with 7-day sliding window expiration
+* Access tokens expire after 1 hour of inactivity
+* OAuth data stored in database with provider-specific identifiers
+* User's primary ID is internal UUID, not provider ID
+* Players can link multiple OAuth providers to single account
+* Uses python-jose library for JWT handling
+* Uses httpx for OAuth HTTP client operations
+* Implemented as FastAPI routes with dedicated dependencies
+* Admin UI requires extra permissions beyond player authentication
+
+TERMINOLOGY:
+* OAuth2: Industry standard protocol for authorization
+* JWT: JSON Web Token, encoded claims for API authorization
+* OAuth Provider: External identity service (Steam, GitHub, Google)
+* Access Token: Short-lived credential for API access
+* Refresh Token: Long-lived credential for obtaining new access tokens
+* Scopes: Specific permissions granted to tokens
+* Identity Provider (IdP): External service authenticating users
+* OIDC: OpenID Connect, identity layer on top of OAuth 2.0
+* Claims: Assertions about a subject in a JWT
+* Subject: The entity (user) a token refers to
+
+FILES:
+- /services/gameserver/
+  ├── src/
+  │   ├── auth/
+  │   │   ├── __init__.py
+  │   │   ├── router.py           # FastAPI router for auth endpoints
+  │   │   ├── dependencies.py     # FastAPI dependencies for auth
+  │   │   ├── oauth.py            # OAuth provider integrations
+  │   │   ├── jwt.py              # JWT token generation and validation
+  │   │   ├── admin.py            # Admin user management
+  │   │   └── middleware.py       # Auth middleware for FastAPI
+  │   ├── models/
+  │   │   ├── user.py             # User model with auth properties
+  │   │   └── oauth_account.py    # OAuth account linking model
+  │   └── core/
+  │       ├── config.py           # Auth settings and environment variables
+  │       └── security.py         # Password handling for admin
+- /services/player-client/
+  ├── src/
+  │   ├── auth/
+  │   │   ├── AuthContext.tsx     # React context for auth state
+  │   │   ├── LoginPage.tsx       # OAuth provider selection UI
+  │   │   └── AuthService.ts      # Token management client-side
+- /services/admin-ui/
+  ├── src/
+  │   ├── auth/
+  │   │   ├── AdminAuthContext.tsx # React context for admin auth
+  │   │   ├── LoginPage.tsx        # Admin login form
+  │   │   └── AdminAuthService.ts  # Admin token management
+
+SCHEMA:
+```sql
+-- User table
+CREATE TABLE "user" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username VARCHAR(50) NOT NULL UNIQUE,
+  email VARCHAR(255) UNIQUE,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Admin credentials (only used for admin users)
+CREATE TABLE "admin_credentials" (
+  user_id UUID PRIMARY KEY REFERENCES "user"(id) ON DELETE CASCADE,
+  password_hash VARCHAR(255) NOT NULL,
+  last_password_change TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- OAuth accounts linked to users
+CREATE TABLE "oauth_account" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  provider VARCHAR(20) NOT NULL, -- 'github', 'google', 'steam'
+  provider_user_id VARCHAR(255) NOT NULL,
+  provider_account_email VARCHAR(255),
+  provider_account_username VARCHAR(255),
+  access_token TEXT,
+  refresh_token TEXT,
+  expires_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE(provider, provider_user_id)
+);
+
+-- JWT refresh tokens
+CREATE TABLE "refresh_token" (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  token VARCHAR(255) NOT NULL UNIQUE,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  revoked BOOLEAN NOT NULL DEFAULT FALSE
+);
+```
+
+CONSTRAINTS:
+* Never store raw OAuth tokens in logs or client-side storage
+* Admin password must be securely hashed with Argon2id
+* Default admin credentials must be overridable via environment variables
+* OAuth state parameter must be validated to prevent CSRF attacks
+* JWT tokens must contain minimal necessary claims
+* Frontend must store tokens securely (httpOnly cookies preferred)
+* Refresh tokens must be single-use with automatic rotation
+* API must validate tokens on every request via middleware
+* Authentication failures must be logged with appropriate detail
+* OAuth provider configuration must be environment-variable driven
+* Player-Client must never have access to admin functionality
+* All auth endpoints must have rate limiting applied
+* OAuth callback URLs must be dynamically configured per environment
+
+EXAMPLES:
+```python
+# FastAPI auth dependency example
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from sqlalchemy.orm import Session
+
+from src.auth.jwt import decode_token
+from src.core.database import get_db
+from src.models.user import User
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme), 
+    db: Session = Depends(get_db)
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = decode_token(token)
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+        
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None or not user.is_active:
+        raise credentials_exception
+        
+    return user
+
+async def get_admin_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized for admin access"
+        )
+    return current_user
+```
+
+```python
+# Admin user creation on server startup
+from passlib.context import CryptContext
+from sqlalchemy.orm import Session
+
+from src.models.user import User
+from src.models.admin_credentials import AdminCredentials
+from src.core.config import settings
+
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+def create_default_admin(db: Session) -> None:
+    """Create default admin user if no admin users exist."""
+    admin_exists = db.query(User).filter(User.is_admin == True).first()
+    if admin_exists:
+        return
+        
+    admin_username = settings.DEFAULT_ADMIN_USERNAME
+    admin_password = settings.DEFAULT_ADMIN_PASSWORD
+    
+    if not admin_username or not admin_password:
+        admin_username = "admin"
+        admin_password = "admin"  # Default fallback
+        
+    admin = User(
+        username=admin_username,
+        email="admin@sectorwars2102.local",
+        is_admin=True,
+    )
+    db.add(admin)
+    db.flush()
+    
+    hashed_password = pwd_context.hash(admin_password)
+    admin_creds = AdminCredentials(
+        user_id=admin.id,
+        password_hash=hashed_password
+    )
+    db.add(admin_creds)
+    db.commit()
+    
+    print(f"Default admin user '{admin_username}' created")
+```
+
+```python
+# OAuth flow example for GitHub
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import RedirectResponse
+from httpx import AsyncClient
+from sqlalchemy.orm import Session
+import secrets
+import base64
+from urllib.parse import urlencode
+
+from src.core.config import settings
+from src.core.database import get_db
+from src.models.user import User
+from src.models.oauth_account import OAuthAccount
+from src.auth.jwt import create_tokens
+
+router = APIRouter()
+
+@router.get("/login/github")
+async def login_github(request: Request, db: Session = Depends(get_db)):
+    # Generate and store state parameter to prevent CSRF
+    state = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip("=")
+    request.session["oauth_state"] = state
+    
+    params = {
+        "client_id": settings.GITHUB_CLIENT_ID,
+        "redirect_uri": f"{settings.API_BASE_URL}/api/auth/callback/github",
+        "scope": "user:email",
+        "state": state,
+    }
+    
+    return RedirectResponse(
+        f"https://github.com/login/oauth/authorize?{urlencode(params)}"
+    )
+
+@router.get("/callback/github")
+async def github_callback(
+    request: Request,
+    code: str,
+    state: str,
+    db: Session = Depends(get_db)
+):
+    # Verify state to prevent CSRF attacks
+    if state != request.session.get("oauth_state"):
+        return {"error": "Invalid state parameter"}
+    
+    # Exchange code for token
+    async with AsyncClient() as client:
+        token_response = await client.post(
+            "https://github.com/login/oauth/access_token",
+            headers={"Accept": "application/json"},
+            data={
+                "client_id": settings.GITHUB_CLIENT_ID,
+                "client_secret": settings.GITHUB_CLIENT_SECRET,
+                "code": code,
+                "redirect_uri": f"{settings.API_BASE_URL}/api/auth/callback/github",
+            },
+        )
+        
+        token_data = token_response.json()
+        if "error" in token_data:
+            return {"error": token_data["error"]}
+            
+        # Get user details from GitHub
+        user_response = await client.get(
+            "https://api.github.com/user",
+            headers={"Authorization": f"token {token_data['access_token']}"},
+        )
+        user_data = user_response.json()
+        
+        # Get user email
+        emails_response = await client.get(
+            "https://api.github.com/user/emails",
+            headers={"Authorization": f"token {token_data['access_token']}"},
+        )
+        emails = emails_response.json()
+        primary_email = next((email["email"] for email in emails if email["primary"]), None)
+        
+    # Check if the OAuth account already exists
+    oauth_account = db.query(OAuthAccount).filter(
+        OAuthAccount.provider == "github",
+        OAuthAccount.provider_user_id == str(user_data["id"])
+    ).first()
+    
+    if oauth_account:
+        # Update token information
+        oauth_account.access_token = token_data["access_token"]
+        oauth_account.updated_at = db.func.now()
+        user = oauth_account.user
+    else:
+        # Check if user with this email exists
+        user = None
+        if primary_email:
+            user = db.query(User).filter(User.email == primary_email).first()
+        
+        if not user:
+            # Create new user
+            user = User(
+                username=f"github_{user_data['login']}",
+                email=primary_email,
+            )
+            db.add(user)
+            db.flush()
+        
+        # Create new OAuth account
+        oauth_account = OAuthAccount(
+            user_id=user.id,
+            provider="github",
+            provider_user_id=str(user_data["id"]),
+            provider_account_email=primary_email,
+            provider_account_username=user_data["login"],
+            access_token=token_data["access_token"],
+        )
+        db.add(oauth_account)
+    
+    db.commit()
+    
+    # Create JWT tokens for the user
+    access_token, refresh_token = create_tokens(user.id)
+    
+    # Set tokens in cookies
+    response = RedirectResponse(url=settings.FRONTEND_URL)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.SECURE_COOKIES,
+        samesite="lax",
+        max_age=3600,  # 1 hour
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=settings.SECURE_COOKIES,
+        samesite="lax",
+        max_age=604800,  # 7 days
+    )
+    
+    return response
+```
+
+```typescript
+// React Auth Context in player-client
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+interface AuthContextType {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  user: any | null;
+  login: (provider: 'github' | 'google' | 'steam') => void;
+  logout: () => void;
+  refreshAuth: () => Promise<boolean>;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  isAuthenticated: false,
+  isLoading: true,
+  user: null,
+  login: () => {},
+  logout: () => {},
+  refreshAuth: async () => false,
+});
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const navigate = useNavigate();
+  
+  // Check auth status on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include', // Send cookies
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkAuth();
+  }, []);
+  
+  const login = (provider: 'github' | 'google' | 'steam') => {
+    // Redirect to the appropriate OAuth login endpoint
+    window.location.href = `/api/auth/login/${provider}`;
+  };
+  
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      setUser(null);
+      setIsAuthenticated(false);
+      navigate('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+  
+  const refreshAuth = async (): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData.user);
+        return true;
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      setUser(null);
+      setIsAuthenticated(false);
+      return false;
+    }
+  };
+  
+  return (
+    <AuthContext.Provider value={{ 
+      isAuthenticated, isLoading, user, login, logout, refreshAuth 
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);
+```

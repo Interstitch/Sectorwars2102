@@ -1,6 +1,6 @@
 # Development Journal
 
-This directory contains development journal entries documenting the evolution of the Sector Wars 2102 project. Each entry captures key decisions, challenges, solutions, and learnings throughout the development process.
+This directory contains development journal entries documenting the evolution of the project. Each entry captures key decisions, challenges, solutions, and learnings throughout the development process.
 
 ## Purpose
 
@@ -27,7 +27,7 @@ For example:
 Each journal entry follows this format:
 
 ```markdown
-# Date: YYYY-MM-DD
+# Date: YYYY-MM-DD_N
 # Topic: Brief Description
 
 ## Context

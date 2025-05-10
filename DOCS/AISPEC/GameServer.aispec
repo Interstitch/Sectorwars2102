@@ -31,26 +31,39 @@ FILES:
   │   │   ├── __init__.py
   │   │   ├── routes/
   │   │   │   ├── auth.py        # Authentication endpoints
-  │   │   │   ├── sectors.py     # Sector management endpoints
-  │   │   │   ├── trading.py     # Trading endpoints
-  │   │   │   ├── ships.py       # Ship management endpoints
-  │   │   │   └── admin.py       # Admin endpoints
+  │   │   │   ├── admin.py       # Admin endpoints
+  │   │   │   └── users.py       # User management
   │   │   └── middleware/
   │   │       ├── auth.py        # JWT authentication middleware
   │   │       └── rate_limit.py  # Rate limiting middleware
-  │   ├── models/                # Database models (see Database.aispec)
+  │   ├── auth/                  # Authentication system
+  │   │   ├── __init__.py
+  │   │   ├── router.py          # FastAPI router for auth endpoints
+  │   │   ├── dependencies.py    # FastAPI dependencies for auth
+  │   │   ├── oauth.py           # OAuth provider integrations
+  │   │   ├── jwt.py             # JWT token generation and validation
+  │   │   ├── admin.py           # Admin user management
+  │   │   └── middleware.py      # Auth middleware for FastAPI
+  │   ├── models/                # Database models
+  │   │   ├── __init__.py
+  │   │   ├── user.py            # User model
+  │   │   ├── oauth_account.py   # OAuth account linking
+  │   │   └── refresh_token.py   # JWT refresh tokens
   │   ├── schemas/               # Pydantic models for API
-  │   │   ├── user.py
-  │   │   ├── sector.py
-  │   │   ├── trading.py
-  │   │   └── ships.py
+  │   │   ├── __init__.py
+  │   │   ├── auth.py            # Auth schemas
+  │   │   └── user.py            # User schemas
   │   ├── services/              # Business logic
-  │   │   ├── user_service.py
-  │   │   ├── sector_service.py
-  │   │   ├── trading_service.py
-  │   │   └── ship_service.py
-  │   ├── database.py            # Database connection
-  │   └── config.py              # Application configuration
+  │   │   ├── __init__.py
+  │   │   └── user_service.py    # User logic
+  │   ├── core/                  # Core infrastructure
+  │   │   ├── __init__.py
+  │   │   ├── config.py          # Application configuration
+  │   │   ├── database.py        # Database connection
+  │   │   └── security.py        # Security utilities
+  │   └── utils/                 # Utility functions
+  │       ├── __init__.py
+  │       └── helpers.py         # Common helper functions
   └── alembic/                   # Database migrations
 
 SCHEMA:
@@ -60,15 +73,6 @@ API Endpoints:
 - /api/auth/register [POST] - Register new user
 - /api/auth/login [POST] - Login user
 - /api/auth/refresh [POST] - Refresh JWT token
-- /api/sectors [GET] - Get all sectors
-- /api/sectors/{id} [GET] - Get sector details
-- /api/sectors/{id}/move [POST] - Move to sector
-- /api/trading/buy [POST] - Buy commodities
-- /api/trading/sell [POST] - Sell commodities
-- /api/ships [GET] - Get available ships
-- /api/ships/buy [POST] - Buy new ship
-- /api/ships/upgrade [POST] - Upgrade ship
-- /api/admin/sectors [GET] - Admin sector management
 - /api/admin/users [GET] - Admin user management
 
 CONSTRAINTS:
@@ -80,77 +84,3 @@ CONSTRAINTS:
 * API versioning must be implemented for future compatibility
 * Error responses must be standardized
 * Database operations must use transactions for consistency
-
-EXAMPLES:
-```python
-# FastAPI route example
-from fastapi import APIRouter, Depends, HTTPException
-from ..schemas.trading import TradeRequest, TradeResponse
-from ..services.trading_service import TradingService
-from ..middleware.auth import get_current_user
-
-router = APIRouter()
-
-@router.post("/buy", response_model=TradeResponse)
-async def buy_commodity(
-    trade: TradeRequest,
-    current_user = Depends(get_current_user),
-    trading_service: TradingService = Depends()
-):
-    try:
-        result = await trading_service.buy_commodity(
-            user_id=current_user.id,
-            commodity=trade.commodity,
-            amount=trade.amount
-        )
-        return result
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-```
-
-```python
-# Service layer example
-from ..models.user import User
-from ..models.cargo import Cargo
-from ..models.sector import Sector
-from sqlalchemy.orm import Session
-from fastapi import Depends
-from ..database import get_db
-
-class TradingService:
-    def __init__(self, db: Session = Depends(get_db)):
-        self.db = db
-        
-    async def buy_commodity(self, user_id: int, commodity: str, amount: int):
-        user = self.db.query(User).filter(User.id == user_id).first()
-        if not user:
-            raise ValueError("User not found")
-            
-        sector = self.db.query(Sector).filter(Sector.id == user.location).first()
-        if not sector.port_data:
-            raise ValueError("No port in this sector")
-            
-        price = sector.port_data["sell"].get(commodity)
-        if not price:
-            raise ValueError("Commodity not available")
-            
-        total_cost = price * amount
-        if user.credits < total_cost:
-            raise ValueError("Not enough credits")
-            
-        # Process transaction
-        user.credits -= total_cost
-        cargo = self.db.query(Cargo).filter(
-            Cargo.user_id == user_id,
-            Cargo.commodity == commodity
-        ).first()
-        
-        if cargo:
-            cargo.amount += amount
-        else:
-            cargo = Cargo(user_id=user_id, commodity=commodity, amount=amount)
-            self.db.add(cargo)
-            
-        self.db.commit()
-        return {"success": True, "credits": user.credits, "commodity": commodity, "amount": amount}
-```

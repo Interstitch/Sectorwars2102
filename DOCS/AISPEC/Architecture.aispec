@@ -24,28 +24,64 @@ TERMINOLOGY:
 FILES:
 - /
   ├── docker-compose.yml          # Main service orchestration (multi-container)
-  ├── docker-compose.combined.yml # Single-container configuration
-  ├── docker-compose.replit.yml   # Replit-specific overrides (fallback)
   ├── Dockerfile                  # Combined container Dockerfile
-  ├── pm2.config.js               # PM2 configuration for Docker environment
   ├── pm2.replit.config.js        # PM2 configuration for Replit environment
   ├── CLAUDE.md                   # AI assistant configuration
+  ├── dev-scripts/                # Development utility scripts
+  │   ├── setup.sh                # Unified setup script
+  │   ├── start-unified.sh        # Main entry script
+  │   └── start-replit-unified.sh # Replit-specific script
+  ├── .env.d/                     # Environment configuration scripts
+  │   └── path.sh                 # Path configuration
   ├── services/
   │   ├── gameserver/            # Game API Server component
   │   │   ├── Dockerfile
   │   │   ├── requirements.txt
-  │   │   └── src/               # Game server source code
+  │   │   ├── pyproject.toml     # Python project configuration
+  │   │   ├── src/
+  │   │   │   ├── main.py        # Application entry point
+  │   │   │   ├── api/           # API routes and middleware
+  │   │   │   ├── auth/          # Authentication system
+  │   │   │   ├── models/        # Database models
+  │   │   │   ├── schemas/       # API schema definitions
+  │   │   │   ├── services/      # Business logic
+  │   │   │   ├── core/          # Core infrastructure
+  │   │   │   └── utils/         # Utility functions
+  │   │   ├── tests/             # Test suite
+  │   │   └── alembic/           # Database migrations
   │   ├── player-client/         # Player web interface
   │   │   ├── Dockerfile
   │   │   ├── package.json
-  │   │   └── src/               # Player client source code
-  │   └── admin-ui/              # Admin interface 
+  │   │   ├── src/
+  │   │   │   ├── main.tsx       # Application entry point
+  │   │   │   ├── App.tsx        # Root component
+  │   │   │   ├── auth/          # Authentication components
+  │   │   │   ├── components/    # Reusable UI components
+  │   │   │   ├── pages/         # Page components
+  │   │   │   ├── services/      # API client services
+  │   │   │   └── types/         # TypeScript type definitions
+  │   │   └── tests/             # Test suite
+  │   └── admin-ui/              # Admin interface
   │       ├── Dockerfile
   │       ├── package.json
-  │       └── src/               # Admin UI source code
+  │       ├── src/
+  │       │   ├── main.tsx       # Application entry point
+  │       │   ├── App.tsx        # Root component
+  │       │   ├── auth/          # Admin authentication
+  │       │   ├── components/    # Reusable UI components
+  │       │   ├── pages/         # Admin pages
+  │       │   ├── services/      # API client services
+  │       │   └── types/         # TypeScript type definitions
+  │       └── tests/             # Test suite
   └── DOCS/
       ├── FEATURE_DOCS/         # Feature documentation
+      ├── DATA_DEFS/            # Data Definitions and Models
       └── AISPEC/               # AI assistant documentation
+          ├── Architecture.aispec   # Overall architecture
+          ├── Database.aispec       # Database schema
+          ├── GameServer.aispec     # Game server details
+          ├── AuthSystem.aispec     # Authentication system
+          └── Testing.aispec        # Testing approach
 
 SCHEMA:
 No database schema directly associated with architecture. See Database.aispec for schema details.
@@ -53,7 +89,7 @@ No database schema directly associated with architecture. See Database.aispec fo
 CONSTRAINTS:
 * Game logic must remain exclusively in the Game API Server
 * Frontend services must not contain business logic
-* All persistent data must be stored in PostgreSQL database
+* All persistent data must be stored in external PostgreSQL database, provided by a 3rd party
 * Environment variables must be used for configuration
 * Services must function in all three environments without code changes
 * Replit must run without requiring Docker
@@ -61,7 +97,6 @@ CONSTRAINTS:
 EXAMPLES:
 ```
 # Docker multi-container deployment (docker-compose.yml)
-version: '3.8'
 services:
   gameserver:
     build: ./services/gameserver
@@ -85,23 +120,6 @@ services:
       - API_URL=http://gameserver:8080
 ```
 
-```
-# Docker single-container deployment (docker-compose.combined.yml)
-version: '3.8'
-services:
-  sectorwars-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"  # Game API Server
-      - "3000:3000"  # Player Client
-      - "3001:3001"  # Admin UI
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - NODE_ENV=${NODE_ENV:-development}
-```
 
 ```javascript
 // PM2 process management (pm2.replit.config.js)

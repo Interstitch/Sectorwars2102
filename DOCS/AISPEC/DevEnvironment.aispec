@@ -13,7 +13,6 @@ FACTS:
 * VSCode devcontainer config for Codespaces development
 * Docker Compose orchestrates multi-container development setup
 * Volume mounts enable hot-reloading of code changes
-* Development scripts automate common tasks
 
 TERMINOLOGY:
 * Environment Detection: System to identify current development environment
@@ -30,16 +29,13 @@ FILES:
   ├── .replit                     # Replit configuration
   ├── replit.nix                  # Replit Nix package configuration
   ├── docker-compose.yml          # Main Docker Compose configuration
-  ├── docker-compose.combined.yml # Single-container Docker configuration
-  ├── docker-compose.replit.yml   # Replit-specific Docker configuration (fallback)
   ├── Dockerfile                  # Combined services Dockerfile
-  ├── pm2.config.js               # PM2 configuration for Docker environment
   ├── pm2.replit.config.js        # PM2 configuration for Replit environment
   ├── dev-scripts/
   │   ├── start-unified.sh        # Universal entry point with environment detection
   │   ├── setup.sh                # Unified setup script for all environments
   │   └── start-replit-unified.sh # Replit-specific startup with PM2
-  └── .env.example                # Example environment variables
+  └── .env                        # Environment variables
 
 SCHEMA:
 No database schema specifically for development environment.
@@ -55,24 +51,6 @@ CONSTRAINTS:
 * Replit must function without Docker
 
 EXAMPLES:
-```yaml
-# docker-compose.combined.yml example
-version: '3.8'
-services:
-  sectorwars-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"  # Game API Server
-      - "3000:3000"  # Player Client
-      - "3001:3001"  # Admin UI
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - NODE_ENV=${NODE_ENV:-development}
-```
-
 ```javascript
 // PM2 configuration example for Replit
 module.exports = {
