@@ -8,13 +8,13 @@ Sector Wars 2102 is a turn-based space trading game where players navigate throu
 
 ## Architecture
 
-The project uses a microservices architecture with three main components:
+The project uses a flexible architecture with three main components:
 
 1. **Game API Server**: Core backend service containing all game logic, database operations, and API endpoints
 2. **Player Client**: Web interface for playing the game
 3. **Admin UI**: Specialized interface for game administration and universe management
 
-All services are containerized using Docker for consistent development and deployment across environments.
+All services can be deployed using Docker or run directly with PM2 process management in environments like Replit.
 
 ## Technical Stack
 
@@ -24,42 +24,82 @@ All services are containerized using Docker for consistent development and deplo
 - **Authentication**: JWT-based
 - **Frontend**: React with TypeScript
 - **Visualization**: D3.js (Admin UI)
+- **Process Management**: PM2
 - **Testing**: Pytest (backend) and Cypress (frontend)
-- **Containerization**: Docker with Docker Compose
+- **Containerization**: Docker with Docker Compose (optional)
 
 ## Multi-Environment Support
 
 The project is designed to work seamlessly across three development environments:
 
-1. **Local Development**: MacBook with Cursor IDE and Docker Desktop
+1. **Local Development**: Docker-based with separate or combined containers
 2. **GitHub Codespaces**: Remote development with VS Code
-3. **Replit**: iPad-compatible development environment
+3. **Replit**: iPad-compatible development environment using PM2
 
 ## Quick Start
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- Git
+- Node.js 16+ and npm
+- Python 3.11+
+- Docker (optional, not needed for Replit)
+- Access to a Neon PostgreSQL database
 
-### Steps to Run
+### Option 1: Using Docker Multi-Container (Local & GitHub Codespaces)
 
-1. Clone the repository:
+```bash
+# Clone repository
+git clone https://github.com/yourusername/Sectorwars2102.git
+cd Sectorwars2102
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your database URL and settings
+
+# Start services using Docker Compose
+docker-compose up
+```
+
+### Option 2: Using Docker Combined Image (Local & GitHub Codespaces)
+
+```bash
+# Clone repository
+git clone https://github.com/yourusername/Sectorwars2102.git
+cd Sectorwars2102
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your database URL and settings
+
+# Start services using Docker Compose with combined image
+docker-compose -f docker-compose.combined.yml up
+```
+
+### Option 3: Using Replit (without Docker)
+
+1. Open the project in Replit
+2. Run the setup script (first time only):
    ```bash
-   git clone https://github.com/yourusername/Sectorwars2102.git
-   cd Sectorwars2102
+   ./dev-scripts/replit-setup.sh
+   ```
+3. Start the services:
+   ```bash
+   ./dev-scripts/start-replit.sh
    ```
 
-2. Start the services:
-   ```bash
-   # This will detect your environment and start the appropriate services
-   ./dev-scripts/start.sh
-   ```
+### Auto-detection
 
-3. Access the services:
-   - **Game API Server**: http://localhost:5000
-   - **Player Client**: http://localhost:3000
-   - **Admin UI**: http://localhost:3001
+For convenience, you can use the main start script which detects your environment:
+
+```bash
+./dev-scripts/start.sh
+```
+
+### Accessing Services
+
+- **Game API Server**: http://localhost:5000
+- **Player Client**: http://localhost:3000
+- **Admin UI**: http://localhost:3001
 
 ## Service Endpoints
 
@@ -73,6 +113,26 @@ The project is designed to work seamlessly across three development environments
 
 ### Admin UI
 - **URL**: http://localhost:3001
+
+## Process Management
+
+### PM2 Commands (Replit or Docker Combined Image)
+
+```bash
+# View logs
+pm2 logs
+
+# Monitor processes
+pm2 monit
+
+# Restart a specific service
+pm2 restart game-api-server
+pm2 restart player-client
+pm2 restart admin-ui
+
+# List running services
+pm2 list
+```
 
 ## Development
 
@@ -99,5 +159,8 @@ npm run dev
 ## Documentation
 
 - **Developer Documentation**: See [CLAUDE.md](./CLAUDE.md) for development guide
+- **Architecture Overview**: See [DOCS/FEATURE_DOCS/ARCHITECTURE.md](./DOCS/FEATURE_DOCS/ARCHITECTURE.md)
+- **Deployment Guide**: See [DOCS/FEATURE_DOCS/DEPLOYMENT.md](./DOCS/FEATURE_DOCS/DEPLOYMENT.md)
+- **Replit Troubleshooting**: See [DOCS/FEATURE_DOCS/REPLIT_TROUBLESHOOTING.md](./DOCS/FEATURE_DOCS/REPLIT_TROUBLESHOOTING.md)
 - **AI Specification**: See [DOCS/AISPEC/](./DOCS/AISPEC/) for detailed architecture specifications
 - **Development Journal**: See [DEV_JOURNAL/](./DEV_JOURNAL/) for project evolution history

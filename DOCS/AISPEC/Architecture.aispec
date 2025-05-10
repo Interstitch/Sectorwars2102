@@ -1,43 +1,51 @@
 OVERVIEW:
-Sector Wars 2102 uses a microservices architecture with three separate containerized services: Game API Server, Player Client, and Admin UI, all connecting to a remote PostgreSQL database.
+Sector Wars 2102 uses a flexible architecture with three separate services: Game API Server, Player Client, and Admin UI, all connecting to a remote PostgreSQL database. Services can be deployed either as Docker containers or run directly with PM2 process management.
 
 FACTS:
-* System runs via Docker in all environments (local, Codespaces, Replit)
+* Multiple deployment options with the same codebase:
+  * Docker multi-container (separate containers per service)
+  * Docker single-container (combined container with PM2)
+  * Direct process management via PM2 (for Replit)
 * Remote Neon PostgreSQL database for persistence across environments
 * Microservices communicate via RESTful API calls
 * Game logic resides exclusively in the Game API server
-* All services containerized for consistent environment behavior
-* Docker Compose orchestrates service startup in each environment
 * Environment detection determines appropriate runtime configuration
-* Replit compatibility maintained via specialized Dockerfile
+* PM2 provides process management for both Docker and non-Docker deployments
+* Python FastAPI backend with Uvicorn server
+* React with TypeScript frontend services
 
 TERMINOLOGY:
 * Game API Server: Core backend service containing all game logic and database operations
-* Player Client: Lightweight web interface for playing the game
+* Player Client: Web interface for playing the game
 * Admin UI: Specialized interface for game universe administration
 * Environment Detection: System to identify whether code is running in local, Codespaces, or Replit environment
+* PM2: Process Manager for Node.js applications (used for managing all services)
 
 FILES:
 - /
-  ├── docker-compose.yml        # Main service orchestration
-  ├── docker-compose.replit.yml # Replit-specific overrides
-  ├── CLAUDE.md                 # AI assistant configuration
+  ├── docker-compose.yml          # Main service orchestration (multi-container)
+  ├── docker-compose.combined.yml # Single-container configuration
+  ├── docker-compose.replit.yml   # Replit-specific overrides (fallback)
+  ├── Dockerfile                  # Combined container Dockerfile
+  ├── pm2.config.js               # PM2 configuration for Docker environment
+  ├── pm2.replit.config.js        # PM2 configuration for Replit environment
+  ├── CLAUDE.md                   # AI assistant configuration
   ├── services/
-  │   ├── gameserver/          # Game API Server component
+  │   ├── gameserver/            # Game API Server component
   │   │   ├── Dockerfile
   │   │   ├── requirements.txt
-  │   │   └── src/             # Game server source code
-  │   ├── player-client/       # Player web interface
+  │   │   └── src/               # Game server source code
+  │   ├── player-client/         # Player web interface
   │   │   ├── Dockerfile
   │   │   ├── package.json
-  │   │   └── src/             # Player client source code
-  │   └── admin-ui/            # Admin interface 
+  │   │   └── src/               # Player client source code
+  │   └── admin-ui/              # Admin interface 
   │       ├── Dockerfile
   │       ├── package.json
-  │       └── src/             # Admin UI source code
+  │       └── src/               # Admin UI source code
   └── DOCS/
-      ├── FEATURE_DOCS/       # Feature documentation
-      └── AISPEC/             # AI assistant documentation
+      ├── FEATURE_DOCS/         # Feature documentation
+      └── AISPEC/               # AI assistant documentation
 
 SCHEMA:
 No database schema directly associated with architecture. See Database.aispec for schema details.
@@ -48,11 +56,11 @@ CONSTRAINTS:
 * All persistent data must be stored in PostgreSQL database
 * Environment variables must be used for configuration
 * Services must function in all three environments without code changes
-* Docker must be used for containerization in all environments
+* Replit must run without requiring Docker
 
 EXAMPLES:
 ```
-# Example docker-compose.yml structure
+# Docker multi-container deployment (docker-compose.yml)
 version: '3.8'
 services:
   gameserver:
@@ -75,4 +83,61 @@ services:
       - "3001:3000"
     environment:
       - API_URL=http://gameserver:5000
+```
+
+```
+# Docker single-container deployment (docker-compose.combined.yml)
+version: '3.8'
+services:
+  sectorwars-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"  # Game API Server
+      - "3000:3000"  # Player Client
+      - "3001:3001"  # Admin UI
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - NODE_ENV=${NODE_ENV:-development}
+```
+
+```javascript
+// PM2 process management (pm2.replit.config.js)
+module.exports = {
+  apps: [
+    {
+      name: 'game-api-server',
+      cwd: './services/gameserver',
+      script: 'python3',
+      args: '-m uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload',
+      env: {
+        PYTHONUNBUFFERED: 1,
+        DATABASE_URL: process.env.DATABASE_URL
+      },
+      autorestart: true
+    },
+    {
+      name: 'player-client',
+      cwd: './services/player-client',
+      script: 'npm',
+      args: 'run dev -- --host 0.0.0.0 --port 3000',
+      env: {
+        API_URL: 'http://localhost:5000'
+      },
+      autorestart: true
+    },
+    {
+      name: 'admin-ui',
+      cwd: './services/admin-ui',
+      script: 'npm',
+      args: 'run dev -- --host 0.0.0.0 --port 3001',
+      env: {
+        API_URL: 'http://localhost:5000'
+      },
+      autorestart: true
+    }
+  ]
+};
 ```

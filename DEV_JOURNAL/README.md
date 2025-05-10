@@ -13,11 +13,14 @@ This directory contains development journal entries documenting the evolution of
 
 Entries are organized chronologically with the following naming convention:
 
-`YYYY-MM-DD_topic.md`
+`YYYY-MM-DD_N_topic.md`
+
+Where `N` is a sequence number for multiple entries on the same day.
 
 For example:
-- `2023-05-10_project_initialization.md`
-- `2023-05-15_database_design.md`
+- `2023-05-10_1_project_initialization.md`
+- `2023-05-10_2_database_setup.md`
+- `2023-05-15_1_user_authentication.md`
 
 ## Entry Format
 
@@ -52,6 +55,7 @@ Planned follow-up actions
 ## Usage Guidelines
 
 - Create a new entry for significant development activities
+- For multiple entries on the same day, increment the sequence number
 - Focus on explaining "why" rather than just "what" or "how"
 - Include code snippets or links to relevant files when helpful
 - Update entries if new information becomes available

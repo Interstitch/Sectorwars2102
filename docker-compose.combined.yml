@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  sectorwars-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"  # Game API Server
+      - "3000:3000"  # Player Client
+      - "3001:3001"  # Admin UI
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/sectorwars}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
+      - NODE_ENV=${NODE_ENV:-development}
+      - DEBUG=${DEBUG:-true}
+    volumes:
+      - ./services/gameserver:/app/gameserver
+      - ./services/player-client:/app/player-client
+      - ./services/admin-ui:/app/admin-ui
+      - /app/player-client/node_modules
+      - /app/admin-ui/node_modules
+    restart: unless-stopped

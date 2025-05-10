@@ -1,13 +1,15 @@
 OVERVIEW:
-Development workflow spans three environments (local MacBook with Cursor, GitHub Codespaces, and Replit) with Docker providing environment consistency and Neon PostgreSQL ensuring data persistence.
+Development workflow spans three environments (local MacBook with Cursor, GitHub Codespaces, and Replit) with process management and containerization options to ensure application consistency and Neon PostgreSQL ensuring data persistence.
 
 FACTS:
 * Development occurs across three distinct environments
-* Docker containers ensure consistent environment behavior
+* Multiple deployment options are available:
+  * Docker-based containers for consistent environment behavior
+  * PM2-based process management for environments like Replit that don't support Docker
 * Neon PostgreSQL provides remote database accessible from all environments
 * Environment detection configures appropriate settings automatically
 * Environment variables control connection parameters
-* Replit requires special container configuration for compatibility
+* Replit uses PM2 to manage multiple services without Docker
 * VSCode devcontainer config for Codespaces development
 * Docker Compose orchestrates multi-container development setup
 * Volume mounts enable hot-reloading of code changes
@@ -19,19 +21,26 @@ TERMINOLOGY:
 * Volume Mount: Mechanism to share files between host and container
 * Devcontainer: VSCode container configuration for development
 * Replit: Cloud IDE with iPad compatibility
+* PM2: Process Manager for Node.js applications (used for all services in Replit)
 
 FILES:
 - /
-  ├── .devcontainer/             # VSCode devcontainer configuration
+  ├── .devcontainer/              # VSCode devcontainer configuration
   │   └── devcontainer.json
-  ├── .replit                    # Replit configuration
-  ├── docker-compose.yml         # Main Docker Compose configuration
-  ├── docker-compose.replit.yml  # Replit-specific Docker configuration
+  ├── .replit                     # Replit configuration
+  ├── replit.nix                  # Replit Nix package configuration
+  ├── docker-compose.yml          # Main Docker Compose configuration
+  ├── docker-compose.combined.yml # Single-container Docker configuration
+  ├── docker-compose.replit.yml   # Replit-specific Docker configuration (fallback)
+  ├── Dockerfile                  # Combined services Dockerfile
+  ├── pm2.config.js               # PM2 configuration for Docker environment
+  ├── pm2.replit.config.js        # PM2 configuration for Replit environment
   ├── dev-scripts/
-  │   ├── setup-local.sh         # Local development setup
-  │   ├── setup-codespaces.sh    # Codespaces setup
-  │   └── setup-replit.sh        # Replit setup
-  └── .env.example               # Example environment variables
+  │   ├── start.sh                # Unified start script with environment detection
+  │   ├── replit-setup.sh         # Replit setup with PM2
+  │   ├── replit-setup-simple.sh  # Simplified Replit setup without Nix
+  │   └── start-replit.sh         # Replit-specific startup with PM2
+  └── .env.example                # Example environment variables
 
 SCHEMA:
 No database schema specifically for development environment.
@@ -39,52 +48,78 @@ No database schema specifically for development environment.
 CONSTRAINTS:
 * Development environment must not alter production data
 * Environment variables must be used for configuration
-* Containers must start automatically in each environment
+* Services must start automatically in each environment
 * Secrets must not be stored in version control
 * Development database must be isolated from production
-* Code changes must be reflected without container rebuilds
+* Code changes must be reflected without service restarts
 * Development scripts must be platform-agnostic
+* Replit must function without Docker
 
 EXAMPLES:
 ```yaml
-# docker-compose.yml example
+# docker-compose.combined.yml example
 version: '3.8'
 services:
-  gameserver:
-    build: ./services/gameserver
+  sectorwars-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "5000:5000"
-    volumes:
-      - ./services/gameserver:/app
+      - "5000:5000"  # Game API Server
+      - "3000:3000"  # Player Client
+      - "3001:3001"  # Admin UI
     environment:
-      - FLASK_DEBUG=1
       - DATABASE_URL=${DATABASE_URL}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - NODE_ENV=${NODE_ENV:-development}
+```
 
-  player-client:
-    build: ./services/player-client
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./services/player-client:/app
-    environment:
-      - API_URL=http://gameserver:5000
-
-  admin-ui:
-    build: ./services/admin-ui
-    ports:
-      - "3001:3000"
-    volumes:
-      - ./services/admin-ui:/app
-    environment:
-      - API_URL=http://gameserver:5000
+```javascript
+// PM2 configuration example for Replit
+module.exports = {
+  apps: [
+    {
+      name: 'game-api-server',
+      cwd: './services/gameserver',
+      script: 'python3',
+      args: '-m uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload',
+      env: {
+        PYTHONUNBUFFERED: 1,
+        DATABASE_URL: process.env.DATABASE_URL
+      },
+      watch: true,
+      autorestart: true
+    },
+    {
+      name: 'player-client',
+      cwd: './services/player-client',
+      script: 'npm',
+      args: 'run dev -- --host 0.0.0.0 --port 3000',
+      env: {
+        API_URL: 'http://localhost:5000'
+      },
+      autorestart: true
+    },
+    {
+      name: 'admin-ui',
+      cwd: './services/admin-ui',
+      script: 'npm',
+      args: 'run dev -- --host 0.0.0.0 --port 3001',
+      env: {
+        API_URL: 'http://localhost:5000'
+      },
+      autorestart: true
+    }
+  ]
+};
 ```
 
 ```bash
 # Environment detection script example
 detect_environment() {
-  if [ -n "$REPL_ID" ]; then
+  if [ -n "$REPL_ID" ] || [ -n "$REPL_SLUG" ] || [ -d "/home/runner" ]; then
     echo "replit"
-  elif [ -n "$CODESPACE_NAME" ]; then
+  elif [ -n "$CODESPACE_NAME" ] || [ -n "$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" ]; then
     echo "codespaces"
   else
     echo "local"
@@ -95,14 +130,14 @@ ENV=$(detect_environment)
 case "$ENV" in
   "replit")
     echo "Running in Replit environment"
-    docker-compose -f docker-compose.yml -f docker-compose.replit.yml up
+    if command -v docker &> /dev/null; then
+      docker-compose -f docker-compose.yml -f docker-compose.replit.yml up
+    else
+      ./dev-scripts/start-replit.sh
+    fi
     ;;
-  "codespaces")
-    echo "Running in GitHub Codespaces"
-    docker-compose up
-    ;;
-  "local")
-    echo "Running in local environment"
+  "codespaces"|"local")
+    echo "Running in $ENV environment"
     docker-compose up
     ;;
 esac
