@@ -25,6 +25,16 @@ if [ ! -f .env ]; then
   echo "Created .env file from example. Please review the settings."
 fi
 
+# Check which docker compose command is available
+if command -v docker-compose &>/dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+elif command -v docker &>/dev/null && docker compose version &>/dev/null; then
+    DOCKER_COMPOSE_CMD="docker compose"
+else
+    echo "Neither docker-compose nor docker compose commands are available. Please install Docker and Docker Compose."
+    exit 1
+fi
+
 # Set environment variables based on detected environment
 case "$DEV_ENVIRONMENT" in
   "replit")
@@ -33,7 +43,7 @@ case "$DEV_ENVIRONMENT" in
     export NODE_ENV=development
     
     # Start services with Replit-specific configuration
-    docker-compose -f docker-compose.yml -f docker-compose.replit.yml up
+    $DOCKER_COMPOSE_CMD -f docker-compose.yml -f docker-compose.replit.yml up
     ;;
     
   "codespaces")
@@ -42,7 +52,7 @@ case "$DEV_ENVIRONMENT" in
     export NODE_ENV=development
     
     # Start services with standard configuration
-    docker-compose up
+    $DOCKER_COMPOSE_CMD up
     ;;
     
   "local")
@@ -51,7 +61,7 @@ case "$DEV_ENVIRONMENT" in
     export NODE_ENV=development
     
     # Start services with standard configuration
-    docker-compose up
+    $DOCKER_COMPOSE_CMD up
     ;;
     
   *)
