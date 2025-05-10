@@ -35,48 +35,57 @@ Replit provides several predefined commands to help you manage the application:
 /run simple-api
 ```
 
-## Port 5000 Issues
+## Port Configuration
 
-If port 5000 (Game API Server) isn't showing in the Replit interface:
+We've switched from port 5000 to port 8080 for the Game API Server due to potential restrictions in the Replit environment.
 
-1. First, check if any services can bind to port 5000:
+### Testing Port Connectivity
+
+To test if the Game API Server can bind to port 8080:
+
+1. First, check if the port is available:
    ```bash
-   /run simple-api
+   /run test-port
    ```
-   (This runs a basic socket server on port 5000)
+   (This tries to bind to port 8080 and reports if it's available)
 
-2. If the simple-api works, try the test API server:
+2. Try the simple test server:
    ```bash
-   /run test-api
+   /run simple-server
    ```
+   (This runs a minimal FastAPI server on port 8080)
 
 3. If those tests work but the main API server doesn't, try:
    ```bash
    /run direct-start
    ```
+   (Directly starts the uvicorn server without PM2)
 
-4. Restart Replit or refresh your browser window
-   
-5. Make sure you don't have any other service using port 5000 in Replit
+4. If port 8080 still doesn't work, you may need to restart Replit or refresh your browser window
 
-### Possible Port 5000 Restrictions
+### Why We Switched from Port 5000
 
-Some cloud providers (including Replit) may restrict or proxy port 5000 because:
-- Port 5000 is commonly used by development servers
+Port 5000 appears to be restricted in the Replit environment for several potential reasons:
+- Port 5000 is commonly used by development servers and may be reserved
 - It may conflict with Replit's internal services
-- Some providers give special treatment to this port
+- Some cloud providers give special treatment to well-known ports
 
-If none of the above commands make port 5000 available, try modifying the Game API Server to use port 8080 instead:
+Our diagnostics showed that while Python could bind to port 5000 at a low level, the service couldn't be properly exposed through Replit's proxy system.
 
-1. Edit the PM2 config:
-   ```bash
-   vim pm2.replit.config.js
-   ```
-   And change the port to 8080 in the game-api-server section.
+### Checking Port Status
 
-2. Edit the frontend services to point to port 8080 instead of 5000.
+You can check the status of any port with a simple Python script:
 
-3. Add port 8080 in the .replit configuration.
+```python
+import socket
+s = socket.socket()
+try:
+    s.bind(("0.0.0.0", 8080))  # Change port as needed
+    print("Port is available")
+    s.close()
+except Exception as e:
+    print(f"Port is not available: {e}")
+```
 
 ## Node.js/NPM Version Issues
 
@@ -184,7 +193,7 @@ The Vite configuration has been updated to accept any Replit-generated hostname.
 
 2. If it persists, check if any of the services failed to start properly in the logs.
 
-### Problem: "Game API Server not running"
+### Problem: "Game API Server not running on port 8080"
 
 If the Game API Server isn't starting properly:
 

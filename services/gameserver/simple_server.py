@@ -34,8 +34,9 @@ try:
     
     # Direct execution entry point
     if __name__ == "__main__":
-        print("Starting simple test server on port 5000...")
-        uvicorn.run("simple_server:app", host="0.0.0.0", port=5000)
+        # Use port 8080 instead of 5000 (which might be restricted in Replit)
+        print("Starting simple test server on port 8080...")
+        uvicorn.run("simple_server:app", host="0.0.0.0", port=8080)
 except Exception as e:
     print(f"ERROR: Failed to import or start server: {e}")
     sys.exit(1)

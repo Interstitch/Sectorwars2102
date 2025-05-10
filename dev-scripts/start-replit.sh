@@ -321,21 +321,29 @@ test_python_server() {
 
 test_python_server
 
-# Check for port 5000 availability
-check_port_5000() {
-  echo "Checking if port 5000 is available..."
-  
-  # Try to bind to port 5000
-  if python3 -c "import socket; s=socket.socket(); s.bind(('0.0.0.0', 5000)); s.close(); print('Port 5000 is available')" 2>/dev/null; then
-    echo "✅ Port 5000 is available"
+# Check for port 8080 availability
+check_port_8080() {
+  echo "Checking if port 8080 is available..."
+
+  # Try to bind to port 8080
+  if python3 -c "import socket; s=socket.socket(); s.bind(('0.0.0.0', 8080)); s.close(); print('Port 8080 is available')" 2>/dev/null; then
+    echo "✅ Port 8080 is available"
     return 0
   else
-    echo "❌ Port 5000 is not available"
+    echo "❌ Port 8080 is not available"
     return 1
   fi
 }
 
-check_port_5000 || echo "Warning: Port 5000 may be in use or restricted"
+check_port_8080 || echo "Warning: Port 8080 may be in use or restricted"
+
+# Also try port 5000 to diagnose
+echo "For diagnostic purposes, also checking port 5000..."
+if python3 -c "import socket; s=socket.socket(); s.bind(('0.0.0.0', 5000)); s.close(); print('Port 5000 is available')" 2>/dev/null; then
+  echo "✅ Port 5000 is available (but may be restricted by Replit)"
+else
+  echo "❌ Port 5000 is not available or is restricted by Replit"
+fi
 
 # Run services directly (fallback method) if PM2 is not available
 run_services_directly() {
@@ -367,7 +375,7 @@ run_services_directly() {
     # Wait a short time to see if it stays running
     sleep 3
     if kill -0 $GAMESERVER_PID 2>/dev/null; then
-      echo "✅ Simple test server is running on port 5000"
+      echo "✅ Simple test server is running on port 8080"
       return 0
     else
       echo "❌ Simple test server failed to start or stay running, checking logs..."
@@ -377,7 +385,7 @@ run_services_directly() {
 
   # Method 2: Try the regular server with uvicorn module
   echo "Starting game server with $PYTHON_CMD -m uvicorn..."
-  PYTHONPATH="$PYTHON_USER_SITE:$REPO_ROOT/services/gameserver" $PYTHON_CMD -m uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload > /tmp/gameserver.log 2>&1 &
+  PYTHONPATH="$PYTHON_USER_SITE:$REPO_ROOT/services/gameserver" $PYTHON_CMD -m uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload > /tmp/gameserver.log 2>&1 &
   GAMESERVER_PID=$!
   echo "Game API Server started with PID: $GAMESERVER_PID"
 
@@ -408,7 +416,7 @@ run_services_directly() {
   # Display access information
   echo ""
   echo "Services started in background:"
-  echo "Game API Server: http://localhost:5000 (logs: /tmp/gameserver.log)"
+  echo "Game API Server: http://localhost:8080 (logs: /tmp/gameserver.log)"
   echo "Player Client: http://localhost:3000 (logs: /tmp/player-client.log)"
   echo "Admin UI: http://localhost:3001 (logs: /tmp/admin-ui.log)"
   echo ""

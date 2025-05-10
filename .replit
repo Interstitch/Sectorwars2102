@@ -27,7 +27,7 @@ PYTHONUNBUFFERED = "1"
 PATH = "${PATH}:${HOME}/.local/bin"
 PIP_DISABLE_PIP_VERSION_CHECK = "1"
 PYTHONPATH = "./services/gameserver:${PYTHONPATH}"
-PORT = "5000"
+PORT = "8080"
 
 # Nix configuration for dependencies (using simplified version)
 [nix]
@@ -53,7 +53,7 @@ description = "The main player interface"
 protocol = "http"
 
 [[ports]]
-localPort = 5000 
+localPort = 8080
 name = "Game API Server"
 description = "Backend API server"
 protocol = "http"
@@ -72,9 +72,12 @@ update-npm = "npm install -g npm@9.9.0 --prefix=$HOME/.local"
 install-pm2 = "npm install pm2 --prefix=$HOME/.local && ln -sf $HOME/.local/node_modules/.bin/pm2 $HOME/.local/bin/pm2"
 upgrade-node = "source ./nvm/nvm.sh && nvm install 18 && nvm use 18 && nvm alias default 18"
 python-setup = "pip3 install --user uvicorn==0.23.2 fastapi==0.103.1 pydantic==1.10.8 starlette==0.27.0 sqlalchemy==2.0.20 python-multipart==0.0.6 python-jose[cryptography]==3.3.0"
-direct-start = "bash -c 'cd ./services/gameserver && python3 -m uvicorn src.main:app --host 0.0.0.0 --port 5000'"
+direct-start = "bash -c 'cd ./services/gameserver && python3 -m uvicorn src.main:app --host 0.0.0.0 --port 8080'"
 test-api = "python3 services/gameserver/test_server.py"
-simple-api = "bash -c 'cd services/gameserver && python3 -c \"import socket; s=socket.socket(); s.bind((\\\"0.0.0.0\\\", 5000)); print(\\\"Listening on port 5000\\\"); s.listen(); conn, addr = s.accept(); print(f\\\"Connection from {addr}\\\"); conn.send(b\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Length: 13\\\\r\\\\n\\\\r\\\\nHello, World!\\\"); conn.close(); s.close()\"'"
+simple-api = "bash -c 'cd services/gameserver && python3 -c \"import socket; s=socket.socket(); s.bind((\\\"0.0.0.0\\\", 8080)); print(\\\"Listening on port 8080\\\"); s.listen(); conn, addr = s.accept(); print(f\\\"Connection from {addr}\\\"); conn.send(b\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Length: 13\\\\r\\\\n\\\\r\\\\nHello, World!\\\"); conn.close(); s.close()\"'"
+test-port = "python3 services/gameserver/port_tester.py"
+test-all-ports = "python3 services/gameserver/port_tester.py testall"
+serve-test = "python3 services/gameserver/port_tester.py serve 8080"
 install-uvicorn = "pip3 install --user uvicorn"
 verify-python = "python3 services/gameserver/verify_imports.py"
 simple-server = "python3 services/gameserver/simple_server.py"
