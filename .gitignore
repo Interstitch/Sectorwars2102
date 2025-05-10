@@ -26,8 +26,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 */package-lock.json
-../admin-ui/package-lock.json
-../player-client/package-lock.json
+services/admin-ui/package-lock.json
+services/player-client/package-lock.json
+.replit_setup_done
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

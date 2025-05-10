@@ -3,6 +3,19 @@
 # Unified Replit startup script for Sector Wars 2102
 # Runs services with PM2 process management, with an option to disable host checking
 
+# Source environment settings if available
+if [ -d "$(dirname "$0")/../.env.d" ]; then
+  for script in "$(dirname "$0")/../.env.d"/*.sh; do
+    if [ -f "$script" ]; then
+      source "$script"
+      echo "Loaded environment settings from $script"
+    fi
+  done
+fi
+
+# Ensure local bin is in PATH, even if env scripts were not loaded
+export PATH="$HOME/.local/bin:$PATH"
+
 # Parse command-line options
 NO_HOST_CHECK=false
 while [[ $# -gt 0 ]]; do

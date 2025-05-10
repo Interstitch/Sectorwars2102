@@ -1,4 +1,4 @@
-run = "bash ./dev-scripts/start-unified.sh"
+run = "bash -c 'if [ -d \".env.d\" ]; then for script in .env.d/*.sh; do if [ -f \"$script\" ]; then source \"$script\"; fi; done; fi; export PATH=\"$HOME/.local/bin:$PATH\"; ./dev-scripts/start-unified.sh'"
 entrypoint = "dev-scripts/start-unified.sh"
 
 # Language configurations
@@ -85,3 +85,5 @@ simple-server = "python3 services/gameserver/simple_server.py"
 fix-pythonpath = "bash -c 'PYTHON_USER_SITE=$(python3 -m site --user-site); mkdir -p $PYTHON_USER_SITE; echo \"/home/runner/Sectorwars2102/services/gameserver\" > \"$PYTHON_USER_SITE/sectorwars.pth\"; echo \"Created .pth file to fix Python module imports\"'"
 pm2-simple = "pm2 start pm2.replit.config.js --only simple-test-server"
 no-host-check = "bash ./dev-scripts/start-unified.sh --no-host-check"
+audit-fix = "cd ./services/player-client && npm audit fix && cd ../admin-ui && npm audit fix"
+security-check = "cd ./services/player-client && npm audit && cd ../admin-ui && npm audit"
