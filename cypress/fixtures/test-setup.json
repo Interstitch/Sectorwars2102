@@ -1,0 +1,24 @@
+
+{
+  "user": {
+    "username": "test_trader",
+    "email": "test@trader.com",
+    "password": "password123",
+    "credits": 1000,
+    "location": 1,
+    "ship_type": "Light Freighter",
+    "ship_name": "SS Test Trader"
+  },
+  "sector": {
+    "id": 1,
+    "name": "Test Sector",
+    "has_planet": true,
+    "port_data": {
+      "buy": { "Food": 100 },
+      "sell": { "Food": 80 },
+      "inventory": { "Food": 1000 },
+      "ships": {}
+    },
+    "links": [2, 3, 4]
+  }
+}

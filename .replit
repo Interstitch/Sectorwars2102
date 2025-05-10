@@ -1,0 +1,41 @@
+run =  ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
+entrypoint = "main.py"
+modules = ["python-3.11", "postgresql-16"]
+
+hidden = [".pythonlibs"]
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["sh", "-c", "gunicorn --bind 0.0.0.0:5000 'main:app'"]
+deploymentTarget = "cloudrun"
+
+[[ports]]
+localPort = 81
+externalPort = 3000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[workflows]
+runButton = "Run"
+
+[[workflows.workflow]]
+name = "Run"
+author = 42375789
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py --port=5000"
+
+[[workflows.workflow]]
+name = "Run Tests"
+author = 42375789
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python -m unittest discover tests"
