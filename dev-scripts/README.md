@@ -6,10 +6,9 @@ This directory contains scripts used to set up and run the Sector Wars 2102 appl
 
 | Script                | Local | Codespaces | Replit | Description |
 |-----------------------|:-----:|:----------:|:------:|-------------|
-| `start-unified.sh`    |   ✅  |     ✅     |   ✅   | Universal entry point script that detects the environment and starts the application accordingly with appropriate configuration. |
+| `start-unified.sh`    |   ✅  |     ✅     |   ✅   | Universal entry point script that detects the environment, configures settings, and starts the application accordingly. Also supports switching between development, production, and test environments. |
 | `setup.sh`            |   ✅  |     ✅     |   ✅   | Unified setup script that handles environment-specific configuration and dependency installation. |
 | `start-replit-unified.sh` | ❌ |     ❌     |   ✅   | Replit-specific startup script that supports both PM2 and direct process management with a host-check toggle option. |
-| `set-environment.sh`  |   ✅  |     ✅     |   ✅   | Script to switch between development, production, and test environments and update configuration accordingly. |
 
 Legend:
 - ✅ Fully supported and primary script for this environment
@@ -18,7 +17,7 @@ Legend:
 ## Execution Flow
 
 ```
-start-unified.sh [--no-host-check]
+start-unified.sh [--no-host-check] [--production-db] [development|production|test]
   ├── [First run] -> setup.sh (environment-specific configuration)
   ├── [Local/Codespaces] -> docker-compose up
   └── [Replit] -> start-replit-unified.sh [--no-host-check]
@@ -44,13 +43,16 @@ To switch between development, production, and test environments:
 
 ```bash
 # Switch to development environment (uses development database)
-./dev-scripts/set-environment.sh development
+./dev-scripts/start-unified.sh development
 
 # Switch to production environment (uses production database)
-./dev-scripts/set-environment.sh production
+./dev-scripts/start-unified.sh production
 
 # Switch to test environment (uses test database)
-./dev-scripts/set-environment.sh test
+./dev-scripts/start-unified.sh test
+
+# Combine with other options
+./dev-scripts/start-unified.sh production --production-db
 ```
 
 This will update the environment settings in the .env file and adjust security settings accordingly.
@@ -120,10 +122,3 @@ Replit-specific unified script that:
 - Runs setup if needed
 - Starts all services appropriately for the Replit environment
 
-### set-environment.sh
-Environment switching script that:
-- Changes the ENVIRONMENT setting in .env (development, production, test)
-- Updates DEBUG flag based on the environment
-- Configures security settings appropriate for the environment
-- Warns about JWT secrets in production
-- Updates secure cookie settings for production

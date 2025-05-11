@@ -19,6 +19,7 @@ export PATH="$HOME/.local/bin:$PATH"
 # Parse command-line options
 NO_HOST_CHECK=false
 USE_PRODUCTION_DB=false
+ENV_TYPE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -30,13 +31,61 @@ while [[ $# -gt 0 ]]; do
       USE_PRODUCTION_DB=true
       shift
       ;;
+    development|production|test)
+      ENV_TYPE="$1"
+      shift
+      ;;
     *)
       echo "Unknown option: $1"
-      echo "Usage: $0 [--no-host-check] [--production-db]"
+      echo "Usage: $0 [--no-host-check] [--production-db] [development|production|test]"
       exit 1
       ;;
   esac
 done
+
+# Handle environment type setting if specified
+if [ -n "$ENV_TYPE" ]; then
+  case "$ENV_TYPE" in
+    development)
+      export ENVIRONMENT="development"
+      export DEBUG="true"
+      export SECURE_COOKIES="false"
+      echo "Environment set to DEVELOPMENT"
+      ;;
+    production)
+      export ENVIRONMENT="production"
+      export DEBUG="false"
+      export SECURE_COOKIES="true"
+      echo "Environment set to PRODUCTION"
+      echo "WARNING: Make sure you have set a strong JWT_SECRET for production!"
+      ;;
+    test)
+      export ENVIRONMENT="test"
+      export DEBUG="true"
+      export SECURE_COOKIES="false"
+      echo "Environment set to TEST"
+      ;;
+  esac
+
+  # Update the .env file if it exists
+  if [ -f "$(dirname "$0")/../.env" ]; then
+    ENV_FILE="$(dirname "$0")/../.env"
+    # Create a new .env file with the updated environment
+    grep -v "^ENVIRONMENT=" "$ENV_FILE" > "$ENV_FILE.tmp" || true
+    echo "ENVIRONMENT=$ENVIRONMENT" >> "$ENV_FILE.tmp"
+
+    grep -v "^DEBUG=" "$ENV_FILE.tmp" > "$ENV_FILE.tmp2" || true
+    echo "DEBUG=$DEBUG" >> "$ENV_FILE.tmp2"
+
+    grep -v "^SECURE_COOKIES=" "$ENV_FILE.tmp2" > "$ENV_FILE.tmp" || true
+    echo "SECURE_COOKIES=$SECURE_COOKIES" >> "$ENV_FILE.tmp"
+
+    mv "$ENV_FILE.tmp" "$ENV_FILE"
+    rm -f "$ENV_FILE.tmp2"
+
+    echo "Updated .env file with $ENV_TYPE environment settings"
+  fi
+fi
 
 # Function to detect environment
 detect_environment() {
@@ -113,8 +162,37 @@ case "$DEV_ENVIRONMENT" in
     echo "Starting services in GitHub Codespaces environment..."
     export NODE_ENV=development
 
-    # Set up Codespaces environment variables
-    source "$(dirname "$0")/set-codespaces-env.sh"
+    # Setup Codespaces environment variables
+    if [ -n "$CODESPACE_NAME" ] || [ -n "$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" ]; then
+      echo "Setting up environment variables for GitHub Codespaces..."
+
+      # Get the Codespace name
+      if [ -n "$CODESPACE_NAME" ]; then
+        CODESPACE_HOSTNAME="$CODESPACE_NAME"
+      else
+        CODESPACE_HOSTNAME=$(echo $GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN | cut -d'.' -f1)
+      fi
+
+      # Set the environment variables
+      export DEV_ENVIRONMENT="codespaces"
+      # Include port numbers in the hostnames for Codespaces URLs
+      export API_BASE_URL="https://${CODESPACE_HOSTNAME}-8080.app.github.dev"
+      export FRONTEND_URL="https://${CODESPACE_HOSTNAME}-3000.app.github.dev"
+
+      echo "Environment variables set:"
+      echo "DEV_ENVIRONMENT=$DEV_ENVIRONMENT"
+      echo "API_BASE_URL=$API_BASE_URL"
+      echo "FRONTEND_URL=$FRONTEND_URL"
+
+      # Check for GitHub OAuth credentials
+      if [ -n "$CLIENT_ID_GITHUB" ] && [ -n "$CLIENT_SECRET_GITHUB" ]; then
+        echo "Using real GitHub OAuth credentials"
+      else
+        echo "WARNING: GitHub OAuth credentials not found!"
+        echo "Using mock credentials instead. Set CLIENT_ID_GITHUB and CLIENT_SECRET_GITHUB"
+        echo "in your Codespaces secrets to use real GitHub OAuth."
+      fi
+    fi
 
     # Make sure Docker is available
     if [ -z "$DOCKER_COMPOSE_CMD" ]; then
@@ -123,7 +201,32 @@ case "$DEV_ENVIRONMENT" in
       exit 1
     fi
 
-    # Start services with standard configuration
+    # For Codespaces, we need to ensure the environment variables are set correctly
+    # Update the main .env file
+
+    # Create .env file if it doesn't exist
+    if [ ! -f "$REPO_ROOT/.env" ]; then
+      touch "$REPO_ROOT/.env"
+    fi
+
+    # Update environment variables in the .env file
+    echo "# Sector Wars 2102 environment configuration" > "$REPO_ROOT/.env"
+    echo "DEV_ENVIRONMENT=codespaces" >> "$REPO_ROOT/.env"
+    echo "API_BASE_URL=$API_BASE_URL" >> "$REPO_ROOT/.env"
+    echo "FRONTEND_URL=$FRONTEND_URL" >> "$REPO_ROOT/.env"
+    echo "CODESPACE_NAME=$CODESPACE_NAME" >> "$REPO_ROOT/.env"
+    echo "ENVIRONMENT=${ENVIRONMENT:-development}" >> "$REPO_ROOT/.env"
+    echo "DEBUG=${DEBUG:-true}" >> "$REPO_ROOT/.env"
+
+    # Add GitHub OAuth credentials if available
+    if [ -n "$CLIENT_ID_GITHUB" ] && [ -n "$CLIENT_SECRET_GITHUB" ]; then
+      echo "CLIENT_ID_GITHUB=$CLIENT_ID_GITHUB" >> "$REPO_ROOT/.env"
+      echo "CLIENT_SECRET_GITHUB=$CLIENT_SECRET_GITHUB" >> "$REPO_ROOT/.env"
+    fi
+
+    echo "✅ Updated .env file with Codespaces configuration"
+
+    # Start services with the updated environment
     $DOCKER_COMPOSE_CMD up
     ;;
 
