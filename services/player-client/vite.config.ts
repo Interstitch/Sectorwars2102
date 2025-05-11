@@ -36,6 +36,30 @@ export default defineConfig({
     // Don't check origin at all
     origin: '*',
 
+    // Add proxy for API server to bypass CORS issues in GitHub Codespaces
+    proxy: {
+      '/api': {
+        target: process.env.API_URL ||
+                (process.env.REPL_ID ? 'http://localhost:8080' : 'http://gameserver:8080'),
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        // Special handling for GitHub Codespaces - preserve the original host header
+        configure: (proxy, options) => {
+          // For GitHub Codespaces, we need to handle the 443 port correctly
+          if (process.env.CODESPACE_NAME || process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN) {
+            console.log('Configuring proxy for GitHub Codespaces');
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              // Preserve the original host from the request
+              if (req.headers.host) {
+                proxyReq.setHeader('host', req.headers.host);
+              }
+            });
+          }
+        }
+      }
+    },
+
     watch: {
       usePolling: true,
     },

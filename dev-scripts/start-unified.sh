@@ -18,15 +18,21 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # Parse command-line options
 NO_HOST_CHECK=false
+USE_PRODUCTION_DB=false
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-host-check)
       NO_HOST_CHECK=true
       shift
       ;;
+    --production-db)
+      USE_PRODUCTION_DB=true
+      shift
+      ;;
     *)
       echo "Unknown option: $1"
-      echo "Usage: $0 [--no-host-check]"
+      echo "Usage: $0 [--no-host-check] [--production-db]"
       exit 1
       ;;
   esac
@@ -69,59 +75,73 @@ else
     DOCKER_COMPOSE_CMD=""
 fi
 
+# Set database environment variable if using production database
+if [ "$USE_PRODUCTION_DB" = true ]; then
+  echo "USING PRODUCTION DATABASE"
+  export ENVIRONMENT=production
+  echo "🚨 IMPORTANT: Running with PRODUCTION database 🚨"
+else
+  export ENVIRONMENT=development
+  echo "Using development database"
+fi
+
 # Set environment variables based on detected environment
 case "$DEV_ENVIRONMENT" in
   "replit")
     echo "Starting services in Replit environment..."
-    export ENVIRONMENT=replit
     export NODE_ENV=development
-    
+
     # Check if Docker is available in Replit environment
     if [ -n "$DOCKER_COMPOSE_CMD" ] && command -v docker &> /dev/null; then
       echo "Docker available in Replit. Using Docker Compose..."
       $DOCKER_COMPOSE_CMD -f docker-compose.yml up
     else
-      # Pass the --no-host-check flag if it was provided
+      # Pass the flags if they were provided
+      FLAGS=""
       if [ "$NO_HOST_CHECK" = true ]; then
-        bash "$REPO_ROOT/dev-scripts/start-replit-unified.sh" --no-host-check
-      else
-        bash "$REPO_ROOT/dev-scripts/start-replit-unified.sh"
+        FLAGS="$FLAGS --no-host-check"
       fi
+      if [ "$USE_PRODUCTION_DB" = true ]; then
+        FLAGS="$FLAGS --production-db"
+      fi
+
+      bash "$REPO_ROOT/dev-scripts/start-replit-unified.sh" $FLAGS
     fi
     ;;
-    
+
   "codespaces")
     echo "Starting services in GitHub Codespaces environment..."
-    export ENVIRONMENT=development
     export NODE_ENV=development
-    
+
+    # Set up Codespaces environment variables
+    source "$(dirname "$0")/set-codespaces-env.sh"
+
     # Make sure Docker is available
     if [ -z "$DOCKER_COMPOSE_CMD" ]; then
       echo "ERROR: Docker Compose is not available in Codespaces environment."
       echo "Please ensure Docker is properly installed and try again."
       exit 1
     fi
-    
+
     # Start services with standard configuration
     $DOCKER_COMPOSE_CMD up
     ;;
-    
+
   "local")
     echo "Starting services in local environment..."
-    export ENVIRONMENT=development
     export NODE_ENV=development
-    
+
     # Make sure Docker is available
     if [ -z "$DOCKER_COMPOSE_CMD" ]; then
       echo "ERROR: Docker Compose is not available in local environment."
       echo "Please ensure Docker is properly installed and try again."
       exit 1
     fi
-    
+
     # Start services with standard configuration
     $DOCKER_COMPOSE_CMD up
     ;;
-    
+
   *)
     echo "Unknown environment: $DEV_ENVIRONMENT"
     echo "Please set DEV_ENVIRONMENT to 'local', 'codespaces', or 'replit'"

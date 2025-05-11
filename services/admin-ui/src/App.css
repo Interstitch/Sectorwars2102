@@ -1,1 +1,101 @@
 /* App specific styles */
+
+:root {
+  /* Light mode variables */
+  --text-color: #333;
+  --title-color: #111;
+  --subtitle-color: #666;
+  --border-color: #eaeaea;
+  --content-bg: #f8f9fa;
+  
+  --sidebar-bg: #1a1d2b;
+  --sidebar-text: #f8f9fa;
+  --sidebar-title: white;
+  --sidebar-subtitle: rgba(255, 255, 255, 0.7);
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  
+  --card-bg: white;
+  --header-bg: #f8f9fa;
+  --surface-color: white;
+  --hover-bg: #f8f9fa;
+  
+  --primary-color: #4a6cf7;
+  --primary-hover: #3a5ce6;
+  --primary-border: #d0daff;
+  
+  --danger-color: #e53935;
+  --danger-border: #ffd0d0;
+  --danger-bg: #ffebee;
+  --danger-hover: #ffcdd2;
+  
+  --success-color: #43a047;
+  --success-border: #d0ffd6;
+  
+  --active-bg: #e8f5e9;
+  --active-color: #43a047;
+  
+  --admin-bg: #e3f2fd;
+  --admin-color: #1976d2;
+  
+  --inactive-bg: #eeeeee;
+  --inactive-color: #757575;
+  
+  --error-bg: #ffebee;
+  --error-text: #d32f2f;
+  
+  --muted-color: #888;
+  --label-color: #555;
+  
+  --input-border: #ddd;
+  
+  --toggle-bg: #4a6cf7;
+  --slider-off: #ccc;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-color: #e4e6eb;
+    --title-color: #e4e6eb;
+    --subtitle-color: #b0b3b8;
+    --border-color: #3e4042;
+    --content-bg: #18191a;
+    
+    --card-bg: #242526;
+    --header-bg: #18191a;
+    --surface-color: #242526;
+    --hover-bg: #323436;
+    
+    --primary-color: #4a6cf7;
+    --primary-hover: #3a5ce6;
+    --primary-border: #2a3a8c;
+    
+    --danger-color: #f44336;
+    --danger-border: #8c2a2a;
+    --danger-bg: #4a1e1e;
+    --danger-hover: #5a2e2e;
+    
+    --success-color: #66bb6a;
+    --success-border: #2a8c35;
+    
+    --active-bg: #1b3a1e;
+    --active-color: #66bb6a;
+    
+    --admin-bg: #193549;
+    --admin-color: #64b5f6;
+    
+    --inactive-bg: #333333;
+    --inactive-color: #aaaaaa;
+    
+    --error-bg: #621e1e;
+    --error-text: #f44336;
+    
+    --muted-color: #aaa;
+    --label-color: #bbb;
+    
+    --input-border: #3e4042;
+    
+    --toggle-bg: #4a6cf7;
+    --slider-off: #3a3b3c;
+  }
+}

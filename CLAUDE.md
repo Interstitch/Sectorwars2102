@@ -138,21 +138,6 @@ The project is split into three main services:
 5. **Documentation**: Update AISPEC files when creating or modifying features
 6. **Development Journal**: Document changes regularly in the DEV_JOURNAL/ folder (@DEV_JOURNAL/README.md)
 
-## Common Issues & Solutions
-
-1. **Database Connection**: If you encounter database connection issues, verify:
-   - `.env` file contains correct Neon PostgreSQL URL
-   - Network access to Neon is available
-   - Database migrations have been applied
-
-2. **Docker Compatibility**: If Docker has issues on Replit:
-   - Use the Replit-specific compose file: `docker-compose -f docker-compose.yml -f docker-compose.replit.yml up`
-   - Verify Replit container permissions are set correctly
-
-3. **Testing Environment**: For isolated testing:
-   - Use the test database URL from `.env.test`
-   - Run tests in dedicated containers: `docker-compose -f docker-compose.test.yml up`
-
 ## Development Environment Memory
 
 - The Docker setup needs to remain compatible between Codespace + VS Code, Replit, and local Cursor IDE + Docker Desktop.

@@ -95,6 +95,27 @@ Our main start script automatically detects your environment and configures ever
 ./dev-scripts/start-unified.sh
 ```
 
+### Switching Between Development and Production
+
+You can easily switch between development and production databases by using the `--production-db` flag:
+
+```bash
+# Start with development database (default)
+./dev-scripts/start-unified.sh
+
+# Start with production database
+./dev-scripts/start-unified.sh --production-db
+```
+
+The flag can be combined with other options:
+
+```bash
+# Start with production database and no host check (Replit)
+./dev-scripts/start-unified.sh --production-db --no-host-check
+```
+
+This approach keeps your environment configuration simple while providing control over which database to use.
+
 ### Accessing Services
 
 - **Game API Server**: http://localhost:8080

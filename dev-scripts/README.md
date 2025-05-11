@@ -9,6 +9,7 @@ This directory contains scripts used to set up and run the Sector Wars 2102 appl
 | `start-unified.sh`    |   ✅  |     ✅     |   ✅   | Universal entry point script that detects the environment and starts the application accordingly with appropriate configuration. |
 | `setup.sh`            |   ✅  |     ✅     |   ✅   | Unified setup script that handles environment-specific configuration and dependency installation. |
 | `start-replit-unified.sh` | ❌ |     ❌     |   ✅   | Replit-specific startup script that supports both PM2 and direct process management with a host-check toggle option. |
+| `set-environment.sh`  |   ✅  |     ✅     |   ✅   | Script to switch between development, production, and test environments and update configuration accordingly. |
 
 Legend:
 - ✅ Fully supported and primary script for this environment
@@ -36,6 +37,23 @@ To start the application in any environment:
 ```
 
 The script will automatically detect your environment and use the appropriate startup method.
+
+### Switching Environments
+
+To switch between development, production, and test environments:
+
+```bash
+# Switch to development environment (uses development database)
+./dev-scripts/set-environment.sh development
+
+# Switch to production environment (uses production database)
+./dev-scripts/set-environment.sh production
+
+# Switch to test environment (uses test database)
+./dev-scripts/set-environment.sh test
+```
+
+This will update the environment settings in the .env file and adjust security settings accordingly.
 
 ### Replit with Host-Check Disabled
 
@@ -101,3 +119,11 @@ Replit-specific unified script that:
 - Tests port availability
 - Runs setup if needed
 - Starts all services appropriately for the Replit environment
+
+### set-environment.sh
+Environment switching script that:
+- Changes the ENVIRONMENT setting in .env (development, production, test)
+- Updates DEBUG flag based on the environment
+- Configures security settings appropriate for the environment
+- Warns about JWT secrets in production
+- Updates secure cookie settings for production

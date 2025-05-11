@@ -2,7 +2,8 @@ services:
   gameserver:
     build: ./services/gameserver
     ports:
-      - "8080:8080"
+      - "8000:8080"  # Access on host via port 8000, container still uses 8080
+      - "8080:8080"  # Also allow direct port 8080 access for Replit compatibility
     volumes:
       - ./services/gameserver:/app
     environment:
@@ -10,6 +11,12 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-development}
       - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
       - DEBUG=${DEBUG:-true}
+      - CLIENT_ID_GITHUB=${CLIENT_ID_GITHUB:-mock_github_client_id}
+      - CLIENT_SECRET_GITHUB=${CLIENT_SECRET_GITHUB:-mock_github_client_secret}
+      - API_BASE_URL=${API_BASE_URL:-http://localhost:8080}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - DEV_ENVIRONMENT=${DEV_ENVIRONMENT:-local}
+      - CODESPACE_NAME=${CODESPACE_NAME:-}
     restart: unless-stopped
     networks:
       - sectorwars-network
@@ -39,6 +46,7 @@ services:
       - /app/node_modules
     environment:
       - API_URL=http://gameserver:8080
+      - PORT=3001
       - NODE_ENV=${NODE_ENV:-development}
     restart: unless-stopped
     depends_on:

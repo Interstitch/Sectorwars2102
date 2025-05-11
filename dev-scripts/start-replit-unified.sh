@@ -18,22 +18,35 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # Parse command-line options
 NO_HOST_CHECK=false
+USE_PRODUCTION_DB=false
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-host-check)
       NO_HOST_CHECK=true
       shift
       ;;
+    --production-db)
+      USE_PRODUCTION_DB=true
+      shift
+      ;;
     *)
       echo "Unknown option: $1"
-      echo "Usage: $0 [--no-host-check]"
+      echo "Usage: $0 [--no-host-check] [--production-db]"
       exit 1
       ;;
   esac
 done
 
 # Environment setup
-export ENVIRONMENT=replit
+if [ "$USE_PRODUCTION_DB" = true ]; then
+  export ENVIRONMENT=production
+  echo "🚨 IMPORTANT: Running with PRODUCTION database 🚨"
+else
+  export ENVIRONMENT=development
+  echo "Using development database"
+fi
+
 export NODE_ENV=development
 export PYTHONUNBUFFERED=1
 export PYTHONPATH="./services/gameserver:$PYTHONPATH"

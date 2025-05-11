@@ -1,0 +1,11 @@
+/* Main CSS Import File */
+
+/* First import the base app styles */
+@import './App.css';
+
+/* Then import all component styles */
+@import './components/ui/ui.css';
+@import './components/layouts/layouts.css';
+@import './components/auth/auth.css';
+@import './components/users/users.css';
+@import './components/pages/pages.css';
