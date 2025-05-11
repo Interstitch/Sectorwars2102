@@ -2,7 +2,6 @@ services:
   gameserver:
     build: ./services/gameserver
     ports:
-      - "8000:8080"  # Access on host via port 8000, container still uses 8080
       - "8080:8080"  # Also allow direct port 8080 access for Replit compatibility
     volumes:
       - ./services/gameserver:/app

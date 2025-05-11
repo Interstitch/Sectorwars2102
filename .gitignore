@@ -3,8 +3,15 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# nvm
+nvm/
+
+.claude/settings.local.json
+
 # C extensions
 *.so
+
+
 
 # Distribution / packaging
 .Python
@@ -113,6 +120,7 @@ ipython_config.py
 #   https://pdm.fming.dev/#use-with-ide
 .pdm.toml
 
+
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 __pypackages__/
 
@@ -122,6 +130,7 @@ celerybeat.pid
 
 # SageMath parsed files
 *.sage.py
+
 
 # Environments
 .env
@@ -162,7 +171,5 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
-**/.claude/settings.local.json
 
-# nvm
-nvm/
+
