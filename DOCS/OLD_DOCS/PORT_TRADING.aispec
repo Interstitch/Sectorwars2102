@@ -1,0 +1,880 @@
+# Port Trading System Implementation Guide
+
+This document outlines the technical implementation details for the port trading system in Trade Wars 2002.
+
+## Overview
+
+The port trading system is a core economic mechanic that allows players to buy and sell commodities at space ports located throughout the universe. Trading is the primary method for earning credits and represents the foundation of the game's economy. This system is implemented using TypeScript, MongoDB, and follows our API-first architecture.
+
+## Port Data Model
+
+### MongoDB Schema
+
+Ports are stored in the MongoDB database with the following schema:
+
+```typescript
+// Port Model (GameServer/src/models/Port.ts)
+interface IPort {
+  id: string;
+  name: string;
+  class: number;  // 0-5, determines trading pattern
+  commodities: number[];  // Current quantities [ore, organics, equipment]
+  production: number[];  // Daily production rates [ore, organics, equipment]
+  priceVariance: number[];  // Price modifiers [ore, organics, equipment]
+  lastUpdate: Date;  // For time-based production calculation
+  occupiedBy: string | null;  // Player ID, if port is in use
+  sector: number;  // Location in universe
+}
+
+const PortSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  class: { type: Number, required: true, min: 0, max: 5 },
+  commodities: {
+    type: [Number],
+    required: true,
+    validate: [
+      (arr: number[]) => arr.length === 3,
+      'Commodities array must have exactly 3 elements'
+    ]
+  },
+  production: {
+    type: [Number],
+    required: true,
+    validate: [
+      (arr: number[]) => arr.length === 3,
+      'Production array must have exactly 3 elements'
+    ]
+  },
+  priceVariance: {
+    type: [Number],
+    required: true,
+    validate: [
+      (arr: number[]) => arr.length === 3,
+      'PriceVariance array must have exactly 3 elements'
+    ]
+  },
+  lastUpdate: { type: Date, default: Date.now },
+  occupiedBy: { type: String, default: null },
+  sector: { 
+    type: Number, 
+    required: true,
+    index: true  // Indexed for fast sector-based lookups
+  }
+});
+```
+
+### Type Definitions
+
+Shared type definitions for the port system:
+
+```typescript
+// Shared/src/types/port.ts
+export enum PortClass {
+  Special = 0,  // Sol
+  BuyOre = 1,   // Buys ore, sells organics/equipment
+  BuyOrganics = 2,  // Buys organics, sells ore/equipment
+  BuyEquipment = 3,  // Buys equipment, sells ore/organics
+  SellOnly = 4,  // Sells all commodities
+  BuyOnly = 5    // Buys all commodities
+}
+
+export interface Port {
+  id: string;
+  name: string;
+  class: PortClass;
+  commodities: number[];
+  production: number[];
+  priceVariance: number[];
+  lastUpdate: Date;
+  occupiedBy: string | null;
+  sector: number;
+}
+
+export interface PortTradeRequest {
+  portId: string;
+  commodityType: number;  // 0=Ore, 1=Organics, 2=Equipment
+  action: 'buy' | 'sell';
+  quantity: number;
+  offerPrice?: number;  // For haggling
+}
+
+export interface PortTradeResponse {
+  success: boolean;
+  newPlayerCredits?: number;
+  newPlayerCommodities?: number[];
+  newPortQuantities?: number[];
+  message?: string;
+}
+```
+
+### Port Attributes
+
+The key attributes of ports:
+- **id**: Unique identifier
+- **name**: Generated port name
+- **class**: Determines buying/selling patterns (0-5)
+- **commodities**: Current quantities of [ore, organics, equipment]
+- **production**: Daily production/consumption rates
+- **priceVariance**: Price modifiers (negative = buying, positive = selling)
+- **lastUpdate**: Timestamp for time-based production calculation
+- **occupiedBy**: Player ID if currently in use (prevents concurrent trading)
+- **sector**: Location in universe (indexed for performance)
+
+## Port Trading Implementation
+
+### Port Types and Trading Patterns
+
+Port classes determine trading patterns, implemented in the port service:
+
+```typescript
+// GameServer/src/services/portService.ts
+export function getPortTradingPattern(portClass: PortClass): {
+  buys: boolean[];  // [ore, organics, equipment]
+  sells: boolean[];  // [ore, organics, equipment]
+} {
+  switch (portClass) {
+    case PortClass.Special:  // Sol - Special case
+      return { 
+        buys: [false, false, false], 
+        sells: [false, false, false] 
+      };
+    case PortClass.BuyOre:   // Class 1
+      return { 
+        buys: [true, false, false], 
+        sells: [false, true, true] 
+      };
+    case PortClass.BuyOrganics:  // Class 2
+      return { 
+        buys: [false, true, false], 
+        sells: [true, false, true] 
+      };
+    case PortClass.BuyEquipment:  // Class 3
+      return { 
+        buys: [false, false, true], 
+        sells: [true, true, false] 
+      };
+    case PortClass.SellOnly:  // Class 4
+      return { 
+        buys: [false, false, false], 
+        sells: [true, true, true] 
+      };
+    case PortClass.BuyOnly:  // Class 5
+      return { 
+        buys: [true, true, true], 
+        sells: [false, false, false] 
+      };
+    default:
+      throw new Error(`Invalid port class: ${portClass}`);
+  }
+}
+```
+
+### Sol Port Special Implementation
+
+Sol (sector 1) uses a special trading system, implemented separately:
+
+```typescript
+// GameServer/src/controllers/portController.ts
+export async function handleSolTrade(
+  req: Request<any, any, SolTradeRequest>, 
+  res: Response
+) {
+  const { itemType, quantity } = req.body;
+  const playerId = req.user.id;
+  
+  // Get current Sol prices
+  const solPrices = calculateSolPrices();
+  
+  try {
+    // Get player data
+    const player = await Player.findById(playerId);
+    if (!player) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Player not found' 
+      });
+    }
+    
+    // Validate player has sufficient turns
+    if (player.turns < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Insufficient turns'
+      });
+    }
+    
+    // Process different item types
+    switch (itemType) {
+      case 'holds':
+        if (quantity <= 0 || player.holds + quantity > MAX_HOLDS) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot exceed maximum of ${MAX_HOLDS} holds`
+          });
+        }
+        
+        const holdsPrice = quantity * solPrices.holds;
+        if (player.credits < holdsPrice) {
+          return res.status(400).json({
+            success: false,
+            message: 'Insufficient credits'
+          });
+        }
+        
+        // Update player
+        player.holds += quantity;
+        player.credits -= holdsPrice;
+        player.turns -= 1;
+        await player.save();
+        break;
+        
+      case 'fighters':
+        // Similar implementation for fighters
+        break;
+        
+      case 'turns':
+        // Similar implementation for turns
+        break;
+        
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid item type'
+        });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      newCredits: player.credits,
+      newHolds: player.holds,
+      newFighters: player.fighters,
+      newTurns: player.turns
+    });
+  } catch (error) {
+    console.error('Sol trade error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+}
+
+// Calculate Sol prices using sinusoidal variation
+function calculateSolPrices() {
+  const today = Math.floor(Date.now() / 86400000);
+  return {
+    holds: Math.floor(50 * Math.sin(0.89756 * today) + 0.5) + 500,
+    fighters: Math.floor(10 * Math.sin(0.89714 * today + 1.5707) + 0.5) + 100,
+    turns: 300
+  };
+}
+```
+
+## Price Mechanics Implementation
+
+### Price Calculation Algorithm
+
+The price calculation is implemented in the port service:
+
+```typescript
+// GameServer/src/services/portService.ts
+export function calculateCommodityPrice(
+  port: Port,
+  commodityType: CommodityType,
+  action: 'buy' | 'sell'
+): number {
+  // Update port production since last check
+  const updatedPort = updatePortProduction(port);
+  
+  // Get base price from commodities constants
+  const basePrice = COMMODITIES[commodityType].basePrice;
+  
+  // Get price variance for this commodity at this port
+  const variance = updatedPort.priceVariance[commodityType];
+  
+  // Get current quantity
+  const quantity = updatedPort.commodities[commodityType];
+  
+  // Get production rate
+  const production = Math.abs(updatedPort.production[commodityType]);
+  
+  // Check if port buys/sells this commodity
+  const tradingPattern = getPortTradingPattern(updatedPort.class);
+  const canBuy = tradingPattern.buys[commodityType];
+  const canSell = tradingPattern.sells[commodityType];
+  
+  // Validate transaction is possible
+  if (action === 'buy' && !canSell) {
+    throw new Error(`Port does not sell ${COMMODITIES[commodityType].name}`);
+  }
+  
+  if (action === 'sell' && !canBuy) {
+    throw new Error(`Port does not buy ${COMMODITIES[commodityType].name}`);
+  }
+  
+  // Calculate price
+  // For buying from port: higher quantity = lower price
+  // For selling to port: higher quantity = lower offered price
+  const price = Math.floor(basePrice * (1 - variance * quantity / (production * 1000)) + 0.5);
+  
+  // Ensure minimum price
+  return Math.max(price, 1);
+}
+
+// Update port production based on time passed
+export function updatePortProduction(port: Port): Port {
+  const now = new Date();
+  const elapsedDays = (now.getTime() - port.lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
+  
+  // Cap at 10 days maximum
+  const daysToProcess = Math.min(elapsedDays, 10);
+  
+  if (daysToProcess > 0) {
+    const updatedPort = { ...port };
+    
+    // Update each commodity
+    for (let i = 0; i < updatedPort.commodities.length; i++) {
+      // Add production * days
+      updatedPort.commodities[i] += updatedPort.production[i] * daysToProcess;
+      
+      // Cap at 10 days of production
+      const maxStorage = Math.abs(updatedPort.production[i]) * 10;
+      updatedPort.commodities[i] = Math.min(updatedPort.commodities[i], maxStorage);
+      
+      // Ensure non-negative
+      updatedPort.commodities[i] = Math.max(updatedPort.commodities[i], 0);
+    }
+    
+    // Update timestamp
+    updatedPort.lastUpdate = now;
+    
+    // Save updated port
+    return updatedPort;
+  }
+  
+  // No update needed
+  return port;
+}
+```
+
+### Trading Volume Impact
+
+When a trade occurs, port inventory is updated which affects future prices:
+
+```typescript
+// GameServer/src/services/portService.ts
+export async function processTrade(
+  port: Port,
+  player: Player,
+  request: PortTradeRequest
+): Promise<PortTradeResponse> {
+  const { commodityType, action, quantity } = request;
+  
+  // Calculate current price
+  const price = calculateCommodityPrice(port, commodityType, action);
+  
+  // Calculate total transaction value
+  const totalValue = price * quantity;
+  
+  // Process buy (player buys from port)
+  if (action === 'buy') {
+    // Verify port has enough
+    if (port.commodities[commodityType] < quantity) {
+      return {
+        success: false,
+        message: `Port only has ${port.commodities[commodityType]} units available`
+      };
+    }
+    
+    // Verify player has enough credits
+    if (player.credits < totalValue) {
+      return {
+        success: false,
+        message: `Insufficient credits. Required: ${totalValue}, available: ${player.credits}`
+      };
+    }
+    
+    // Verify player has enough cargo space
+    const usedSpace = player.commodities.reduce((sum, c) => sum + c, 0);
+    const freeSpace = player.holds - usedSpace;
+    if (freeSpace < quantity) {
+      return {
+        success: false,
+        message: `Insufficient cargo space. Required: ${quantity}, available: ${freeSpace}`
+      };
+    }
+    
+    // Process transaction
+    port.commodities[commodityType] -= quantity;
+    player.commodities[commodityType] += quantity;
+    player.credits -= totalValue;
+    player.turns -= 1;
+    
+    // Save changes
+    await Port.findByIdAndUpdate(port.id, port);
+    await Player.findByIdAndUpdate(player.id, player);
+    
+    return {
+      success: true,
+      newPlayerCredits: player.credits,
+      newPlayerCommodities: player.commodities,
+      newPortQuantities: port.commodities
+    };
+  }
+  // Process sell (player sells to port)
+  else {
+    // Verify player has enough
+    if (player.commodities[commodityType] < quantity) {
+      return {
+        success: false,
+        message: `You only have ${player.commodities[commodityType]} units available`
+      };
+    }
+    
+    // Process transaction
+    port.commodities[commodityType] += quantity;
+    player.commodities[commodityType] -= quantity;
+    player.credits += totalValue;
+    player.turns -= 1;
+    
+    // Save changes
+    await Port.findByIdAndUpdate(port.id, port);
+    await Player.findByIdAndUpdate(player.id, player);
+    
+    return {
+      success: true,
+      newPlayerCredits: player.credits,
+      newPlayerCommodities: player.commodities,
+      newPortQuantities: port.commodities
+    };
+  }
+}
+
+## Trading Operations
+
+### Buy/Sell Operations
+
+Trading follows these rules:
+- Players can only trade at ports
+- Trading is limited by ship cargo capacity
+- Players must physically visit ports to trade
+- Prices are calculated at the time of transaction
+- Ports may have limited inventory
+
+### Haggling System Implementation
+
+The haggling system is implemented in the port service:
+
+```typescript
+// GameServer/src/services/portService.ts
+export async function processHaggling(
+  port: Port,
+  player: Player,
+  request: PortHagglingRequest
+): Promise<PortHagglingResponse> {
+  const { commodityType, action, quantity, offer } = request;
+  
+  // Calculate standard price
+  const standardPrice = calculateCommodityPrice(port, commodityType, action);
+  const standardTotal = standardPrice * quantity;
+  
+  // For buy: lower offer is better for player
+  // For sell: higher offer is better for player
+  const isBuyAction = action === 'buy';
+  
+  // Calculate worst price port will accept/offer
+  // Based on round number and variance
+  const haggleRound = request.round || 1;
+  const baseVariance = port.priceVariance[commodityType];
+  const roundModifier = 250 / (haggleRound + 1);
+  const worstAcceptableOffer = standardTotal * (1 + (isBuyAction ? -1 : 1) * baseVariance / roundModifier);
+  
+  // Check if offer is acceptable
+  const isAcceptable = isBuyAction ? 
+    (offer >= worstAcceptableOffer) : // when buying
+    (offer <= worstAcceptableOffer);  // when selling
+  
+  if (isAcceptable) {
+    // Process transaction with the haggled price
+    const tradeRequest: PortTradeRequest = {
+      portId: port.id,
+      commodityType,
+      action,
+      quantity,
+      offerPrice: offer
+    };
+    
+    return {
+      success: true,
+      accepted: true,
+      message: isBuyAction ? "Sold!" : "We'll take them!",
+      result: await processTrade(port, player, tradeRequest)
+    };
+  }
+  
+  // Check if offer is too far from acceptable range
+  const isOffensive = isBuyAction ?
+    (offer < standardTotal * 0.7) : // When buying, offer is too low
+    (offer > standardTotal * 1.3);  // When selling, offer is too high
+  
+  if (isOffensive || haggleRound >= 4) {
+    // Haggling failed - too far off or too many rounds
+    return {
+      success: true,
+      accepted: false,
+      message: isBuyAction ? 
+        "Too low. We'll sell them to local traders." :
+        "Too high. We'll buy them from local traders.",
+      standardPrice
+    };
+  }
+  
+  // Continue haggling - adjust price
+  const newPrice = standardPrice * 0.7 + 0.3 * (offer / quantity);
+  
+  return {
+    success: true,
+    accepted: false,
+    continueHaggling: true,
+    nextRound: haggleRound + 1,
+    counterOffer: newPrice * quantity,
+    message: haggleRound === 3 ? 
+      `Our final offer is ${Math.floor(newPrice * quantity)}` :
+      `We'll ${isBuyAction ? 'sell' : 'buy'} them for ${Math.floor(newPrice * quantity)}`,
+    standardPrice
+  };
+}
+```
+
+### API Endpoint for Haggling
+
+The haggling system is exposed through a dedicated API endpoint:
+
+```typescript
+// GameServer/src/controllers/portController.ts
+export async function handleHaggling(
+  req: Request<any, any, PortHagglingRequest>,
+  res: Response
+) {
+  const { portId, commodityType, action, quantity, offer, round } = req.body;
+  const playerId = req.user.id;
+  
+  try {
+    // Verify player is in correct sector
+    const player = await Player.findById(playerId);
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        message: 'Player not found'
+      });
+    }
+    
+    // Get port
+    const port = await Port.findById(portId);
+    if (!port) {
+      return res.status(404).json({
+        success: false,
+        message: 'Port not found'
+      });
+    }
+    
+    // Verify player is at the port's sector
+    if (player.sector !== port.sector) {
+      return res.status(400).json({
+        success: false,
+        message: 'You must be in the same sector as the port'
+      });
+    }
+    
+    // Process haggling
+    const result = await processHaggling(port, player, req.body);
+    return res.status(200).json(result);
+    
+  } catch (error) {
+    console.error('Haggling error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+}
+```
+
+### Client-Side Haggling Implementation
+
+The client-side implementation of haggling:
+
+```typescript
+// WebClient/src/services/portService.ts
+export async function haggle(
+  port: Port,
+  commodityType: CommodityType,
+  action: 'buy' | 'sell',
+  quantity: number,
+  offer: number,
+  round: number = 1
+): Promise<HagglingResult> {
+  try {
+    const response = await api.post('/api/port/haggle', {
+      portId: port.id,
+      commodityType,
+      action,
+      quantity,
+      offer,
+      round
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Haggling error:', error);
+    throw error;
+  }
+}
+```
+
+## API Implementation
+
+### Port Trading API Endpoints
+
+The port trading system exposes these REST API endpoints:
+
+```typescript
+// GameServer/src/routes/portRoutes.ts
+import express from 'express';
+import { auth } from '../middleware/auth';
+import { 
+  getPortInfo, 
+  handleTrade, 
+  handleHaggling, 
+  handleSolTrade 
+} from '../controllers/portController';
+
+const router = express.Router();
+
+// Get port information
+router.get('/:id', auth, getPortInfo);
+
+// Regular port trading
+router.post('/:id/trade', auth, handleTrade);
+
+// Haggling system
+router.post('/haggle', auth, handleHaggling);
+
+// Special Sol port trading
+router.post('/sol/trade', auth, handleSolTrade);
+
+export default router;
+```
+
+### Port Controller Implementation
+
+The controller implementation for port trading:
+
+```typescript
+// GameServer/src/controllers/portController.ts
+import { Request, Response } from 'express';
+import Port from '../models/Port';
+import Player from '../models/Player';
+import Sector from '../models/Sector';
+import { 
+  processTrade, 
+  processHaggling, 
+  calculateCommodityPrice, 
+  updatePortProduction 
+} from '../services/portService';
+
+// Get port information
+export async function getPortInfo(req: Request, res: Response) {
+  try {
+    const portId = req.params.id;
+    const port = await Port.findById(portId);
+    
+    if (!port) {
+      return res.status(404).json({
+        success: false,
+        message: 'Port not found'
+      });
+    }
+    
+    // Update production before sending port info
+    const updatedPort = updatePortProduction(port);
+    await Port.findByIdAndUpdate(portId, updatedPort);
+    
+    // Get current prices for all commodities
+    const prices = [0, 1, 2].map(commodityType => ({
+      buy: calculateCommodityPrice(updatedPort, commodityType, 'buy'),
+      sell: calculateCommodityPrice(updatedPort, commodityType, 'sell')
+    }));
+    
+    return res.status(200).json({
+      success: true,
+      port: updatedPort,
+      prices
+    });
+  } catch (error) {
+    console.error('Get port info error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+}
+
+// Handle trade request
+export async function handleTrade(req: Request, res: Response) {
+  try {
+    const portId = req.params.id;
+    const playerId = req.user.id;
+    const { commodityType, action, quantity } = req.body;
+    
+    // Get port
+    const port = await Port.findById(portId);
+    if (!port) {
+      return res.status(404).json({
+        success: false,
+        message: 'Port not found'
+      });
+    }
+    
+    // Get player
+    const player = await Player.findById(playerId);
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        message: 'Player not found'
+      });
+    }
+    
+    // Verify player is at the port
+    if (player.sector !== port.sector) {
+      return res.status(400).json({
+        success: false,
+        message: 'You must be in the same sector as the port'
+      });
+    }
+    
+    // Verify player has turns
+    if (player.turns < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'You do not have enough turns'
+      });
+    }
+    
+    // Process trade
+    const result = await processTrade(port, player, { 
+      portId, 
+      commodityType, 
+      action, 
+      quantity 
+    });
+    
+    return res.status(result.success ? 200 : 400).json(result);
+    
+  } catch (error) {
+    console.error('Trade error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+}
+```
+
+### Concurrency Handling
+
+To prevent race conditions during trading, we implement optimistic concurrency control:
+
+```typescript
+// GameServer/src/services/portService.ts
+export async function lockPortForTrading(portId: string, playerId: string): Promise<boolean> {
+  // Attempt to lock the port for this player
+  const result = await Port.findOneAndUpdate(
+    { _id: portId, occupiedBy: null }, // Only if not currently occupied
+    { occupiedBy: playerId },
+    { new: true }
+  );
+  
+  // Return success status
+  return !!result;
+}
+
+export async function releasePort(portId: string, playerId: string): Promise<void> {
+  // Release only if this player holds the lock
+  await Port.findOneAndUpdate(
+    { _id: portId, occupiedBy: playerId },
+    { occupiedBy: null }
+  );
+}
+
+// Use transaction middleware to ensure atomic operations
+export async function portTransaction(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const portId = req.params.id;
+  const playerId = req.user.id;
+  
+  try {
+    // Attempt to lock port
+    const locked = await lockPortForTrading(portId, playerId);
+    if (!locked) {
+      return res.status(409).json({
+        success: false,
+        message: 'Port is currently busy. Try again shortly.'
+      });
+    }
+    
+    // Add release function to response
+    res.on('finish', async () => {
+      await releasePort(portId, playerId);
+    });
+    
+    next();
+  } catch (error) {
+    console.error('Port transaction error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+}
+
+### User Interface
+
+The trading interface should provide:
+- Clear visualization of current prices
+- Ship cargo status
+- Available port inventory
+- Trading controls
+- Haggling interface
+- Transaction history
+
+## Mobile Considerations
+
+The trading system is optimized for mobile with:
+- Simplified trading UI
+- Quick buy/sell options
+- Efficient price updates
+- Minimal network traffic for transactions
+- Touch-friendly haggling controls
+
+## Economic Balance
+
+The port system maintains economic balance through:
+- Price elasticity (prices respond to player activity)
+- Geographic distribution of port types
+- Transport cost considerations (travel time)
+- Inventory limitations
+- Risk/reward balancing with dangerous sectors
+
+## Testing Guidelines
+
+When testing the port trading system:
+- Verify price calculations under various conditions
+- Test trading limits based on ship capacity
+- Ensure proper inventory management
+- Test concurrent trades by multiple players
+- Validate haggling mechanics
+- Verify economic stability over extended simulation 

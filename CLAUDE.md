@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Sector Wars 2102 is a web-based space trading simulation game built with a microservices architecture. Players navigate through different sectors, trade commodities, manage ships, and colonize planets.
+Sector Wars 2102 is a web-based space trading simulation game built with a microservices architecture. Players navigate through different sectors, trade commodities, manage ships, and colonize planets in a turn-based gameplay environment.
 
 ## Tech Stack
 
 - **Backend**: FastAPI (Python 3.11)
-- **Database**: PostgreSQL 16 via Neon (SQLAlchemy ORM)
+- **Database**: PostgreSQL 17 via Neon (SQLAlchemy ORM)
 - **Authentication**: JWT-based authentication
 - **Web Server**: Uvicorn with Gunicorn
 - **Frontend**: 
@@ -30,7 +30,7 @@ The project is designed to work across three development environments:
 2. **GitHub Codespaces**: Remote development with VS Code
 3. **Replit**: iPad-compatible development environment
 
-All environments use the same Neon PostgreSQL database and Docker containerization for consistency.
+All environments use the same Neon PostgreSQL database for consistency. Only Local and Codespace use Docker. Replit uses PM2 to run all components within a single Replit app.
 
 ## Development Commands
 
@@ -38,7 +38,7 @@ All environments use the same Neon PostgreSQL database and Docker containerizati
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/Sectorwars2102.git
+git clone https://github.com/Interstitch/Sectorwars2102.git
 cd Sectorwars2102
 
 # Set up environment variables (copy from example)
@@ -47,6 +47,12 @@ cp .env.example .env
 
 # Start all services (auto-detects environment)
 ./dev-scripts/start-unified.sh
+
+# For Replit with host-check issues
+./dev-scripts/start-unified.sh --no-host-check
+
+# Manual setup (if needed)
+./dev-scripts/setup.sh
 
 # Or manually with Docker Compose
 docker-compose up
@@ -57,35 +63,32 @@ docker-compose up
 ```bash
 # Game API Server
 cd services/gameserver
-poetry install  # Install dependencies locally (optional)
+poetry install  # Install dependencies locally
+poetry run uvicorn src.main:app --reload  # Run development server
 
 # Player Client
 cd services/player-client
-npm install     # Install dependencies locally (optional)
-npm run dev     # Run development server locally (optional)
+npm install
+npm run dev  # Run development server
+npm run dev:replit  # Run with host-check disabled for Replit
 
 # Admin UI
 cd services/admin-ui
-npm install     # Install dependencies locally (optional)
-npm run dev     # Run development server locally (optional)
+npm install
+npm run dev
 ```
 
 ### Testing
 
 ```bash
-# Run all backend tests
+# Run backend tests
 cd services/gameserver
-pytest
-
-# Run specific backend test module
-pytest tests/unit/test_trading.py
+poetry run pytest
+poetry run pytest -v  # Verbose mode
 
 # Run frontend E2E tests
 cd services/player-client
 npx cypress run
-
-# Run specific frontend test
-npx cypress run --spec "cypress/e2e/trading.cy.js"
 ```
 
 ### Linting & Type Checking
@@ -93,14 +96,19 @@ npx cypress run --spec "cypress/e2e/trading.cy.js"
 ```bash
 # Backend linting
 cd services/gameserver
-ruff check .
+poetry run ruff check .
 
 # Backend type checking
-mypy .
+cd services/gameserver
+poetry run mypy .
 
 # Frontend linting
 cd services/player-client
 npm run lint
+
+# Build frontend (includes type checking)
+cd services/player-client
+npm run build
 ```
 
 ## Service Architecture
@@ -123,10 +131,17 @@ The project is split into three main services:
    - Universe visualization with D3.js
    - Advanced management features
 
-## Documentation
+## Game Mechanics
+
+- **Ships**: Players start with a Light Freighter and can purchase larger ships
+- **Trading**: Buy and sell commodities (Food, Tech, Ore, Fuel) with price variations by sector
+- **Fighters**: Space fighters can be purchased for ship defense
+- **Colonization**: Transport population to colonize planets by meeting population and credit requirements
+
+## Documentation Structure
 
 - **AISPEC files** (`/DOCS/AISPEC/`): AI-centric documentation of system components
-- **Feature Documentation** (`/DOCS/FEATURE_DOCS/`): Specific feature details
+- **Feature Documentation** (`/DOCS/FEATURE_DOCS/`): Specific feature details and game rules
 - **Development Journal** (`/DEV_JOURNAL/`): Progress and decision tracking
 
 ## Important Development Guidelines
@@ -136,8 +151,3 @@ The project is split into three main services:
 3. **Environment Agnostic**: Code should run identically in all three environments
 4. **Testing First**: New features require test coverage before merging
 5. **Documentation**: Update AISPEC files when creating or modifying features
-6. **Development Journal**: Document changes regularly in the DEV_JOURNAL/ folder (@DEV_JOURNAL/README.md)
-
-## Development Environment Memory
-
-- The Docker setup needs to remain compatible between Codespace + VS Code, Replit, and local Cursor IDE + Docker Desktop.

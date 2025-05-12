@@ -1,0 +1,1583 @@
+# Combat System Implementation Guide
+
+This document outlines the implementation details for the combat system in Trade Wars 2002 Multi-Platform Edition.
+
+## System Overview
+
+The combat system enables player-versus-player and player-versus-environment conflict through fighter deployment, ship-to-ship combat, and sector defense. Combat represents a high-risk, high-reward activity that can result in significant gains or losses for players.
+
+## Data Models
+
+### MongoDB Schema
+
+```typescript
+// Fighter Deployment in Sector
+interface SectorFighters {
+  sectorId: number;
+  playerId: string;
+  count: number;
+  deploymentTimestamp: Date;
+  lastCombatTimestamp?: Date;
+}
+
+// Combat Event Record
+interface CombatEvent {
+  _id: ObjectId;
+  timestamp: Date;
+  location: {
+    sectorId: number;
+    sectorName?: string;
+  };
+  initiator: {
+    playerId: string;
+    playerName: string;
+    shipType: string;
+    fighterCount: number;
+    teamId?: string;
+  };
+  defender: {
+    playerId?: string;
+    playerName?: string;
+    shipType?: string; 
+    fighterCount: number;
+    isDeployedFighters: boolean;
+    teamId?: string;
+  };
+  rounds: CombatRound[];
+  outcome: {
+    winner: 'initiator' | 'defender' | 'draw';
+    initiatorLosses: number;
+    defenderLosses: number;
+    creditsLooted?: number;
+    commoditiesLooted?: Record<CommodityType, number>;
+    experienceGained?: number;
+  };
+  retreated: boolean;
+  retreatedBy?: 'initiator' | 'defender';
+}
+
+interface CombatRound {
+  roundNumber: number;
+  initiatorAttack: number;
+  defenderDefense: number;
+  initiatorDamage: number;
+  defenderDamage: number;
+  initiatorRemainingFighters: number;
+  defenderRemainingFighters: number;
+  specialEvents?: {
+    criticalHit?: boolean;
+    shieldFailure?: boolean;
+    retreatAttempt?: {
+      attempted: boolean;
+      successful: boolean;
+      by: 'initiator' | 'defender';
+    };
+  };
+}
+```
+
+### Shared Type Definitions
+
+```typescript
+// In /Shared/src/types/combat.ts
+export type CombatType = 'ship' | 'sector' | 'planetAttack' | 'planetDefense';
+
+export interface CombatInitiationRequest {
+  targetType: 'player' | 'sectorFighters' | 'planet';
+  targetId: string | number;
+  fighterId?: string; // Optional specific fighter type
+  useAutomatedRetreat?: boolean;
+  retreatThreshold?: number; // % of fighters remaining to trigger retreat
+}
+
+export interface CombatRoundResult {
+  roundNumber: number;
+  attackerDamage: number;
+  defenderDamage: number;
+  attackerFightersRemaining: number;
+  defenderFightersRemaining: number;
+  specialEvents: string[];
+  canRetreat: boolean;
+}
+
+export interface CombatActionRequest {
+  combatId: string;
+  action: 'attack' | 'retreatAttempt' | 'surrender';
+  tacticalOption?: 'aggressive' | 'balanced' | 'defensive';
+}
+
+export interface CombatSessionState {
+  combatId: string;
+  inProgress: boolean;
+  attacker: CombatParticipant;
+  defender: CombatParticipant;
+  currentRound: number;
+  retreatAvailableFor?: 'attacker' | 'defender' | 'both';
+  retreatChance: number;
+  tacticalAdvantage?: 'attacker' | 'defender';
+  rounds: CombatRoundResult[];
+}
+
+export interface CombatParticipant {
+  id: string;
+  name: string;
+  type: 'player' | 'sectorFighters' | 'planet';
+  fighterCount: number;
+  initialFighterCount: number;
+  shipType?: string;
+  defensiveBonus?: number;
+  offensiveBonus?: number;
+  retreating: boolean;
+}
+
+export interface FighterDeploymentRequest {
+  sectorId: number;
+  count: number;
+}
+
+export interface FighterRetrievalRequest {
+  sectorId: number;
+  count?: number; // Optional, if undefined retrieves all possible
+}
+```
+
+## API Endpoints
+
+### Fighter Management
+
+```typescript
+// Controller in /GameServer/src/controllers/fighterController.ts
+
+/**
+ * Deploy fighters in the current sector
+ * @route POST /api/v1/fighters/deploy
+ */
+export async function deployFighters(req: Request, res: Response): Promise<void> {
+  const { sectorId, count } = req.body as FighterDeploymentRequest;
+  const playerId = req.user.id;
+  
+  try {
+    const result = await fighterService.deployFighters(playerId, sectorId, count);
+    res.status(200).json(result);
+  } catch (error) {
+    handleApiError(res, error);
+  }
+}
+
+/**
+ * Retrieve fighters from a sector
+ * @route POST /api/v1/fighters/retrieve
+ */
+export async function retrieveFighters(req: Request, res: Response): Promise<void> {
+  const { sectorId, count } = req.body as FighterRetrievalRequest;
+  const playerId = req.user.id;
+  
+  try {
+    const result = await fighterService.retrieveFighters(playerId, sectorId, count);
+    res.status(200).json(result);
+  } catch (error) {
+    handleApiError(res, error);
+  }
+}
+
+/**
+ * Get fighter deployment info for the current sector
+ * @route GET /api/v1/fighters/sector/:sectorId
+ */
+export async function getSectorFighters(req: Request, res: Response): Promise<void> {
+  const sectorId = parseInt(req.params.sectorId);
+  const playerId = req.user.id;
+  
+  try {
+    const deployment = await fighterService.getSectorFighterInfo(sectorId, playerId);
+    res.status(200).json(deployment);
+  } catch (error) {
+    handleApiError(res, error);
+  }
+}
+```
+
+### Combat System
+
+```typescript
+// Controller in /GameServer/src/controllers/combatController.ts
+
+/**
+ * Initiate combat with another player or sector fighters
+ * @route POST /api/v1/combat/initiate
+ */
+export async function initiateCombat(req: Request, res: Response): Promise<void> {
+  const combatRequest = req.body as CombatInitiationRequest;
+  const playerId = req.user.id;
+  
+  try {
+    const combatSession = await combatService.initiateCombat(playerId, combatRequest);
+    
+    // Store combat session in Redis for real-time updates
+    await redisClient.setEx(
+      `combat:session:${combatSession.combatId}`,
+      3600, // 1 hour expiration
+      JSON.stringify(combatSession)
+    );
+    
+    res.status(200).json({
+      combatId: combatSession.combatId,
+      message: 'Combat initiated',
+      session: combatSession
+    });
+  } catch (error) {
+    handleApiError(res, error);
+  }
+}
+
+/**
+ * Perform combat action (attack, retreat attempt)
+ * @route POST /api/v1/combat/action
+ */
+export async function performCombatAction(req: Request, res: Response): Promise<void> {
+  const { combatId, action, tacticalOption } = req.body as CombatActionRequest;
+  const playerId = req.user.id;
+  
+  try {
+    const result = await combatService.processCombatAction(
+      combatId, 
+      playerId, 
+      action, 
+      tacticalOption
+    );
+    
+    res.status(200).json(result);
+  } catch (error) {
+    handleApiError(res, error);
+  }
+}
+
+/**
+ * Get combat session state
+ * @route GET /api/v1/combat/session/:combatId
+ */
+export async function getCombatSession(req: Request, res: Response): Promise<void> {
+  const { combatId } = req.params;
+  const playerId = req.user.id;
+  
+  try {
+    const sessionData = await redisClient.get(`combat:session:${combatId}`);
+    
+    if (!sessionData) {
+      res.status(404).json({ message: 'Combat session not found' });
+      return;
+    }
+    
+    const session = JSON.parse(sessionData) as CombatSessionState;
+    
+    // Verify player is part of this combat
+    if (session.attacker.id !== playerId && session.defender.id !== playerId) {
+      res.status(403).json({ message: 'Not authorized to view this combat session' });
+      return;
+    }
+    
+    res.status(200).json(session);
+  } catch (error) {
+    handleApiError(res, error);
+  }
+}
+
+/**
+ * Get a player's recent combat history
+ * @route GET /api/v1/combat/history
+ */
+export async function getCombatHistory(req: Request, res: Response): Promise<void> {
+  const playerId = req.user.id;
+  const limit = parseInt(req.query.limit as string) || 10;
+  
+  try {
+    const history = await combatService.getPlayerCombatHistory(playerId, limit);
+    res.status(200).json(history);
+  } catch (error) {
+    handleApiError(res, error);
+  }
+}
+```
+
+## Service Implementation
+
+### Fighter Service
+
+```typescript
+// In /GameServer/src/services/fighterService.ts
+
+/**
+ * Deploy fighters to a sector
+ */
+export async function deployFighters(
+  playerId: string,
+  sectorId: number,
+  count: number
+): Promise<{ success: boolean; deployed: number; remaining: number }> {
+  // Start a session for transaction
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
+    // Check if player has enough fighters
+    const player = await Player.findById(playerId).session(session);
+    if (!player) throw new Error('Player not found');
+    
+    if (player.fighters < count) {
+      throw new ApiError(400, 'Not enough fighters available to deploy');
+    }
+    
+    // Check if player is in the specified sector
+    if (player.currentSector !== sectorId) {
+      throw new ApiError(400, 'You must be in a sector to deploy fighters there');
+    }
+    
+    // Check if sector allows fighter deployment (not in sectors 1-7)
+    if (sectorId >= 1 && sectorId <= 7) {
+      throw new ApiError(400, 'Fighter deployment is not allowed in Stardock sectors');
+    }
+    
+    // Check if sector already has fighters deployed by another player
+    const existingDeployment = await SectorFighters.findOne({ sectorId }).session(session);
+    if (existingDeployment && existingDeployment.playerId !== playerId) {
+      throw new ApiError(
+        400, 
+        'Another player has fighters deployed in this sector'
+      );
+    }
+    
+    // Update or create fighter deployment
+    let deployment = existingDeployment;
+    if (!deployment) {
+      deployment = new SectorFighters({
+        sectorId,
+        playerId,
+        count: 0,
+        deploymentTimestamp: new Date()
+      });
+    }
+    
+    deployment.count += count;
+    await deployment.save({ session });
+    
+    // Remove fighters from player
+    player.fighters -= count;
+    await player.save({ session });
+    
+    // Commit transaction
+    await session.commitTransaction();
+    
+    return {
+      success: true,
+      deployed: count,
+      remaining: player.fighters
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+
+/**
+ * Retrieve fighters from a sector
+ */
+export async function retrieveFighters(
+  playerId: string,
+  sectorId: number,
+  count?: number
+): Promise<{ success: boolean; retrieved: number; remaining: number }> {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
+    // Check if player is in the specified sector
+    const player = await Player.findById(playerId).session(session);
+    if (!player) throw new Error('Player not found');
+    
+    if (player.currentSector !== sectorId) {
+      throw new ApiError(400, 'You must be in a sector to retrieve fighters');
+    }
+    
+    // Get fighter deployment
+    const deployment = await SectorFighters.findOne({ 
+      sectorId, 
+      playerId 
+    }).session(session);
+    
+    if (!deployment) {
+      throw new ApiError(404, 'No fighters deployed in this sector');
+    }
+    
+    // Calculate how many fighters to retrieve
+    const retrieveCount = count !== undefined ? 
+      Math.min(count, deployment.count) : 
+      deployment.count;
+    
+    // Check ship capacity
+    const shipType = await ShipType.findById(player.shipTypeId).session(session);
+    if (!shipType) throw new Error('Ship type not found');
+    
+    const maxFighters = shipType.maxFighters;
+    const availableCapacity = maxFighters - player.fighters;
+    
+    if (retrieveCount > availableCapacity) {
+      throw new ApiError(
+        400, 
+        `Your ship can only hold ${availableCapacity} more fighters`
+      );
+    }
+    
+    // Update fighter counts
+    deployment.count -= retrieveCount;
+    player.fighters += retrieveCount;
+    
+    // If all fighters retrieved, remove deployment
+    if (deployment.count === 0) {
+      await SectorFighters.deleteOne({ _id: deployment._id }).session(session);
+    } else {
+      await deployment.save({ session });
+    }
+    
+    await player.save({ session });
+    
+    // Commit transaction
+    await session.commitTransaction();
+    
+    return {
+      success: true,
+      retrieved: retrieveCount,
+      remaining: deployment.count
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+```
+
+### Combat Service
+
+```typescript
+// In /GameServer/src/services/combatService.ts
+
+/**
+ * Initialize a combat session between two entities
+ */
+export async function initiateCombat(
+  attackerId: string,
+  request: CombatInitiationRequest
+): Promise<CombatSessionState> {
+  // Validate attacker
+  const attacker = await Player.findById(attackerId);
+  if (!attacker) throw new Error('Attacker not found');
+  
+  // Validate attacker has fighters
+  if (attacker.fighters <= 0) {
+    throw new ApiError(400, 'You need fighters to initiate combat');
+  }
+  
+  // Create combat session based on target type
+  let defender: CombatParticipant;
+  
+  if (request.targetType === 'player') {
+    // Player vs Player combat
+    const targetPlayer = await Player.findById(request.targetId as string);
+    if (!targetPlayer) throw new ApiError(404, 'Target player not found');
+    
+    // Check if in same sector
+    if (attacker.currentSector !== targetPlayer.currentSector) {
+      throw new ApiError(400, 'Target player is not in your current sector');
+    }
+    
+    // Get defender ship info
+    const defenderShip = await ShipType.findById(targetPlayer.shipTypeId);
+    
+    defender = {
+      id: targetPlayer._id.toString(),
+      name: targetPlayer.name,
+      type: 'player',
+      fighterCount: targetPlayer.fighters,
+      initialFighterCount: targetPlayer.fighters,
+      shipType: defenderShip?.name || 'Unknown',
+      defensiveBonus: calculatePlayerDefensiveBonus(targetPlayer),
+      offensiveBonus: 0,
+      retreating: false
+    };
+  } else if (request.targetType === 'sectorFighters') {
+    // Player vs Sector Fighters
+    const sectorId = parseInt(request.targetId as string);
+    const sectorFighters = await SectorFighters.findOne({ sectorId });
+    
+    if (!sectorFighters) {
+      throw new ApiError(404, 'No fighters deployed in this sector');
+    }
+    
+    if (sectorFighters.playerId === attackerId) {
+      throw new ApiError(400, 'You cannot attack your own fighters');
+    }
+    
+    // Get defender info
+    const defenderPlayer = await Player.findById(sectorFighters.playerId);
+    
+    defender = {
+      id: `sector:${sectorId}`,
+      name: `${defenderPlayer?.name || 'Unknown'}'s Fighters`,
+      type: 'sectorFighters',
+      fighterCount: sectorFighters.count,
+      initialFighterCount: sectorFighters.count,
+      defensiveBonus: 0.05, // 5% defensive bonus for deployed fighters
+      offensiveBonus: 0,
+      retreating: false
+    };
+  } else {
+    // Planet attack not implemented in this version
+    throw new ApiError(400, 'Unsupported combat target type');
+  }
+  
+  // Get attacker ship info
+  const attackerShip = await ShipType.findById(attacker.shipTypeId);
+  
+  // Create combat session
+  const combatId = new mongoose.Types.ObjectId().toString();
+  const combatSession: CombatSessionState = {
+    combatId,
+    inProgress: true,
+    attacker: {
+      id: attacker._id.toString(),
+      name: attacker.name,
+      type: 'player',
+      fighterCount: attacker.fighters,
+      initialFighterCount: attacker.fighters,
+      shipType: attackerShip?.name || 'Unknown',
+      defensiveBonus: calculatePlayerDefensiveBonus(attacker),
+      offensiveBonus: calculatePlayerOffensiveBonus(attacker),
+      retreating: false
+    },
+    defender,
+    currentRound: 0,
+    retreatAvailableFor: 'both',
+    retreatChance: 0.25, // Base 25% chance of successful retreat
+    rounds: []
+  };
+  
+  // Record the combat start in the database
+  await createCombatEvent(combatSession);
+  
+  // Process first round automatically
+  return processCombatRound(combatSession);
+}
+
+/**
+ * Process a combat round
+ */
+export async function processCombatRound(
+  session: CombatSessionState
+): Promise<CombatSessionState> {
+  // Increment round counter
+  session.currentRound++;
+  
+  // Initialize round result
+  const roundResult: CombatRoundResult = {
+    roundNumber: session.currentRound,
+    attackerDamage: 0,
+    defenderDamage: 0,
+    attackerFightersRemaining: session.attacker.fighterCount,
+    defenderFightersRemaining: session.defender.fighterCount,
+    specialEvents: [],
+    canRetreat: session.currentRound > 1 // Can retreat after first round
+  };
+  
+  // Apply tactical modifiers
+  const attackerOffensiveModifier = 1 + (session.attacker.offensiveBonus || 0);
+  const attackerDefensiveModifier = 1 + (session.attacker.defensiveBonus || 0);
+  const defenderOffensiveModifier = 1 + (session.defender.offensiveBonus || 0);
+  const defenderDefensiveModifier = 1 + (session.defender.defensiveBonus || 0);
+  
+  // Calculate base damage based on fighter count
+  const attackerBaseDamage = Math.floor(session.attacker.fighterCount * 0.1);
+  const defenderBaseDamage = Math.floor(session.defender.fighterCount * 0.1);
+  
+  // Apply random variance (±20%)
+  const attackerVariance = 0.8 + Math.random() * 0.4; // 0.8 to 1.2
+  const defenderVariance = 0.8 + Math.random() * 0.4; // 0.8 to 1.2
+  
+  // Calculate final damage
+  const attackerDamage = Math.floor(
+    attackerBaseDamage * attackerOffensiveModifier * attackerVariance
+  );
+  
+  const defenderDamage = Math.floor(
+    defenderBaseDamage * defenderOffensiveModifier * defenderVariance
+  );
+  
+  // Check for critical hits (5% chance)
+  if (Math.random() < 0.05) {
+    roundResult.attackerDamage = Math.floor(attackerDamage * 1.5);
+    roundResult.specialEvents.push('Attacker landed a critical hit!');
+  } else {
+    roundResult.attackerDamage = attackerDamage;
+  }
+  
+  if (Math.random() < 0.05) {
+    roundResult.defenderDamage = Math.floor(defenderDamage * 1.5);
+    roundResult.specialEvents.push('Defender landed a critical hit!');
+  } else {
+    roundResult.defenderDamage = defenderDamage;
+  }
+  
+  // Apply damage mitigation from defensive bonuses
+  roundResult.defenderFightersRemaining = Math.max(
+    0,
+    session.defender.fighterCount - 
+    Math.floor(roundResult.attackerDamage / defenderDefensiveModifier)
+  );
+  
+  roundResult.attackerFightersRemaining = Math.max(
+    0,
+    session.attacker.fighterCount - 
+    Math.floor(roundResult.defenderDamage / attackerDefensiveModifier)
+  );
+  
+  // Update session state with results
+  session.defender.fighterCount = roundResult.defenderFightersRemaining;
+  session.attacker.fighterCount = roundResult.attackerFightersRemaining;
+  session.rounds.push(roundResult);
+  
+  // Check if combat should end
+  if (session.attacker.fighterCount === 0 || session.defender.fighterCount === 0) {
+    await concludeCombat(session);
+  }
+  
+  return session;
+}
+
+/**
+ * Process a combat action from a participant
+ */
+export async function processCombatAction(
+  combatId: string,
+  playerId: string,
+  action: 'attack' | 'retreatAttempt' | 'surrender',
+  tacticalOption?: 'aggressive' | 'balanced' | 'defensive'
+): Promise<CombatSessionState> {
+  // Retrieve combat session
+  const sessionData = await redisClient.get(`combat:session:${combatId}`);
+  if (!sessionData) {
+    throw new ApiError(404, 'Combat session not found');
+  }
+  
+  const session = JSON.parse(sessionData) as CombatSessionState;
+  
+  // Verify player is part of this combat
+  const isAttacker = session.attacker.id === playerId;
+  const isDefender = session.defender.id === playerId;
+  
+  if (!isAttacker && !isDefender) {
+    throw new ApiError(403, 'Not authorized to perform actions in this combat');
+  }
+  
+  // Check if combat is still in progress
+  if (!session.inProgress) {
+    throw new ApiError(400, 'This combat has already concluded');
+  }
+  
+  // Process action
+  if (action === 'attack') {
+    // Apply tactical modifiers if specified
+    if (tacticalOption) {
+      if (isAttacker) {
+        applyTacticalOption(session.attacker, tacticalOption);
+      } else {
+        applyTacticalOption(session.defender, tacticalOption);
+      }
+    }
+    
+    // Process combat round
+    return await processCombatRound(session);
+  } else if (action === 'retreatAttempt') {
+    // Process retreat attempt
+    const participant = isAttacker ? session.attacker : session.defender;
+    const canRetreat = session.retreatAvailableFor === 'both' || 
+                      (isAttacker && session.retreatAvailableFor === 'attacker') ||
+                      (isDefender && session.retreatAvailableFor === 'defender');
+    
+    if (!canRetreat) {
+      throw new ApiError(400, 'Retreat is not available at this time');
+    }
+    
+    // Calculate retreat success chance
+    let retreatChance = session.retreatChance;
+    
+    // Adjust based on remaining fighter ratio
+    const participantRatio = participant.fighterCount / participant.initialFighterCount;
+    if (participantRatio < 0.3) {
+      // Desperate situation increases retreat chance
+      retreatChance += 0.2;
+    }
+    
+    // Attempt retreat
+    const retreatSuccess = Math.random() < retreatChance;
+    
+    if (retreatSuccess) {
+      // Retreat succeeded
+      participant.retreating = true;
+      session.inProgress = false;
+      
+      // Record the retreat in the latest round
+      const currentRound = session.rounds[session.rounds.length - 1];
+      if (!currentRound.specialEvents) {
+        currentRound.specialEvents = [];
+      }
+      
+      currentRound.specialEvents.push(
+        `${participant.name} successfully retreated from combat`
+      );
+      
+      // Conclude combat
+      await concludeCombat(session, isAttacker ? 'defender' : 'attacker');
+    } else {
+      // Failed retreat attempt
+      const currentRound = session.rounds[session.rounds.length - 1];
+      if (!currentRound.specialEvents) {
+        currentRound.specialEvents = [];
+      }
+      
+      currentRound.specialEvents.push(
+        `${participant.name} failed to retreat`
+      );
+      
+      // Failed retreat gives opponent tactical advantage
+      if (isAttacker) {
+        session.tacticalAdvantage = 'defender';
+        session.defender.offensiveBonus = (session.defender.offensiveBonus || 0) + 0.1;
+      } else {
+        session.tacticalAdvantage = 'attacker';
+        session.attacker.offensiveBonus = (session.attacker.offensiveBonus || 0) + 0.1;
+      }
+      
+      // Process next round with advantage to opponent
+      return await processCombatRound(session);
+    }
+  } else if (action === 'surrender') {
+    // Immediate surrender
+    if (isAttacker) {
+      session.attacker.fighterCount = 0;
+    } else {
+      session.defender.fighterCount = 0;
+    }
+    
+    // Record surrender
+    const currentRound = session.rounds[session.rounds.length - 1] || {
+      roundNumber: session.currentRound,
+      attackerDamage: 0,
+      defenderDamage: 0,
+      attackerFightersRemaining: session.attacker.fighterCount,
+      defenderFightersRemaining: session.defender.fighterCount,
+      specialEvents: [],
+      canRetreat: false
+    };
+    
+    if (!currentRound.specialEvents) {
+      currentRound.specialEvents = [];
+    }
+    
+    currentRound.specialEvents.push(
+      `${isAttacker ? session.attacker.name : session.defender.name} surrendered`
+    );
+    
+    if (session.rounds.length === 0) {
+      session.rounds.push(currentRound);
+    }
+    
+    // Conclude combat
+    await concludeCombat(session, isAttacker ? 'defender' : 'attacker');
+  }
+  
+  return session;
+}
+
+/**
+ * Conclude a combat session and apply results
+ */
+export async function concludeCombat(
+  session: CombatSessionState,
+  forcedWinner?: 'attacker' | 'defender'
+): Promise<void> {
+  // Determine winner
+  let winner: 'attacker' | 'defender' | 'draw' = 'draw';
+  
+  if (forcedWinner) {
+    winner = forcedWinner;
+  } else if (session.attacker.fighterCount > 0 && session.defender.fighterCount === 0) {
+    winner = 'attacker';
+  } else if (session.defender.fighterCount > 0 && session.attacker.fighterCount === 0) {
+    winner = 'defender';
+  } else if (session.attacker.fighterCount === 0 && session.defender.fighterCount === 0) {
+    winner = 'draw';
+  }
+  
+  session.inProgress = false;
+  
+  // Start database transaction
+  const dbSession = await mongoose.startSession();
+  dbSession.startTransaction();
+  
+  try {
+    // Update database based on combat type
+    if (session.defender.type === 'player') {
+      // Player vs Player combat
+      const attackerId = session.attacker.id;
+      const defenderId = session.defender.id;
+      
+      const attackerPlayer = await Player.findById(attackerId).session(dbSession);
+      const defenderPlayer = await Player.findById(defenderId).session(dbSession);
+      
+      if (attackerPlayer && defenderPlayer) {
+        // Update fighter counts
+        attackerPlayer.fighters = session.attacker.fighterCount;
+        defenderPlayer.fighters = session.defender.fighterCount;
+        
+        // Apply additional consequences if one player is destroyed
+        if (winner === 'attacker' && defenderPlayer.fighters === 0) {
+          // Attacker won - apply rewards
+          const creditsLooted = Math.floor(defenderPlayer.credits * 0.10);
+          attackerPlayer.credits += creditsLooted;
+          defenderPlayer.credits -= creditsLooted;
+          
+          // Add experience
+          attackerPlayer.experience += 100;
+          
+          // Record loot
+          if (!session.rounds[session.rounds.length - 1].specialEvents) {
+            session.rounds[session.rounds.length - 1].specialEvents = [];
+          }
+          session.rounds[session.rounds.length - 1].specialEvents.push(
+            `${attackerPlayer.name} looted ${creditsLooted} credits`
+          );
+          
+          // Reset player to starting sector
+          defenderPlayer.currentSector = STARDOCK_SECTOR;
+        } else if (winner === 'defender' && attackerPlayer.fighters === 0) {
+          // Defender won - apply rewards
+          const creditsLooted = Math.floor(attackerPlayer.credits * 0.10);
+          defenderPlayer.credits += creditsLooted;
+          attackerPlayer.credits -= creditsLooted;
+          
+          // Add experience
+          defenderPlayer.experience += 100;
+          
+          // Record loot
+          if (!session.rounds[session.rounds.length - 1].specialEvents) {
+            session.rounds[session.rounds.length - 1].specialEvents = [];
+          }
+          session.rounds[session.rounds.length - 1].specialEvents.push(
+            `${defenderPlayer.name} looted ${creditsLooted} credits`
+          );
+          
+          // Reset player to starting sector
+          attackerPlayer.currentSector = STARDOCK_SECTOR;
+        }
+        
+        await attackerPlayer.save({ session: dbSession });
+        await defenderPlayer.save({ session: dbSession });
+      }
+    } else if (session.defender.type === 'sectorFighters') {
+      // Player vs Sector Fighters
+      const attackerId = session.attacker.id;
+      const sectorId = parseInt(session.defender.id.split(':')[1]);
+      
+      const attacker = await Player.findById(attackerId).session(dbSession);
+      
+      if (attacker) {
+        // Update attacker fighter count
+        attacker.fighters = session.attacker.fighterCount;
+        
+        if (winner === 'attacker') {
+          // Attacker won - remove sector fighters
+          await SectorFighters.deleteOne({ sectorId }).session(dbSession);
+          
+          // Add experience
+          attacker.experience += 50;
+          
+          // Record victory
+          if (!session.rounds[session.rounds.length - 1].specialEvents) {
+            session.rounds[session.rounds.length - 1].specialEvents = [];
+          }
+          session.rounds[session.rounds.length - 1].specialEvents.push(
+            `${attacker.name} destroyed all fighters in Sector ${sectorId}`
+          );
+        } else if (winner === 'defender') {
+          // Defender won - update sector fighter count
+          await SectorFighters.updateOne(
+            { sectorId },
+            { $set: { count: session.defender.fighterCount } }
+          ).session(dbSession);
+          
+          // Record defeat
+          if (!session.rounds[session.rounds.length - 1].specialEvents) {
+            session.rounds[session.rounds.length - 1].specialEvents = [];
+          }
+          session.rounds[session.rounds.length - 1].specialEvents.push(
+            `${attacker.name} was defeated by fighters in Sector ${sectorId}`
+          );
+          
+          // Reset player to starting sector if destroyed
+          if (attacker.fighters === 0) {
+            attacker.currentSector = STARDOCK_SECTOR;
+          }
+        }
+        
+        await attacker.save({ session: dbSession });
+      }
+    }
+    
+    // Update combat event record with outcome
+    const combatEvent = {
+      timestamp: new Date(),
+      location: {
+        sectorId: session.attacker.type === 'player' ? 
+          (await Player.findById(session.attacker.id))?.currentSector : 0
+      },
+      initiator: {
+        playerId: session.attacker.id,
+        playerName: session.attacker.name,
+        shipType: session.attacker.shipType || 'Unknown',
+        fighterCount: session.attacker.initialFighterCount,
+        teamId: (await Player.findById(session.attacker.id))?.teamId?.toString()
+      },
+      defender: {
+        playerId: session.defender.type === 'player' ? session.defender.id : undefined,
+        playerName: session.defender.name,
+        shipType: session.defender.shipType,
+        fighterCount: session.defender.initialFighterCount,
+        isDeployedFighters: session.defender.type === 'sectorFighters',
+        teamId: session.defender.type === 'player' ? 
+          (await Player.findById(session.defender.id))?.teamId?.toString() : undefined
+      },
+      rounds: session.rounds.map(r => ({
+        roundNumber: r.roundNumber,
+        initiatorAttack: r.attackerDamage,
+        defenderDefense: 0,
+        initiatorDamage: session.attacker.initialFighterCount - r.attackerFightersRemaining,
+        defenderDamage: session.defender.initialFighterCount - r.defenderFightersRemaining,
+        initiatorRemainingFighters: r.attackerFightersRemaining,
+        defenderRemainingFighters: r.defenderFightersRemaining,
+        specialEvents: r.specialEvents ? {
+          criticalHit: r.specialEvents.some(e => e.includes('critical hit')),
+          retreatAttempt: r.specialEvents.some(e => e.includes('retreat')) ? {
+            attempted: true,
+            successful: r.specialEvents.some(e => e.includes('successfully retreated')),
+            by: r.specialEvents.some(e => e.includes(session.attacker.name)) ? 
+              'initiator' : 'defender'
+          } : undefined
+        } : undefined
+      })),
+      outcome: {
+        winner,
+        initiatorLosses: session.attacker.initialFighterCount - session.attacker.fighterCount,
+        defenderLosses: session.defender.initialFighterCount - session.defender.fighterCount
+      },
+      retreated: session.attacker.retreating || session.defender.retreating,
+      retreatedBy: session.attacker.retreating ? 'initiator' : 
+                   session.defender.retreating ? 'defender' : undefined
+    };
+    
+    await CombatEvent.create([combatEvent], { session: dbSession });
+    
+    // Commit transaction
+    await dbSession.commitTransaction();
+    
+    // Update Redis combat session
+    await redisClient.setEx(
+      `combat:session:${session.combatId}`,
+      3600, // 1 hour expiration
+      JSON.stringify(session)
+    );
+    
+    // Emit WebSocket event to notify both players
+    io.to(`player:${session.attacker.id}`).emit('combatUpdate', {
+      combatId: session.combatId,
+      status: 'completed',
+      winner,
+      session
+    });
+    
+    if (session.defender.type === 'player') {
+      io.to(`player:${session.defender.id}`).emit('combatUpdate', {
+        combatId: session.combatId,
+        status: 'completed',
+        winner,
+        session
+      });
+    }
+    
+    // Notify sector owner if sector fighters were defeated
+    if (session.defender.type === 'sectorFighters' && winner === 'attacker') {
+      const sectorId = parseInt(session.defender.id.split(':')[1]);
+      const sectorFighters = await SectorFighters.findOne({ sectorId });
+      
+      if (sectorFighters) {
+        io.to(`player:${sectorFighters.playerId}`).emit('sectorAlert', {
+          type: 'fightersDestroyed',
+          sectorId,
+          attackerName: session.attacker.name,
+          fightersLost: session.defender.initialFighterCount
+        });
+      }
+    }
+  } catch (error) {
+    await dbSession.abortTransaction();
+    throw error;
+  } finally {
+    dbSession.endSession();
+  }
+}
+
+// Helper functions
+function calculatePlayerDefensiveBonus(player: any): number {
+  let bonus = 0;
+  
+  // Add bonus from ship type
+  if (player.shipTypeId) {
+    // Ship-specific bonuses would be calculated here
+    // Example: bonus += 0.05 for Battleship
+  }
+  
+  // Add bonus from upgrades
+  if (player.upgrades?.includes('shieldBooster')) {
+    bonus += 0.10; // 10% defensive bonus
+  }
+  
+  // Add bonus from team benefits
+  if (player.teamId) {
+    // Team-specific bonuses would be calculated here
+  }
+  
+  return bonus;
+}
+
+function calculatePlayerOffensiveBonus(player: any): number {
+  let bonus = 0;
+  
+  // Add bonus from ship type
+  if (player.shipTypeId) {
+    // Ship-specific bonuses would be calculated here
+    // Example: bonus += 0.05 for Destroyer
+  }
+  
+  // Add bonus from upgrades
+  if (player.upgrades?.includes('targetingComputer')) {
+    bonus += 0.10; // 10% offensive bonus
+  }
+  
+  // Add bonus from team benefits
+  if (player.teamId) {
+    // Team-specific bonuses would be calculated here
+  }
+  
+  return bonus;
+}
+
+function applyTacticalOption(
+  participant: CombatParticipant, 
+  option: 'aggressive' | 'balanced' | 'defensive'
+): void {
+  // Reset modifiers
+  participant.offensiveBonus = participant.offensiveBonus || 0;
+  participant.defensiveBonus = participant.defensiveBonus || 0;
+  
+  // Apply tactical option modifier
+  switch (option) {
+    case 'aggressive':
+      participant.offensiveBonus += 0.15; // +15% attack
+      participant.defensiveBonus -= 0.10; // -10% defense
+      break;
+    case 'balanced':
+      // No change from base stats
+      break;
+    case 'defensive':
+      participant.offensiveBonus -= 0.10; // -10% attack
+      participant.defensiveBonus += 0.15; // +15% defense
+      break;
+  }
+}
+```
+
+## WebSocket Implementation
+
+```typescript
+// In /GameServer/src/websockets/combatHandler.ts
+
+export function registerCombatHandlers(io: Server, socket: Socket): void {
+  const playerId = socket.data.playerId;
+  
+  // Join player-specific room for direct messages
+  socket.join(`player:${playerId}`);
+  
+  // Handle combat action
+  socket.on('combatAction', async (data: {
+    combatId: string;
+    action: 'attack' | 'retreatAttempt' | 'surrender';
+    tacticalOption?: 'aggressive' | 'balanced' | 'defensive';
+  }) => {
+    try {
+      const { combatId, action, tacticalOption } = data;
+      
+      const result = await combatService.processCombatAction(
+        combatId,
+        playerId,
+        action,
+        tacticalOption
+      );
+      
+      // Emit action result to all participants
+      io.to(`player:${result.attacker.id}`).emit('combatUpdate', {
+        combatId,
+        action,
+        result
+      });
+      
+      if (result.defender.type === 'player') {
+        io.to(`player:${result.defender.id}`).emit('combatUpdate', {
+          combatId,
+          action,
+          result
+        });
+      }
+    } catch (error) {
+      socket.emit('error', {
+        context: 'combatAction',
+        message: error.message
+      });
+    }
+  });
+  
+  // Handle combat spectate request
+  socket.on('spectateCombat', async (data: { combatId: string }) => {
+    try {
+      const { combatId } = data;
+      
+      // Check if combat is public or player is participant
+      const sessionData = await redisClient.get(`combat:session:${combatId}`);
+      
+      if (!sessionData) {
+        throw new Error('Combat session not found');
+      }
+      
+      const session = JSON.parse(sessionData) as CombatSessionState;
+      
+      // Only participants can spectate for now
+      if (session.attacker.id !== playerId && 
+          (session.defender.type !== 'player' || session.defender.id !== playerId)) {
+        throw new Error('Not authorized to spectate this combat');
+      }
+      
+      // Join combat-specific room
+      socket.join(`combat:${combatId}`);
+      
+      socket.emit('spectateStatus', {
+        success: true,
+        combatId,
+        message: 'Now spectating combat'
+      });
+    } catch (error) {
+      socket.emit('error', {
+        context: 'spectateCombat',
+        message: error.message
+      });
+    }
+  });
+}
+```
+
+## Client-Side Implementation
+
+```typescript
+// In /WebClient/src/services/combatService.ts
+
+export const CombatService = {
+  /**
+   * Initiate combat with target
+   */
+  initiateCombat: async (targetType: 'player' | 'sectorFighters', targetId: string | number) => {
+    try {
+      const response = await api.post('/api/v1/combat/initiate', {
+        targetType,
+        targetId
+      });
+      
+      // Subscribe to combat updates via WebSocket
+      socket.emit('spectateCombat', { combatId: response.data.combatId });
+      
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Perform combat action
+   */
+  performAction: async (
+    combatId: string,
+    action: 'attack' | 'retreatAttempt' | 'surrender',
+    tacticalOption?: 'aggressive' | 'balanced' | 'defensive'
+  ) => {
+    try {
+      const response = await api.post('/api/v1/combat/action', {
+        combatId,
+        action,
+        tacticalOption
+      });
+      
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Get combat session state
+   */
+  getCombatSession: async (combatId: string) => {
+    try {
+      const response = await api.get(`/api/v1/combat/session/${combatId}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Get player's recent combat history
+   */
+  getCombatHistory: async (limit = 10) => {
+    try {
+      const response = await api.get('/api/v1/combat/history', {
+        params: { limit }
+      });
+      
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Set up combat WebSocket listeners
+   */
+  setupCombatListeners: (
+    onCombatUpdate: (data: any) => void,
+    onSectorAlert: (data: any) => void
+  ) => {
+    // Remove any existing listeners
+    socket.off('combatUpdate');
+    socket.off('sectorAlert');
+    
+    // Add new listeners
+    socket.on('combatUpdate', onCombatUpdate);
+    socket.on('sectorAlert', onSectorAlert);
+    
+    return () => {
+      // Cleanup function
+      socket.off('combatUpdate', onCombatUpdate);
+      socket.off('sectorAlert', onSectorAlert);
+    };
+  }
+};
+```
+
+## Testing Strategy
+
+```typescript
+// In /Tests/cypress/e2e/combat.cy.ts
+
+describe('Combat System', () => {
+  beforeEach(() => {
+    // Log in and navigate to a sector with potential targets
+    cy.login('testuser1', 'password');
+    cy.navigateToSector(10); // Non-Stardock sector
+  });
+  
+  it('should allow fighter deployment in sectors', () => {
+    // Verify fighter deployment UI
+    cy.getByTestId('ship-status').should('contain', 'Fighters:');
+    cy.getByTestId('deploy-fighters-button').click();
+    
+    // Deploy fighters modal
+    cy.getByTestId('fighter-deploy-modal').should('be.visible');
+    cy.getByTestId('deploy-count-input').type('10');
+    cy.getByTestId('confirm-deploy-button').click();
+    
+    // Verify fighters were deployed
+    cy.getByTestId('sector-status').should('contain', 'Your Fighters: 10');
+    cy.getByTestId('ship-status').should('contain', 'Fighters:'); // Reduced count
+  });
+  
+  it('should allow fighter retrieval from sectors', () => {
+    // Deploy fighters first
+    cy.deployFighters(5);
+    
+    // Retrieve fighters
+    cy.getByTestId('sector-status').should('contain', 'Your Fighters: 5');
+    cy.getByTestId('retrieve-fighters-button').click();
+    
+    // Retrieval modal
+    cy.getByTestId('fighter-retrieve-modal').should('be.visible');
+    cy.getByTestId('retrieve-count-input').type('5');
+    cy.getByTestId('confirm-retrieve-button').click();
+    
+    // Verify fighters were retrieved
+    cy.getByTestId('sector-status').should('not.contain', 'Your Fighters:');
+    cy.getByTestId('ship-status').should('contain', 'Fighters:'); // Increased count
+  });
+  
+  it('should prevent fighter deployment in Stardock sectors', () => {
+    // Navigate to Stardock
+    cy.navigateToSector(1);
+    
+    // Try to deploy fighters
+    cy.getByTestId('deploy-fighters-button').click();
+    cy.getByTestId('fighter-deploy-modal').should('be.visible');
+    cy.getByTestId('deploy-count-input').type('10');
+    cy.getByTestId('confirm-deploy-button').click();
+    
+    // Verify error message
+    cy.getByTestId('error-message')
+      .should('be.visible')
+      .and('contain', 'Fighter deployment is not allowed in Stardock sectors');
+  });
+  
+  it('should allow attacking other players', () => {
+    // Set up test with another player in the same sector
+    cy.task('seedTestData', {
+      player: {
+        name: 'TestOpponent',
+        currentSector: 10,
+        fighters: 20
+      }
+    });
+    
+    // Refresh sector to see the opponent
+    cy.getByTestId('refresh-sector-button').click();
+    
+    // Verify opponent is visible
+    cy.getByTestId('sector-players').should('contain', 'TestOpponent');
+    
+    // Attack the opponent
+    cy.getByTestId('player-TestOpponent').within(() => {
+      cy.getByTestId('attack-player-button').click();
+    });
+    
+    // Verify combat screen is shown
+    cy.getByTestId('combat-screen').should('be.visible');
+    cy.getByTestId('combat-opponent').should('contain', 'TestOpponent');
+    
+    // Perform combat actions
+    cy.getByTestId('combat-attack-button').click();
+    
+    // Wait for combat round resolution
+    cy.getByTestId('combat-round').should('contain', 'Round 2');
+    
+    // Choose tactical option and continue
+    cy.getByTestId('tactical-aggressive').click();
+    cy.getByTestId('combat-attack-button').click();
+    
+    // Verify combat progression
+    cy.getByTestId('combat-round').should('contain', 'Round 3');
+  });
+  
+  it('should allow attacking sector fighters', () => {
+    // Set up test with deployed fighters in the target sector
+    cy.task('seedTestData', {
+      sectorFighters: {
+        sectorId: 15,
+        playerId: 'someOtherPlayer',
+        count: 25
+      }
+    });
+    
+    // Navigate to sector with enemy fighters
+    cy.navigateToSector(15);
+    
+    // Verify enemy fighters are visible
+    cy.getByTestId('sector-status')
+      .should('contain', 'Enemy Fighters: 25');
+    
+    // Attack the sector fighters
+    cy.getByTestId('attack-sector-fighters-button').click();
+    
+    // Verify combat screen is shown
+    cy.getByTestId('combat-screen').should('be.visible');
+    cy.getByTestId('combat-opponent').should('contain', 'Fighter');
+    
+    // Attempt retreat after first round
+    cy.getByTestId('combat-attack-button').click();
+    cy.getByTestId('combat-round').should('contain', 'Round 2');
+    cy.getByTestId('combat-retreat-button').click();
+    
+    // Verify retreat result (success or failure)
+    cy.getByTestId('combat-message')
+      .should('be.visible')
+      .then(($message) => {
+        if ($message.text().includes('successfully retreated')) {
+          cy.getByTestId('sector-view').should('be.visible');
+        } else {
+          cy.getByTestId('combat-screen').should('be.visible');
+        }
+      });
+  });
+  
+  it('should handle player destruction correctly', () => {
+    // Set up a test with overwhelming enemy force
+    cy.task('seedTestData', {
+      player: {
+        name: 'TestOpponent',
+        currentSector: 20,
+        fighters: 100
+      }
+    });
+    
+    // Set our player to have few fighters
+    cy.task('updatePlayer', {
+      fighters: 5
+    });
+    
+    // Navigate to the sector with strong opponent
+    cy.navigateToSector(20);
+    
+    // Attack the opponent (intentionally bad decision)
+    cy.getByTestId('player-TestOpponent').within(() => {
+      cy.getByTestId('attack-player-button').click();
+    });
+    
+    // Conduct combat until defeated
+    cy.getByTestId('combat-attack-button').click();
+    cy.getByTestId('combat-attack-button').click();
+    
+    // Verify player was reset to Stardock
+    cy.getByTestId('combat-result')
+      .should('contain', 'You were destroyed');
+    
+    cy.getByTestId('close-combat-result').click();
+    
+    // Verify we're at Stardock
+    cy.getByTestId('sector-id').should('contain', '1');
+    
+    // Verify ship is reset
+    cy.getByTestId('ship-status')
+      .should('contain', 'Fighters: 0');
+  });
+  
+  it('should update combat history after battles', () => {
+    // Conduct a simple combat first
+    cy.task('seedTestData', {
+      sectorFighters: {
+        sectorId: 25,
+        playerId: 'someOtherPlayer',
+        count: 5
+      }
+    });
+    
+    // Navigate and attack
+    cy.navigateToSector(25);
+    cy.getByTestId('attack-sector-fighters-button').click();
+    cy.getByTestId('combat-attack-button').click();
+    cy.getByTestId('combat-attack-button').click();
+    
+    // Close combat window
+    cy.getByTestId('close-combat-result').click();
+    
+    // Navigate to combat history
+    cy.getByTestId('menu-button').click();
+    cy.getByTestId('combat-log-button').click();
+    
+    // Verify combat is in history
+    cy.getByTestId('combat-history')
+      .should('be.visible')
+      .and('contain', 'Sector 25');
+    
+    // Verify combat details are displayed
+    cy.getByTestId('combat-history-item').first().click();
+    cy.getByTestId('combat-details')
+      .should('be.visible')
+      .and('contain', 'Round');
+  });
+});
+```
+
+## Mobile Optimizations
+
+### UI Considerations
+
+1. Touch-Friendly Controls:
+   - Large tap targets for combat actions (min 44x44px)
+   - Swipe gestures for tactical options
+   - Auto-zooming combat visuals on small screens
+
+2. Network Efficiency:
+   - Minimal data exchange format in combat updates
+   - Batch updates to reduce network calls
+   - Combat state caching for connection drops
+
+3. Performance:
+   - Throttled animations for lower-powered devices
+   - WebSocket connection management with reconnect handling
+   - DOM element recycling for long combat sessions
+
+### Responsive Design
+
+1. Combat Interface Layout:
+   - Single column layout on phones (<768px)
+   - Two columns on tablets (768px-1024px)
+   - Full dashboard on desktops (>1024px)
+
+2. Visual Feedback:
+   - Haptic feedback for combat actions (when available)
+   - Simplified visuals on low-powered devices
+   - Text size adjustment based on device settings
+
+## Integration with Other Systems
+
+1. **Team System Integration:**
+   - Team members can see allies' combat status
+   - Team defensive bonuses apply in combat
+   - Coordinate fighter deployments with teammates
+
+2. **Economy Integration:**
+   - Fighter costs scale with market demand
+   - Combat results affect local port prices
+   - Bounty system for defeating notorious players
+
+3. **Achievements and Progression:**
+   - Combat experience contributes to player level
+   - Special titles awarded for combat milestones
+   - Combat statistics tracked for leaderboards
+
+## Security Considerations
+
+1. **Anti-Cheat Measures:**
+   - All combat calculations performed server-side
+   - Rate limiting on combat actions
+   - Validation of all client inputs
+   - Session integrity verification
+
+2. **Combat State Protection:**
+   - Transaction-based combat operations
+   - Atomic updates to prevent race conditions
+   - Server authority for all combat outcomes
+   - Audit logging for suspicious patterns
+
+3. **Fair Play Enforcement:**
+   - Matchmaking considerations for new players
+   - Cooldown periods after destruction
+   - Protected zones for beginning players
+   - Moderation tools for combat disputes

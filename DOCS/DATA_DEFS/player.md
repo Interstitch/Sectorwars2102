@@ -124,3 +124,25 @@ Player settings are stored as a JSON object:
 - Personal information (email) must be encrypted at rest
 - Soft deletion preserves player data for recovery
 - Rate limiting implemented on login attempts
+
+
+
+interface PlayerModel {
+  id: string;
+  username: string;
+  passwordHash: string;
+  credits: number;
+  turns: number;
+  sector: number;
+  fighters: number;
+  holds: number;
+  commodities: number[];
+  online: boolean;
+  teamId: string | null;
+  lastSector: number;
+  isPorted: boolean;
+  isLanded: boolean;
+  killedBy: string | null;
+  points: number;
+  lastActive: Date;
+}

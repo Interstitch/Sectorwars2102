@@ -1,0 +1,2089 @@
+# Multiplayer System Implementation Guide
+
+This document outlines the implementation details for the multiplayer system in Trade Wars 2002 Multi-Platform Edition.
+
+## System Overview
+
+The multiplayer system enables players to interact in a shared universe, communicate with each other, and engage in cooperative or competitive gameplay. It uses a mandatory client-server architecture with real-time updates via WebSockets. The game is online-only, requiring an active server connection at all times, and is designed with mobile compatibility in mind.
+
+## Data Models
+
+### MongoDB Schema
+
+```typescript
+// Online Player Status
+interface PlayerSession {
+  _id: ObjectId;
+  playerId: string;
+  socketId: string;
+  lastActive: Date;
+  ipAddress: string;
+  deviceInfo: {
+    type: 'mobile' | 'tablet' | 'desktop';
+    browser: string;
+    os: string;
+  };
+  connectionQuality: {
+    latency: number; // in ms
+    packetLoss: number; // percentage
+    lastUpdate: Date;
+  };
+}
+
+// Chat Message
+interface ChatMessage {
+  _id: ObjectId;
+  sender: {
+    playerId: string;
+    playerName: string;
+    teamId?: string;
+  };
+  type: 'global' | 'sector' | 'team' | 'private';
+  content: string;
+  timestamp: Date;
+  sectorId?: number; // For sector chat
+  teamId?: string; // For team chat
+  recipientId?: string; // For private messages
+  isRead?: boolean; // For private messages
+  isModerationFlagged?: boolean;
+}
+
+// Presence Update
+interface PresenceEvent {
+  _id: ObjectId;
+  playerId: string;
+  playerName: string;
+  eventType: 'login' | 'logout' | 'sectorChange' | 'status' | 'teamJoin' | 'teamLeave';
+  timestamp: Date;
+  details: {
+    fromSectorId?: number;
+    toSectorId?: number;
+    status?: 'online' | 'away' | 'busy' | 'offline';
+    teamId?: string;
+  };
+}
+```
+
+### Shared Type Definitions
+
+```typescript
+// In /Shared/src/types/multiplayer.ts
+export interface PlayerPresence {
+  playerId: string;
+  playerName: string;
+  shipType: string;
+  teamId?: string;
+  teamName?: string;
+  sectorId: number;
+  status: 'online' | 'away' | 'busy' | 'offline';
+  lastActivity: Date;
+  isInCombat?: boolean;
+}
+
+export interface ChatMessagePayload {
+  messageId?: string;
+  sender: {
+    id: string;
+    name: string;
+    team?: {
+      id: string;
+      name: string;
+    };
+  };
+  content: string;
+  timestamp: Date;
+  channel: 'global' | 'sector' | 'team' | 'private';
+  sectorId?: number;
+  teamId?: string;
+  recipientId?: string;
+}
+
+export interface SectorPlayersUpdate {
+  sectorId: number;
+  players: PlayerPresence[];
+  timestamp: Date;
+}
+
+export interface ConnectionStatus {
+  connected: boolean;
+  latency: number;
+  reconnecting: boolean;
+  reconnectAttempt?: number;
+  serverTime?: Date;
+  clientTime: Date;
+  timeDelta?: number;
+}
+
+export interface TeamPresenceUpdate {
+  teamId: string;
+  members: {
+    playerId: string;
+    playerName: string;
+    sectorId: number;
+    status: 'online' | 'away' | 'busy' | 'offline';
+    lastActivity: Date;
+  }[];
+  timestamp: Date;
+}
+```
+
+## WebSocket Implementation
+
+### Server Configuration
+
+```typescript
+// In /GameServer/src/websockets/index.ts
+import { Server } from 'socket.io';
+import { createServer } from 'http';
+import { verifyJwtToken } from '../utils/auth';
+import { handleGlobalChat, handleSectorChat, handleTeamChat, handlePrivateChat } from './chatHandlers';
+import { handlePlayerMovement, handleStatusUpdate } from './presenceHandlers';
+import { handleCombatAction, handleCombatSpectate } from './combatHandlers';
+import { handleTradeRequest, handleTradeResponse } from './tradeHandlers';
+import { PlayerSession } from '../models/PlayerSession';
+import { Player } from '../models/Player';
+
+// Create HTTP server
+const httpServer = createServer();
+
+// Create Socket.IO server with CORS configuration
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  pingTimeout: 30000,
+  pingInterval: 5000,
+  transports: ['websocket', 'polling']
+});
+
+// Authentication middleware
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth.token;
+    
+    if (!token) {
+      return next(new Error('Authentication token is required'));
+    }
+    
+    const decoded = verifyJwtToken(token);
+    
+    if (!decoded || !decoded.id) {
+      return next(new Error('Invalid authentication token'));
+    }
+    
+    // Attach user data to socket
+    socket.data.playerId = decoded.id;
+    socket.data.deviceInfo = {
+      type: socket.handshake.headers['user-agent']?.includes('Mobile') ? 'mobile' : 'desktop',
+      browser: socket.handshake.headers['user-agent'] || 'unknown',
+      os: determineOperatingSystem(socket.handshake.headers['user-agent'] || '')
+    };
+    
+    next();
+  } catch (error) {
+    next(new Error('Authentication failed: ' + error.message));
+  }
+});
+
+// Connection handler
+io.on('connection', async (socket) => {
+  const playerId = socket.data.playerId;
+  
+  try {
+    // Get player data
+    const player = await Player.findById(playerId);
+    
+    if (!player) {
+      socket.disconnect();
+      return;
+    }
+    
+    console.log(`Player connected: ${player.name} (ID: ${playerId})`);
+    
+    // Update player's online status
+    await Player.findByIdAndUpdate(playerId, {
+      lastOnline: new Date(),
+      isOnline: true
+    });
+    
+    // Create or update player session
+    await PlayerSession.findOneAndUpdate(
+      { playerId },
+      {
+        socketId: socket.id,
+        lastActive: new Date(),
+        ipAddress: socket.handshake.address,
+        deviceInfo: socket.data.deviceInfo,
+        connectionQuality: {
+          latency: 0,
+          packetLoss: 0,
+          lastUpdate: new Date()
+        }
+      },
+      { upsert: true, new: true }
+    );
+    
+    // Join socket to rooms
+    joinPlayerRooms(socket, player);
+    
+    // Register message handlers
+    setupMessageHandlers(socket, player);
+    
+    // Notify other players about new player
+    broadcastPresenceUpdate(socket, player, 'login');
+    
+    // Send initial data to player
+    sendInitialData(socket, player);
+    
+    // Handle disconnection
+    socket.on('disconnect', async (reason) => {
+      console.log(`Player disconnected: ${player.name} (ID: ${playerId}), reason: ${reason}`);
+      
+      // Update player's online status
+      await Player.findByIdAndUpdate(playerId, {
+        lastOnline: new Date(),
+        isOnline: false
+      });
+      
+      // Remove player session
+      await PlayerSession.findOneAndDelete({ playerId });
+      
+      // Notify other players about player logout
+      broadcastPresenceUpdate(socket, player, 'logout');
+    });
+    
+    // Handle pings to measure latency
+    socket.on('ping', (callback) => {
+      if (typeof callback === 'function') {
+        callback({
+          serverTime: new Date(),
+          playerId
+        });
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error handling socket connection:', error);
+    socket.disconnect();
+  }
+});
+
+// Helper functions
+function joinPlayerRooms(socket, player) {
+  // Join global room
+  socket.join('global');
+  
+  // Join sector room
+  socket.join(`sector:${player.currentSector}`);
+  
+  // Join team room if player is in a team
+  if (player.teamId) {
+    socket.join(`team:${player.teamId}`);
+  }
+  
+  // Join private room for direct messages
+  socket.join(`player:${player._id}`);
+}
+
+function setupMessageHandlers(socket, player) {
+  // Chat handlers
+  handleGlobalChat(io, socket, player);
+  handleSectorChat(io, socket, player);
+  handleTeamChat(io, socket, player);
+  handlePrivateChat(io, socket, player);
+  
+  // Presence handlers
+  handlePlayerMovement(io, socket, player);
+  handleStatusUpdate(io, socket, player);
+  
+  // Combat handlers
+  handleCombatAction(io, socket, player);
+  handleCombatSpectate(io, socket, player);
+  
+  // Trade handlers
+  handleTradeRequest(io, socket, player);
+  handleTradeResponse(io, socket, player);
+}
+
+async function broadcastPresenceUpdate(socket, player, eventType) {
+  const presenceEvent = {
+    playerId: player._id.toString(),
+    playerName: player.name,
+    eventType,
+    timestamp: new Date(),
+    details: {
+      status: eventType === 'login' ? 'online' : 'offline',
+      sectorId: player.currentSector
+    }
+  };
+  
+  // Broadcast to global
+  socket.to('global').emit('presenceUpdate', presenceEvent);
+  
+  // Broadcast to sector
+  socket.to(`sector:${player.currentSector}`).emit('sectorPresenceUpdate', {
+    sectorId: player.currentSector,
+    eventType,
+    player: {
+      id: player._id.toString(),
+      name: player.name,
+      shipType: await getPlayerShipType(player),
+      teamId: player.teamId?.toString(),
+      teamName: player.teamId ? await getTeamName(player.teamId) : undefined
+    }
+  });
+  
+  // Broadcast to team
+  if (player.teamId) {
+    socket.to(`team:${player.teamId}`).emit('teamPresenceUpdate', {
+      teamId: player.teamId.toString(),
+      eventType,
+      player: {
+        id: player._id.toString(),
+        name: player.name,
+        sectorId: player.currentSector,
+        status: eventType === 'login' ? 'online' : 'offline'
+      }
+    });
+  }
+  
+  // Save presence event to database
+  await PresenceEvent.create(presenceEvent);
+}
+
+async function sendInitialData(socket, player) {
+  // Send current sector info
+  const sectorData = await getSectorData(player.currentSector);
+  socket.emit('sectorData', sectorData);
+  
+  // Send recent global chat messages
+  const globalMessages = await getRecentChatMessages('global');
+  socket.emit('chatHistory', { channel: 'global', messages: globalMessages });
+  
+  // Send recent sector chat messages
+  const sectorMessages = await getRecentChatMessages('sector', player.currentSector);
+  socket.emit('chatHistory', { channel: 'sector', messages: sectorMessages });
+  
+  // Send team data if player is in a team
+  if (player.teamId) {
+    const teamData = await getTeamData(player.teamId);
+    socket.emit('teamData', teamData);
+    
+    // Send recent team chat messages
+    const teamMessages = await getRecentChatMessages('team', undefined, player.teamId);
+    socket.emit('chatHistory', { channel: 'team', messages: teamMessages });
+  }
+  
+  // Send unread private messages
+  const privateMessages = await getUnreadPrivateMessages(player._id);
+  socket.emit('chatHistory', { channel: 'private', messages: privateMessages });
+}
+
+// Start the server
+const PORT = process.env.WEBSOCKET_PORT || 3001;
+httpServer.listen(PORT, () => {
+  console.log(`WebSocket server listening on port ${PORT}`);
+});
+
+export { io };
+```
+
+### Chat Implementation
+
+```typescript
+// In /GameServer/src/websockets/chatHandlers.ts
+
+export function handleGlobalChat(io, socket, player) {
+  socket.on('globalChat', async (message, callback) => {
+    try {
+      // Validate message
+      if (!message || typeof message !== 'string' || message.trim() === '') {
+        throw new Error('Invalid message');
+      }
+      
+      // Check for spam/flooding
+      const recentMessages = await ChatMessage.count({
+        'sender.playerId': player._id,
+        type: 'global',
+        timestamp: { $gt: new Date(Date.now() - 10000) } // Last 10 seconds
+      });
+      
+      if (recentMessages > 5) {
+        throw new Error('You are sending messages too quickly. Please wait a moment.');
+      }
+      
+      // Check message length
+      if (message.length > 500) {
+        throw new Error('Message is too long (maximum 500 characters)');
+      }
+      
+      // Save message to database
+      const chatMessage = await ChatMessage.create({
+        sender: {
+          playerId: player._id,
+          playerName: player.name,
+          teamId: player.teamId
+        },
+        type: 'global',
+        content: message,
+        timestamp: new Date()
+      });
+      
+      // Create message payload
+      const messagePayload = {
+        messageId: chatMessage._id.toString(),
+        sender: {
+          id: player._id.toString(),
+          name: player.name,
+          team: player.teamId ? {
+            id: player.teamId.toString(),
+            name: await getTeamName(player.teamId)
+          } : undefined
+        },
+        content: message,
+        timestamp: chatMessage.timestamp,
+        channel: 'global'
+      };
+      
+      // Broadcast to all connected players
+      io.to('global').emit('chatMessage', messagePayload);
+      
+      // Send acknowledgment to sender
+      if (typeof callback === 'function') {
+        callback({ success: true, messageId: chatMessage._id.toString() });
+      }
+    } catch (error) {
+      console.error('Error handling global chat:', error);
+      
+      if (typeof callback === 'function') {
+        callback({ success: false, error: error.message });
+      }
+    }
+  });
+}
+
+export function handleSectorChat(io, socket, player) {
+  socket.on('sectorChat', async (message, callback) => {
+    try {
+      // Validate message
+      if (!message || typeof message !== 'string' || message.trim() === '') {
+        throw new Error('Invalid message');
+      }
+      
+      // Save message to database
+      const chatMessage = await ChatMessage.create({
+        sender: {
+          playerId: player._id,
+          playerName: player.name,
+          teamId: player.teamId
+        },
+        type: 'sector',
+        content: message,
+        timestamp: new Date(),
+        sectorId: player.currentSector
+      });
+      
+      // Create message payload
+      const messagePayload = {
+        messageId: chatMessage._id.toString(),
+        sender: {
+          id: player._id.toString(),
+          name: player.name,
+          team: player.teamId ? {
+            id: player.teamId.toString(),
+            name: await getTeamName(player.teamId)
+          } : undefined
+        },
+        content: message,
+        timestamp: chatMessage.timestamp,
+        channel: 'sector',
+        sectorId: player.currentSector
+      };
+      
+      // Broadcast to all players in the same sector
+      io.to(`sector:${player.currentSector}`).emit('chatMessage', messagePayload);
+      
+      // Send acknowledgment to sender
+      if (typeof callback === 'function') {
+        callback({ success: true, messageId: chatMessage._id.toString() });
+      }
+    } catch (error) {
+      console.error('Error handling sector chat:', error);
+      
+      if (typeof callback === 'function') {
+        callback({ success: false, error: error.message });
+      }
+    }
+  });
+}
+
+export function handleTeamChat(io, socket, player) {
+  socket.on('teamChat', async (message, callback) => {
+    try {
+      // Validate player is in a team
+      if (!player.teamId) {
+        throw new Error('You are not a member of any team');
+      }
+      
+      // Validate message
+      if (!message || typeof message !== 'string' || message.trim() === '') {
+        throw new Error('Invalid message');
+      }
+      
+      // Save message to database
+      const chatMessage = await ChatMessage.create({
+        sender: {
+          playerId: player._id,
+          playerName: player.name,
+          teamId: player.teamId
+        },
+        type: 'team',
+        content: message,
+        timestamp: new Date(),
+        teamId: player.teamId
+      });
+      
+      // Create message payload
+      const messagePayload = {
+        messageId: chatMessage._id.toString(),
+        sender: {
+          id: player._id.toString(),
+          name: player.name,
+          team: {
+            id: player.teamId.toString(),
+            name: await getTeamName(player.teamId)
+          }
+        },
+        content: message,
+        timestamp: chatMessage.timestamp,
+        channel: 'team',
+        teamId: player.teamId.toString()
+      };
+      
+      // Broadcast to all team members
+      io.to(`team:${player.teamId}`).emit('chatMessage', messagePayload);
+      
+      // Send acknowledgment to sender
+      if (typeof callback === 'function') {
+        callback({ success: true, messageId: chatMessage._id.toString() });
+      }
+    } catch (error) {
+      console.error('Error handling team chat:', error);
+      
+      if (typeof callback === 'function') {
+        callback({ success: false, error: error.message });
+      }
+    }
+  });
+}
+
+export function handlePrivateChat(io, socket, player) {
+  socket.on('privateChat', async ({ recipientId, message }, callback) => {
+    try {
+      // Validate recipient
+      if (!recipientId) {
+        throw new Error('Recipient ID is required');
+      }
+      
+      const recipient = await Player.findById(recipientId);
+      
+      if (!recipient) {
+        throw new Error('Recipient not found');
+      }
+      
+      // Validate message
+      if (!message || typeof message !== 'string' || message.trim() === '') {
+        throw new Error('Invalid message');
+      }
+      
+      // Check if recipient has blocked sender
+      const isBlocked = await isPlayerBlocked(recipientId, player._id);
+      if (isBlocked) {
+        throw new Error('Unable to send message to this player');
+      }
+      
+      // Save message to database
+      const chatMessage = await ChatMessage.create({
+        sender: {
+          playerId: player._id,
+          playerName: player.name,
+          teamId: player.teamId
+        },
+        type: 'private',
+        content: message,
+        timestamp: new Date(),
+        recipientId,
+        isRead: false
+      });
+      
+      // Create message payload
+      const messagePayload = {
+        messageId: chatMessage._id.toString(),
+        sender: {
+          id: player._id.toString(),
+          name: player.name,
+          team: player.teamId ? {
+            id: player.teamId.toString(),
+            name: await getTeamName(player.teamId)
+          } : undefined
+        },
+        content: message,
+        timestamp: chatMessage.timestamp,
+        channel: 'private',
+        recipientId
+      };
+      
+      // Send to recipient if they're online
+      io.to(`player:${recipientId}`).emit('chatMessage', messagePayload);
+      
+      // Also send to sender for their chat history
+      socket.emit('chatMessage', messagePayload);
+      
+      // Send acknowledgment to sender
+      if (typeof callback === 'function') {
+        callback({ success: true, messageId: chatMessage._id.toString() });
+      }
+    } catch (error) {
+      console.error('Error handling private chat:', error);
+      
+      if (typeof callback === 'function') {
+        callback({ success: false, error: error.message });
+      }
+    }
+  });
+  
+  // Mark private messages as read
+  socket.on('markMessagesRead', async ({ messageIds }, callback) => {
+    try {
+      if (!Array.isArray(messageIds) || messageIds.length === 0) {
+        throw new Error('Invalid message IDs');
+      }
+      
+      // Update messages in database
+      await ChatMessage.updateMany(
+        { 
+          _id: { $in: messageIds },
+          'type': 'private',
+          'recipientId': player._id // Ensure player can only mark their own messages as read
+        },
+        { $set: { isRead: true } }
+      );
+      
+      if (typeof callback === 'function') {
+        callback({ success: true });
+      }
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      
+      if (typeof callback === 'function') {
+        callback({ success: false, error: error.message });
+      }
+    }
+  });
+}
+```
+
+### Player Movement and Presence
+
+```typescript
+// In /GameServer/src/websockets/presenceHandlers.ts
+
+export function handlePlayerMovement(io, socket, player) {
+  socket.on('moveSector', async ({ sectorId }, callback) => {
+    try {
+      // Validate sector exists
+      const sectorExists = await Sector.exists({ sectorId });
+      if (!sectorExists) {
+        throw new Error('Invalid sector');
+      }
+      
+      // Validate player can move to this sector (e.g., not in combat)
+      const canMove = await canPlayerMove(player._id);
+      if (!canMove) {
+        throw new Error('You cannot move at this time');
+      }
+      
+      // Store previous sector for notifications
+      const previousSector = player.currentSector;
+      
+      // Update player's sector in database
+      await Player.findByIdAndUpdate(player._id, {
+        currentSector: sectorId,
+        lastSectorChange: new Date()
+      });
+      
+      // Update player object
+      player.currentSector = sectorId;
+      
+      // Leave previous sector room
+      socket.leave(`sector:${previousSector}`);
+      
+      // Join new sector room
+      socket.join(`sector:${sectorId}`);
+      
+      // Create presence event
+      const presenceEvent = {
+        playerId: player._id.toString(),
+        playerName: player.name,
+        eventType: 'sectorChange',
+        timestamp: new Date(),
+        details: {
+          fromSectorId: previousSector,
+          toSectorId: sectorId
+        }
+      };
+      
+      // Save presence event to database
+      await PresenceEvent.create(presenceEvent);
+      
+      // Notify players in previous sector about departure
+      socket.to(`sector:${previousSector}`).emit('playerLeftSector', {
+        sectorId: previousSector,
+        playerId: player._id.toString(),
+        playerName: player.name,
+        timestamp: new Date()
+      });
+      
+      // Notify players in new sector about arrival
+      socket.to(`sector:${sectorId}`).emit('playerEnteredSector', {
+        sectorId,
+        player: {
+          id: player._id.toString(),
+          name: player.name,
+          shipType: await getPlayerShipType(player),
+          teamId: player.teamId?.toString(),
+          teamName: player.teamId ? await getTeamName(player.teamId) : undefined
+        },
+        timestamp: new Date()
+      });
+      
+      // Get new sector data for player
+      const sectorData = await getSectorData(sectorId);
+      
+      // Notify team members about movement
+      if (player.teamId) {
+        io.to(`team:${player.teamId}`).emit('teamMemberMoved', {
+          playerId: player._id.toString(),
+          playerName: player.name,
+          fromSectorId: previousSector,
+          toSectorId: sectorId,
+          timestamp: new Date()
+        });
+      }
+      
+      // Send sector data to player
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          sectorData
+        });
+      }
+    } catch (error) {
+      console.error('Error handling player movement:', error);
+      
+      if (typeof callback === 'function') {
+        callback({
+          success: false,
+          error: error.message
+        });
+      }
+    }
+  });
+}
+
+export function handleStatusUpdate(io, socket, player) {
+  socket.on('updateStatus', async ({ status }, callback) => {
+    try {
+      // Validate status
+      if (!['online', 'away', 'busy'].includes(status)) {
+        throw new Error('Invalid status');
+      }
+      
+      // Create presence event
+      const presenceEvent = {
+        playerId: player._id.toString(),
+        playerName: player.name,
+        eventType: 'status',
+        timestamp: new Date(),
+        details: {
+          status
+        }
+      };
+      
+      // Save presence event to database
+      await PresenceEvent.create(presenceEvent);
+      
+      // Update player session status
+      await PlayerSession.findOneAndUpdate(
+        { playerId: player._id },
+        {
+          $set: {
+            'status': status,
+            'lastActive': new Date()
+          }
+        }
+      );
+      
+      // Notify sector members about status change
+      socket.to(`sector:${player.currentSector}`).emit('playerStatusUpdate', {
+        sectorId: player.currentSector,
+        playerId: player._id.toString(),
+        status,
+        timestamp: new Date()
+      });
+      
+      // Notify team members about status change
+      if (player.teamId) {
+        socket.to(`team:${player.teamId}`).emit('teamMemberStatusUpdate', {
+          playerId: player._id.toString(),
+          status,
+          timestamp: new Date()
+        });
+      }
+      
+      if (typeof callback === 'function') {
+        callback({ success: true });
+      }
+    } catch (error) {
+      console.error('Error updating player status:', error);
+      
+      if (typeof callback === 'function') {
+        callback({ success: false, error: error.message });
+      }
+    }
+  });
+  
+  // Handle latency updates for connection quality monitoring
+  socket.on('latencyUpdate', async ({ latency, packetLoss }, callback) => {
+    try {
+      await PlayerSession.findOneAndUpdate(
+        { playerId: player._id },
+        {
+          $set: {
+            'connectionQuality.latency': latency,
+            'connectionQuality.packetLoss': packetLoss,
+            'connectionQuality.lastUpdate': new Date()
+          }
+        }
+      );
+      
+      if (typeof callback === 'function') {
+        callback({ success: true });
+      }
+    } catch (error) {
+      console.error('Error updating connection quality:', error);
+      
+      if (typeof callback === 'function') {
+        callback({ success: false });
+      }
+    }
+  });
+}
+```
+
+## Client-Side Implementation
+
+### Connection Manager
+
+```typescript
+// In /WebClient/src/services/connectionManager.ts
+import { io, Socket } from 'socket.io-client';
+import { authService } from './authService';
+import { store } from '../store';
+import { 
+  connectionEstablished, 
+  connectionLost, 
+  connectionReconnecting,
+  updateLatency,
+  receiveServerTime
+} from '../store/slices/connectionSlice';
+
+class ConnectionManager {
+  private socket: Socket | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 10;
+  private pingInterval: NodeJS.Timeout | null = null;
+  private latencyHistory: number[] = [];
+  private serverUrl: string;
+  
+  constructor() {
+    this.serverUrl = import.meta.env.VITE_WS_SERVER_URL || 'http://localhost:3001';
+  }
+  
+  connect(): Promise<Socket> {
+    return new Promise((resolve, reject) => {
+      if (this.socket?.connected) {
+        resolve(this.socket);
+        return;
+      }
+      
+      const token = authService.getToken();
+      
+      if (!token) {
+        reject(new Error('Authentication token not found'));
+        return;
+      }
+      
+      this.socket = io(this.serverUrl, {
+        auth: { token },
+        reconnection: true,
+        reconnectionAttempts: this.maxReconnectAttempts,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000,
+        transports: ['websocket', 'polling']
+      });
+      
+      this.socket.on('connect', () => {
+        console.log('WebSocket connected');
+        this.reconnectAttempts = 0;
+        store.dispatch(connectionEstablished());
+        this.startPingInterval();
+        resolve(this.socket!);
+      });
+      
+      this.socket.on('disconnect', (reason) => {
+        console.log('WebSocket disconnected:', reason);
+        store.dispatch(connectionLost(reason));
+        this.stopPingInterval();
+      });
+      
+      this.socket.on('connect_error', (error) => {
+        console.error('Connection error:', error);
+        reject(error);
+      });
+      
+      this.socket.on('reconnect_attempt', (attemptNumber) => {
+        console.log(`Reconnection attempt ${attemptNumber}`);
+        this.reconnectAttempts = attemptNumber;
+        store.dispatch(connectionReconnecting(attemptNumber));
+      });
+      
+      this.socket.on('reconnect_failed', () => {
+        console.error('Reconnection failed');
+        this.stopPingInterval();
+        reject(new Error('Failed to reconnect after maximum attempts'));
+      });
+      
+      // For mobile-specific handling
+      window.addEventListener('online', this.handleNetworkStatusChange);
+      window.addEventListener('offline', this.handleNetworkStatusChange);
+      
+      // Battery status handling for mobile
+      if ('getBattery' in navigator) {
+        (navigator as any).getBattery().then((battery: any) => {
+          battery.addEventListener('levelchange', this.handleBatteryChange);
+        });
+      }
+    });
+  }
+  
+  disconnect() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+    this.stopPingInterval();
+    window.removeEventListener('online', this.handleNetworkStatusChange);
+    window.removeEventListener('offline', this.handleNetworkStatusChange);
+  }
+  
+  getSocket(): Socket | null {
+    return this.socket;
+  }
+  
+  isConnected(): boolean {
+    return this.socket?.connected || false;
+  }
+  
+  private startPingInterval() {
+    this.stopPingInterval();
+    
+    // Adjust ping frequency based on device type
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const pingFrequency = isMobile ? 10000 : 5000; // 10s for mobile, 5s for desktop
+    
+    this.pingInterval = setInterval(() => {
+      if (this.socket?.connected) {
+        const startTime = Date.now();
+        
+        this.socket.emit('ping', (response: any) => {
+          const latency = Date.now() - startTime;
+          this.latencyHistory.push(latency);
+          
+          // Keep only the last 10 measurements
+          if (this.latencyHistory.length > 10) {
+            this.latencyHistory.shift();
+          }
+          
+          // Calculate average latency
+          const avgLatency = Math.round(
+            this.latencyHistory.reduce((sum, val) => sum + val, 0) / this.latencyHistory.length
+          );
+          
+          // Update the store with latency
+          store.dispatch(updateLatency(avgLatency));
+          
+          // Calculate time difference between server and client
+          if (response && response.serverTime) {
+            const serverTime = new Date(response.serverTime);
+            const timeDelta = Date.now() - serverTime.getTime();
+            
+            // Update the store with server time info
+            store.dispatch(receiveServerTime({
+              serverTime: serverTime.toISOString(),
+              clientTime: new Date().toISOString(),
+              timeDelta
+            }));
+          }
+          
+          // Report latency to server for connection quality monitoring
+          const packetLoss = this.calculatePacketLoss();
+          this.socket?.emit('latencyUpdate', { latency: avgLatency, packetLoss });
+        });
+      }
+    }, pingFrequency);
+  }
+  
+  private stopPingInterval() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+  }
+  
+  private calculatePacketLoss(): number {
+    // Simple packet loss estimation based on missing ping responses
+    // In a real implementation, this would track sent vs received packets
+    return 0; // Placeholder
+  }
+  
+  private handleNetworkStatusChange = () => {
+    if (navigator.onLine) {
+      console.log('Device is online, attempting reconnection');
+      if (this.socket && !this.socket.connected) {
+        this.socket.connect();
+      }
+    } else {
+      console.log('Device is offline');
+      store.dispatch(connectionLost('offline'));
+    }
+  };
+  
+  private handleBatteryChange = (battery: any) => {
+    // Adjust ping frequency based on battery level
+    if (battery.level < 0.2 && this.pingInterval) {
+      console.log('Low battery detected, reducing update frequency');
+      this.stopPingInterval();
+      this.startPingInterval(); // Will restart with adjusted frequency
+    }
+  };
+}
+
+export const connectionManager = new ConnectionManager();
+```
+
+### Chat Service
+
+```typescript
+// In /WebClient/src/services/chatService.ts
+import { connectionManager } from './connectionManager';
+import { store } from '../store';
+import { addMessage, setMessageHistory, markMessagesAsRead } from '../store/slices/chatSlice';
+
+export interface SendMessageOptions {
+  channel: 'global' | 'sector' | 'team' | 'private';
+  content: string;
+  recipientId?: string;
+}
+
+class ChatService {
+  initialize() {
+    const socket = connectionManager.getSocket();
+    
+    if (!socket) {
+      console.error('Cannot initialize chat service: socket not connected');
+      return;
+    }
+    
+    // Listen for incoming messages
+    socket.on('chatMessage', (message) => {
+      store.dispatch(addMessage(message));
+    });
+    
+    // Listen for chat history
+    socket.on('chatHistory', ({ channel, messages }) => {
+      store.dispatch(setMessageHistory({ channel, messages }));
+    });
+  }
+  
+  sendMessage({ channel, content, recipientId }: SendMessageOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    return new Promise((resolve) => {
+      const socket = connectionManager.getSocket();
+      
+      if (!socket || !socket.connected) {
+        resolve({ success: false, error: 'Not connected to server' });
+        return;
+      }
+      
+      // Sanitize content
+      const sanitizedContent = this.sanitizeMessage(content);
+      
+      if (!sanitizedContent) {
+        resolve({ success: false, error: 'Message cannot be empty' });
+        return;
+      }
+      
+      switch (channel) {
+        case 'global':
+          socket.emit('globalChat', sanitizedContent, resolve);
+          break;
+          
+        case 'sector':
+          socket.emit('sectorChat', sanitizedContent, resolve);
+          break;
+          
+        case 'team':
+          socket.emit('teamChat', sanitizedContent, resolve);
+          break;
+          
+        case 'private':
+          if (!recipientId) {
+            resolve({ success: false, error: 'Recipient ID is required for private messages' });
+            return;
+          }
+          
+          socket.emit('privateChat', { recipientId, message: sanitizedContent }, resolve);
+          break;
+          
+        default:
+          resolve({ success: false, error: 'Invalid channel' });
+      }
+    });
+  }
+  
+  markAsRead(messageIds: string[]): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      const socket = connectionManager.getSocket();
+      
+      if (!socket || !socket.connected) {
+        resolve({ success: false, error: 'Not connected to server' });
+        return;
+      }
+      
+      socket.emit('markMessagesRead', { messageIds }, (response: any) => {
+        if (response.success) {
+          store.dispatch(markMessagesAsRead(messageIds));
+        }
+        resolve(response);
+      });
+    });
+  }
+  
+  requestChatHistory(channel: 'global' | 'sector' | 'team' | 'private', options?: { limit?: number; before?: Date }): Promise<boolean> {
+    return new Promise((resolve) => {
+      const socket = connectionManager.getSocket();
+      
+      if (!socket || !socket.connected) {
+        resolve(false);
+        return;
+      }
+      
+      socket.emit('getChatHistory', { channel, ...options }, (response: any) => {
+        if (response.success && response.messages) {
+          store.dispatch(setMessageHistory({ channel, messages: response.messages }));
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      });
+    });
+  }
+  
+  private sanitizeMessage(message: string): string {
+    // Basic sanitization to prevent XSS and other attacks
+    const trimmed = message.trim();
+    
+    // Prevent HTML tags
+    return trimmed.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+}
+
+export const chatService = new ChatService();
+```
+
+### Presence System
+
+```typescript
+// In /WebClient/src/services/presenceService.ts
+import { connectionManager } from './connectionManager';
+import { store } from '../store';
+import { 
+  updateSectorPlayers, 
+  playerEnteredSector, 
+  playerLeftSector,
+  updatePlayerStatus
+} from '../store/slices/sectorSlice';
+import {
+  updateTeamMembers,
+  teamMemberMoved,
+  teamMemberStatusChanged
+} from '../store/slices/teamSlice';
+
+class PresenceService {
+  initialize() {
+    const socket = connectionManager.getSocket();
+    
+    if (!socket) {
+      console.error('Cannot initialize presence service: socket not connected');
+      return;
+    }
+    
+    // Sector presence events
+    socket.on('sectorData', (data) => {
+      store.dispatch(updateSectorPlayers({
+        sectorId: data.sectorId,
+        players: data.players
+      }));
+    });
+    
+    socket.on('playerEnteredSector', (data) => {
+      store.dispatch(playerEnteredSector({
+        sectorId: data.sectorId,
+        player: data.player
+      }));
+    });
+    
+    socket.on('playerLeftSector', (data) => {
+      store.dispatch(playerLeftSector({
+        sectorId: data.sectorId,
+        playerId: data.playerId
+      }));
+    });
+    
+    socket.on('playerStatusUpdate', (data) => {
+      store.dispatch(updatePlayerStatus({
+        sectorId: data.sectorId,
+        playerId: data.playerId,
+        status: data.status
+      }));
+    });
+    
+    // Team presence events
+    socket.on('teamData', (data) => {
+      store.dispatch(updateTeamMembers({
+        teamId: data.teamId,
+        members: data.members
+      }));
+    });
+    
+    socket.on('teamMemberMoved', (data) => {
+      store.dispatch(teamMemberMoved({
+        playerId: data.playerId,
+        fromSectorId: data.fromSectorId,
+        toSectorId: data.toSectorId
+      }));
+    });
+    
+    socket.on('teamMemberStatusUpdate', (data) => {
+      store.dispatch(teamMemberStatusChanged({
+        playerId: data.playerId,
+        status: data.status
+      }));
+    });
+  }
+  
+  moveSector(sectorId: number): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      const socket = connectionManager.getSocket();
+      
+      if (!socket || !socket.connected) {
+        resolve({ success: false, error: 'Not connected to server' });
+        return;
+      }
+      
+      socket.emit('moveSector', { sectorId }, (response: any) => {
+        resolve(response);
+      });
+    });
+  }
+  
+  updateStatus(status: 'online' | 'away' | 'busy'): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      const socket = connectionManager.getSocket();
+      
+      if (!socket || !socket.connected) {
+        resolve({ success: false, error: 'Not connected to server' });
+        return;
+      }
+      
+      socket.emit('updateStatus', { status }, (response: any) => {
+        resolve(response);
+      });
+    });
+  }
+  
+  requestSectorData(sectorId: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const socket = connectionManager.getSocket();
+      
+      if (!socket || !socket.connected) {
+        resolve(false);
+        return;
+      }
+      
+      socket.emit('getSectorData', { sectorId }, (response: any) => {
+        if (response.success && response.sectorData) {
+          store.dispatch(updateSectorPlayers({
+            sectorId: response.sectorData.sectorId,
+            players: response.sectorData.players
+          }));
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      });
+    });
+  }
+}
+
+export const presenceService = new PresenceService();
+```
+
+## Mobile Optimizations
+
+### Connection Handling
+
+1. **Network Detection and Recovery**
+   - The connection manager actively monitors the device's network status
+   - Automatically attempts reconnection when the device regains connectivity
+   - Provides user feedback on connection status changes
+   - Implements exponential backoff for reconnection attempts
+
+2. **Bandwidth Conservation**
+   - Uses selective updates to minimize data transfer
+   - Compresses payloads for efficient transfer
+   - Batches non-critical updates to reduce socket events
+   - Adjusts update frequency based on app state (foreground/background)
+
+3. **Energy Efficiency**
+   - Monitors device battery levels to adjust update frequencies
+   - Reduces ping frequency on low battery conditions
+   - Suspends non-essential updates when the app is in the background
+   - Uses efficient serialization to minimize CPU usage
+
+### Performance Optimizations
+
+1. **State Management**
+   - Uses optimistic updates for instant feedback
+   - Implements efficient diffing for state changes
+   - Maintains minimal state to reduce memory footprint
+   - Uses lazy loading for chat history and other large datasets
+
+2. **UI Efficiency**
+   - Virtual lists for chat and player lists to handle large datasets
+   - Debounced rendering for frequent updates (e.g., sector player movements)
+   - Memory-conscious image caching for player avatars and ship icons
+   - Component memoization to prevent unnecessary re-renders
+
+## Security Implementation
+
+### Authentication
+
+```typescript
+// In /GameServer/src/websockets/middleware/authenticate.ts
+import { verifyJwtToken } from '../../utils/auth';
+import { Player } from '../../models/Player';
+
+export async function authenticate(socket, next) {
+  try {
+    const token = socket.handshake.auth.token;
+    
+    if (!token) {
+      return next(new Error('Authentication token is required'));
+    }
+    
+    // Verify JWT token
+    const decoded = verifyJwtToken(token);
+    
+    if (!decoded || !decoded.id) {
+      return next(new Error('Invalid authentication token'));
+    }
+    
+    // Check if player exists
+    const player = await Player.findById(decoded.id);
+    
+    if (!player) {
+      return next(new Error('Player not found'));
+    }
+    
+    // Check if player is banned
+    if (player.isBanned) {
+      return next(new Error('Account is suspended'));
+    }
+    
+    // Attach user data to socket
+    socket.data.playerId = decoded.id;
+    socket.data.playerName = player.name;
+    socket.data.playerRole = player.role || 'player';
+    
+    next();
+  } catch (error) {
+    next(new Error('Authentication failed: ' + error.message));
+  }
+}
+```
+
+### Rate Limiting
+
+```typescript
+// In /GameServer/src/websockets/middleware/rateLimiter.ts
+import { RateLimiterMemory } from 'rate-limiter-flexible';
+import { PlayerSession } from '../../models/PlayerSession';
+
+// Configure different rate limiters for different actions
+const chatLimiter = new RateLimiterMemory({
+  points: 10,      // 10 messages
+  duration: 10,    // per 10 seconds
+});
+
+const movementLimiter = new RateLimiterMemory({
+  points: 5,       // 5 movements
+  duration: 5,     // per 5 seconds
+});
+
+const actionLimiter = new RateLimiterMemory({
+  points: 20,      // 20 actions
+  duration: 10,    // per 10 seconds
+});
+
+export function applyRateLimiting(socket) {
+  const playerId = socket.data.playerId;
+  
+  // Limit chat messages
+  socket.on('globalChat', async (_, callback) => {
+    try {
+      await chatLimiter.consume(playerId);
+    } catch (error) {
+      if (typeof callback === 'function') {
+        callback({ 
+          success: false, 
+          error: 'You are sending messages too quickly. Please wait a moment.' 
+        });
+      }
+      return false;
+    }
+    return true;
+  });
+  
+  // Limit sector movements
+  socket.on('moveSector', async (_, callback) => {
+    try {
+      await movementLimiter.consume(playerId);
+    } catch (error) {
+      if (typeof callback === 'function') {
+        callback({ 
+          success: false, 
+          error: 'You are moving too quickly. Please wait a moment.' 
+        });
+      }
+      return false;
+    }
+    return true;
+  });
+  
+  // Limit general actions
+  const limitedActions = [
+    'deployFighters', 'retrieveFighters', 'attackPlayer',
+    'tradeCommodity', 'upgradeShip', 'scanSector'
+  ];
+  
+  limitedActions.forEach(action => {
+    socket.on(action, async (_, callback) => {
+      try {
+        await actionLimiter.consume(playerId);
+      } catch (error) {
+        if (typeof callback === 'function') {
+          callback({ 
+            success: false, 
+            error: 'Too many actions. Please wait a moment.' 
+          });
+        }
+        return false;
+      }
+      return true;
+    });
+  });
+  
+  // Record suspicious activity
+  socket.use(async (packet, next) => {
+    const [event] = packet;
+    
+    // Check for rapid succession of events
+    const session = await PlayerSession.findOne({ playerId });
+    
+    if (session) {
+      const now = Date.now();
+      const lastActivity = session.lastActive.getTime();
+      const timeDiff = now - lastActivity;
+      
+      // If events are coming too quickly (less than 50ms apart)
+      // it may indicate automated tools/botting
+      if (timeDiff < 50) {
+        session.suspiciousActivityCount = (session.suspiciousActivityCount || 0) + 1;
+        
+        if (session.suspiciousActivityCount > 20) {
+          console.warn(`Suspicious activity detected for player ${playerId}`);
+          // Could implement additional security measures here
+        }
+      } else {
+        // Reset counter if normal activity
+        if (session.suspiciousActivityCount) {
+          session.suspiciousActivityCount = Math.max(0, session.suspiciousActivityCount - 1);
+        }
+      }
+      
+      session.lastActive = new Date();
+      await session.save();
+    }
+    
+    next();
+  });
+}
+```
+
+### Data Validation
+
+```typescript
+// In /GameServer/src/websockets/middleware/validator.ts
+import Joi from 'joi';
+
+// Define validation schemas for different event types
+const schemas = {
+  globalChat: Joi.string().trim().min(1).max(500).required(),
+  
+  sectorChat: Joi.string().trim().min(1).max(500).required(),
+  
+  teamChat: Joi.string().trim().min(1).max(500).required(),
+  
+  privateChat: Joi.object({
+    recipientId: Joi.string().required(),
+    message: Joi.string().trim().min(1).max(500).required()
+  }),
+  
+  moveSector: Joi.object({
+    sectorId: Joi.number().integer().min(1).required()
+  }),
+  
+  deployFighters: Joi.object({
+    sectorId: Joi.number().integer().min(1).required(),
+    count: Joi.number().integer().min(1).required()
+  }),
+  
+  tradeCommodity: Joi.object({
+    portId: Joi.string().required(),
+    commodityType: Joi.string().valid('ore', 'organics', 'equipment').required(),
+    action: Joi.string().valid('buy', 'sell').required(),
+    quantity: Joi.number().integer().min(1).required()
+  })
+};
+
+export function validateData(socket) {
+  // Apply validation middleware to each event type
+  Object.keys(schemas).forEach(eventName => {
+    socket.on(eventName, (data, callback) => {
+      const schema = schemas[eventName];
+      const dataToValidate = typeof data === 'object' ? data : data; // Handle both object and primitive data
+      
+      const { error } = schema.validate(dataToValidate);
+      
+      if (error) {
+        if (typeof callback === 'function') {
+          callback({ success: false, error: error.message });
+        }
+        return false;
+      }
+      
+      return true;
+    });
+  });
+}
+```
+
+## Testing Strategy
+
+### WebSocket Testing
+
+```typescript
+// In /Tests/cypress/e2e/multiplayer.cy.ts
+
+describe('Multiplayer System', () => {
+  beforeEach(() => {
+    // Create two test users and log in with the first one
+    cy.createTestUsers(['testuser1', 'testuser2']);
+    cy.login('testuser1', 'password');
+  });
+  
+  it('should establish WebSocket connection on login', () => {
+    // Verify connection status indicator shows connected
+    cy.getByTestId('connection-status')
+      .should('have.class', 'connected')
+      .and('contain', 'Connected');
+    
+    // Verify socket events are registered
+    cy.window().then((win) => {
+      expect(win.socketConnected).to.be.true;
+    });
+  });
+  
+  it('should display global chat messages', () => {
+    // Open chat panel
+    cy.getByTestId('chat-toggle').click();
+    
+    // Select global channel
+    cy.getByTestId('channel-global').click();
+    
+    // Send a test message
+    const testMessage = `Test message ${Date.now()}`;
+    cy.getByTestId('chat-input').type(`${testMessage}{enter}`);
+    
+    // Verify message appears in chat
+    cy.getByTestId('chat-messages')
+      .should('contain', testMessage)
+      .and('contain', 'testuser1');
+  });
+  
+  it('should handle sector chat properly', () => {
+    // Navigate to a specific sector
+    cy.navigateToSector(10);
+    
+    // Open chat panel
+    cy.getByTestId('chat-toggle').click();
+    
+    // Select sector channel
+    cy.getByTestId('channel-sector').click();
+    
+    // Send a test message
+    const testMessage = `Sector test ${Date.now()}`;
+    cy.getByTestId('chat-input').type(`${testMessage}{enter}`);
+    
+    // Verify message appears in chat with sector indicator
+    cy.getByTestId('chat-messages')
+      .should('contain', testMessage)
+      .and('contain', 'Sector 10');
+      
+    // Navigate to a different sector
+    cy.navigateToSector(11);
+    
+    // Verify previous sector message is not in this sector's chat
+    cy.getByTestId('chat-messages')
+      .should('not.contain', testMessage);
+  });
+  
+  it('should show real-time player movements', () => {
+    // Set up second player in a specific sector
+    cy.task('updatePlayer', {
+      username: 'testuser2',
+      currentSector: 15
+    });
+    
+    // Navigate first player to the same sector
+    cy.navigateToSector(15);
+    
+    // Verify second player is visible in sector
+    cy.getByTestId('sector-players')
+      .should('contain', 'testuser2');
+    
+    // Use API to move second player to another sector
+    cy.task('movePlayer', {
+      username: 'testuser2',
+      sectorId: 16
+    });
+    
+    // Verify second player disappears from current sector
+    cy.getByTestId('sector-players')
+      .should('not.contain', 'testuser2');
+    
+    // Verify movement notification is displayed
+    cy.getByTestId('sector-notifications')
+      .should('contain', 'testuser2 has left the sector');
+  });
+  
+  it('should maintain connection during network interruptions', () => {
+    // Simulate network interruption
+    cy.window().then((win) => {
+      win.dispatchEvent(new Event('offline'));
+    });
+    
+    // Verify disconnected state is shown
+    cy.getByTestId('connection-status')
+      .should('have.class', 'disconnected')
+      .and('contain', 'Reconnecting');
+    
+    // Restore network
+    cy.window().then((win) => {
+      win.dispatchEvent(new Event('online'));
+    });
+    
+    // Verify reconnection
+    cy.getByTestId('connection-status')
+      .should('have.class', 'connected')
+      .and('contain', 'Connected');
+  });
+  
+  it('should handle private messages correctly', () => {
+    // Set up second player in the same sector
+    cy.task('updatePlayer', {
+      username: 'testuser2',
+      currentSector: 10
+    });
+    
+    // Navigate to sector 10
+    cy.navigateToSector(10);
+    
+    // Open player menu for second player
+    cy.getByTestId('player-testuser2').click();
+    
+    // Click private message option
+    cy.getByTestId('pm-player').click();
+    
+    // Send private message
+    const privateMessage = `Private test ${Date.now()}`;
+    cy.getByTestId('pm-input').type(`${privateMessage}{enter}`);
+    
+    // Verify message appears in private chat
+    cy.getByTestId('chat-messages')
+      .should('contain', privateMessage)
+      .and('contain', 'To: testuser2');
+    
+    // Log in as second user to check message receipt
+    cy.login('testuser2', 'password');
+    
+    // Check for notification of new message
+    cy.getByTestId('pm-notification')
+      .should('be.visible')
+      .and('contain', '1');
+    
+    // Open chat panel
+    cy.getByTestId('chat-toggle').click();
+    
+    // Verify private message is received
+    cy.getByTestId('private-messages')
+      .should('contain', privateMessage)
+      .and('contain', 'From: testuser1');
+  });
+  
+  it('should handle team communication', () => {
+    // Create a team and add both test users
+    cy.task('createTeam', {
+      name: 'TestTeam',
+      members: ['testuser1', 'testuser2']
+    });
+    
+    // Reload to update team status
+    cy.reload();
+    
+    // Open chat panel
+    cy.getByTestId('chat-toggle').click();
+    
+    // Select team channel
+    cy.getByTestId('channel-team').click();
+    
+    // Send a team message
+    const teamMessage = `Team test ${Date.now()}`;
+    cy.getByTestId('chat-input').type(`${teamMessage}{enter}`);
+    
+    // Verify message appears in team chat
+    cy.getByTestId('chat-messages')
+      .should('contain', teamMessage)
+      .and('contain', 'Team: TestTeam');
+    
+    // Log in as second user to check team message
+    cy.login('testuser2', 'password');
+    
+    // Open chat panel
+    cy.getByTestId('chat-toggle').click();
+    
+    // Select team channel
+    cy.getByTestId('channel-team').click();
+    
+    // Verify team message is received
+    cy.getByTestId('chat-messages')
+      .should('contain', teamMessage);
+  });
+  
+  it('should handle high-latency connections gracefully', () => {
+    // Enable network throttling
+    cy.throttleNetwork('slow3g');
+    
+    // Verify connection quality indicator shows high latency
+    cy.getByTestId('connection-quality')
+      .should('have.class', 'poor')
+      .and('contain', 'High Latency');
+    
+    // Perform various multiplayer actions to verify they work with high latency
+    
+    // Send a chat message
+    cy.getByTestId('chat-toggle').click();
+    cy.getByTestId('chat-input').type(`High latency test{enter}`);
+    
+    // Verify message appears (may take longer)
+    cy.getByTestId('chat-messages')
+      .should('contain', 'High latency test');
+    
+    // Navigate to another sector
+    cy.navigateToSector(12);
+    
+    // Verify sector change completes despite high latency
+    cy.getByTestId('sector-id')
+      .should('contain', '12');
+    
+    // Disable network throttling
+    cy.throttleNetwork('online');
+  });
+});
+```
+
+### Connection Resilience Testing
+
+```typescript
+// In /Tests/cypress/e2e/connection-resilience.cy.ts
+
+describe('Connection Resilience', () => {
+  beforeEach(() => {
+    cy.login('testuser1', 'password');
+  });
+  
+  it('should automatically reconnect after brief disconnection', () => {
+    // Ensure initial connection is established
+    cy.getByTestId('connection-status')
+      .should('have.class', 'connected');
+    
+    // Simulate network outage
+    cy.window().then((win) => {
+      // Force disconnect the socket
+      win.socketDisconnect();
+    });
+    
+    // Verify disconnected state
+    cy.getByTestId('connection-status')
+      .should('have.class', 'disconnected')
+      .and('contain', 'Reconnecting');
+    
+    // Simulate network return after brief outage
+    cy.window().then((win) => {
+      // Allow reconnection
+      win.socketReconnect();
+    });
+    
+    // Verify reconnection happens automatically
+    cy.getByTestId('connection-status')
+      .should('have.class', 'connected')
+      .and('contain', 'Connected');
+    
+    // Verify game state is restored
+    cy.getByTestId('sector-id').invoke('text').then((sectorId) => {
+      const expectedSector = sectorId.trim();
+      
+      // Verify sector data is reloaded after reconnection
+      cy.getByTestId('sector-players').should('exist');
+      cy.getByTestId('sector-id').should('contain', expectedSector);
+    });
+  });
+  
+  it('should preserve game state during reconnection', () => {
+    // Navigate to a specific sector
+    cy.navigateToSector(20);
+    
+    // Perform some action to change state
+    cy.deployFighters(10);
+    
+    // Verify action was successful
+    cy.getByTestId('sector-status')
+      .should('contain', 'Your Fighters: 10');
+    
+    // Simulate disconnection
+    cy.window().then((win) => {
+      win.socketDisconnect();
+    });
+    
+    // Wait a moment
+    cy.wait(2000);
+    
+    // Simulate reconnection
+    cy.window().then((win) => {
+      win.socketReconnect();
+    });
+    
+    // Verify connection is restored
+    cy.getByTestId('connection-status')
+      .should('have.class', 'connected');
+    
+    // Verify game state is preserved
+    cy.getByTestId('sector-id')
+      .should('contain', '20');
+    
+    cy.getByTestId('sector-status')
+      .should('contain', 'Your Fighters: 10');
+  });
+  
+  it('should handle extended disconnections gracefully', () => {
+    // Simulate extended network outage
+    cy.window().then((win) => {
+      win.socketDisconnect();
+    });
+    
+    // Wait for longer period (simulating extended outage)
+    cy.wait(10000);
+    
+    // Verify UI shows appropriate extended disconnection message
+    cy.getByTestId('connection-status')
+      .should('have.class', 'disconnected')
+      .and('contain', 'Connection lost');
+    
+    // Verify offline notification is shown
+    cy.getByTestId('offline-notification')
+      .should('be.visible')
+      .and('contain', 'Waiting for connection');
+    
+    // Simulate network return
+    cy.window().then((win) => {
+      win.socketReconnect();
+    });
+    
+    // Verify reconnection after extended outage
+    cy.getByTestId('connection-status')
+      .should('have.class', 'connected');
+    
+    // Verify offline notification is removed
+    cy.getByTestId('offline-notification')
+      .should('not.exist');
+  });
+  
+  it('should queue actions while offline and replay on reconnection', () => {
+    // Navigate to starting position
+    cy.navigateToSector(15);
+    
+    // Simulate disconnection
+    cy.window().then((win) => {
+      win.socketDisconnect();
+    });
+    
+    // Verify disconnected status
+    cy.getByTestId('connection-status')
+      .should('have.class', 'disconnected');
+    
+    // Try to perform actions while offline
+    cy.getByTestId('chat-toggle').click();
+    cy.getByTestId('chat-input').type(`Offline message{enter}`);
+    
+    // Attempt to navigate
+    cy.getByTestId('navigate-sector-16').click();
+    
+    // Verify actions are queued
+    cy.getByTestId('pending-actions')
+      .should('be.visible')
+      .and('contain', '2 pending');
+    
+    // Simulate reconnection
+    cy.window().then((win) => {
+      win.socketReconnect();
+    });
+    
+    // Verify connection restored
+    cy.getByTestId('connection-status')
+      .should('have.class', 'connected');
+    
+    // Verify queued actions are processed
+    cy.getByTestId('pending-actions')
+      .should('not.exist');
+    
+    // Verify navigation occurred
+    cy.getByTestId('sector-id')
+      .should('contain', '16');
+    
+    // Verify message was sent
+    cy.getByTestId('chat-messages')
+      .should('contain', 'Offline message');
+  });
+  
+  it('should provide appropriate error messages for prolonged disconnection', () => {
+    // Simulate prolonged disconnection
+    cy.window().then((win) => {
+      win.socketDisconnect();
+      win.socketMaxReconnectAttemptsReached();
+    });
+    
+    // Verify max reconnection attempts message
+    cy.getByTestId('connection-error')
+      .should('be.visible')
+      .and('contain', 'Unable to connect after multiple attempts');
+    
+    // Verify manual reconnect button is shown
+    cy.getByTestId('manual-reconnect')
+      .should('be.visible');
+    
+    // Try manual reconnection
+    cy.getByTestId('manual-reconnect').click();
+    
+    // Allow reconnection to succeed
+    cy.window().then((win) => {
+      win.socketReconnect();
+    });
+    
+    // Verify connection is restored
+    cy.getByTestId('connection-status')
+      .should('have.class', 'connected');
+  });
+});
+```
+
+## Mobile Network Testing
+
+The multiplayer system is rigorously tested under mobile network conditions to ensure reliability and performance across different network scenarios. Key testing areas include:
+
+1. **Variable Latency**
+   - Test with different simulated ping times (50ms to 500ms)
+   - Verify game responsiveness remains acceptable up to 300ms latency
+   - Ensure user feedback indicates connection quality
+
+2. **Limited Bandwidth**
+   - Test with bandwidth constraints (256kbps to 5mbps)
+   - Monitor data usage to ensure mobile data efficiency
+   - Verify features degrade gracefully under bandwidth limitations
+
+3. **Network Transitions**
+   - Test transitions between WiFi and cellular networks
+   - Verify connection recovery when switching network types
+   - Ensure game state is preserved during transitions
+
+4. **Connection Interruptions**
+   - Simulate brief (1-5 second) and extended (10-60 second) disconnections
+   - Verify reconnection attempt patterns follow good mobile practices
+   - Test state synchronization after reconnection
+
+## Integration with Game Features
+
+The multiplayer system integrates with other game systems in the following ways:
+
+1. **Combat System**
+   - Real-time combat notifications to players in the same sector
+   - Tactical information sharing between team members
+   - Combat results broadcast to relevant players
+
+2. **Trading System**
+   - Live market updates based on player trading activity
+   - Team-based resource sharing capabilities
+   - Trade negotiation protocols through WebSockets
+
+3. **Sector Navigation**
+   - Automatic sector player list updates
+   - Real-time sector status changes based on player actions
+   - Patrol alerts for team defense scenarios
+
+4. **Team Coordination**
+   - Shared resource and fighter deployment maps
+   - Team member location tracking
+   - Coordinated action capabilities for team objectives
