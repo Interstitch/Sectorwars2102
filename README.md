@@ -177,6 +177,29 @@ npm install
 npm run dev
 ```
 
+## Testing
+
+### End-to-End (E2E) Testing
+
+Both the admin UI and player client use Playwright for end-to-end testing:
+
+```bash
+# Admin UI tests
+cd services/admin-ui
+npm install
+npx playwright install chromium   # First time only
+npm run test:e2e:docker           # Run tests against Docker container
+npm run test:e2e                  # Run tests with dev server
+
+# Player Client tests
+cd services/player-client
+npm install
+npx playwright install chromium   # First time only
+npm run test:e2e
+```
+
+Detailed E2E testing documentation can be found in [DOCS/FEATURE_DOCS/E2E_TESTING.md](./DOCS/FEATURE_DOCS/E2E_TESTING.md).
+
 ## Documentation
 
 - **Developer Documentation**: See [CLAUDE.md](./CLAUDE.md) for development guide

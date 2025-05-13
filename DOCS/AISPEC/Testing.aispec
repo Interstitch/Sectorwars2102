@@ -1,9 +1,9 @@
 OVERVIEW:
-Testing infrastructure combines pytest for unit/integration testing and Cypress for E2E testing with fixtures for test data, containerized test environments, and CI/CD pipeline integration.
+Testing infrastructure combines pytest for unit/integration testing and Playwright for E2E testing with fixtures for test data, containerized test environments, and CI/CD pipeline integration. E2E tests are designed to run in various environments (local, Codespaces, Replit) with automatic environment detection and report generation.
 
 FACTS:
 * Pytest provides unit and integration testing capabilities
-* Cypress enables end-to-end testing of web interfaces
+* Playwright enables end-to-end testing of web interfaces with Chromium browser support
 * Docker containers isolate test environments
 * Test database is separate from development/production
 * Fixtures generate consistent test data
@@ -11,7 +11,8 @@ FACTS:
 * Test coverage reporting integrated into workflow
 * API tests use requests library with pytest
 * Property-based testing with Hypothesis for edge cases
-* Parallel test execution for faster feedback
+* Custom test runner scripts provide improved developer experience
+* Environment detection for test report URLs in different hosting environments
 
 TERMINOLOGY:
 * Unit Test: Tests isolated components without external dependencies
@@ -21,6 +22,7 @@ TERMINOLOGY:
 * Mocking: Replacing real components with test doubles
 * Test Coverage: Percentage of code executed by tests
 * Hypothesis: Library for property-based testing
+* Page Object Model: Design pattern for UI testing that represents each page as a class
 
 FILES:
 - /services/gameserver/
@@ -30,17 +32,29 @@ FILES:
   │   ├── conftest.py     # Pytest configuration and fixtures
   │   └── test_data/      # Test data files
   └── pytest.ini         # Pytest configuration
-- /services/player-client/
-  ├── cypress/
-  │   ├── e2e/           # End-to-end tests
-  │   ├── fixtures/      # Test fixtures
-  │   └── support/       # Test support files
-  └── cypress.config.js  # Cypress configuration
 - /services/admin-ui/
-  ├── cypress/
-  │   ├── e2e/           # End-to-end tests
-  │   └── fixtures/      # Test fixtures
-  └── cypress.config.js  # Cypress configuration
+  ├── playwright/
+  │   ├── e2e/            # End-to-end tests for admin UI
+  │   │   ├── admin-login.spec.ts  # Login tests
+  │   │   └── admin-ui.spec.ts     # General UI tests
+  │   ├── fixtures/       # Test fixtures specific to admin UI
+  │   │   └── auth.fixtures.ts     # Authentication fixtures
+  │   └── utils/          # Helper utilities for admin UI tests
+  │       └── auth.utils.ts        # Authentication utilities
+  ├── playwright.config.ts  # Playwright configuration for admin UI
+  └── scripts/
+      └── run-tests.js     # Custom test runner with environment detection
+- /services/player-client/
+  ├── playwright/
+  │   ├── e2e/            # End-to-end tests for player client
+  │   │   └── player-ui.spec.ts    # Player UI tests
+  │   ├── fixtures/       # Test fixtures specific to player client
+  │   │   └── auth.fixtures.ts     # Authentication fixtures
+  │   └── utils/          # Helper utilities for player client tests
+  │       └── auth.utils.ts        # Authentication utilities
+  ├── playwright.config.ts  # Playwright configuration for player client
+  └── scripts/
+      └── run-tests.js     # Custom test runner with environment detection
 
 SCHEMA:
 No database schema specifically for testing. Tests use separate database with same schema as production.
@@ -81,26 +95,45 @@ def test_login_api(test_server):
     assert "token" in response.json()
 ```
 
-```javascript
-// Cypress E2E test example
-describe('User Login', () => {
-  beforeEach(() => {
-    cy.request('POST', '/api/test/reset')
-    cy.request('POST', '/api/test/setup', {
-      user: {
-        username: 'testuser',
-        password: 'password123'
-      }
-    })
-  })
+```typescript
+// Playwright E2E test example
+import { test, expect } from '@playwright/test';
 
-  it('should login successfully with correct credentials', () => {
-    cy.visit('/login')
-    cy.get('input[name="username"]').type('testuser')
-    cy.get('input[name="password"]').type('password123')
-    cy.get('form').submit()
-    cy.url().should('include', '/dashboard')
-    cy.get('.user-info').should('contain', 'testuser')
-  })
-})
+test.describe('Admin Authentication', () => {
+  test('should display the login page correctly', async ({ page }) => {
+    // Navigate to login page
+    await page.goto('/login');
+    
+    // Verify the login page elements are visible
+    await expect(page.locator('.login-form')).toBeVisible();
+    await expect(page.locator('h2')).toContainText('Admin Login');
+    
+    // Verify form fields are present
+    await expect(page.locator('#username')).toBeVisible();
+    await expect(page.locator('#password')).toBeVisible();
+    await expect(page.locator('.login-button')).toBeVisible();
+  });
+});
+```
+
+```typescript
+// Test fixtures example
+import { test as base } from '@playwright/test';
+
+export type AdminCredentials = {
+  username: string;
+  password: string;
+};
+
+export const test = base.extend<{
+  adminCredentials: AdminCredentials;
+}>({
+  // Default admin credentials for testing
+  adminCredentials: {
+    username: 'admin',
+    password: 'password123',
+  },
+});
+
+export { expect } from '@playwright/test';
 ```

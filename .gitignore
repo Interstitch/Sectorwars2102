@@ -165,6 +165,19 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Node.js dependencies
+node_modules/
+*/node_modules/
+**/node_modules/
+
+# Test reports and results
+playwright-report/
+*/playwright-report/
+**/playwright-report/
+test-results/
+*/test-results/
+**/test-results/
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
