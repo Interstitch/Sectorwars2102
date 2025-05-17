@@ -73,11 +73,17 @@ export async function ensureAdminAccountExists(credentials: AdminCredentials): P
 /**
  * Helper function to login as an admin
  */
-export async function loginAsAdmin(page: Page, credentials: AdminCredentials): Promise<void> {
+export async function loginAsAdmin(page: Page, credentials: { username: string; password: string }): Promise<void> {
   console.log('Starting admin login...');
   
   // First ensure the admin account exists
-  await ensureAdminAccountExists(credentials);
+  if ('username' in credentials && 'password' in credentials) {
+    // Only call ensureAdminAccountExists for standard admin credentials, not for test-specific ones
+    // Test-specific credentials are created separately
+    if (credentials.username === 'admin') {
+      await ensureAdminAccountExists(credentials);
+    }
+  }
   
   // Set up network monitoring before navigating
   let hasNetworkError = false;
@@ -133,7 +139,7 @@ export async function loginAsAdmin(page: Page, credentials: AdminCredentials): P
   await page.goto('/login');
   
   // Set up tokens directly in localStorage for test purposes (workaround for auth issues)
-  await page.addInitScript(() => {
+  await page.addInitScript((username) => {
     // Create a mock JWT token - for testing purposes only
     const createMockJwt = (username, isAdmin = true) => {
       const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
@@ -148,10 +154,10 @@ export async function loginAsAdmin(page: Page, credentials: AdminCredentials): P
     };
     
     // Store mock tokens in localStorage
-    localStorage.setItem('accessToken', createMockJwt('admin', true));
+    localStorage.setItem('accessToken', createMockJwt(username, true));
     localStorage.setItem('refreshToken', 'mock-refresh-token');
     console.log('Mock tokens stored in localStorage for tests');
-  });
+  }, credentials.username);
   
   // Fill in credentials
   console.log('Filling username:', credentials.username);

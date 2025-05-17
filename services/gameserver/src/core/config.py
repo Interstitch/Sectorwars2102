@@ -53,12 +53,10 @@ class Settings(BaseSettings):
 
 
     # Database
-    DATABASE_URL: PostgresDsn = Field(
-        default="postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
-    )
-    DATABASE_TEST_URL: Optional[PostgresDsn] = Field(
-        default="postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
-    )
+    # Database configuration using environment variable with Pydantic's priority handling
+    # By removing the default parameter, the environment variable will be used first
+    DATABASE_URL: PostgresDsn = None
+    DATABASE_TEST_URL: Optional[PostgresDsn] = None
     DATABASE_URL_PROD: Optional[PostgresDsn] = None
     SQLALCHEMY_POOL_SIZE: int = 10
     SQLALCHEMY_MAX_OVERFLOW: int = 20
@@ -142,11 +140,19 @@ class Settings(BaseSettings):
 
     def get_db_url(self) -> str:
         """Get the appropriate database URL based on environment."""
-        # Ensure correct type casting for Pydantic DSNs
+        # For testing mode, use test DB if available
         if self.ENVIRONMENT == "testing" and self.DATABASE_TEST_URL:
             return str(self.DATABASE_TEST_URL)
+        
+        # For production, use production DB if available
         if self.ENVIRONMENT == "production" and self.DATABASE_URL_PROD:
             return str(self.DATABASE_URL_PROD)
+        
+        # Check if DATABASE_URL is None, meaning it wasn't found in environment variables
+        if self.DATABASE_URL is None:
+            print("WARNING: DATABASE_URL not found in environment, using default")
+            return DEFAULT_DB_URL
+            
         return str(self.DATABASE_URL)
 
     # Using model_config for newer Pydantic versions

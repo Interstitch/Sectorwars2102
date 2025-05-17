@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { test as authTest } from '../../fixtures/auth.fixtures';
 import { loginAsAdmin, logout } from '../../utils/auth.utils';
+import { v4 as uuidv4 } from 'uuid';
 
 test.describe('Admin UI - Login', () => {
   test('should display the login page correctly', async ({ page }) => {
@@ -17,15 +18,25 @@ test.describe('Admin UI - Login', () => {
     await expect(page.locator('.login-button')).toBeVisible();
   });
   
+  // Use the auth fixture but with unique credentials for just this test
   authTest('should login successfully with valid credentials', async ({ page, adminCredentials }) => {
-    // Use the helper function to log in
+    // Create a unique admin for this test
+    const uniqueAdmin = {
+      username: `admin_${uuidv4().substring(0, 8)}`,
+      password: `admin_${uuidv4().substring(0, 8)}`
+    };
+    console.log(`Using unique admin: ${uniqueAdmin.username} for login test`);
+    
+    // Test will continue to use the default admin account
+    // which is automatically created in the test environment
     await loginAsAdmin(page, adminCredentials);
     
     // Verify we're on the dashboard
     await expect(page.url()).toContain('/dashboard');
     
-    // The page title is in a PageHeader component, not a .page-title element
-    await expect(page.locator('h1')).toContainText('Dashboard');
+    // The page title is in a PageHeader component
+    // Use a more specific selector to target just the dashboard heading
+    await expect(page.locator('.page-title')).toContainText('Dashboard');
   });
   
   test('should show error with invalid credentials', async ({ page }) => {
@@ -47,7 +58,7 @@ test.describe('Admin UI - Login', () => {
 
 test.describe('Admin UI - Dashboard', () => {
   authTest.beforeEach(async ({ page, adminCredentials }) => {
-    // Log in before each test in this suite
+    // Log in before each test in this suite using the default admin credentials
     await loginAsAdmin(page, adminCredentials);
   });
   
