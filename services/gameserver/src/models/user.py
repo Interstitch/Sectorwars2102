@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from src.models.oauth_account import OAuthAccount
     from src.models.refresh_token import RefreshToken
     from src.models.admin_credentials import AdminCredentials
+    from src.models.player_credentials import PlayerCredentials
 
 
 class User(Base):
@@ -30,6 +31,7 @@ class User(Base):
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
     admin_credentials = relationship("AdminCredentials", back_populates="user", cascade="all, delete-orphan", uselist=False)
+    player_credentials = relationship("PlayerCredentials", back_populates="user", cascade="all, delete-orphan", uselist=False)
 
     def __repr__(self):
         return f"<User {self.username}>"

@@ -14,7 +14,7 @@ from src.core.database import get_db
 from src.core.config import settings
 from src.models.refresh_token import RefreshToken
 from src.schemas.auth import Token, RefreshToken as RefreshTokenSchema, AuthResponse, LoginForm
-from src.services.user_service import authenticate_admin, update_user_last_login
+from src.services.user_service import authenticate_admin, authenticate_player, update_user_last_login
 
 router = APIRouter()
 
@@ -130,6 +130,92 @@ async def login_direct(
         "refresh_token": refresh_token,
         "token_type": "bearer",
         "user_id": str(user.id)
+    }
+
+
+@router.post("/player/login", response_model=AuthResponse)
+async def player_login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    """
+    Authenticate player user with username and password using form data.
+    Returns JWT tokens for API access.
+    """
+    # Get credentials from form data
+    username = form_data.username
+    password = form_data.password
+
+    # Authenticate user
+    user = authenticate_player(db, username, password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Create new tokens
+    access_token, refresh_token = create_tokens(user.id, db)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user_id": str(user.id)
+    }
+
+
+@router.post("/player/login/json", response_model=AuthResponse)
+async def player_login_json(
+    json_data: LoginForm,
+    db: Session = Depends(get_db)
+):
+    """
+    Authenticate player user with username and password using JSON.
+    Returns JWT tokens for API access.
+    """
+    # Get credentials from JSON data
+    username = json_data.username
+    password = json_data.password
+
+    # Authenticate user
+    user = authenticate_player(db, username, password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Create new tokens
+    access_token, refresh_token = create_tokens(user.id, db)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user_id": str(user.id)
+    }
+
+@router.options("/player/login/json")
+async def options_player_login_json():
+    """
+    Handle preflight CORS requests for player login/json endpoint.
+    This is especially important for GitHub Codespaces.
+    """
+    return {
+        "status": "ok"
+    }
+
+@router.options("/player/login")
+async def options_player_login():
+    """
+    Handle preflight CORS requests for player login endpoint.
+    This is especially important for GitHub Codespaces.
+    """
+    return {
+        "status": "ok"
     }
 
 @router.post("/register", response_model=dict)

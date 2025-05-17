@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
   
   // Refresh token function
-  const refreshToken = async () => {
+  const refreshToken = async (): Promise<void> => {
     const refreshTokenStr = localStorage.getItem('refreshToken');
     if (!refreshTokenStr) {
       throw new Error('No refresh token available');
@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     try {
       const response = await axios.post(
-        `${apiUrl}/api/auth/refresh`,
+        `${apiUrl}/api/v1/auth/refresh`,
         { refresh_token: refreshTokenStr },
         { headers: { Authorization: '' } } // Don't send current auth header
       );
@@ -73,7 +73,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Update auth header
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-      return response;
     } catch (error) {
       console.error('Token refresh failed:', error);
       // Clear tokens and user on refresh failure
@@ -134,7 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         
         // Try to get user profile
-        const response = await axios.get(`${apiUrl}/api/auth/me`);
+        const response = await axios.get(`${apiUrl}/api/v1/auth/me`);
         setUser(response.data);
         console.log('Auth successful - user loaded:', response.data);
       } catch (error) {
@@ -143,7 +142,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Try token refresh if initial check fails
         try {
           await refreshToken();
-          const userResponse = await axios.get(`${apiUrl}/api/auth/me`);
+          const userResponse = await axios.get(`${apiUrl}/api/v1/auth/me`);
           setUser(userResponse.data);
           console.log('Auth successful after refresh');
         } catch (refreshError) {
@@ -175,13 +174,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Try direct login with credentials as plain parameters
       try {
-        console.log('Attempting direct login call to /api/auth/login/direct');
-        const directResponse = await axios.post(`${apiUrl}/api/auth/login/direct`, {
+        console.log('Attempting direct login call to /api/v1/auth/login/direct');
+        console.log('API URL:', apiUrl);
+        const directResponse = await axios.post(`${apiUrl}/api/v1/auth/login/direct`, {
           username,
           password,
         });
 
-        const { access_token, refresh_token, user_id } = directResponse.data;
+        console.log('Direct login response:', directResponse.status, directResponse.statusText);
+        const { access_token, refresh_token } = directResponse.data;
 
         // Store tokens in localStorage
         localStorage.setItem('accessToken', access_token);
@@ -191,7 +192,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
         // Get user data
-        const userResponse = await axios.get(`${apiUrl}/api/auth/me`);
+        console.log('Fetching user data from /api/v1/auth/me');
+        const userResponse = await axios.get(`${apiUrl}/api/v1/auth/me`);
         setUser(userResponse.data);
         console.log('Login successful with direct login endpoint');
         return;
@@ -200,8 +202,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // If direct login fails, try JSON login
         try {
-          console.log('Trying JSON login endpoint');
-          const response = await axios.post(`${apiUrl}/api/auth/login/json`, {
+          console.log('Trying JSON login endpoint at /api/v1/auth/login/json');
+          const response = await axios.post(`${apiUrl}/api/v1/auth/login/json`, {
             username,
             password,
           }, {
@@ -211,7 +213,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
           });
 
-          const { access_token, refresh_token, user_id } = response.data;
+          console.log('JSON login response:', response.status, response.statusText);
+          const { access_token, refresh_token } = response.data;
 
           // Store tokens in localStorage
           localStorage.setItem('accessToken', access_token);
@@ -221,7 +224,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
           // Get user data
-          const userResponse = await axios.get(`${apiUrl}/api/auth/me`);
+          const userResponse = await axios.get(`${apiUrl}/api/v1/auth/me`);
           setUser(userResponse.data);
           console.log('Login successful with JSON endpoint');
           return;
@@ -229,20 +232,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.warn('JSON login attempt failed:', jsonError);
 
           // If JSON login fails, try form-based login as fallback
-          console.log('Trying form-based login as fallback...');
+          console.log('Trying form-based login as fallback at /api/v1/auth/login');
 
           // Create form data
           const formData = new FormData();
           formData.append('username', username);
           formData.append('password', password);
 
-          const response = await axios.post(`${apiUrl}/api/auth/login`, formData, {
+          const response = await axios.post(`${apiUrl}/api/v1/auth/login`, formData, {
             headers: {
               'Content-Type': 'multipart/form-data',
             },
           });
 
-          const { access_token, refresh_token, user_id } = response.data;
+          console.log('Form login response:', response.status, response.statusText);
+          const { access_token, refresh_token } = response.data;
 
           // Store tokens in localStorage
           localStorage.setItem('accessToken', access_token);
@@ -252,7 +256,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
           // Get user data
-          const userResponse = await axios.get(`${apiUrl}/api/auth/me`);
+          const userResponse = await axios.get(`${apiUrl}/api/v1/auth/me`);
           setUser(userResponse.data);
           console.log('Login successful with form-based endpoint');
         }
@@ -276,9 +280,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Call logout endpoint to invalidate refresh token, but don't wait for it
     if (refreshTokenStr) {
       // Set a short timeout to avoid CORS issues during page navigation
-      axios.post(`${apiUrl}/api/auth/logout`, { refresh_token: refreshTokenStr }, {
+      axios.post(`${apiUrl}/api/v1/auth/logout`, { refresh_token: refreshTokenStr }, {
         timeout: 1000 // 1 second timeout
-      }).catch(error => {
+      }).catch(() => {
         // Just log the error, don't block logout
         console.log('Logout token invalidation skipped');
       });

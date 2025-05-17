@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from src.api.api import api_router
 from src.core.config import settings
 from src.core.database import get_db
-from src.auth.admin import create_default_admin
+from src.auth.admin import create_default_admin, create_default_player
 
 # Print environment information to help debugging
 print(f"Python version: {sys.version}")
@@ -18,17 +18,16 @@ print(f"Current directory: {os.getcwd()}")
 print(f"sys.path: {sys.path}")
 print(f"PYTHONPATH: {os.environ.get('PYTHONPATH', 'Not set')}")
 print(f"CLIENT_ID_GITHUB: {os.environ.get('CLIENT_ID_GITHUB', 'Not set')}")
-print(f"GITHUB_CLIENT_ID: {os.environ.get('GITHUB_CLIENT_ID', 'Not set')}")
-print(f"Is using mock GitHub: {settings.GITHUB_CLIENT_ID.startswith('mock_')}")
+print(f"Is using mock GitHub: {settings.CLIENT_ID_GITHUB.startswith('mock_') if settings.CLIENT_ID_GITHUB else False}")
 
 # Create FastAPI app
 app = FastAPI(
     title="Sector Wars 2102 Game API",
     description="API for the Sector Wars 2102 space trading game",
     version="0.1.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json"
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc",
+    openapi_url="/api/v1/openapi.json"
 )
 
 # Configure CORS to work across all environments (Replit, Codespaces, Docker)
@@ -44,38 +43,45 @@ app.add_middleware(
     max_age=86400,  # 24 hours
 )
 
-# Health check endpoint
-@app.get("/health")
+# Create a status router for utility endpoints
+from fastapi import APIRouter
+status_router = APIRouter(prefix="/status", tags=["status"])
+
+# Health check endpoint - moved to versioned API
+@status_router.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "gameserver"}
 
-# Hello World endpoint
+# Hello World endpoint - root endpoint remains for discoverability
 @app.get("/")
 async def hello_world():
     environment = os.environ.get("ENVIRONMENT", "development")
     return {
         "message": "Hello from Sector Wars 2102 Game API!",
         "environment": environment,
-        "status": "operational"
+        "status": "operational",
+        "api_version": "v1",
+        "docs_url": "/api/v1/docs"
     }
 
-# API version endpoint
-@app.get("/api/version")
-async def api_version():
-    return {"version": "0.1.0"}
-
-# API status endpoint
-@app.get("/api/status")
-async def api_status():
+# Hello World endpoint - also available in versioned API
+@status_router.get("/")
+async def status_root():
     environment = os.environ.get("ENVIRONMENT", "development")
     return {
         "message": "Game API Server is operational",
         "environment": environment,
-        "status": "healthy"
+        "status": "healthy",
+        "api_version": "v1"
     }
 
-# API ping endpoint for simple connectivity testing
-@app.get("/api/ping")
+# API version endpoint - moved to versioned status router
+@status_router.get("/version")
+async def api_version():
+    return {"version": "0.1.0"}
+
+# API ping endpoint for simple connectivity testing - moved to versioned status router
+@status_router.get("/ping")
 async def api_ping():
     environment = os.environ.get("ENVIRONMENT", "development")
     return {
@@ -103,6 +109,9 @@ async def add_cors_headers(request, call_next):
 
     return response
 
+# Include status router with all utility endpoints
+app.include_router(status_router, prefix=settings.API_V1_STR)
+
 # Include API router with all routes
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
@@ -114,6 +123,7 @@ async def startup_event():
     db = next(get_db())
     try:
         create_default_admin(db)
+        create_default_player(db)
     finally:
         db.close()
 

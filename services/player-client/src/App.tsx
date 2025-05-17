@@ -42,7 +42,7 @@ function MainApp() {
         // Try the API version endpoint first (properly proxied)
         try {
           console.log('Trying API version endpoint...')
-          const versionResponse = await axios.get(`${apiUrl}/api/version`)
+          const versionResponse = await axios.get(`${apiUrl}/api/v1/status/version`)
           if (versionResponse.status === 200) {
             setApiStatus('Connected')
             setApiMessage(`Game API Server v${versionResponse.data.version}`)
@@ -57,7 +57,7 @@ function MainApp() {
         // Try API status endpoint (properly proxied)
         try {
           console.log('Trying API status endpoint...')
-          const statusResponse = await axios.get(`${apiUrl}/api/status`)
+          const statusResponse = await axios.get(`${apiUrl}/api/v1/status`)
           setApiStatus('Connected')
           setApiMessage(statusResponse.data.message || 'Game API Server is operational')
           setApiEnvironment(statusResponse.data.environment || 'gameserver')
@@ -70,7 +70,7 @@ function MainApp() {
         // Try API ping endpoint as final fallback
         try {
           console.log('Trying API ping endpoint as final fallback...')
-          const pingResponse = await axios.get(`${apiUrl}/api/ping`)
+          const pingResponse = await axios.get(`${apiUrl}/api/v1/status/ping`)
           setApiStatus('Connected')
           setApiMessage('Game API Server is responding')
           setApiEnvironment(pingResponse.data.environment || 'gameserver')
@@ -100,7 +100,7 @@ function MainApp() {
           axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
           
           // Get user info
-          const response = await axios.get(`${apiUrl}/api/auth/me`);
+          const response = await axios.get(`${apiUrl}/api/v1/auth/me`);
           setUser(response.data);
           setIsAuthenticated(true);
         } catch (error) {

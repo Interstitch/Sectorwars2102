@@ -3,19 +3,62 @@ from typing import Optional
 from pydantic import PostgresDsn, Field
 from pydantic_settings import BaseSettings
 
+# Set default database URL if not provided in environment
+DEFAULT_DB_URL = "postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
+
+# Ensure DATABASE_URL is set in environment
+if not os.environ.get("DATABASE_URL"):
+    os.environ["DATABASE_URL"] = DEFAULT_DB_URL
+    print(f"DATABASE_URL not found in environment, using default: {DEFAULT_DB_URL}")
+
 
 class Settings(BaseSettings):
     # Base
     API_BASE_URL: str = os.environ.get("API_BASE_URL", "")  # Empty string to auto-detect
-    API_V1_STR: str = "/api"
+    API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
     DEBUG: bool = os.environ.get("DEBUG", "True").lower() == "true"
+    
+    # Test and development mode flags
+    TESTING: bool = os.environ.get("TESTING", "False").lower() == "true"
+    DEVELOPMENT_MODE: bool = os.environ.get("ENVIRONMENT", "development").lower() == "development"
+    
+    JWT_SECRET: str = os.environ.get("JWT_SECRET", "your-secret-key")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24 hours
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", "30"))  # 30 days
+
+    # Admin credentials
+    ADMIN_USERNAME: str = os.environ.get("ADMIN_USERNAME", "admin")
+    ADMIN_PASSWORD: str = os.environ.get("ADMIN_PASSWORD", "admin")  # Changed from "adminpassword"
 
     # Development Environment Type
     DEV_ENVIRONMENT: str = os.environ.get("DEV_ENVIRONMENT", "")  # local, replit, codespaces
+    NODE_ENV: Optional[str] = os.environ.get("NODE_ENV")
+    FRONTEND_URL: Optional[str] = os.environ.get("FRONTEND_URL")
+    CODESPACE_NAME: Optional[str] = os.environ.get("CODESPACE_NAME")
+    CLIENT_ID_GITHUB: Optional[str] = os.environ.get("CLIENT_ID_GITHUB")
+    CLIENT_SECRET_GITHUB: Optional[str] = os.environ.get("CLIENT_SECRET_GITHUB")
+    
+    # Important: GitHub OAuth variables must not start with GITHUB_ as GitHub reserves this prefix
+    # for their own environment variables in GitHub Actions and Codespaces
+    @property
+    def GITHUB_CLIENT_ID(self) -> Optional[str]:
+        """For backward compatibility. Please use CLIENT_ID_GITHUB instead."""
+        return self.CLIENT_ID_GITHUB
+        
+    @property
+    def GITHUB_CLIENT_SECRET(self) -> Optional[str]:
+        """For backward compatibility. Please use CLIENT_SECRET_GITHUB instead."""
+        return self.CLIENT_SECRET_GITHUB
+
 
     # Database
-    DATABASE_URL: PostgresDsn
+    DATABASE_URL: PostgresDsn = Field(
+        default="postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
+    )
+    DATABASE_TEST_URL: Optional[PostgresDsn] = Field(
+        default="postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
+    )
     DATABASE_URL_PROD: Optional[PostgresDsn] = None
     SQLALCHEMY_POOL_SIZE: int = 10
     SQLALCHEMY_MAX_OVERFLOW: int = 20
@@ -99,47 +142,18 @@ class Settings(BaseSettings):
 
     def get_db_url(self) -> str:
         """Get the appropriate database URL based on environment."""
+        # Ensure correct type casting for Pydantic DSNs
+        if self.ENVIRONMENT == "testing" and self.DATABASE_TEST_URL:
+            return str(self.DATABASE_TEST_URL)
         if self.ENVIRONMENT == "production" and self.DATABASE_URL_PROD:
             return str(self.DATABASE_URL_PROD)
         return str(self.DATABASE_URL)
 
-    # Security
-    JWT_SECRET: str = os.environ.get("JWT_SECRET", "dev-secret-key")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # 1 hour
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7     # 7 days
-    SECURE_COOKIES: bool = os.environ.get("SECURE_COOKIES", "False").lower() == "true"
-
-    # OAuth
-    # For development purposes only - replace with real credentials in production
-    # Check both old and new environment variable names for backward compatibility
-    GITHUB_CLIENT_ID: str = os.environ.get("CLIENT_ID_GITHUB",
-                        os.environ.get("GITHUB_CLIENT_ID", "mock_github_client_id"))
-    GITHUB_CLIENT_SECRET: str = os.environ.get("CLIENT_SECRET_GITHUB",
-                             os.environ.get("GITHUB_CLIENT_SECRET", "mock_github_client_secret"))
-
-    GOOGLE_CLIENT_ID: str = os.environ.get("GOOGLE_CLIENT_ID", "mock_google_client_id")
-    GOOGLE_CLIENT_SECRET: str = os.environ.get("GOOGLE_CLIENT_SECRET", "mock_google_client_secret")
-
-    STEAM_API_KEY: str = os.environ.get("STEAM_API_KEY", "mock_steam_api_key")
-
-    # Frontend URLs (with auto-detection)
-    @property
-    def FRONTEND_URL(self) -> str:
-        return self.get_frontend_url()
-
-    ADMIN_FRONTEND_URL: str = os.environ.get("ADMIN_FRONTEND_URL", "http://localhost:3001")
-
-    # Admin User
-    DEFAULT_ADMIN_USERNAME: str = os.environ.get("DEFAULT_ADMIN_USERNAME", "admin")
-    DEFAULT_ADMIN_PASSWORD: str = os.environ.get("DEFAULT_ADMIN_PASSWORD", "admin")
-
-    # Rate limiting
-    RATE_LIMIT_PER_MINUTE: int = 100
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
-
+    # Using model_config for newer Pydantic versions
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",  # Ignore extra fields from .env
+    }
 
 settings = Settings()

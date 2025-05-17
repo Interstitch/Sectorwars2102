@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from src.models.user import User
 from src.models.admin_credentials import AdminCredentials
+from src.models.player_credentials import PlayerCredentials
 from src.core.security import get_password_hash, verify_password
 
 
@@ -36,15 +37,25 @@ def authenticate_admin(db: Session, username: str, password: str) -> Optional[Us
     """Authenticate an admin user with username and password."""
     user = get_user_by_username(db, username)
     
-    if not user or not user.is_admin:
+    if not user:
         return None
     
-    admin_creds = db.query(AdminCredentials).filter(AdminCredentials.user_id == user.id).first()
-    if not admin_creds:
-        return None
-    
-    if not verify_password(password, admin_creds.password_hash):
-        return None
+    # If the user is an admin, check admin credentials
+    if user.is_admin:
+        admin_creds = db.query(AdminCredentials).filter(AdminCredentials.user_id == user.id).first()
+        if not admin_creds:
+            return None
+        
+        if not verify_password(password, admin_creds.password_hash):
+            return None
+    # If the user is not an admin, check player credentials
+    else:
+        player_creds = db.query(PlayerCredentials).filter(PlayerCredentials.user_id == user.id).first()
+        if not player_creds:
+            return None
+        
+        if not verify_password(password, player_creds.password_hash):
+            return None
     
     # Update last login time
     user.last_login = datetime.utcnow()
@@ -59,3 +70,24 @@ def update_user_last_login(db: Session, user_id: str) -> None:
     if user:
         user.last_login = datetime.utcnow()
         db.commit()
+
+
+def authenticate_player(db: Session, username: str, password: str) -> Optional[User]:
+    """Authenticate a player user with username and password."""
+    user = get_user_by_username(db, username)
+    
+    if not user or user.is_admin:
+        return None
+    
+    player_creds = db.query(PlayerCredentials).filter(PlayerCredentials.user_id == user.id).first()
+    if not player_creds:
+        return None
+    
+    if not verify_password(password, player_creds.password_hash):
+        return None
+    
+    # Update last login time
+    user.last_login = datetime.utcnow()
+    db.commit()
+    
+    return user

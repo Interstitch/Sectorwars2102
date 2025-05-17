@@ -62,12 +62,12 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="page-container">
-      <PageHeader title="Dashboard" subtitle="Game Universe Overview" />
+      <PageHeader title="Dashboard" subtitle="Game Galaxy Overview" />
 
       <div className="dashboard-content">
         <section className="welcome-section">
-          <h2>Universe Administration</h2>
-          <p>Welcome to the Sector Wars 2102 Admin Interface. This panel allows you to manage the game universe, monitor players, and configure game mechanics.</p>
+          <h2>Galaxy Administration</h2>
+          <p>Welcome to the Sector Wars 2102 Admin Interface. This panel allows you to manage the game galaxy, monitor players, and configure game mechanics.</p>
         </section>
 
         <div className="dashboard-grid">

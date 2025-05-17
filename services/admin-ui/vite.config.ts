@@ -42,6 +42,7 @@ export default defineConfig({
         // Determine target dynamically based on environment
         target: process.env.API_URL ||
                 (process.env.REPL_ID ? 'http://localhost:8080' : 'http://gameserver:8080'),
+        // Do not rewrite all paths to /api/v1 - use paths as they are
         changeOrigin: true,
         secure: false,
         ws: true,

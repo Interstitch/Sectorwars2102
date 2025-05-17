@@ -27,6 +27,18 @@ FILES:
   ├── Dockerfile                  # Combined container Dockerfile
   ├── pm2.replit.config.js        # PM2 configuration for Replit environment
   ├── CLAUDE.md                   # AI assistant configuration
+  ├── tests/                      # Central testing directory
+  │   ├── e2e_tests/              # Centralized E2E tests
+  │   │   ├── admin/              # Admin UI tests
+  │   │   │   └── ui/             # Admin UI test files
+  │   │   ├── player/             # Player client tests
+  │   │   │   └── ui/             # Player client test files
+  │   │   ├── fixtures/           # Shared test fixtures
+  │   │   ├── utils/              # Shared utility functions
+  │   │   ├── playwright.config.ts # Playwright configuration
+  │   │   ├── test-explorer.config.ts # VS Code Test Explorer config
+  │   │   └── run_all_tests.sh    # Script to run all E2E tests
+  │   └── test-results/           # Test reports and artifacts
   ├── dev-scripts/                # Development utility scripts
   │   ├── setup.sh                # Unified setup script
   │   ├── start-unified.sh        # Main entry script
@@ -48,10 +60,19 @@ FILES:
   │   │   │   ├── core/          # Core infrastructure
   │   │   │   └── utils/         # Utility functions
   │   │   ├── tests/             # Test suite
+  │   │   │   ├── api/           # API tests
+  │   │   │   │   ├── test_auth_routes.py
+  │   │   │   │   └── test_users_routes.py
+  │   │   │   ├── conftest.py    # Test fixtures and configuration
+  │   │   │   ├── mock_app.py    # Mock application for testing
+  │   │   │   ├── mock_config.py # Test configuration
+  │   │   │   └── run_tests.sh   # Test runner script
   │   │   └── alembic/           # Database migrations
   │   ├── player-client/         # Player web interface
   │   │   ├── Dockerfile
   │   │   ├── package.json
+  │   │   ├── playwright.config.ts # Playwright test configuration
+  │   │   ├── run_tests.sh       # Test runner script
   │   │   ├── src/
   │   │   │   ├── main.tsx       # Application entry point
   │   │   │   ├── App.tsx        # Root component
@@ -60,28 +81,41 @@ FILES:
   │   │   │   ├── pages/         # Page components
   │   │   │   ├── services/      # API client services
   │   │   │   └── types/         # TypeScript type definitions
-  │   │   └── tests/             # Test suite
-  │   └── admin-ui/              # Admin interface
-  │       ├── Dockerfile
-  │       ├── package.json
-  │       ├── src/
-  │       │   ├── main.tsx       # Application entry point
-  │       │   ├── App.tsx        # Root component
-  │       │   ├── auth/          # Admin authentication
-  │       │   ├── components/    # Reusable UI components
-  │       │   ├── pages/         # Admin pages
-  │       │   ├── services/      # API client services
-  │       │   └── types/         # TypeScript type definitions
-  │       └── tests/             # Test suite
+  │   ├── admin-ui/              # Admin interface
+  │   │   ├── Dockerfile
+  │   │   ├── package.json
+  │   │   ├── src/
+  │   │   │   ├── main.tsx       # Application entry point
+  │   │   │   ├── App.tsx        # Root component
+  │   │   │   ├── auth/          # Admin authentication
+  │   │   │   ├── components/    # Reusable UI components
+  │   │   │   ├── pages/         # Admin pages
+  │   │   │   ├── services/      # API client services
+  │   │   │   └── types/         # TypeScript type definitions
+  │   │   └── scripts/
+  │   │       └── run-tests.js   # Test runner script
+  │   ├── playwright-admin/      # Playwright admin tests
+  │   │   ├── e2e/               # End-to-end tests for admin
+  │   │   ├── fixtures/          # Test fixtures
+  │   │   ├── utils/             # Test utilities
+  │   │   ├── playwright.config.ts # Playwright configuration
+  │   │   └── run_tests.sh       # Test runner script
+  │   └── playwright-player/     # Playwright player tests
+  │       ├── e2e/               # End-to-end tests for player client
+  │       ├── fixtures/          # Test fixtures
+  │       ├── utils/             # Test utilities
+  │       ├── playwright.config.ts # Playwright configuration
+  │       └── run_tests.sh       # Test runner script
   └── DOCS/
       ├── FEATURE_DOCS/         # Feature documentation
+      │   ├── TESTING.md        # Comprehensive testing guide
+      │   └── E2E_TESTING.md    # End-to-End testing guide (deprecated)
       ├── DATA_DEFS/            # Data Definitions and Models
       └── AISPEC/               # AI assistant documentation
           ├── Architecture.aispec   # Overall architecture
           ├── Database.aispec       # Database schema
           ├── GameServer.aispec     # Game server details
-          ├── AuthSystem.aispec     # Authentication system
-          └── Testing.aispec        # Testing approach
+          └── AuthSystem.aispec     # Authentication system
 
 SCHEMA:
 No database schema directly associated with architecture. See Database.aispec for schema details.

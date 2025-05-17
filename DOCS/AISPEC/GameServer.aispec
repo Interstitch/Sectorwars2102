@@ -4,7 +4,7 @@ Game API Server built with FastAPI provides core game logic, database operations
 FACTS:
 * FastAPI replaced Flask for improved performance and typing
 * RESTful API with JSON responses for all game actions
-* JWT authentication for API security
+* JWT authentication for API security with refresh token rotation
 * SQLAlchemy ORM for database operations
 * Pydantic models for request/response validation
 * Fully containerized for cross-environment compatibility
@@ -12,6 +12,10 @@ FACTS:
 * Rate limiting for security
 * Asynchronous handlers for improved concurrency
 * Dependency injection pattern for services
+* OAuth integration with GitHub, Google, and Steam
+* Soft delete functionality for users
+* CORS support for cross-origin requests
+* Environment-aware configuration
 
 TERMINOLOGY:
 * FastAPI: Python web framework optimized for API development
@@ -20,6 +24,9 @@ TERMINOLOGY:
 * Dependency Injection: Design pattern for service management
 * Rate Limiting: Restricting request frequency
 * RESTful: Architectural style for APIs based on HTTP methods
+* OAuth: Open standard for access delegation
+* CORS: Cross-Origin Resource Sharing
+* Refresh Token Rotation: Security technique that invalidates used refresh tokens
 
 FILES:
 - /services/gameserver/
@@ -29,6 +36,7 @@ FILES:
   │   ├── main.py                # FastAPI application entry point
   │   ├── api/
   │   │   ├── __init__.py
+  │   │   ├── api.py             # Router configuration
   │   │   ├── routes/
   │   │   │   ├── auth.py        # Authentication endpoints
   │   │   │   ├── admin.py       # Admin endpoints
@@ -48,7 +56,8 @@ FILES:
   │   │   ├── __init__.py
   │   │   ├── user.py            # User model
   │   │   ├── oauth_account.py   # OAuth account linking
-  │   │   └── refresh_token.py   # JWT refresh tokens
+  │   │   ├── refresh_token.py   # JWT refresh tokens
+  │   │   └── admin_credentials.py # Admin password storage
   │   ├── schemas/               # Pydantic models for API
   │   │   ├── __init__.py
   │   │   ├── auth.py            # Auth schemas
@@ -69,11 +78,46 @@ FILES:
 SCHEMA:
 See Database.aispec for database schema details.
 
-API Endpoints:
-- /api/auth/register [POST] - Register new user
-- /api/auth/login [POST] - Login user
-- /api/auth/refresh [POST] - Refresh JWT token
-- /api/admin/users [GET] - Admin user management
+API ENDPOINTS:
+
+Root and API Information:
+- / [GET] - Hello World endpoint
+- /api/v1/status/health [GET] - Health check endpoint
+- /api/v1/status/version [GET] - API version information
+- /api/v1/status [GET] - API status
+- /api/v1/status/ping [GET] - Simple connectivity test
+
+Authentication Endpoints:
+- /api/v1/auth/login [POST] - Admin login with form data
+- /api/v1/auth/login/json [POST] - Admin login with JSON data
+- /api/v1/auth/login/direct [POST] - Alternative admin login endpoint
+- /api/v1/auth/player/login [POST] - Player login with form data
+- /api/v1/auth/player/login/json [POST] - Player login with JSON data
+- /api/v1/auth/register [POST] - Register a new user
+- /api/v1/auth/refresh [POST] - Refresh JWT token
+- /api/v1/auth/logout [POST] - Logout (revoke refresh token)
+- /api/v1/auth/me [GET] - Get current user info
+- /api/v1/auth/me/token [POST] - Get user info by token
+
+OAuth Endpoints:
+- /api/v1/auth/github [GET] - GitHub OAuth login
+- /api/v1/auth/github/callback [GET] - GitHub OAuth callback
+- /api/v1/auth/google [GET] - Google OAuth login
+- /api/v1/auth/google/callback [GET] - Google OAuth callback
+- /api/v1/auth/steam [GET] - Steam OAuth login
+- /api/v1/auth/steam/callback [GET] - Steam OAuth callback
+
+User Management Endpoints:
+- /api/v1/users/ [GET] - List all users (admin only)
+- /api/v1/users/ [POST] - Create a new user (admin only)
+- /api/v1/users/admin [POST] - Create a new admin user (admin only)
+- /api/v1/users/{user_id} [GET] - Get user by ID (admin only)
+- /api/v1/users/{user_id} [PUT] - Update user (admin only)
+- /api/v1/users/{user_id} [DELETE] - Delete user (admin only)
+- /api/v1/users/{user_id}/password [PUT] - Reset admin password (admin only)
+
+OPTIONS Endpoints (for CORS):
+- Multiple OPTIONS endpoints for CORS preflight requests
 
 CONSTRAINTS:
 * API must follow RESTful design principles
@@ -84,3 +128,7 @@ CONSTRAINTS:
 * API versioning must be implemented for future compatibility
 * Error responses must be standardized
 * Database operations must use transactions for consistency
+* Passwords must never be stored in plain text
+* Refresh tokens must be rotated for security
+* CORS must be properly configured for cross-origin requests
+* OAuth providers must be properly configured

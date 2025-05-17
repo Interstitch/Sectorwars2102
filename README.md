@@ -19,7 +19,7 @@ All services can be deployed using Docker or run directly with PM2 process manag
 ## Technical Stack
 
 - **Backend**: FastAPI (Python 3.11)
-- **Database**: PostgreSQL 16 via Neon
+- **Database**: PostgreSQL 17 via Neon
 - **ORM**: SQLAlchemy
 - **Authentication**: JWT-based
 - **Frontend**: React with TypeScript
@@ -179,26 +179,32 @@ npm run dev
 
 ## Testing
 
-### End-to-End (E2E) Testing
+### Backend Testing (Gameserver)
 
-Both the admin UI and player client use Playwright for end-to-end testing:
+The gameserver uses pytest for both unit and integration tests:
 
 ```bash
-# Admin UI tests
-cd services/admin-ui
-npm install
-npx playwright install chromium   # First time only
-npm run test:e2e:docker           # Run tests against Docker container
-npm run test:e2e                  # Run tests with dev server
-
-# Player Client tests
-cd services/player-client
-npm install
-npx playwright install chromium   # First time only
-npm run test:e2e
+cd services/gameserver/tests
+./run_tests.sh
 ```
 
-Detailed E2E testing documentation can be found in [DOCS/FEATURE_DOCS/E2E_TESTING.md](./DOCS/FEATURE_DOCS/E2E_TESTING.md).
+You can also use VS Code's Test Explorer to run specific tests or test suites.
+
+### End-to-End (E2E) Testing
+
+E2E tests for both the admin UI and player client use Playwright:
+
+```bash
+# Run all E2E tests
+cd tests/e2e_tests
+./run_all_tests.sh
+
+# Or run specific test projects
+npx playwright test -c tests/e2e_tests/playwright.config.ts --project=admin-tests
+npx playwright test -c tests/e2e_tests/playwright.config.ts --project=player-tests
+```
+
+Detailed testing documentation can be found in [DOCS/FEATURE_DOCS/TESTING.md](./DOCS/FEATURE_DOCS/TESTING.md).
 
 ## Documentation
 

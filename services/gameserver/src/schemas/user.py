@@ -28,6 +28,7 @@ class UserInDBBase(UserBase):
     created_at: datetime
     updated_at: datetime
     last_login: Optional[datetime] = None
+    deleted: bool = False
 
     class Config:
         orm_mode = True
