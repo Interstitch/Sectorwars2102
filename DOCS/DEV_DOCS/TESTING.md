@@ -7,24 +7,28 @@ Sector Wars 2102 uses a comprehensive testing approach combining pytest for back
 ## Testing Structure
 
 The project uses two primary testing frameworks:
+
 1. **Pytest**: For backend unit and integration tests
 2. **Playwright**: For frontend end-to-end (E2E) tests
 
 Tests are organized in a structured manner:
 
-```
 /services/gameserver/
   ├── tests/
-  │   ├── api/          # API tests
-  │   │   ├── test_auth_routes.py
-  │   │   └── test_users_routes.py  
-  │   ├── conftest.py   # Pytest configuration and fixtures
-  │   ├── mock_app.py   # Mock app for testing
-  │   └── mock_config.py # Test configurations
-  ├── pytest.ini       # Pytest configuration
-  └── run_tests.sh     # Test runner script
+  │   ├── integration/
+  │   │   ├── api/      # API tests
+  │   │   │   ├── test_auth_routes.py
+  │   │   │   ├── test_status_routes.py
+  │   │   │   └── test_users_routes.py  
+  │   ├── unit/        # Unit tests
+  │   │   └── test_security.py
+  │   ├── conftest.py  # Pytest configuration and fixtures
+  │   ├── mock_app.py  # Mock app for testing
+  │   ├── mock_config.py # Test configurations
+  │   └── run_tests.sh # Test runner script
+  └── pytest.ini      # Pytest configuration
 
-/tests/e2e_tests/
+/e2e_tests/
   ├── admin/            # Admin UI E2E tests
   │   └── ui/           # Admin UI test files
   │       └── admin-ui.spec.ts
@@ -34,12 +38,13 @@ Tests are organized in a structured manner:
   ├── fixtures/         # Shared test fixtures
   │   └── auth.fixtures.ts
   ├── utils/            # Shared utility functions
-  │   └── auth.utils.ts
+  │   ├── auth.utils.ts
+  │   └── test_account_manager.ts  # Test account management
+  ├── global-setup.ts   # Global setup that runs once before all tests
+  ├── global-teardown.ts # Global teardown that runs once after all tests
   ├── playwright.config.ts     # Playwright configuration
   ├── test-explorer.config.ts  # VS Code Test Explorer configuration
-  ├── run_tests_in_context.sh  # Helper script for VS Code
   └── run_all_tests.sh         # E2E test runner script
-```
 
 ## Backend Testing (Gameserver)
 
@@ -48,15 +53,36 @@ Tests are organized in a structured manner:
 The gameserver uses pytest for both unit and integration tests:
 
 ```bash
-cd services/gameserver/tests
-./run_tests.sh
+cd services/gameserver
+python -m pytest
 ```
 
-Or you can run specific tests:
+Or you can run specific test categories:
 
 ```bash
 cd services/gameserver
-poetry run pytest tests/api/test_auth_routes.py -v
+
+# Run unit tests only
+python -m pytest tests/unit/
+
+# Run integration tests only
+python -m pytest tests/integration/
+
+# Run API tests only
+python -m pytest tests/integration/api/
+
+# Run a specific test file
+python -m pytest tests/integration/api/test_auth_routes.py -v
+```
+
+You can also use the provided test runner script:
+
+```bash
+cd services/gameserver/tests
+./run_tests.sh           # Run all tests
+./run_tests.sh unit      # Run unit tests only
+./run_tests.sh integration # Run integration tests only
+./run_tests.sh api       # Run API tests only
 ```
 
 ### Backend Test Types
@@ -65,44 +91,19 @@ poetry run pytest tests/api/test_auth_routes.py -v
 2. **Integration Tests**: Test interactions between components
 3. **API Tests**: Test API endpoints using requests library
 
-### Backend Test Example
-
-```python
-# Unit test example with pytest
-import pytest
-from src.models.user import User
-
-def test_user_creation():
-    user = User(username="testuser", email="test@example.com")
-    user.set_password("password123")
-    
-    assert user.username == "testuser"
-    assert user.email == "test@example.com"
-    assert user.check_password("password123") == True
-    assert user.check_password("wrongpassword") == False
-
-# API test example
-def test_login_api(test_client):
-    response = test_client.post(
-        "/api/v1/auth/login", 
-        json={"username": "testuser", "password": "password123"}
-    )
-    assert response.status_code == 200
-    assert "token" in response.json()
-```
-
 ## End-to-End (E2E) Testing
 
 ### Running E2E Tests
 
-The easiest way to run all E2E tests is using the provided script:
+To run all E2E tests:
 
 ```bash
-cd /workspaces/Sectorwars2102
-./tests/e2e_tests/run_all_tests.sh
+cd e2e_tests
+./run_all_tests.sh
 ```
 
 This script will:
+
 1. Detect the environment (local, GitHub Codespaces, or Replit)
 2. Install Chromium browser if needed
 3. Run all Playwright tests
@@ -113,80 +114,122 @@ This script will:
 You can also run specific test suites:
 
 ```bash
-cd /workspaces/Sectorwars2102
+cd e2e_tests
 
 # Run only admin UI tests
-npx playwright test -c tests/e2e_tests/playwright.config.ts --project=admin-tests
+npx playwright test --project=admin-tests
 
 # Run only player client tests
-npx playwright test -c tests/e2e_tests/playwright.config.ts --project=player-tests
+npx playwright test --project=player-tests
+
+# Run tests with UI mode for debugging
+npx playwright test --ui
 ```
 
-### VS Code Test Explorer Integration
+### Screenshots and Reports
 
-Both Playwright tests and Pytest tests appear in the VS Code Test Explorer:
+The latest configuration saves:
 
-1. Open VS Code
-2. Navigate to the Testing view in the Activity Bar
-3. You'll see both test types organized by project
-4. Click the play button next to any test to run it
+- Detailed HTML reports in the `./playwright-reports` directory
+- Screenshots of every test run in the `./playwright-screenshots` directory
 
-If tests aren't showing up in the Test Explorer:
-1. Run the "Refresh Playwright Test Explorer" task
-2. Reload the VS Code window (`Ctrl+Shift+P` and select "Developer: Reload Window")
-3. Make sure required extensions are installed:
-   - Playwright Test for VS Code
-   - Test Explorer UI
-   - Test Adapter Converter
+This makes it easier to review test results and diagnose issues after test runs.
 
-### E2E Test Example
+## Test Account Management
+
+### Shared Test Accounts
+
+The E2E test framework uses a shared test account management system for both admin and player tests. This system:
+
+1. Creates one admin account and one player account at the start of each test run
+2. Shares these accounts across all tests during the run
+3. Cleans up these accounts when the test run completes
+
+This approach has several advantages:
+- Reduces test flakiness by reusing stable test accounts
+- Improves test performance by avoiding account creation for each test
+- Ensures proper cleanup after tests complete
+
+### How Test Accounts are Created and Managed
+
+The test account management happens in three key stages:
+
+1. **Global Setup (`global-setup.ts`)**: 
+   - Runs once at the beginning of each test run
+   - Creates one admin account and one player account directly in the database
+   - Stores account details in a global registry (TEST_ACCOUNTS)
+
+2. **During Tests**: 
+   - Tests access the shared accounts via fixtures
+   - The `adminCredentials` and `playerCredentials` fixtures provide the test accounts
+   - Auth helpers use these credentials to log in 
+
+3. **Global Teardown (`global-teardown.ts`)**: 
+   - Runs once at the end of the test run
+   - Deletes all test accounts created during setup
+   - Ensures clean state for the next test run
+
+### Database-Independent Testing
+
+The test account system includes a robust fallback mechanism:
+
+1. **Detects Database Type**: Automatically detects SQLite, PostgreSQL, or other database types
+2. **Mock Execution Mode**: If direct SQL execution fails, switches to a mock mode that:
+   - Creates in-memory test accounts without requiring database access
+   - Simulates SQL operations for testing in any environment
+   - Logs clear messages indicating mock mode is active
+3. **Default Credentials Fallback**: When no test accounts are available, falls back to default admin/player credentials
+
+This design ensures tests can run in any environment (local, CI/CD, containerized) without requiring specific database configuration.
+
+### Using Shared Test Accounts in Tests
+
+Tests should use the auth fixtures to access the shared test accounts:
 
 ```typescript
-// Playwright E2E test example
-import { test, expect } from '@playwright/test';
+import { test as authTest } from '../../fixtures/auth.fixtures';
+import { loginAsAdmin } from '../../utils/auth.utils';
 
-test.describe('Admin Authentication', () => {
-  test('should display the login page correctly', async ({ page }) => {
-    // Navigate to login page
-    await page.goto('/login');
+authTest.describe('My Test Suite', () => {
+  // The shared admin account is automatically provided to each test
+  authTest.beforeEach(async ({ page, adminCredentials }) => {
+    // Login using the shared admin account
+    await loginAsAdmin(page, adminCredentials);
+  });
+  
+  authTest('my test', async ({ page, adminCredentials, playerCredentials, testAccounts }) => {
+    // adminCredentials contains username/password for the shared admin
+    console.log(`Admin username: ${adminCredentials.username}`);
     
-    // Verify the login page elements are visible
-    await expect(page.locator('.login-form')).toBeVisible();
-    await expect(page.locator('h2')).toContainText('Admin Login');
+    // playerCredentials contains username/password for the shared player
+    console.log(`Player username: ${playerCredentials.username}`);
     
-    // Verify form fields are present
-    await expect(page.locator('#username')).toBeVisible();
-    await expect(page.locator('#password')).toBeVisible();
-    await expect(page.locator('.login-button')).toBeVisible();
+    // testAccounts provides full access to all test accounts
+    // including extra information like email and ID
+    console.log(`Admin email: ${testAccounts.admin?.email}`);
+    console.log(`Player ID: ${testAccounts.player?.id}`);
+    
+    // Continue with test...
   });
 });
 ```
 
-### Test Fixtures
+This approach ensures that:
+1. All tests in a run share the same accounts
+2. Each test run gets fresh accounts
+3. No test accounts are left behind after tests complete
 
-Fixtures provide reusable test data and environment setup:
+### Technical Implementation
 
-```typescript
-// Test fixtures example
-import { test as base } from '@playwright/test';
+The test account management system consists of:
 
-export type AdminCredentials = {
-  username: string;
-  password: string;
-};
+1. **`test_account_manager.ts`**: Core utility for creating, tracking, and deleting test accounts
+2. **`global-setup.ts`**: Creates accounts at test run start
+3. **`global-teardown.ts`**: Deletes accounts at test run end
+4. **`auth.fixtures.ts`**: Provides account credentials to tests
+5. **`auth.utils.ts`**: Helper functions for login/logout using shared accounts
 
-export const test = base.extend<{
-  adminCredentials: AdminCredentials;
-}>({
-  // Default admin credentials for testing
-  adminCredentials: {
-    username: 'admin',
-    password: 'password123',
-  },
-});
-
-export { expect } from '@playwright/test';
-```
+These work together to provide a seamless experience for test developers.
 
 ## Testing Best Practices
 
@@ -209,8 +252,9 @@ export { expect } from '@playwright/test';
 
 ## Troubleshooting
 
-- **Run Tests with UI**: `npx playwright test --ui -c tests/e2e_tests/playwright.config.ts`
-- **Check Test Reports**: Look in the `playwright-report` directory
+- **Run Tests with UI**: `npx playwright test --ui`
+- **Check Test Reports**: Look in the `playwright-reports` directory
+- **Check Screenshots**: Review test results in the `playwright-screenshots` directory
 - **Use Trace Viewer**: Analyze test failures with Playwright's trace viewer
 - **Retry Flaky Tests**: Use `--retries=3` option for unstable tests
 - **Run Tests in Debug Mode**: Use VS Code debugger to step through tests
