@@ -1,6 +1,7 @@
 # Player Data Definition
 
 ## Overview
+
 Players are the user entities within the Sector Wars 2102 galaxy. Each player manages ships, resources, and planetary colonies while navigating through different sectors and engaging in trade and other activities.
 
 ## Properties
@@ -36,6 +37,7 @@ Players are the user entities within the Sector Wars 2102 galaxy. Each player ma
 | settings | JSON | Player preferences and settings | See Settings section |
 
 ## Reputation System
+
 Player reputation is tracked with six major factions in the game:
 
 ```json
@@ -74,6 +76,7 @@ Player reputation is tracked with six major factions in the game:
 ```
 
 Reputation values range from -800 to 800, with corresponding levels:
+
 - -800 to -701: "Public Enemy" (-8)
 - -700 to -601: "Criminal" (-7)
 - -600 to -501: "Outlaw" (-6)
@@ -93,6 +96,7 @@ Reputation values range from -800 to 800, with corresponding levels:
 - 701 to 800: "Exalted" (+8)
 
 ## Settings
+
 Player settings are stored as a JSON object:
 
 ```json
@@ -127,6 +131,7 @@ Player settings are stored as a JSON object:
 ```
 
 ## Insurance
+
 Ship insurance details are stored as an object:
 
 ```json
@@ -199,6 +204,7 @@ Ship insurance details are stored as an object:
 | `player.insurance_claim` | Player ID, Ship ID | Triggered when player claims insurance |
 
 ## Security Considerations
+
 - Passwords must be hashed using bcrypt before storage
 - Admin status can only be granted by existing admin users
 - Personal information (email) must be encrypted at rest

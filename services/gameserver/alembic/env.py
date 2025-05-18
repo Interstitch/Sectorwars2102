@@ -30,7 +30,11 @@ import pathlib
 # Add src directory to python path
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
+# Import all models to ensure they're all registered with SQLAlchemy
 from src.models import User, OAuthAccount, RefreshToken, AdminCredentials  # noqa
+from src.models import Player, Ship, ShipSpecification, Team, Reputation, TeamReputation  # noqa
+from src.models import Planet, Port  # noqa
+from src.models import player_planets, player_ports  # noqa
 from src.core.database import Base  # noqa
 
 target_metadata = Base.metadata

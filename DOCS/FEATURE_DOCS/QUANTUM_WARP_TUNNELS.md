@@ -9,6 +9,7 @@ The Quantum Warp Tunnel system is a dynamic feature that allows players to expan
 ### Warp Tunnel Types
 
 #### Natural Warp Tunnels
+
 - **Definition**: Pre-existing quantum phenomena that connect sectors without artificial gates
 - **Bidirectional Tunnels**: Stable two-way connections that allow travel in both directions
 - **Unidirectional Tunnels**: One-way passages that only permit travel from origin to destination
@@ -17,6 +18,7 @@ The Quantum Warp Tunnel system is a dynamic feature that allows players to expan
 - **Distribution**: Approximately 60% of the universe is connected through naturally occurring tunnels
 
 #### Artificial Warp Gates
+
 - **Definition**: Player-constructed structures that create stable quantum tunnels between distant sectors
 - **Directional Orientation**: Gates must be specifically aligned toward their intended destination
 - **Targeting System**: Players must select a visible star/sector in the distance as the destination
@@ -152,7 +154,7 @@ The Quantum Warp Tunnel system is a dynamic feature that allows players to expan
 
 ### Navigation Interface
 
-- **Galaxy Map Enhancement**: 
+- **Galaxy Map Enhancement**:
   - Natural bidirectional tunnels appear as solid blue connections
   - Natural unidirectional tunnels shown as dashed blue arrows
   - Artificial warp tunnels displayed as solid green connections

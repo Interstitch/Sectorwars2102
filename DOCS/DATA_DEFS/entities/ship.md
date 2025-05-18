@@ -1,4 +1,4 @@
-// Sector Wars 2102 Ship Data Model
+# Sector Wars 2102 Ship Data Model
 
 export enum ShipType {
   LIGHT_FREIGHTER = "LIGHT_FREIGHTER",       // Standard starting ship, balanced
@@ -44,7 +44,7 @@ export interface ShipCargo {
     ore: number;
     organics: number;
     equipment: number;
-    luxury_goods: number;         
+    luxury_goods: number;
     medical_supplies: number;
     technology: number;
   };
@@ -53,7 +53,7 @@ export interface ShipCargo {
 }
 
 export interface ShipCombatStats {
-  attack_rating: number;          // Base combat effectiveness 
+  attack_rating: number;          // Base combat effectiveness
   defense_rating: number;         // Base defensive capability
   attack_drones: number;          // Current attack drones
   defense_drones: number;         // Current defense drones

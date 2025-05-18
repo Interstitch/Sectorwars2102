@@ -146,6 +146,7 @@ The E2E test framework uses a shared test account management system for both adm
 3. Cleans up these accounts when the test run completes
 
 This approach has several advantages:
+
 - Reduces test flakiness by reusing stable test accounts
 - Improves test performance by avoiding account creation for each test
 - Ensures proper cleanup after tests complete
@@ -154,17 +155,17 @@ This approach has several advantages:
 
 The test account management happens in three key stages:
 
-1. **Global Setup (`global-setup.ts`)**: 
+1. **Global Setup (`global-setup.ts`)**:
    - Runs once at the beginning of each test run
    - Creates one admin account and one player account directly in the database
    - Stores account details in a global registry (TEST_ACCOUNTS)
 
-2. **During Tests**: 
+2. **During Tests**:
    - Tests access the shared accounts via fixtures
    - The `adminCredentials` and `playerCredentials` fixtures provide the test accounts
-   - Auth helpers use these credentials to log in 
+   - Auth helpers use these credentials to log in
 
-3. **Global Teardown (`global-teardown.ts`)**: 
+3. **Global Teardown (`global-teardown.ts`)**:
    - Runs once at the end of the test run
    - Deletes all test accounts created during setup
    - Ensures clean state for the next test run
@@ -215,6 +216,7 @@ authTest.describe('My Test Suite', () => {
 ```
 
 This approach ensures that:
+
 1. All tests in a run share the same accounts
 2. Each test run gets fresh accounts
 3. No test accounts are left behind after tests complete

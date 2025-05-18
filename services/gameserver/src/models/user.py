@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from src.models.refresh_token import RefreshToken
     from src.models.admin_credentials import AdminCredentials
     from src.models.player_credentials import PlayerCredentials
+    from src.models.player import Player
 
 
 class User(Base):
@@ -32,6 +33,7 @@ class User(Base):
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
     admin_credentials = relationship("AdminCredentials", back_populates="user", cascade="all, delete-orphan", uselist=False)
     player_credentials = relationship("PlayerCredentials", back_populates="user", cascade="all, delete-orphan", uselist=False)
+    player = relationship("Player", back_populates="user", cascade="all, delete-orphan", uselist=False)
 
     def __repr__(self):
         return f"<User {self.username}>"

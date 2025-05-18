@@ -193,6 +193,7 @@ Negotiation skill is evaluated based on these factors:
 | Creativity | 10% | Novel and unique approaches to persuasion |
 
 The combined score determines the negotiation skill level:
+
 - **Strong**: Score ≥ 0.7
 - **Average**: 0.4 ≤ Score < 0.7
 - **Weak**: Score < 0.4
@@ -247,7 +248,6 @@ Persuasion thresholds scale by ship rarity and negotiation skill:
 | Success: Tier 5 | Defender | 7,000 | Major trade bonus if strong | None |
 | Failure | Escape Pod | 500 | None | Minor notoriety penalty |
 | Partial Success | Escape Pod | 800 | None | None |
-```
 
 ## Integration with Other Systems
 

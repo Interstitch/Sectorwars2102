@@ -190,36 +190,42 @@ Each reputation level corresponds to a range of numeric values:
 ## Factions
 
 ### Terran Federation
+
 - **Control Area**: Core systems, Federation space
 - **Specialty**: Advanced technology, military hardware
 - **Benefits at High Rep**: Discounted military ships, access to Federation contracts, reduced port fees
 - **Penalties at Low Rep**: Hostile Federation patrols, denied port access, increased prices
 
 ### Mercantile Guild
+
 - **Control Area**: Major trade hubs and shipping routes
 - **Specialty**: Luxury goods, commodity trading
 - **Benefits at High Rep**: Better trade prices, exclusive market access, market insider information
 - **Penalties at Low Rep**: Trade restrictions, premium prices, refusal of port services
 
 ### Frontier Coalition
+
 - **Control Area**: Border regions, frontier outposts
 - **Specialty**: Frontier technology, exploration equipment
 - **Benefits at High Rep**: Discounted exploration ships, frontier intelligence, colonization assistance
 - **Penalties at Low Rep**: Frontier outpost hostility, denied prospecting rights, embargo on supplies
 
 ### Astral Mining Consortium
+
 - **Control Area**: Resource-rich sectors, asteroid fields
 - **Specialty**: Mining equipment, raw materials
 - **Benefits at High Rep**: Mining location data, discounted equipment, resource purchasing priority
 - **Penalties at Low Rep**: Mining claim denial, equipment embargoes, resource processing refusal
 
 ### Nova Scientific Institute
+
 - **Control Area**: Research outposts, anomalous regions
 - **Specialty**: Advanced research, genesis technology
 - **Benefits at High Rep**: Discounted genesis devices, research data access, advanced ship upgrades
 - **Penalties at Low Rep**: Technology embargoes, research outpost hostility, denied access to institute space
 
 ### Fringe Alliance
+
 - **Control Area**: Remote sectors, non-aligned territories
 - **Specialty**: Unique equipment, specialized modifications
 - **Benefits at High Rep**: Illegal technology access, smuggling routes, mercenary contacts
@@ -228,6 +234,7 @@ Each reputation level corresponds to a range of numeric values:
 ## Reputation Mechanics
 
 ### Gaining Reputation
+
 - Completing missions for the faction
 - Trading at faction-controlled ports
 - Defending faction assets from attackers
@@ -236,6 +243,7 @@ Each reputation level corresponds to a range of numeric values:
 - Returning lost ships or cargo
 
 ### Losing Reputation
+
 - Attacking faction ships or stations
 - Smuggling illegal goods in faction territory
 - Stealing faction resources
@@ -244,9 +252,11 @@ Each reputation level corresponds to a range of numeric values:
 - Colonizing planets claimed by the faction
 
 ### Reputation Decay
+
 Reputation naturally decays toward neutral (0) at a rate of 1 point per week of inactivity with that faction. Active negative actions against a faction will halt this decay process.
 
 ### Reputation Recovery
+
 - Diplomatic missions to rebuild standing
 - Reparation payments (10,000 credits per negative point)
 - Time-based cooling off period
@@ -266,24 +276,29 @@ Factions have relationships with each other, meaning reputation gains with one f
 Team reputation is calculated based on one of three methods, making team composition and leadership an important strategic consideration when interacting with faction-controlled space.
 
 ### Calculation Methods
+
 - **Average**: All members' reputation values are averaged (default method)
 - **Lowest**: The lowest member's reputation value is used for the entire team
 - **Leader**: The team leader's reputation value is used for the entire team
 
 ### Recalculation Timing
+
 Team reputation is recalculated in the following circumstances:
+
 1. When a team member's individual reputation changes
 2. When a player joins or leaves the team
 3. When the team leader changes
 4. Automatically on a weekly basis
 
 ### Strategic Implications
+
 - Teams using the "Average" method can include players with varied reputation profiles
 - Teams using the "Lowest" method must carefully screen new members to prevent reputation drops
 - Teams using the "Leader" method depend entirely on the leader maintaining good standings
 - Changing calculation methods requires a 7-day waiting period to prevent exploitation
 
 ### Team-Specific Benefits
+
 - Unified diplomatic status with factions
 - Team-wide trade agreements and pricing
 - Coordinated mission access based on team reputation

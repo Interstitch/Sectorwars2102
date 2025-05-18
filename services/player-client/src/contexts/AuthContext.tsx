@@ -26,7 +26,15 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+// Type for response data from login/register endpoints
+interface AuthResponse {
+  access_token: string;
+  refresh_token: string;
+  user_id: string;
+  [key: string]: any;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
@@ -102,7 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           // Standard approach - verify token by getting user profile
           console.log('Using standard /me endpoint');
-          const response = await axios.get(`${apiUrl}/api/v1/auth/me`);
+          const response = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
           setUser(response.data);
         } catch (error) {
           console.error('Failed to validate token:', error);
@@ -132,7 +140,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Try standard JSON endpoint
       try {
         console.log('Trying JSON login endpoint...');
-        const response = await axios.post(`${apiUrl}/api/auth/login/json`, {
+        const response = await axios.post<AuthResponse>(`${apiUrl}/api/v1/auth/login/json`, {
           username,
           password,
         }, {
@@ -142,7 +150,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         });
 
-        const { access_token, refresh_token, user_id } = response.data;
+        const { access_token, refresh_token } = response.data;
+        // Store user ID for future reference
+        localStorage.setItem('userId', response.data.user_id);
 
         // Store tokens in localStorage
         localStorage.setItem('accessToken', access_token);
@@ -152,7 +162,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
         // Get user data
-        const userResponse = await axios.get(`${apiUrl}/api/auth/me`);
+        const userResponse = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
         setUser(userResponse.data);
         console.log('Login successful with JSON endpoint');
         return;
@@ -168,13 +178,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         formData.append('password', password);
 
         try {
-          const response = await axios.post(`${apiUrl}/api/auth/login`, formData, {
+          const response = await axios.post<AuthResponse>(`${apiUrl}/api/v1/auth/login`, formData, {
             headers: {
               'Content-Type': 'multipart/form-data',
             },
           });
 
-          const { access_token, refresh_token, user_id } = response.data;
+          const { access_token, refresh_token } = response.data;
+          // Store user ID for future reference
+          localStorage.setItem('userId', response.data.user_id);
 
           // Store tokens in localStorage
           localStorage.setItem('accessToken', access_token);
@@ -184,7 +196,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
           // Get user data
-          const userResponse = await axios.get(`${apiUrl}/api/auth/me`);
+          const userResponse = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
           setUser(userResponse.data);
           console.log('Login successful with form-based endpoint');
         } catch (formError) {
@@ -200,14 +212,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (username: string, email: string, password: string) => {
+  const register = async (username: string, email: string, password: string): Promise<void> => {
     setIsLoading(true);
 
     try {
       console.log('Attempting registration with API URL:', apiUrl);
 
       // Register user
-      const registerResponse = await axios.post(`${apiUrl}/api/auth/register`, {
+      await axios.post<AuthResponse>(`${apiUrl}/api/v1/auth/register`, {
         username,
         email,
         password,
@@ -217,8 +229,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // After registration, automatically log in
       await login(username, password);
-
-      return registerResponse.data;
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
@@ -241,14 +251,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // In Codespaces, we use the proxy approach which avoids port/protocol issues
       // Since we're in Codespaces, we know traffic is going through port 443
       // Even though our services may run on other ports internally
-      oauthUrl = `/api/auth/${provider}`;
+      oauthUrl = `/api/v1/auth/${provider}`;
 
       console.log(`Using proxy for OAuth login in Codespaces: ${oauthUrl}`);
       console.log(`Window location: ${window.location.href}`);
       console.log(`Window hostname: ${window.location.hostname}`);
     } else {
       // For non-Codespaces environments
-      oauthUrl = `${apiUrl}/api/auth/${provider}`;
+      oauthUrl = `${apiUrl}/api/v1/auth/${provider}`;
     }
 
     console.log(`Redirecting to OAuth URL: ${oauthUrl}`);
@@ -271,14 +281,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Since we're in Codespaces, we know traffic is going through port 443
       // Even though our services may run on other ports internally
       // Pass the register=true flag to inform the server this is a registration
-      oauthUrl = `/api/auth/${provider}?register=true`;
+      oauthUrl = `/api/v1/auth/${provider}?register=true`;
 
       console.log(`Using proxy for OAuth registration in Codespaces: ${oauthUrl}`);
       console.log(`Window location: ${window.location.href}`);
       console.log(`Window hostname: ${window.location.hostname}`);
     } else {
       // For non-Codespaces environments
-      oauthUrl = `${apiUrl}/api/auth/${provider}?register=true`;
+      oauthUrl = `${apiUrl}/api/v1/auth/${provider}?register=true`;
     }
 
     console.log(`Redirecting to OAuth URL for registration: ${oauthUrl}`);
@@ -292,8 +302,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     
     try {
-      const response = await axios.post(
-        `${apiUrl}/api/auth/refresh`,
+      const response = await axios.post<AuthResponse>(
+        `${apiUrl}/api/v1/auth/refresh`,
         { refresh_token: refreshToken },
         { headers: { Authorization: '' } } // Don't send current auth header
       );
@@ -322,13 +332,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Call logout endpoint to invalidate refresh token
     if (refreshToken) {
-      axios.post(`${apiUrl}/api/auth/logout`, { refresh_token: refreshToken })
+      axios.post(`${apiUrl}/api/v1/auth/logout`, { refresh_token: refreshToken })
         .catch(error => console.error('Logout error:', error));
     }
     
     // Clear tokens and user
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userId');
     axios.defaults.headers.common['Authorization'] = '';
     setUser(null);
   };
