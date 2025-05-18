@@ -1,0 +1,1 @@
+"""Integration tests that verify component interaction""" 

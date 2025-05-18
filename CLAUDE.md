@@ -78,6 +78,34 @@ npm install
 npm run dev
 ```
 
+### Database Management
+
+The gameserver automatically manages the database schema:
+
+1. On startup, it checks if the database tables exist
+2. If tables don't exist, it automatically runs Alembic migrations
+3. After migrations, it creates initial data including default admin user
+
+If you need to manually manage the database:
+
+```bash
+# Run migrations manually
+cd services/gameserver
+poetry run alembic upgrade head
+
+# Generate a new migration after model changes
+poetry run alembic revision --autogenerate -m "Description of changes"
+
+# Rollback to a previous version
+poetry run alembic downgrade -1  # Go back one revision
+poetry run alembic downgrade <revision_id>  # Go to specific revision
+```
+
+When connecting to a new database, no additional action is required - the system will automatically:
+1. Detect the fresh database
+2. Run migrations to create the schema
+3. Create the default admin user (username: admin, password: admin)
+
 ### Testing
 
 ```bash

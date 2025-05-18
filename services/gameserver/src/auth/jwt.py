@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any, Dict, Optional, Union
 import uuid
 
@@ -13,9 +13,9 @@ from src.models.refresh_token import RefreshToken
 def create_access_token(subject: Union[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT access token."""
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode = {"exp": expire, "sub": str(subject)}
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm="HS256")
@@ -26,13 +26,14 @@ def create_refresh_token(subject: Union[str, Any], db: Session) -> str:
     """Create a JWT refresh token and store in database."""
     # Generate token with longer expiration
     expires_delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    expire = datetime.utcnow() + expires_delta
+    expire = datetime.now(UTC) + expires_delta
     
     # Generate a unique token
     token_value = str(uuid.uuid4())
     
-    # Store in database
+    # Store in database with explicit UUID for id
     refresh_token = RefreshToken(
+        id=uuid.uuid4(),  # Explicitly set the id to prevent NULL issue
         user_id=subject,
         token=token_value,
         expires_at=expire

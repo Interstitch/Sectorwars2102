@@ -1,1 +1,0 @@
-/workspaces/Sectorwars2102/services/player-client/playwright/e2e/player-ui.spec.ts

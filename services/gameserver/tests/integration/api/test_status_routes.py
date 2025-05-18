@@ -49,3 +49,12 @@ def test_status_ping_endpoint(client: TestClient):
     assert data["message"] == "pong"
     assert "environment" in data
     assert "timestamp" in data
+
+
+def test_main_root_endpoint(client: TestClient):
+    """Test the root endpoint (/)."""
+    response = client.get("/")
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert "message" in data
+    assert "Hello from Sector Wars 2102 Game API!" in data["message"]

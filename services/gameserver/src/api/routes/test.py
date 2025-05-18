@@ -74,7 +74,6 @@ async def create_admin(
     
     # Create admin credentials
     admin_creds = AdminCredentials(
-        id=uuid4(),
         user_id=user.id,
         password_hash=get_password_hash(request.password)
     )

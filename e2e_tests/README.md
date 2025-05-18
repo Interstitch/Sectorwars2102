@@ -6,7 +6,6 @@ This directory contains end-to-end tests for Sector Wars 2102 using Playwright.
 
 Tests are organized by component:
 
-```
 e2e_tests/
 ├── admin/                 # Admin UI tests
 │   └── ui/                # Admin UI test files
@@ -22,19 +21,18 @@ e2e_tests/
 ├── test-explorer.config.ts # VS Code Test Explorer configuration
 ├── run_tests_in_context.sh # Helper script for VS Code
 └── run_all_tests.sh       # Script to run all E2E tests
-```
 
 ## Running Tests
 
 You can run the tests in several ways:
 
-### Using the run_all_tests.sh script:
+### Using the run_all_tests.sh script
 
 ```bash
 ./run_all_tests.sh
 ```
 
-### Using npx directly:
+### Using npx directly
 
 ```bash
 # Run all tests
@@ -49,6 +47,7 @@ npx playwright test -c playwright.config.ts --ui
 ```
 
 ### Running in VS Code
+
 Tests should be visible in the VS Code Test Explorer. You can run individual tests by clicking on them.
 
 #### VS Code Test Explorer Configuration

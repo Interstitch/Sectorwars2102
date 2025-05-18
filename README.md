@@ -79,10 +79,13 @@ docker-compose -f docker-compose.combined.yml up
 
 1. Open the project in Replit
 2. Run the setup script (first time only):
+
    ```bash
    ./dev-scripts/setup.sh
    ```
+
 3. Start the services:
+
    ```bash
    ./dev-scripts/start-unified.sh
    ```
@@ -118,22 +121,25 @@ This approach keeps your environment configuration simple while providing contro
 
 ### Accessing Services
 
-- **Game API Server**: http://localhost:8080
-- **Player Client**: http://localhost:3000
-- **Admin UI**: http://localhost:3001
+- **Game API Server**: <http://localhost:8080>
+- **Player Client**: <http://localhost:3000>
+- **Admin UI**: <http://localhost:3001>
 
 ## Service Endpoints
 
 ### Game API Server
-- **Base URL**: http://localhost:8080
+
+- **Base URL**: <http://localhost:8080>
 - **Health Check**: GET /health
 - **API Documentation**: GET /docs (Swagger UI)
 
 ### Player Client
-- **URL**: http://localhost:3000
+
+- **URL**: <http://localhost:3000>
 
 ### Admin UI
-- **URL**: http://localhost:3001
+
+- **URL**: <http://localhost:3001>
 
 ## Process Management
 

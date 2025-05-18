@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import './pages.css';
@@ -54,7 +54,7 @@ const UsersManager: React.FC = () => {
     const fetchUsers = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${apiUrl}/api/users/`);
+        const response = await axios.get<User[]>(`${apiUrl}/api/v1/users/`);
         setUsers(response.data);
         setError(null);
       } catch (err) {
@@ -69,7 +69,7 @@ const UsersManager: React.FC = () => {
   }, [apiUrl]);
   
   // Create user
-  const handleCreateUser = async (e: React.FormEvent) => {
+  const handleCreateUser = async (e: FormEvent) => {
     e.preventDefault();
     
     try {
@@ -80,8 +80,8 @@ const UsersManager: React.FC = () => {
         is_admin: isAdmin
       };
       
-      const endpoint = isAdmin ? `${apiUrl}/api/users/admin` : `${apiUrl}/api/users/`;
-      const response = await axios.post(endpoint, userData);
+      const endpoint = isAdmin ? `${apiUrl}/api/v1/users/admin` : `${apiUrl}/api/v1/users/`;
+      const response = await axios.post<User>(endpoint, userData);
       
       // Add new user to list
       setUsers([...users, response.data]);
@@ -111,7 +111,7 @@ const UsersManager: React.FC = () => {
   };
   
   // Save edited user
-  const handleSaveEdit = async (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: FormEvent) => {
     e.preventDefault();
     
     if (!selectedUser) return;
@@ -123,10 +123,10 @@ const UsersManager: React.FC = () => {
         is_active: editIsActive
       };
       
-      const response = await axios.put(`${apiUrl}/api/users/${selectedUser.id}`, userData);
+      const response = await axios.put<User>(`${apiUrl}/api/v1/users/${selectedUser.id}`, userData);
       
       // Update user in list
-      setUsers(users.map(u => u.id === selectedUser.id ? response.data : u));
+      setUsers(users.map((u: User) => u.id === selectedUser.id ? response.data : u));
       
       // Exit edit mode
       setEditMode(false);
@@ -155,10 +155,10 @@ const UsersManager: React.FC = () => {
     }
     
     try {
-      await axios.delete(`${apiUrl}/api/users/${selectedUser.id}`);
+      await axios.delete(`${apiUrl}/api/v1/users/${selectedUser.id}`);
       
       // Remove user from list
-      setUsers(users.filter(u => u.id !== selectedUser.id));
+      setUsers(users.filter((u: User) => u.id !== selectedUser.id));
       
       // Close modal
       setShowDeleteConfirm(false);
@@ -182,7 +182,7 @@ const UsersManager: React.FC = () => {
     }
     
     try {
-      await axios.put(`${apiUrl}/api/users/${userId}/password`, { password });
+      await axios.put(`${apiUrl}/api/v1/users/${userId}/password`, { password });
       setError(null);
       alert('Password updated successfully.');
     } catch (err: any) {
@@ -248,7 +248,7 @@ const UsersManager: React.FC = () => {
               <div className="grid-cell">Actions</div>
             </div>
             
-            {users.map(user => (
+            {users.map((user: User) => (
               <div key={user.id} className="users-grid-row">
                 <div className="grid-cell">{user.username}</div>
                 <div className="grid-cell">{user.email || 'N/A'}</div>
@@ -260,8 +260,10 @@ const UsersManager: React.FC = () => {
                 <div className="grid-cell">{formatDate(user.created_at)}</div>
                 <div className="grid-cell">{formatDate(user.last_login)}</div>
                 <div className="grid-cell grid-actions">
-                  {/* Prevent actions on current user */}
-                  {currentUser && user.id !== currentUser.id ? (
+                  {/* Prevent actions on current user and on protected admin account */}
+                  {user.username === 'admin' ? (
+                    <span className="current-user-label">Protected Account</span>
+                  ) : currentUser && user.id !== currentUser.id ? (
                     <>
                       <button 
                         className="action-button edit-button"
@@ -306,7 +308,7 @@ const UsersManager: React.FC = () => {
                   id="username"
                   type="text"
                   value={newUsername}
-                  onChange={e => setNewUsername(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setNewUsername(e.target.value)}
                   required
                   minLength={3}
                   maxLength={50}
@@ -319,7 +321,7 @@ const UsersManager: React.FC = () => {
                   id="email"
                   type="email"
                   value={newEmail}
-                  onChange={e => setNewEmail(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setNewEmail(e.target.value)}
                   required
                 />
               </div>
@@ -330,7 +332,7 @@ const UsersManager: React.FC = () => {
                   id="password"
                   type="password"
                   value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
                   required
                   minLength={8}
                 />
@@ -341,7 +343,7 @@ const UsersManager: React.FC = () => {
                   <input
                     type="checkbox"
                     checked={isAdmin}
-                    onChange={e => setIsAdmin(e.target.checked)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setIsAdmin(e.target.checked)}
                   />
                   Grant Admin Privileges
                 </label>
@@ -372,7 +374,7 @@ const UsersManager: React.FC = () => {
                   id="edit-username"
                   type="text"
                   value={editUsername}
-                  onChange={e => setEditUsername(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setEditUsername(e.target.value)}
                   required
                   minLength={3}
                   maxLength={50}
@@ -385,7 +387,7 @@ const UsersManager: React.FC = () => {
                   id="edit-email"
                   type="email"
                   value={editEmail}
-                  onChange={e => setEditEmail(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setEditEmail(e.target.value)}
                 />
               </div>
               
@@ -394,7 +396,7 @@ const UsersManager: React.FC = () => {
                   <input
                     type="checkbox"
                     checked={editIsActive}
-                    onChange={e => setEditIsActive(e.target.checked)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setEditIsActive(e.target.checked)}
                   />
                   Account Active
                 </label>
@@ -431,7 +433,7 @@ const UsersManager: React.FC = () => {
             <input
               type="text"
               value={confirmUsername}
-              onChange={e => setConfirmUsername(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirmUsername(e.target.value)}
               className="confirm-input"
             />
             

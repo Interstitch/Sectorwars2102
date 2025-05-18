@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Optional
 from sqlalchemy.orm import Session
 
@@ -34,60 +34,42 @@ def get_admin_users(db: Session) -> List[User]:
 
 
 def authenticate_admin(db: Session, username: str, password: str) -> Optional[User]:
-    """Authenticate an admin user with username and password."""
-    user = get_user_by_username(db, username)
-    
-    if not user:
+    """Authenticate an admin user."""
+    admin_creds = db.query(AdminCredentials).join(User).filter(User.username == username).first()
+    if not admin_creds:
         return None
     
-    # If the user is an admin, check admin credentials
-    if user.is_admin:
-        admin_creds = db.query(AdminCredentials).filter(AdminCredentials.user_id == user.id).first()
-        if not admin_creds:
-            return None
-        
-        if not verify_password(password, admin_creds.password_hash):
-            return None
-    # If the user is not an admin, check player credentials
-    else:
-        player_creds = db.query(PlayerCredentials).filter(PlayerCredentials.user_id == user.id).first()
-        if not player_creds:
-            return None
-        
-        if not verify_password(password, player_creds.password_hash):
-            return None
+    if not verify_password(password, admin_creds.password_hash):
+        return None
     
-    # Update last login time
-    user.last_login = datetime.utcnow()
-    db.commit()
+    admin = db.query(User).filter(User.id == admin_creds.user_id).first()
+    if admin:
+        admin.last_login = datetime.now(UTC)
+        db.commit()
     
-    return user
+    return admin
 
 
 def update_user_last_login(db: Session, user_id: str) -> None:
     """Update the last login time for a user."""
     user = get_user(db, user_id)
     if user:
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(UTC)
         db.commit()
 
 
 def authenticate_player(db: Session, username: str, password: str) -> Optional[User]:
-    """Authenticate a player user with username and password."""
-    user = get_user_by_username(db, username)
-    
-    if not user or user.is_admin:
-        return None
-    
-    player_creds = db.query(PlayerCredentials).filter(PlayerCredentials.user_id == user.id).first()
+    """Authenticate a non-admin player."""
+    player_creds = db.query(PlayerCredentials).join(User).filter(User.username == username).first()
     if not player_creds:
         return None
     
     if not verify_password(password, player_creds.password_hash):
         return None
     
-    # Update last login time
-    user.last_login = datetime.utcnow()
-    db.commit()
+    player = db.query(User).filter(User.id == player_creds.user_id).first()
+    if player:
+        player.last_login = datetime.now(UTC)
+        db.commit()
     
-    return user
+    return player

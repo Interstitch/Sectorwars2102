@@ -4,7 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import sys
 import datetime
+import logging
+from contextlib import asynccontextmanager
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
 
 # Import project modules
 from src.api.api import api_router
@@ -12,22 +15,100 @@ from src.core.config import settings
 from src.core.database import get_db
 from src.auth.admin import create_default_admin, create_default_player
 
-# Print environment information to help debugging
-print(f"Python version: {sys.version}")
-print(f"Current directory: {os.getcwd()}")
-print(f"sys.path: {sys.path}")
-print(f"PYTHONPATH: {os.environ.get('PYTHONPATH', 'Not set')}")
-print(f"CLIENT_ID_GITHUB: {os.environ.get('CLIENT_ID_GITHUB', 'Not set')}")
-print(f"Is using mock GitHub: {settings.CLIENT_ID_GITHUB.startswith('mock_') if settings.CLIENT_ID_GITHUB else False}")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+)
+logger = logging.getLogger(__name__)
 
-# Create FastAPI app
+# Print environment information to help debugging
+logger.info(f"Python version: {sys.version}")
+logger.info(f"Current directory: {os.getcwd()}")
+logger.info(f"sys.path: {sys.path}")
+logger.info(f"PYTHONPATH: {os.environ.get('PYTHONPATH', 'Not set')}")
+logger.info(f"CLIENT_ID_GITHUB: {os.environ.get('CLIENT_ID_GITHUB', 'Not set')}")
+logger.info(f"Is using mock GitHub: {settings.CLIENT_ID_GITHUB.startswith('mock_') if settings.CLIENT_ID_GITHUB else False}")
+
+# Define lifespan context manager for startup/shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize database schema if needed
+    from src.core.db_init import initialize_database
+    
+    try:
+        # Run migrations if database tables don't exist
+        if initialize_database():
+            logger.info("Database schema is ready")
+        else:
+            logger.error("Failed to initialize database schema - the app may not work correctly")
+    except Exception as e:
+        logger.error(f"Error initializing database schema: {str(e)}")
+    
+    # Initialize database and ensure default admin exists
+    try:
+        db = next(get_db())
+        try:
+            logger.info("Checking for default admin user...")
+            create_default_admin(db)
+            create_default_player(db)
+            logger.info("Database initialization complete")
+        except OperationalError as e:
+            logger.error(f"Failed to connect to database during startup: {str(e)}")
+            logger.error(f"Check that the database connection is properly configured: {settings.get_db_url()}")
+        except SQLAlchemyError as e:
+            logger.error(f"Database error during startup: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected error during database initialization: {str(e)}")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Failed to initialize database session: {str(e)}")
+
+    # Print database environment info
+    # Hide password from the logged URL by splitting at @ and only showing host
+    def hide_password(url_str):
+        if '@' in url_str:
+            # Take only the part after @ (host:port/database)
+            return url_str.split('@')[1]
+        return url_str
+
+    if settings.ENVIRONMENT == "production":
+        logger.info(f"Server started in {settings.ENVIRONMENT.upper()} mode")
+        logger.info("🚨 IMPORTANT: Running with PRODUCTION database 🚨")
+        logger.info(f"Database URL: ...@{hide_password(settings.get_db_url())}")
+    else:
+        logger.info(f"Server started in {settings.ENVIRONMENT.upper()} mode")
+        logger.info("Using DEVELOPMENT database")
+        logger.info(f"Database URL: ...@{hide_password(settings.get_db_url())}")
+
+    # Print OAuth configuration
+    using_mock_github = settings.GITHUB_CLIENT_ID.startswith("mock_")
+    if using_mock_github:
+        logger.info("⚠️ WARNING: Using mock GitHub OAuth - simulating OAuth flow")
+        logger.info("To use real GitHub OAuth, set CLIENT_ID_GITHUB and CLIENT_SECRET_GITHUB environment variables")
+    else:
+        logger.info("✅ Using real GitHub OAuth credentials")
+
+    # Print detected environment
+    logger.info(f"Detected environment: {settings.detect_environment()}")
+    logger.info(f"API Base URL: {settings.get_api_base_url()}")
+    logger.info(f"Frontend URL: {settings.FRONTEND_URL}")
+    
+    yield  # This is where FastAPI runs
+    
+    # Cleanup tasks can go here (on shutdown)
+    logger.info("Shutting down application...")
+
+# Create FastAPI app with lifespan
 app = FastAPI(
     title="Sector Wars 2102 Game API",
     description="API for the Sector Wars 2102 space trading game",
     version="0.1.0",
     docs_url="/api/v1/docs",
     redoc_url="/api/v1/redoc",
-    openapi_url="/api/v1/openapi.json"
+    openapi_url="/api/v1/openapi.json",
+    lifespan=lifespan
 )
 
 # Configure CORS to work across all environments (Replit, Codespaces, Docker)
@@ -80,6 +161,24 @@ async def status_root():
 async def api_version():
     return {"version": "0.1.0"}
 
+# Add direct endpoints for backward compatibility with frontend
+# These match the paths the frontend expects
+@app.get("/api/status")
+async def api_status_direct():
+    """Direct endpoint for status that frontend expects."""
+    environment = os.environ.get("ENVIRONMENT", "development")
+    return {
+        "message": "Game API Server is operational",
+        "environment": environment,
+        "status": "healthy",
+        "api_version": "v1"
+    }
+
+@app.get("/api/version")
+async def api_version_direct():
+    """Direct endpoint for version that frontend expects."""
+    return {"version": "0.1.0"}
+
 # API ping endpoint for simple connectivity testing - moved to versioned status router
 @status_router.get("/ping")
 async def api_ping():
@@ -114,49 +213,6 @@ app.include_router(status_router, prefix=settings.API_V1_STR)
 
 # Include API router with all routes
 app.include_router(api_router, prefix=settings.API_V1_STR)
-
-
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    # Initialize the database with default admin user
-    db = next(get_db())
-    try:
-        create_default_admin(db)
-        create_default_player(db)
-    finally:
-        db.close()
-
-    # Print database environment info
-    # Hide password from the logged URL by splitting at @ and only showing host
-    def hide_password(url_str):
-        if '@' in url_str:
-            # Take only the part after @ (host:port/database)
-            return url_str.split('@')[1]
-        return url_str
-
-    if settings.ENVIRONMENT == "production":
-        print(f"Server started in {settings.ENVIRONMENT.upper()} mode")
-        print("🚨 IMPORTANT: Running with PRODUCTION database 🚨")
-        print(f"Database URL: ...@{hide_password(settings.get_db_url())}")
-    else:
-        print(f"Server started in {settings.ENVIRONMENT.upper()} mode")
-        print("Using DEVELOPMENT database")
-        print(f"Database URL: ...@{hide_password(settings.get_db_url())}")
-
-    # Print OAuth configuration
-    using_mock_github = settings.GITHUB_CLIENT_ID.startswith("mock_")
-    if using_mock_github:
-        print("⚠️ WARNING: Using mock GitHub OAuth - simulating OAuth flow")
-        print("To use real GitHub OAuth, set CLIENT_ID_GITHUB and CLIENT_SECRET_GITHUB environment variables")
-    else:
-        print("✅ Using real GitHub OAuth credentials")
-
-    # Print detected environment
-    print(f"Detected environment: {settings.detect_environment()}")
-    print(f"API Base URL: {settings.get_api_base_url()}")
-    print(f"Frontend URL: {settings.FRONTEND_URL}")
-
 
 # Start the application
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, UTC
 
 from src.core.database import get_db
 from src.auth.dependencies import get_current_admin_user, admin_or_options
@@ -71,8 +71,8 @@ async def create_user(
         email=user_data.email,
         is_active=True,
         is_admin=False,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC)
     )
     
     db.add(new_user)
@@ -114,8 +114,8 @@ async def create_admin_user(
         email=admin_data.email,
         is_active=True,
         is_admin=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC)
     )
     
     db.add(new_user)
@@ -200,7 +200,7 @@ async def update_user(
     if user_data.is_active is not None:
         db_user.is_active = user_data.is_active
     
-    db_user.updated_at = datetime.utcnow()
+    db_user.updated_at = datetime.now(UTC)
     db.commit()
     db.refresh(db_user)
     
@@ -232,7 +232,7 @@ async def delete_user(
     
     # Soft delete
     db_user.deleted = True
-    db_user.updated_at = datetime.utcnow()
+    db_user.updated_at = datetime.now(UTC)
     db.commit()
     db.refresh(db_user)
     
