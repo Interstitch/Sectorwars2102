@@ -53,10 +53,12 @@ class Settings(BaseSettings):
 
 
     # Database
-    # Database configuration using environment variable with Pydantic's priority handling
-    # By removing the default parameter, the environment variable will be used first
-    DATABASE_URL: PostgresDsn = None
-    DATABASE_TEST_URL: Optional[PostgresDsn] = None
+    DATABASE_URL: PostgresDsn = Field(
+        default="postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
+    )
+    DATABASE_TEST_URL: Optional[PostgresDsn] = Field(
+        default="postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
+    )
     DATABASE_URL_PROD: Optional[PostgresDsn] = None
     SQLALCHEMY_POOL_SIZE: int = 10
     SQLALCHEMY_MAX_OVERFLOW: int = 20
@@ -108,10 +110,13 @@ class Settings(BaseSettings):
         """Get the appropriate frontend URL based on environment."""
         # If explicitly set through FRONTEND_URL environment variable, use that
         if os.environ.get("FRONTEND_URL"):
-            return os.environ.get("FRONTEND_URL")
+            frontend_url = os.environ.get("FRONTEND_URL")
+            print(f"Using explicitly set FRONTEND_URL from environment: {frontend_url}")
+            return frontend_url
 
         # Auto-detect based on environment
         env_type = self.detect_environment()
+        print(f"Auto-detecting frontend URL for environment: {env_type}")
 
         if env_type == "codespaces":
             # For Codespaces, construct URL from environment variables
@@ -122,10 +127,16 @@ class Settings(BaseSettings):
             if codespace_name and github_codespaces_port_forwarding_domain:
                 # Full domain format with official GitHub Codespaces domain
                 # Include port in the hostname for Codespaces URLs
-                return f"https://{codespace_name}-3000.{github_codespaces_port_forwarding_domain}"
+                frontend_url = f"https://{codespace_name}-3000.{github_codespaces_port_forwarding_domain}"
+                print(f"Using modern Codespaces URL format: {frontend_url}")
+                return frontend_url
             elif codespace_name:
                 # Legacy/default format with port in the hostname
-                return f"https://{codespace_name}-3000.app.github.dev"
+                frontend_url = f"https://{codespace_name}-3000.app.github.dev"
+                print(f"Using legacy Codespaces URL format: {frontend_url}")
+                return frontend_url
+            else:
+                print("WARNING: In Codespaces environment but CODESPACE_NAME not set!")
 
         elif env_type == "replit":
             # For Replit, derive from the API URL but on port 3000
@@ -133,26 +144,22 @@ class Settings(BaseSettings):
             repl_slug = os.environ.get("REPL_SLUG")
             repl_owner = os.environ.get("REPL_OWNER")
             if repl_slug and repl_owner:
-                return f"https://{repl_slug}.{repl_owner}.repl.co:3000"
+                frontend_url = f"https://{repl_slug}.{repl_owner}.repl.co:3000"
+                print(f"Using Replit URL format: {frontend_url}")
+                return frontend_url
 
         # Default for local development
-        return "http://localhost:3000"
+        frontend_url = "http://localhost:3000"
+        print(f"Using default frontend URL: {frontend_url}")
+        return frontend_url
 
     def get_db_url(self) -> str:
         """Get the appropriate database URL based on environment."""
-        # For testing mode, use test DB if available
+        # Ensure correct type casting for Pydantic DSNs
         if self.ENVIRONMENT == "testing" and self.DATABASE_TEST_URL:
             return str(self.DATABASE_TEST_URL)
-        
-        # For production, use production DB if available
         if self.ENVIRONMENT == "production" and self.DATABASE_URL_PROD:
             return str(self.DATABASE_URL_PROD)
-        
-        # Check if DATABASE_URL is None, meaning it wasn't found in environment variables
-        if self.DATABASE_URL is None:
-            print("WARNING: DATABASE_URL not found in environment, using default")
-            return DEFAULT_DB_URL
-            
         return str(self.DATABASE_URL)
 
     # Using model_config for newer Pydantic versions

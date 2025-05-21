@@ -21,12 +21,15 @@ echo "Test reports will be available at: $REPORT_URL"
 echo ""
 
 # Set working directory to the project root
-cd "$(dirname "$0")/../.." || exit 1
+SCRIPT_DIR="$(dirname "$0")"
+cd "$SCRIPT_DIR" || exit 1
+
+echo "Current working directory: $(pwd)"
 
 # Run Playwright tests
 echo "Running Playwright tests for Admin UI and Player Client..."
 npx playwright install chromium --with-deps
-npx playwright test -c tests/e2e_tests/playwright.config.ts
+npx playwright test -c playwright.config.ts
 
 # Display test results
 echo ""

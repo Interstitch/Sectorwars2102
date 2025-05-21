@@ -7,7 +7,18 @@
  */
 export const decodeToken = (token: string): any => {
   try {
-    const base64Url = token.split('.')[1];
+    if (!token || typeof token !== 'string') {
+      console.error('Invalid token format:', token);
+      return null;
+    }
+    
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      console.error('Token does not have 3 parts:', token);
+      return null;
+    }
+    
+    const base64Url = parts[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(
       atob(base64)
@@ -26,8 +37,14 @@ export const decodeToken = (token: string): any => {
  * Check if token is expired
  */
 export const isTokenExpired = (token: string): boolean => {
+  if (!token) {
+    console.error('No token provided to isTokenExpired');
+    return true;
+  }
+  
   const decodedToken = decodeToken(token);
   if (!decodedToken || !decodedToken.exp) {
+    console.error('Token invalid or missing expiration:', decodedToken);
     return true;
   }
   
@@ -42,8 +59,14 @@ export const isTokenExpired = (token: string): boolean => {
  * Get time until token expiration in seconds
  */
 export const getTokenTimeRemaining = (token: string): number => {
+  if (!token) {
+    console.error('No token provided to getTokenTimeRemaining');
+    return 0;
+  }
+  
   const decodedToken = decodeToken(token);
   if (!decodedToken || !decodedToken.exp) {
+    console.error('Token invalid or missing expiration');
     return 0;
   }
   

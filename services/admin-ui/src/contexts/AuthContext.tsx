@@ -36,12 +36,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('Current window URL:', windowUrl);
 
     // In all environments, use relative URLs that go through the Vite proxy
-    // This works in Docker, Replit, and local development
+    // This works in Docker, Replit, and local development because Vite is 
+    // configured to proxy /api requests to the gameserver
+    console.log('Using Vite proxy through relative URL');
     return '';
   };
 
   // Initialize API URL
   const apiUrl = getApiUrl();
+  
+  console.log('Initialized API URL:', apiUrl);
   
   // Helper function to clear auth data
   const clearAuthData = () => {
@@ -55,23 +59,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const refreshToken = async (): Promise<void> => {
     const refreshTokenStr = localStorage.getItem('refreshToken');
     if (!refreshTokenStr) {
+      console.error('No refresh token available in localStorage');
       throw new Error('No refresh token available');
     }
     
     try {
-      const response = await axios.post(
-        `${apiUrl}/api/v1/auth/refresh`,
-        { refresh_token: refreshTokenStr },
-        { headers: { Authorization: '' } } // Don't send current auth header
+      console.log('Attempting to refresh token with refresh_token:', refreshTokenStr.substring(0, 5) + '...');
+      
+      // Use API URL from environment or default to relative URL
+      const directApiUrl = import.meta.env.VITE_API_URL || '';
+      
+      const response = await fetch(
+        `${directApiUrl}/api/v1/auth/refresh`,
+        { 
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ refresh_token: refreshTokenStr })
+        }
       );
       
-      const { access_token, refresh_token } = response.data;
+      // Check if the response is successful first
+      if (!response.ok) {
+        // If we get an error response, throw an error with the status code
+        throw new Error(`Server returned status ${response.status}`);
+      }
+      
+      // Get response text for debugging
+      const responseText = await response.text();
+      console.log('Raw refresh token response:', responseText);
+      
+      if (!responseText || responseText.trim() === '') {
+        console.error('Empty response from refresh endpoint');
+        throw new Error('Empty response from server');
+      }
+      
+      // Parse the response manually
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('Parsed refresh token data:', data);
+      } catch (parseError) {
+        console.error('Failed to parse refresh token response:', parseError);
+        throw new Error(`Invalid JSON response: ${responseText.substring(0, 50)}...`);
+      }
+      
+      // Destructure with default empty values to prevent undefined errors
+      const { access_token = '', refresh_token = '' } = data || {};
+      
+      if (!access_token || !refresh_token) {
+        console.error('Missing tokens in refresh response:', data);
+        throw new Error(
+          `Incomplete token data: Access token=${!!access_token}, Refresh token=${!!refresh_token}`
+        );
+      }
       
       // Store new tokens
       localStorage.setItem('accessToken', access_token);
       localStorage.setItem('refreshToken', refresh_token);
       
-      // Update auth header
+      // Update auth header for axios requests
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
     } catch (error) {
       console.error('Token refresh failed:', error);
@@ -172,94 +221,105 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('Attempting login with username:', username);
       
-      // Try direct login with credentials as plain parameters
+      // Use API URL from environment or default to relative URL
+      const directApiUrl = import.meta.env.VITE_API_URL || '';
+      console.log('Using API URL:', directApiUrl || 'via proxy');
+      
       try {
-        console.log('Attempting direct login call to /api/v1/auth/login/direct');
-        console.log('API URL:', apiUrl);
-        const directResponse = await axios.post(`${apiUrl}/api/v1/auth/login/direct`, {
-          username,
-          password,
+        console.log('Attempting direct login call to gameserver API');
+        
+        // Use fetch API instead of axios for better control
+        const directResponse = await fetch(`${directApiUrl}/api/v1/auth/login/direct`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            username,
+            password,
+          })
         });
+        
+        // Check if the response is successful
+        if (!directResponse.ok) {
+          // Handle HTTP error status
+          if (directResponse.status === 401) {
+            throw new Error('Invalid username or password');
+          } else {
+            const errorText = await directResponse.text();
+            throw new Error(`Server error (${directResponse.status}): ${errorText}`);
+          }
+        }
+        
+        // Get response text first for debugging
+        const responseText = await directResponse.text();
+        console.log('Raw API response:', responseText);
+        
+        if (!responseText || responseText.trim() === '') {
+          throw new Error('Empty response from server');
+        }
+        
+        // Parse the response manually
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          console.log('Parsed login data:', data);
+        } catch (parseError) {
+          console.error('Failed to parse login response:', parseError);
+          throw new Error(`Invalid JSON response: ${responseText.substring(0, 50)}...`);
+        }
+        
+        // Destructure with default empty values to prevent undefined errors
+        const { access_token = '', refresh_token = '', user_id = '' } = data || {};
 
-        console.log('Direct login response:', directResponse.status, directResponse.statusText);
-        const { access_token, refresh_token } = directResponse.data;
+        if (!access_token || !refresh_token) {
+          console.error('Missing tokens in login response:', data);
+          throw new Error(
+            `Incomplete token data: Access token=${!!access_token}, Refresh token=${!!refresh_token}`
+          );
+        }
 
         // Store tokens in localStorage
         localStorage.setItem('accessToken', access_token);
         localStorage.setItem('refreshToken', refresh_token);
 
-        // Set authorization header
+        // Set authorization header for future axios requests
         axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
         // Get user data
         console.log('Fetching user data from /api/v1/auth/me');
-        const userResponse = await axios.get(`${apiUrl}/api/v1/auth/me`);
-        setUser(userResponse.data);
-        console.log('Login successful with direct login endpoint');
-        return;
-      } catch (directError) {
-        console.warn('Direct login attempt failed:', directError);
-
-        // If direct login fails, try JSON login
         try {
-          console.log('Trying JSON login endpoint at /api/v1/auth/login/json');
-          const response = await axios.post(`${apiUrl}/api/v1/auth/login/json`, {
-            username,
-            password,
-          }, {
+          const userResponse = await fetch(`${directApiUrl}/api/v1/auth/me`, {
             headers: {
+              'Authorization': `Bearer ${access_token}`,
               'Content-Type': 'application/json',
-              'Accept': 'application/json'
             }
           });
-
-          console.log('JSON login response:', response.status, response.statusText);
-          const { access_token, refresh_token } = response.data;
-
-          // Store tokens in localStorage
-          localStorage.setItem('accessToken', access_token);
-          localStorage.setItem('refreshToken', refresh_token);
-
-          // Set authorization header
-          axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-
-          // Get user data
-          const userResponse = await axios.get(`${apiUrl}/api/v1/auth/me`);
-          setUser(userResponse.data);
-          console.log('Login successful with JSON endpoint');
-          return;
-        } catch (jsonError) {
-          console.warn('JSON login attempt failed:', jsonError);
-
-          // If JSON login fails, try form-based login as fallback
-          console.log('Trying form-based login as fallback at /api/v1/auth/login');
-
-          // Create form data
-          const formData = new FormData();
-          formData.append('username', username);
-          formData.append('password', password);
-
-          const response = await axios.post(`${apiUrl}/api/v1/auth/login`, formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-          });
-
-          console.log('Form login response:', response.status, response.statusText);
-          const { access_token, refresh_token } = response.data;
-
-          // Store tokens in localStorage
-          localStorage.setItem('accessToken', access_token);
-          localStorage.setItem('refreshToken', refresh_token);
-
-          // Set authorization header
-          axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-
-          // Get user data
-          const userResponse = await axios.get(`${apiUrl}/api/v1/auth/me`);
-          setUser(userResponse.data);
-          console.log('Login successful with form-based endpoint');
+          
+          if (!userResponse.ok) {
+            console.warn(`User data fetch failed with status ${userResponse.status}`);
+            throw new Error(`Failed to fetch user data: ${userResponse.status}`);
+          }
+          
+          const userData = await userResponse.json();
+          setUser(userData);
+          console.log('Login successful with direct login endpoint');
+        } catch (userError) {
+          console.error('Failed to fetch user data, but login was successful:', userError);
+          // Fetch user data failed, but login succeeded
+          // We could still try to extract user_id from the token if needed
+          if (user_id) {
+            setUser({
+              id: user_id,
+              username: username
+            });
+          }
         }
+        return;
+      } catch (error) {
+        console.error('Login attempt failed:', error);
+        throw error;
       }
     } catch (error) {
       console.error('All login attempts failed:', error);

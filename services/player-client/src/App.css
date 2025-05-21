@@ -200,6 +200,23 @@ main {
   margin: 0.5rem 0;
 }
 
+.error-info {
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.api-urls-tried {
+  font-size: 0.8rem;
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  max-height: 120px;
+  margin-top: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 /* Footer */
 footer {
   margin-top: 2rem;

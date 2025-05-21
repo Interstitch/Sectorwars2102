@@ -9,6 +9,7 @@ from jose import JWTError
 from src.auth.jwt import create_tokens, decode_token
 from src.auth.dependencies import get_current_user
 from src.models.user import User
+from src.models.admin_credentials import AdminCredentials
 from src.auth.oauth import GitHubOAuth, GoogleOAuth, SteamAuth, get_oauth_user, create_oauth_user
 from src.core.database import get_db
 from src.core.config import settings
@@ -64,10 +65,28 @@ async def login_json(
     # Get credentials from JSON data
     username = json_data.username
     password = json_data.password
-
+    
+    # Optional debug logging - only for development/testing
+    if settings.DEBUG:
+        import logging
+        logging.debug(f"Login attempt for username: {username}")
+        
+        # Check if the admin credentials exist in the database for debugging
+        admin_user = db.query(User).filter(User.username == username, User.is_admin == True).first()
+        if admin_user and settings.DEBUG:
+            logging.debug(f"Admin user found in database with ID: {admin_user.id}")
+            admin_creds = db.query(AdminCredentials).filter(AdminCredentials.user_id == admin_user.id).first()
+            if admin_creds:
+                logging.debug("Admin credentials found in database")
+            else:
+                logging.debug("Admin user exists but no credentials record found")
+        elif settings.DEBUG:
+            logging.debug(f"Admin user '{username}' not found in database")
+    
     # Authenticate user
     user = authenticate_admin(db, username, password)
     if not user:
+        logging.error("Authentication failed for admin user")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -419,6 +438,11 @@ async def login_github(request: Request, register: bool = False):
         scheme = request.headers.get("x-forwarded-proto", "https")
         print(f"Codespaces detected. Original request host: {host}, scheme: {scheme}")
         print(f"Using configured API_BASE_URL instead: {api_base_url}")
+        
+        # Debug all request headers to help understand the tunneling mechanism
+        print("All request headers:")
+        for header_name, header_value in request.headers.items():
+            print(f"  {header_name}: {header_value}")
 
         # Always use the API_BASE_URL setting for Codespaces
         redirect_uri = f"{base}/auth/github/callback?register={register}"
@@ -436,6 +460,8 @@ async def login_github(request: Request, register: bool = False):
     print(f"Environment detected: {settings.detect_environment()}")
     print(f"GitHub Client ID: {settings.GITHUB_CLIENT_ID}")
     print(f"Request host: {request.headers.get('host', '')}")
+    print(f"X-Forwarded-Host: {request.headers.get('x-forwarded-host', 'Not set')}")
+    print(f"X-Forwarded-Proto: {request.headers.get('x-forwarded-proto', 'Not set')}")
     print(f"Request method: {request.method}")
     print(f"Request URL: {request.url}")
     print(f"API Base URL: {settings.get_api_base_url()}")
@@ -512,11 +538,31 @@ async def github_callback(request: Request, code: str, register: bool = False, d
         # Get the frontend URL for the OAuth callback page
         frontend_url = f"{settings.FRONTEND_URL}/oauth-callback?access_token={access_token}&refresh_token={refresh_token}&user_id={user.id}&is_new_user={is_new_user}"
 
-        # Debug information
+        # Debug information - more verbose
+        print(f"==== OAuth Callback Debug ====")
         print(f"Redirecting to frontend URL: {frontend_url}")
         print(f"Is new user: {is_new_user}")
+        print(f"Access token provided: {bool(access_token)}")
+        print(f"Refresh token provided: {bool(refresh_token)}")
+        print(f"User ID provided: {bool(user.id)}")
+        print(f"Frontend URL from settings: {settings.FRONTEND_URL}")
+        print(f"Codespace environment: {settings.detect_environment() == 'codespaces'}")
+        print(f"============================")
+
+        # Ensure our redirect is absolute
+        if not frontend_url.startswith(('http://', 'https://')):
+            print(f"WARNING: Frontend URL is not absolute: {frontend_url}")
+            # Try to fix it
+            if settings.detect_environment() == 'codespaces':
+                # Extract codespace name
+                import os
+                codespace_name = os.environ.get('CODESPACE_NAME', '')
+                if codespace_name:
+                    frontend_url = f"https://{codespace_name}-3000.app.github.dev/oauth-callback?access_token={access_token}&refresh_token={refresh_token}&user_id={user.id}&is_new_user={is_new_user}"
+                    print(f"Fixed frontend URL to: {frontend_url}")
 
         # Redirect to the frontend with the tokens
+        print(f"Final redirect URL: {frontend_url}")
         return RedirectResponse(frontend_url)
 
     except Exception as e:
@@ -528,36 +574,36 @@ async def github_callback(request: Request, code: str, register: bool = False, d
 
         # Return a user-friendly error page with debugging information
         error_html = f"""
-        <html>
-            <head>
-                <title>OAuth Error</title>
-                <style>
-                    body {{ font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }}
-                    .error {{ background: #ffeeee; border: 1px solid #ffaaaa; padding: 15px; border-radius: 5px; }}
-                    .debug {{ background: #eeeeff; border: 1px solid #aaaaff; padding: 15px; border-radius: 5px; margin-top: 20px; }}
-                    code {{ background: #f0f0f0; padding: 2px 5px; border-radius: 3px; }}
-                </style>
-            </head>
-            <body>
-                <h1>OAuth Authentication Error</h1>
-                <div class="error">
-                    <h3>Error: {str(e)}</h3>
-                    <p>There was a problem authenticating with GitHub. Please try again or contact support.</p>
-                </div>
-                <div class="debug">
-                    <h3>Debug Information</h3>
-                    <ul>
-                        <li>Environment: {settings.detect_environment()}</li>
-                        <li>Callback URL: <code>{callback_url}</code></li>
-                        <li>Redirect URI: <code>{redirect_uri}</code></li>
-                        <li>Frontend URL: <code>{settings.FRONTEND_URL}</code></li>
-                        <li>Mock GitHub: <code>{"Yes" if settings.GITHUB_CLIENT_ID.startswith("mock_") else "No"}</code></li>
-                    </ul>
-                    <p>Try going back to the <a href="{settings.FRONTEND_URL}">login page</a> and trying again.</p>
-                </div>
-            </body>
-        </html>
-        """
+<html>
+    <head>
+        <title>OAuth Error</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }}
+            .error {{ background: #ffeeee; border: 1px solid #ffaaaa; padding: 15px; border-radius: 5px; }}
+            .debug {{ background: #eeeeff; border: 1px solid #aaaaff; padding: 15px; border-radius: 5px; margin-top: 20px; }}
+            code {{ background: #f0f0f0; padding: 2px 5px; border-radius: 3px; }}
+        </style>
+    </head>
+    <body>
+        <h1>OAuth Authentication Error</h1>
+        <div class="error">
+            <h3>Error: {str(e)}</h3>
+            <p>There was a problem authenticating with GitHub. Please try again or contact support.</p>
+        </div>
+        <div class="debug">
+            <h3>Debug Information</h3>
+            <ul>
+                <li>Environment: {settings.detect_environment()}</li>
+                <li>Callback URL: <code>{callback_url}</code></li>
+                <li>Redirect URI: <code>{redirect_uri}</code></li>
+                <li>Frontend URL: <code>{settings.FRONTEND_URL}</code></li>
+                <li>Mock GitHub: <code>{"Yes" if settings.GITHUB_CLIENT_ID.startswith("mock_") else "No"}</code></li>
+            </ul>
+            <p>Try going back to the <a href="{settings.FRONTEND_URL}">login page</a> and trying again.</p>
+        </div>
+    </body>
+</html>
+"""
         return HTMLResponse(content=error_html, status_code=500)
 
 

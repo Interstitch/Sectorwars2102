@@ -21,67 +21,297 @@ function MainApp() {
   const [authMode, setAuthMode] = useState<'none' | 'login' | 'register'>('none');
   const navigate = useNavigate();
   
-  // Use relative API URL to leverage the Vite proxy consistently across environments
+  // Get API URL - prioritize proxy for all environments
   const getApiUrl = () => {
-    // If an environment variable is explicitly set, use it
+    // If an environment variable is explicitly set, use it as override
     if (import.meta.env.VITE_API_URL) {
+      console.log('Using VITE_API_URL override:', import.meta.env.VITE_API_URL);
       return import.meta.env.VITE_API_URL;
     }
 
-    console.log('Using relative URL with Vite proxy for', window.location.origin);
-    // In all environments, use relative URLs that go through the Vite proxy
-    return '';  // Empty string means use relative URL with proxy
+    // IMPORTANT CHANGE: In all environments, we'll now use the Vite proxy by default
+    // This solves container name resolution and CORS issues
+    console.log('Using Vite proxy for API requests (empty baseUrl)');
+    
+    // Empty string enables Vite proxy which routes /api to the gameserver
+    // This works better than direct URLs when running in Docker or any environment
+    // The proxy is configured in vite.config.ts to handle the routing
+    return '';
+  };
+  
+  // Get full API URL for display purposes, showing the complete endpoint
+  const getFullApiUrl = () => {
+    const baseUrl = getApiUrl();
+    if (baseUrl) {
+      // Try the path that matches what's defined in the gameserver's main.py
+      return `${baseUrl}/api/v1/status`;
+    } else {
+      // If using proxy, show the window origin + proxy path
+      return `${window.location.origin}/api/v1/status`;
+    }
+  };
+  
+  // Get the URLs that will actually be tried
+  const getAllTestUrls = () => {
+    const baseUrl = getApiUrl();
+    const endpoints = [
+      '/api/status',
+      '/api/status/', 
+      '/api/v1/status',
+      '/api/v1/status/',
+      '/api/version',
+      '/api/v1/status/version',
+      '/'
+    ];
+    
+    if (baseUrl) {
+      return endpoints.map(endpoint => `${baseUrl}${endpoint}`).join('\n');
+    } else {
+      return endpoints.map(endpoint => `${window.location.origin}${endpoint}`).join('\n');
+    }
   };
 
+  // Create a special axios instance for GitHub Codespaces
+  const createCodespacesAxios = () => {
+    const instance = axios.create();
+    
+    // Add a response interceptor to handle redirect responses
+    instance.interceptors.response.use(
+      (response) => {
+        // If it's a redirect, check for port doubling
+        if (response.status >= 300 && response.status < 400 && response.headers.location) {
+          const location = response.headers.location;
+          console.log(`Intercepted redirect to: ${location}`);
+          
+          // Check if location has duplicated port
+          if (location.includes(':8080')) {
+            // We'll handle this redirect manually
+            const fixedLocation = location.replace(':8080', '');
+            console.log(`Fixed redirect location: ${fixedLocation}`);
+            
+            // Store the fixed location for the caller to use
+            response.headers.fixedLocation = fixedLocation;
+          }
+        }
+        return response;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+    
+    return instance;
+  };
+  
+  // Create the instance if we're in Codespaces
+  const isCodespaces = window.location.hostname.includes('.app.github.dev');
+  const codespacesAxios = isCodespaces ? createCodespacesAxios() : null;
+
   useEffect(() => {
+    // Check for auth parameter in URL (coming from OAuth)
+    const params = new URLSearchParams(window.location.search);
+    const authParam = params.get('auth');
+    if (authParam) {
+      try {
+        console.log('Found auth parameter in URL');
+        const authData = JSON.parse(decodeURIComponent(authParam));
+        
+        // Store tokens in localStorage
+        if (authData.accessToken) {
+          console.log('Setting tokens from URL parameter');
+          localStorage.setItem('accessToken', authData.accessToken);
+          localStorage.setItem('refreshToken', authData.refreshToken);
+          localStorage.setItem('userId', authData.userId);
+          
+          // Set axios auth header
+          axios.defaults.headers.common['Authorization'] = `Bearer ${authData.accessToken}`;
+          if (codespacesAxios) {
+            codespacesAxios.defaults.headers.common['Authorization'] = `Bearer ${authData.accessToken}`;
+          }
+          
+          // Remove the auth parameter from URL to avoid exposing tokens
+          const url = new URL(window.location.href);
+          url.searchParams.delete('auth');
+          window.history.replaceState({}, document.title, url.href);
+        }
+      } catch (error) {
+        console.error('Error parsing auth parameter:', error);
+      }
+    }
+    
     const apiUrl = getApiUrl()
     console.log('Checking API status at:', apiUrl)
 
     const checkApiStatus = async () => {
       try {
-        // Try the API version endpoint first (properly proxied)
-        try {
-          console.log('Trying API version endpoint...')
-          const versionResponse = await axios.get(`${apiUrl}/api/v1/status/version`)
-          if (versionResponse.status === 200) {
-            setApiStatus('Connected')
-            setApiMessage(`Game API Server v${versionResponse.data.version}`)
-            setApiEnvironment('gameserver')
-            console.log('API connection successful via version endpoint')
-            return
+        console.log('Starting API status check. App version: 0.1.1');
+        
+        // Try multiple endpoints in order of reliability
+        const endpoints = [
+          // Simplified ping endpoint - most reliable
+          { path: '/api/status/ping', name: 'ping endpoint' },
+          { path: '/api/v1/status/ping', name: 'versioned ping endpoint' },
+          
+          // Direct API endpoints - prefer these for maximum compatibility
+          { path: '/api/status', name: 'direct status' },
+          { path: '/api/status/', name: 'direct status with trailing slash' },
+          
+          // Main versioned API endpoints
+          { path: '/api/v1/status', name: 'versioned status' },
+          { path: '/api/v1/status/', name: 'versioned status with trailing slash' },
+          
+          // Version endpoints as alternative
+          { path: '/api/version', name: 'direct version' },
+          { path: '/api/v1/status/version', name: 'versioned status/version' },
+          
+          // Root endpoints as last resort
+          { path: '/', name: 'server root' }
+        ];
+        
+        // Try each endpoint until one works
+        for (const endpoint of endpoints) {
+          try {
+            console.log(`Trying ${endpoint.name} endpoint: ${apiUrl}${endpoint.path}`)
+            // For Codespaces, handle redirects ourselves to prevent port doubling
+            const isCodespaces = window.location.hostname.includes('.app.github.dev');
+            const options = {
+              maxRedirects: isCodespaces ? 0 : 5, // Disable auto-redirects in Codespaces
+              validateStatus: function (status) {
+                return status < 500; // Accept any status code less than 500
+              },
+              headers: {
+                // Add headers to help with Codespaces port forwarding
+                'X-Forwarded-Host': window.location.host,
+                'X-Forwarded-Proto': 'https'
+              }
+            };
+            
+            console.log(`Request options:`, options);
+            
+            // Use our special Codespaces axios instance if available
+            const axiosToUse = isCodespaces && codespacesAxios ? codespacesAxios : axios;
+            console.log(`Using ${isCodespaces ? 'Codespaces' : 'standard'} axios instance`);
+            
+            const response = await axiosToUse.get(`${apiUrl}${endpoint.path}`, options)
+            
+            // Special handling for GitHub Codespaces redirects
+            if (isCodespaces && response.status >= 300 && response.status < 400) {
+              console.log(`Received redirect status: ${response.status}`);
+              
+              // Check for the location header (regular or our fixed one)
+              const location = response.headers.location;
+              const fixedLocation = response.headers.fixedLocation || location;
+              
+              if (location) {
+                console.log(`Redirect location: ${location}`);
+                if (fixedLocation !== location) {
+                  console.log(`Using fixed location: ${fixedLocation}`);
+                }
+                
+                try {
+                  // Check for double port issue
+                  if (location.includes(':8080') && location.includes('-8080.app.github.dev')) {
+                    console.log(`⚠️ Detected double port in redirect URL, fixing it...`);
+                  }
+                  
+                  // Follow the redirect manually with the appropriate URL
+                  console.log(`Following redirect to: ${fixedLocation}`);
+                  const redirectResponse = await axiosToUse.get(fixedLocation, {
+                    ...options,
+                    maxRedirects: 0 // Still no auto-redirects
+                  });
+                  
+                  // If we get a successful response, use it
+                  if (redirectResponse.status >= 200 && redirectResponse.status < 300) {
+                    console.log(`Redirect successful:`, redirectResponse.data);
+                    setApiStatus('Connected');
+                    setApiMessage(redirectResponse.data.message || `Game API Server is operational (redirected)`);
+                    setApiEnvironment(redirectResponse.data.environment || 'gameserver');
+                    return;
+                  } else if (redirectResponse.status >= 300 && redirectResponse.status < 400) {
+                    // Try one more level of redirection
+                    const nestedLocation = redirectResponse.headers.location;
+                    const nestedFixedLocation = 
+                      (nestedLocation && nestedLocation.includes(':8080') && nestedLocation.includes('-8080.app.github.dev')) 
+                        ? nestedLocation.replace(':8080', '') 
+                        : nestedLocation;
+                    
+                    console.log(`Another redirect detected to: ${nestedFixedLocation}`);
+                    try {
+                      const nestedResponse = await axiosToUse.get(nestedFixedLocation, {
+                        ...options,
+                        maxRedirects: 0
+                      });
+                      
+                      if (nestedResponse.status >= 200 && nestedResponse.status < 300) {
+                        console.log(`Final redirect successful:`, nestedResponse.data);
+                        setApiStatus('Connected');
+                        setApiMessage(nestedResponse.data.message || `Game API Server operational`);
+                        setApiEnvironment(nestedResponse.data.environment || 'gameserver');
+                        return;
+                      }
+                    } catch (nestedError) {
+                      console.warn(`Failed to follow nested redirect:`, nestedError);
+                    }
+                  }
+                } catch (redirectError) {
+                  console.warn(`Failed to follow redirect:`, redirectError);
+                }
+                
+                // Just mark as connected if any response comes back
+                setApiStatus('Connected (with redirect)');
+                setApiMessage(`Game server is responding`);
+                setApiEnvironment('gameserver');
+                return;
+              }
+            }
+            
+            // Accept any 2xx status as success
+            if (response.status >= 200 && response.status < 300) {
+              console.log(`API connection successful via ${endpoint.name} endpoint`, response.data);
+              setApiStatus('Connected');
+              
+              // Extract message and environment based on endpoint
+              if (endpoint.path.includes('version')) {
+                setApiMessage(`Game API Server v${response.data.version || '0.1.0'}`);
+              } else if (endpoint.path.includes('ping')) {
+                setApiMessage(`Game API Server is operational (ping: ${response.data.ping})`);
+              } else {
+                setApiMessage(response.data.message || 'Game API Server is operational');
+              }
+              
+              setApiEnvironment(response.data.environment || 'gameserver');
+              
+              // Log success for debugging
+              console.log(`SUCCESS: Connected to API via ${endpoint.name}`);
+              return;
+            }
+          } catch (endpointError) {
+            // More detailed error logging
+            console.warn(`${endpoint.name} endpoint failed:`, endpointError);
+            if (endpointError.response) {
+              // The request was made and the server responded with a status code
+              // that falls out of the range of 2xx
+              console.error('Error response data:', endpointError.response.data);
+              console.error('Error response status:', endpointError.response.status);
+              console.error('Error response headers:', endpointError.response.headers);
+            } else if (endpointError.request) {
+              // The request was made but no response was received
+              console.error('Error request (no response received):', endpointError.request);
+            } else {
+              // Something happened in setting up the request that triggered an Error
+              console.error('Error message:', endpointError.message);
+            }
+            console.error('Error config:', endpointError.config);
           }
-        } catch (versionError) {
-          console.warn('API version endpoint failed:', versionError)
         }
-
-        // Try API status endpoint (properly proxied)
-        try {
-          console.log('Trying API status endpoint...')
-          const statusResponse = await axios.get(`${apiUrl}/api/v1/status`)
-          setApiStatus('Connected')
-          setApiMessage(statusResponse.data.message || 'Game API Server is operational')
-          setApiEnvironment(statusResponse.data.environment || 'gameserver')
-          console.log('API connection successful via status endpoint')
-          return
-        } catch (statusError) {
-          console.warn('API status endpoint failed:', statusError)
-        }
-
-        // Try API ping endpoint as final fallback
-        try {
-          console.log('Trying API ping endpoint as final fallback...')
-          const pingResponse = await axios.get(`${apiUrl}/api/v1/status/ping`)
-          setApiStatus('Connected')
-          setApiMessage('Game API Server is responding')
-          setApiEnvironment(pingResponse.data.environment || 'gameserver')
-          console.log('API connection successful via ping endpoint')
-          return
-        } catch (pingError) {
-          console.warn('API ping endpoint failed:', pingError)
-          throw new Error('All API endpoints failed')
-        }
+        
+        // If we get here, all endpoints failed
+        throw new Error('All API endpoints failed')
       } catch (error) {
         console.error('Error connecting to API (all attempts failed):', error)
+        console.error('apiUrl used:', apiUrl)
+        console.error('Current location:', window.location.toString())
         setApiStatus('Error connecting to API')
       }
     }
@@ -94,17 +324,40 @@ function MainApp() {
     // Check if user is authenticated
     const checkAuth = async () => {
       const accessToken = localStorage.getItem('accessToken');
+      const isFromOAuth = sessionStorage.getItem('oauth_redirect_completed') === 'true';
+      
+      if (isFromOAuth) {
+        console.log('App detected we are coming from OAuth redirect');
+        console.log('Access token exists:', !!accessToken);
+        if (accessToken) {
+          console.log('Access token substring:', accessToken.substring(0, 20) + '...');
+        }
+      }
+      
       if (accessToken) {
         try {
           // Set auth header
+          console.log('Setting authorization header with token (first 20 chars):', accessToken.substring(0, 20) + '...');
           axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
           
+          // Log the current headers for debugging
+          console.log('Current axios headers:', axios.defaults.headers.common);
+          
           // Get user info
+          console.log('Making request to /api/v1/auth/me');
           const response = await axios.get(`${apiUrl}/api/v1/auth/me`);
+          console.log('Authentication successful, user data:', response.data);
           setUser(response.data);
           setIsAuthenticated(true);
+          
+          // Clear the OAuth flag if it exists
+          if (isFromOAuth) {
+            console.log('Clearing OAuth redirect flag');
+            sessionStorage.removeItem('oauth_redirect_completed');
+          }
         } catch (error) {
           console.error('Failed to verify authentication:', error);
+          console.error('Error details:', error.response?.data || error.message);
           // Clear tokens on auth failure
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
@@ -192,10 +445,16 @@ function MainApp() {
                 <span className={`status-dot ${apiStatus.includes('Connected') ? 'connected' : 'disconnected'}`}></span>
                 <span className="status-text">{apiStatus}</span>
               </div>
-              {apiStatus.includes('Connected') && (
+              {apiStatus.includes('Connected') ? (
                 <div className="api-info">
                   <p><strong>Message:</strong> {apiMessage}</p>
                   <p><strong>Environment:</strong> {apiEnvironment}</p>
+                </div>
+              ) : (
+                <div className="api-info error-info">
+                  <p><strong>API URL:</strong> {getFullApiUrl()}</p>
+                  <p><strong>URLs tried:</strong></p>
+                  <pre className="api-urls-tried">{getAllTestUrls()}</pre>
                 </div>
               )}
             </section>
@@ -285,10 +544,16 @@ function MainApp() {
                   <span className={`status-dot ${apiStatus.includes('Connected') ? 'connected' : 'disconnected'}`}></span>
                   <span className="status-text">{apiStatus}</span>
                 </div>
-                {apiStatus.includes('Connected') && (
+                {apiStatus.includes('Connected') ? (
                   <div className="api-info">
                     <p><strong>Message:</strong> {apiMessage}</p>
                     <p><strong>Environment:</strong> {apiEnvironment}</p>
+                  </div>
+                ) : (
+                  <div className="api-info error-info">
+                    <p><strong>API URL:</strong> {getFullApiUrl()}</p>
+                    <p><strong>URLs tried:</strong></p>
+                    <pre className="api-urls-tried">{getAllTestUrls()}</pre>
                   </div>
                 )}
               </section>

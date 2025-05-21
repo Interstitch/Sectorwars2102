@@ -46,8 +46,14 @@ def create_refresh_token(subject: Union[str, Any], db: Session) -> str:
 
 def create_tokens(user_id: str, db: Session) -> tuple[str, str]:
     """Create both access and refresh tokens."""
+    print(f"Creating tokens for user ID: {user_id}")
+    
     access_token = create_access_token(user_id)
     refresh_token = create_refresh_token(user_id, db)
+    
+    print(f"Generated access token (first 20 chars): {access_token[:20]}...")
+    print(f"Generated refresh token: {refresh_token}")
+    
     return access_token, refresh_token
 
 

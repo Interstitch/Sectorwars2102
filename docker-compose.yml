@@ -5,8 +5,17 @@ services:
       - "8080:8080"  # Also allow direct port 8080 access for Replit compatibility
     volumes:
       - ./services/gameserver:/app
-    env_file:
-      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
+      - DEBUG=${DEBUG:-true}
+      - CLIENT_ID_GITHUB=${CLIENT_ID_GITHUB:-mock_github_client_id}
+      - CLIENT_SECRET_GITHUB=${CLIENT_SECRET_GITHUB:-mock_github_client_secret}
+      - API_BASE_URL=${API_BASE_URL:-http://localhost:8080}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - DEV_ENVIRONMENT=${DEV_ENVIRONMENT:-local}
+      - CODESPACE_NAME=${CODESPACE_NAME:-}
     restart: unless-stopped
     networks:
       - sectorwars-network
@@ -18,10 +27,9 @@ services:
     volumes:
       - ./services/player-client:/app
       - /app/node_modules
-    env_file:
-      - .env
     environment:
-      - API_URL=http://gameserver:8080  # This is a container-specific setting
+      - API_URL=http://gameserver:8080
+      - NODE_ENV=${NODE_ENV:-development}
     restart: unless-stopped
     depends_on:
       - gameserver
@@ -35,11 +43,10 @@ services:
     volumes:
       - ./services/admin-ui:/app
       - /app/node_modules
-    env_file:
-      - .env
     environment:
-      - API_URL=http://gameserver:8080  # This is a container-specific setting
-      - PORT=3001  # This is a container-specific setting
+      - API_URL=http://gameserver:8080
+      - PORT=3001
+      - NODE_ENV=${NODE_ENV:-development}
     restart: unless-stopped
     depends_on:
       - gameserver

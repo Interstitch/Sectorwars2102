@@ -38,21 +38,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
-  // Use relative API URL to leverage the Vite proxy
+  // Use direct URL for gameserver in Codespaces
   const getApiUrl = () => {
     // If an environment variable is explicitly set, use it
     if (import.meta.env.VITE_API_URL) {
+      console.log('Using VITE_API_URL:', import.meta.env.VITE_API_URL);
       return import.meta.env.VITE_API_URL;
     }
 
     const windowUrl = window.location.origin;
     console.log('Current window URL:', windowUrl);
 
-    // Detect GitHub Codespaces environment
-    if (windowUrl.includes('github.dev') || windowUrl.includes('.app.github.dev')) {
-      console.log('GitHub Codespaces environment detected');
-      console.log('Using proxy API URL for GitHub Codespaces');
-      return '';  // Empty string means use relative URL with proxy
+    // For GitHub Codespaces, use direct URL to gameserver
+    if (windowUrl.includes('.app.github.dev')) {
+      // Extract the codespace name from the hostname
+      const hostname = window.location.hostname;
+      const parts = hostname.split('.');
+      const hostnamePart = parts[0]; // e.g., super-duper-carnival-qppjvq94q9vcxwqp-3000
+      const lastDashIndex = hostnamePart.lastIndexOf('-');
+      const codespaceName = lastDashIndex !== -1 ? hostnamePart.substring(0, lastDashIndex) : hostnamePart;
+      
+      const directUrl = `https://${codespaceName}-8080.app.github.dev`;
+      console.log('Using direct gameserver URL for Codespaces:', directUrl);
+      return directUrl;
     }
 
     // Local development - still use direct URL to avoid Docker network issues
@@ -242,20 +250,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
     // Make sure we don't have a stale registration flag
     sessionStorage.removeItem('oauth_register');
 
-    // For GitHub Codespaces, simpler is better - always use the proxy
+    // For GitHub Codespaces, construct the correct URL directly
     let oauthUrl;
     if (window.location.hostname.includes('.app.github.dev') ||
         window.location.hostname.includes('github.dev')) {
+      // Get the codespace name from the hostname
+      const hostname = window.location.hostname;
       console.log('GitHub Codespaces environment detected for OAuth');
-
-      // In Codespaces, we use the proxy approach which avoids port/protocol issues
-      // Since we're in Codespaces, we know traffic is going through port 443
-      // Even though our services may run on other ports internally
-      oauthUrl = `/api/v1/auth/${provider}`;
-
-      console.log(`Using proxy for OAuth login in Codespaces: ${oauthUrl}`);
-      console.log(`Window location: ${window.location.href}`);
-      console.log(`Window hostname: ${window.location.hostname}`);
+      console.log(`Hostname: ${hostname}`);
+      
+      // Extract the codespace name from the hostname
+      // Format is like: super-duper-carnival-qppjvq94q9vcxwqp-3000.app.github.dev
+      // We want: super-duper-carnival-qppjvq94q9vcxwqp
+      const parts = hostname.split('.');
+      const hostnamePart = parts[0]; // e.g., super-duper-carnival-qppjvq94q9vcxwqp-3000
+      const lastDashIndex = hostnamePart.lastIndexOf('-');
+      const codespaceName = lastDashIndex !== -1 ? hostnamePart.substring(0, lastDashIndex) : hostnamePart;
+      console.log(`Codespace name extracted: ${codespaceName}`);
+      
+      // Construct the URL directly to the gameserver port
+      oauthUrl = `https://${codespaceName}-8080.app.github.dev/api/v1/auth/${provider}`;
+      console.log(`Using direct URL for OAuth login in Codespaces: ${oauthUrl}`);
     } else {
       // For non-Codespaces environments
       oauthUrl = `${apiUrl}/api/v1/auth/${provider}`;
@@ -271,21 +286,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
     // Store in session storage that this was a registration attempt
     sessionStorage.setItem('oauth_register', 'true');
 
-    // For GitHub Codespaces, simpler is better - always use the proxy
+    // For GitHub Codespaces, construct the correct URL directly
     let oauthUrl;
     if (window.location.hostname.includes('.app.github.dev') ||
         window.location.hostname.includes('github.dev')) {
+      // Get the codespace name from the hostname
+      const hostname = window.location.hostname;
       console.log('GitHub Codespaces environment detected for OAuth registration');
-
-      // In Codespaces, we use the proxy approach which avoids port/protocol issues
-      // Since we're in Codespaces, we know traffic is going through port 443
-      // Even though our services may run on other ports internally
-      // Pass the register=true flag to inform the server this is a registration
-      oauthUrl = `/api/v1/auth/${provider}?register=true`;
-
-      console.log(`Using proxy for OAuth registration in Codespaces: ${oauthUrl}`);
-      console.log(`Window location: ${window.location.href}`);
-      console.log(`Window hostname: ${window.location.hostname}`);
+      console.log(`Hostname: ${hostname}`);
+      
+      // Extract the codespace name from the hostname
+      // Format is like: super-duper-carnival-qppjvq94q9vcxwqp-3000.app.github.dev
+      // We want: super-duper-carnival-qppjvq94q9vcxwqp
+      const parts = hostname.split('.');
+      const hostnamePart = parts[0]; // e.g., super-duper-carnival-qppjvq94q9vcxwqp-3000
+      const lastDashIndex = hostnamePart.lastIndexOf('-');
+      const codespaceName = lastDashIndex !== -1 ? hostnamePart.substring(0, lastDashIndex) : hostnamePart;
+      console.log(`Codespace name extracted: ${codespaceName}`);
+      
+      // Construct the URL directly to the gameserver port
+      oauthUrl = `https://${codespaceName}-8080.app.github.dev/api/v1/auth/${provider}?register=true`;
+      console.log(`Using direct URL for OAuth registration in Codespaces: ${oauthUrl}`);
     } else {
       // For non-Codespaces environments
       oauthUrl = `${apiUrl}/api/v1/auth/${provider}?register=true`;

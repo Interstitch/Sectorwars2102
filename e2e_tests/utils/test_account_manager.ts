@@ -24,11 +24,27 @@ export const TEST_ACCOUNTS = {
  */
 export function initTestAccountManager() {
   // Load environment variables from .env file if available
-  const envPath = path.resolve(process.cwd(), '../.env');
-  if (fs.existsSync(envPath)) {
-    dotenv.config({ path: envPath });
-  } else {
-    console.log('.env file not found at project root, using existing environment variables');
+  // Try multiple possible locations for the .env file
+  const possibleEnvPaths = [
+    path.resolve(process.cwd(), '.env'),              // Current working directory
+    path.resolve(process.cwd(), '../.env'),           // One level up
+    path.resolve(process.cwd(), '../../.env'),        // Two levels up
+    path.resolve(__dirname, '../../.env'),            // Two levels up from this file
+    path.resolve(__dirname, '../../../.env')          // Project root from e2e_tests/utils
+  ];
+  
+  let envLoaded = false;
+  for (const envPath of possibleEnvPaths) {
+    if (fs.existsSync(envPath)) {
+      console.log(`Found .env file at: ${envPath}`);
+      dotenv.config({ path: envPath });
+      envLoaded = true;
+      break;
+    }
+  }
+  
+  if (!envLoaded) {
+    console.log('No .env file found in any expected locations, using existing environment variables');
   }
 
   // Verify required environment variables
@@ -38,6 +54,9 @@ export function initTestAccountManager() {
   if (missing.length > 0) {
     console.error(`Missing required environment variables: ${missing.join(', ')}`);
     console.error('Test account management may not work correctly');
+  } else {
+    console.log('All required environment variables are present');
+    console.log(`DATABASE_URL: ${process.env.DATABASE_URL?.substr(0, 20)}...`); // Only show part of the URL for security
   }
 }
 

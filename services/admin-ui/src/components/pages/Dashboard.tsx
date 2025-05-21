@@ -29,7 +29,7 @@ const Dashboard: React.FC = () => {
       try {
         // Use the API version endpoint that's properly proxied
         try {
-          const response = await axios.get(`${apiUrl}/api/version`);
+          const response = await axios.get(`${apiUrl}/api/v1/status/version`);
           if (response.status === 200) {
             setApiStatus('Connected');
             setApiMessage(`Game API Server v${response.data.version}`);
@@ -42,7 +42,7 @@ const Dashboard: React.FC = () => {
 
         // Fallback to API status check
         try {
-          const response = await axios.get(`${apiUrl}/api/status`);
+          const response = await axios.get(`${apiUrl}/api/v1/status`);
           setApiStatus('Connected');
           setApiMessage(response.data.message || "Game API Server is operational");
           setApiEnvironment(response.data.environment || "gameserver");

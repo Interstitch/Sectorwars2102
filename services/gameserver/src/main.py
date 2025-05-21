@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import sys
@@ -124,19 +124,15 @@ app.add_middleware(
     max_age=86400,  # 24 hours
 )
 
-# Create a status router for utility endpoints
-from fastapi import APIRouter
-status_router = APIRouter(prefix="/status", tags=["status"])
-
-# Health check endpoint - moved to versioned API
-@status_router.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "gameserver"}
-
-# Hello World endpoint - root endpoint remains for discoverability
+# Root endpoint for discoverability - kept at app level for easy access
 @app.get("/")
-async def hello_world():
+async def hello_world(request: Request):
     environment = os.environ.get("ENVIRONMENT", "development")
+    
+    # Debugging log of request info for Codespaces issues
+    logger.info(f"Root endpoint called from {request.client.host}:{request.client.port}")
+    logger.info(f"Request headers: {dict(request.headers)}")
+    
     return {
         "message": "Hello from Sector Wars 2102 Game API!",
         "environment": environment,
@@ -145,27 +141,15 @@ async def hello_world():
         "docs_url": "/api/v1/docs"
     }
 
-# Hello World endpoint - also available in versioned API
-@status_router.get("/")
-async def status_root():
-    environment = os.environ.get("ENVIRONMENT", "development")
-    return {
-        "message": "Game API Server is operational",
-        "environment": environment,
-        "status": "healthy",
-        "api_version": "v1"
-    }
-
-# API version endpoint - moved to versioned status router
-@status_router.get("/version")
-async def api_version():
-    return {"version": "0.1.0"}
-
-# Add direct endpoints for backward compatibility with frontend
-# These match the paths the frontend expects
+# Add direct API status endpoints for backward compatibility with frontends
+# These are outside the versioned API path for legacy support
 @app.get("/api/status")
-async def api_status_direct():
+@app.get("/api/status/")  # Add with trailing slash too
+async def api_status_direct(request: Request):
     """Direct endpoint for status that frontend expects."""
+    # Log for debugging
+    logger.info(f"Direct status endpoint called: {request.url}")
+    # Standard response
     environment = os.environ.get("ENVIRONMENT", "development")
     return {
         "message": "Game API Server is operational",
@@ -175,23 +159,26 @@ async def api_status_direct():
     }
 
 @app.get("/api/version")
+@app.get("/api/version/")  # Add with trailing slash too
 async def api_version_direct():
     """Direct endpoint for version that frontend expects."""
     return {"version": "0.1.0"}
 
-# API ping endpoint for simple connectivity testing - moved to versioned status router
-@status_router.get("/ping")
-async def api_ping():
-    environment = os.environ.get("ENVIRONMENT", "development")
-    return {
-        "message": "pong",
-        "environment": environment,
-        "timestamp": datetime.datetime.now().isoformat()
-    }
-
-# Add a middleware to handle CORS issues
+# Add a middleware to handle CORS issues and URL normalization
 @app.middleware("http")
-async def add_cors_headers(request, call_next):
+async def add_cors_headers_and_fix_urls(request, call_next):
+    # Special handling for GitHub Codespaces port forwarding
+    host = request.headers.get("host", "")
+    if host and ":8080" in host and "-8080.app.github.dev" in host:
+        # This is a doubled port situation - log it for debugging
+        logger.warning(f"Detected doubled port in host header: {host}")
+        # Try to fix it by removing the explicit port
+        fixed_host = host.replace(":8080", "")
+        logger.info(f"Fixed host header: {fixed_host}")
+        # Update the host header
+        request.headers["host"] = fixed_host
+
+    # Continue with normal request processing
     response = await call_next(request)
 
     # Add CORS headers to all responses
@@ -206,12 +193,20 @@ async def add_cors_headers(request, call_next):
         # Return 200 for preflight requests
         return response
 
+    # Check if this is a redirect response (3xx) that might need port fixing
+    if 300 <= response.status_code < 400:
+        location = response.headers.get("location", "")
+        if location and ":8080" in location and "-8080.app.github.dev" in location:
+            # This is a doubled port in the location header - fix it
+            logger.warning(f"Detected doubled port in Location header: {location}")
+            fixed_location = location.replace(":8080", "")
+            logger.info(f"Fixed Location header: {fixed_location}")
+            response.headers["location"] = fixed_location
+
     return response
 
-# Include status router with all utility endpoints
-app.include_router(status_router, prefix=settings.API_V1_STR)
-
 # Include API router with all routes
+# This includes the status router that doesn't require authentication
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # Start the application

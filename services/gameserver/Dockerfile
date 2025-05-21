@@ -1,25 +1,15 @@
-FROM python:3.11-slim
+FROM python:3.11
 
 WORKDIR /app
 
-# Copy requirements file
-COPY requirements.txt .
+COPY ./requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+COPY . /app/
 
-# Copy application code
-COPY . .
+# Add executable permission to the scripts
+RUN chmod +x /app/setup_admin.py
+RUN chmod +x /app/start.sh
 
-# Make the startup script executable
-RUN chmod +x start.sh
-
-# Create a non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
-
-# Expose port
-EXPOSE 8080
-
-# Command to run the application using the startup script
-CMD ["./start.sh"]
+# Keep the container running with the start script
+CMD ["sh", "-c", "python /app/setup_admin.py && /app/start.sh"]

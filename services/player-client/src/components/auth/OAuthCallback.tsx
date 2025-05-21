@@ -1,27 +1,45 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../../contexts/AuthContext';
 
 const OAuthCallback: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [status, setStatus] = useState<string>('Processing authentication...');
   const [error, setError] = useState<string | null>(null);
+  const { refreshToken: authRefreshToken } = useAuth();
 
   useEffect(() => {
     const handleOAuthCallback = async () => {
       try {
         // Parse the URL search params
         const params = new URLSearchParams(location.search);
+        console.log('OAuth callback URL search params:', location.search);
+        console.log('Raw params:', Object.fromEntries(params.entries()));
+        
         const accessToken = params.get('access_token');
         const refreshToken = params.get('refresh_token');
         const userId = params.get('user_id');
         // Check for new user indicators either from query param or in session storage
         const isNewUser = params.get('is_new_user') === 'true' || sessionStorage.getItem('oauth_register') === 'true';
 
+        console.log('OAuth callback parameters:', { 
+          accessToken: accessToken ? 'present' : 'missing',
+          refreshToken: refreshToken ? 'present' : 'missing',
+          userId: userId ? 'present' : 'missing',
+          isNewUser
+        });
+
         if (!accessToken || !refreshToken || !userId) {
-          throw new Error('Invalid OAuth callback parameters');
+          throw new Error(`Invalid OAuth callback parameters: accessToken=${Boolean(accessToken)}, refreshToken=${Boolean(refreshToken)}, userId=${Boolean(userId)}`);
         }
+
+        console.log('OAuth callback received tokens:', { 
+          accessToken: accessToken.substring(0, 5) + '...',
+          refreshToken: refreshToken.substring(0, 5) + '...',
+          userId
+        });
 
         // Store tokens in localStorage
         localStorage.setItem('accessToken', accessToken);
@@ -40,10 +58,47 @@ const OAuthCallback: React.FC = () => {
           setStatus('Login successful! Launching game...');
         }
 
-        // Redirect to home after a brief delay
-        setTimeout(() => {
-          navigate('/', { replace: true });
-        }, 1500);
+        // Force a reload of authentication state in the AuthContext
+        try {
+          console.log('Attempting to refresh token through AuthContext...');
+          await authRefreshToken();
+          console.log('AuthContext refresh token succeeded');
+        } catch (refreshError) {
+          console.error('Failed to refresh token through AuthContext:', refreshError);
+          // Continue anyway, as we'll do a full page reload
+        }
+        
+        // Let's check what happens with the auth tokens
+        console.log('Stored tokens for debug:');
+        console.log('Access token (substring):', localStorage.getItem('accessToken')?.substring(0, 20) + '...');
+        console.log('Refresh token (substring):', localStorage.getItem('refreshToken')?.substring(0, 10) + '...');
+        console.log('User ID:', localStorage.getItem('userId'));
+        
+        // Set a sessionStorage flag to track the redirect
+        sessionStorage.setItem('oauth_redirect_completed', 'true');
+        
+        // Create a function to directly navigate to the dashboard with the token
+        const navigateWithToken = () => {
+          try {
+            const encoded = encodeURIComponent(JSON.stringify({
+              accessToken,
+              refreshToken,
+              userId
+            }));
+            
+            console.log('Redirecting to home page with token data...');
+            console.log('Auth flow: Using URL parameter to pass tokens to main app');
+            // Encode the tokens in the URL as a workaround to avoid state loss
+            window.location.href = `/?auth=${encoded}`;
+          } catch (err) {
+            console.error('Error encoding tokens for navigation:', err);
+            // Fallback to simple navigation
+            window.location.href = '/';
+          }
+        };
+        
+        // Redirect after a brief delay
+        setTimeout(navigateWithToken, 1500);
       } catch (error) {
         console.error('OAuth callback error:', error);
         setError('Authentication failed. Please try again.');
@@ -51,7 +106,7 @@ const OAuthCallback: React.FC = () => {
     };
 
     handleOAuthCallback();
-  }, [location, navigate]);
+  }, [location, navigate, authRefreshToken]);
 
   return (
     <div className="oauth-callback-container">

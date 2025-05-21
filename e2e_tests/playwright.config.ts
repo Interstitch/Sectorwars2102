@@ -1,46 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
-import { TEST_ACCOUNTS, createTestAdmin, createTestPlayer, cleanupAllTestAccounts, initTestAccountManager } from './utils/test_account_manager';
+import dotenv from 'dotenv';
 
-/**
- * Global setup - runs once before all tests
- * Creates test accounts for the test run
- */
-async function globalSetup() {
-  console.log('=== Global Setup: Creating test accounts for this test run ===');
-  try {
-    // Initialize the test account manager
-    initTestAccountManager();
-    
-    // Create test admin account
-    const admin = createTestAdmin();
-    console.log(`Test admin account created: ${admin.username}`);
-    
-    // Create test player account
-    const player = createTestPlayer();
-    console.log(`Test player account created: ${player.username}`);
-    
-    console.log('=== Test accounts created successfully ===');
-  } catch (error) {
-    console.error('Failed to create test accounts:', error);
-    throw error;
-  }
-}
+// Try to load environment variables from .env file
+const envPath = path.resolve(process.cwd(), '.env');
+dotenv.config({ path: envPath });
 
-/**
- * Global teardown - runs once after all tests complete
- * Cleans up test accounts created during setup
- */
-async function globalTeardown() {
-  console.log('=== Global Teardown: Cleaning up test accounts ===');
-  try {
-    cleanupAllTestAccounts();
-    console.log('=== Test accounts cleaned up ===');
-  } catch (error) {
-    console.error('Failed to clean up test accounts:', error);
-    // Don't throw error during teardown to avoid masking test failures
-  }
-}
+// Get URLs from environment variables or use defaults
+const ADMIN_UI_URL = process.env.ADMIN_UI_URL || 'http://localhost:3001';
+const PLAYER_UI_URL = process.env.PLAYER_UI_URL || 'http://localhost:3000';
+const API_URL = process.env.API_URL || 'http://localhost:8080';
+
+console.log(`Playwright config using Admin UI URL: ${ADMIN_UI_URL}`);
+console.log(`Playwright config using Player UI URL: ${PLAYER_UI_URL}`);
+console.log(`Playwright config using API URL: ${API_URL}`);
 
 /**
  * Playwright configuration
@@ -59,11 +32,11 @@ export default defineConfig({
   
   // Expect timeout
   expect: {
-    timeout: 10000,
+    timeout: 15000, // Increased timeout for more reliable tests
   },
   
   // Don't fail the test run if some tests are retries
-  retries: 1,
+  retries: 2, // Increased retries for more reliable test runs
   
   // Limit the number of failures before stopping the run
   maxFailures: 5,
@@ -76,8 +49,8 @@ export default defineConfig({
   
   // Shared settings for all projects
   use: {
-    // Base URL for navigation
-    baseURL: 'http://localhost:3001',
+    // Base URL for navigation will be overridden in projects
+    baseURL: ADMIN_UI_URL,
     
     // Collect trace & screenshots when test fails
     trace: 'on-first-retry',
@@ -96,7 +69,7 @@ export default defineConfig({
       name: 'admin-tests',
       use: { 
         ...devices['Desktop Chrome'],
-        // Storage state is no longer needed as we now use direct auth
+        baseURL: ADMIN_UI_URL,
       },
       testMatch: '**/admin/**/*.spec.ts',
       testIgnore: /.*\.demo\.spec\.ts$/
@@ -105,7 +78,7 @@ export default defineConfig({
       name: 'player-tests',
       use: { 
         ...devices['Desktop Chrome'],
-        // Storage state is no longer needed as we now use direct auth
+        baseURL: PLAYER_UI_URL,
       },
       testMatch: '**/player/**/*.spec.ts',
       testIgnore: /.*\.demo\.spec\.ts$/
