@@ -6,7 +6,7 @@ services:
     volumes:
       - ./services/gameserver:/app
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require}
+      - DATABASE_URL=${DATABASE_URL}
       - ENVIRONMENT=${ENVIRONMENT:-development}
       - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
       - DEBUG=${DEBUG:-true}
