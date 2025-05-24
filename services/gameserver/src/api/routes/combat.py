@@ -12,7 +12,7 @@ from src.models.player import Player
 from src.models.ship import Ship
 from src.models.sector import Sector
 
-router = APIRouter(prefix="/api/v1/admin/combat", tags=["combat"])
+router = APIRouter(prefix="/admin/combat", tags=["combat"])
 
 
 class CombatLogResponse(BaseModel):

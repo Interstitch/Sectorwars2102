@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../ui/PageHeader';
+import { api } from '../../utils/auth';
 import './economy-dashboard.css';
 
 interface MarketData {
@@ -40,8 +41,28 @@ const EconomyDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      // TODO: Replace with real economy API endpoints when implemented
-      // For now, use mock data to prevent undefined errors
+      // Fetch market data
+      const marketResponse = await api.get('/api/v1/admin/economy/market-data', {
+        params: {
+          commodity_filter: selectedCommodity !== 'all' ? selectedCommodity : undefined,
+          limit: 100
+        }
+      });
+      setMarketData(marketResponse.data as MarketData[]);
+      
+      // Fetch economic metrics
+      const metricsResponse = await api.get('/api/v1/admin/economy/metrics', {
+        params: { time_period: '24h' }
+      });
+      setMetrics(metricsResponse.data as EconomicMetrics);
+      
+      // Fetch price alerts
+      const alertsResponse = await api.get('/api/v1/admin/economy/price-alerts');
+      setPriceAlerts(alertsResponse.data);
+      
+    } catch (error) {
+      console.error('Failed to fetch economic data:', error);
+      // Set fallback data on error
       setMarketData([]);
       setMetrics({
         total_trade_volume: 0,
@@ -51,8 +72,6 @@ const EconomyDashboard: React.FC = () => {
         economic_health_score: 0.5
       });
       setPriceAlerts([]);
-    } catch (error) {
-      console.error('Failed to fetch economic data:', error);
     } finally {
       setLoading(false);
     }
@@ -60,10 +79,10 @@ const EconomyDashboard: React.FC = () => {
 
   const handlePriceIntervention = async (portId: string, commodity: string, newPrice: number) => {
     try {
-      await fetch('/api/admin/economy/intervention', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ port_id: portId, commodity, new_price: newPrice }),
+      await api.post('/api/v1/admin/economy/intervention', {
+        port_id: portId,
+        commodity,
+        new_price: newPrice
       });
       fetchEconomicData();
     } catch (error) {

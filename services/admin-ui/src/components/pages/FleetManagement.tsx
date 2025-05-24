@@ -1,472 +1,601 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../ui/PageHeader';
+import { api } from '../../utils/auth';
 import './fleet-management.css';
 
 interface Ship {
-  ship_id: string;
-  ship_name: string;
+  id: string;
+  name: string;
   ship_type: string;
-  owner: string;
-  current_sector: string;
-  hull_integrity: number;
-  fighters: number;
-  cargo: { [key: string]: number };
+  owner_id: string;
+  owner_name: string;
+  current_sector_id: number;
+  maintenance_rating: number;
+  cargo_used: number;
   cargo_capacity: number;
-  last_activity: string;
-  status: 'active' | 'docked' | 'destroyed' | 'maintenance';
-  insurance_value: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface ShipFormData {
+  name: string;
+  ship_type: string;
+  owner_id: string;
+  current_sector_id: number;
+}
+
+interface Player {
+  id: string;
+  username: string;
 }
 
 interface FleetStats {
   total_ships: number;
   ships_by_type: { [key: string]: number };
-  average_hull_integrity: number;
-  ships_needing_maintenance: number;
-  total_insurance_value: number;
+  average_maintenance: number;
+  inactive_ships: number;
+  total_cargo_capacity: number;
 }
+
+const SHIP_TYPES = [
+  'LIGHT_FREIGHTER',
+  'MEDIUM_FREIGHTER', 
+  'HEAVY_FREIGHTER',
+  'BATTLESHIP',
+  'CRUISER',
+  'DESTROYER',
+  'FIGHTER'
+];
 
 const FleetManagement: React.FC = () => {
   const [ships, setShips] = useState<Ship[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [stats, setStats] = useState<FleetStats | null>(null);
   const [selectedShip, setSelectedShip] = useState<Ship | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [ownerFilter, setOwnerFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('last_activity');
-  const [loading, setLoading] = useState(true);
+  const [sectorFilter, setSectorFilter] = useState<string>('');
+  
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const limit = 50;
+  
+  // Forms
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [showTeleportForm, setShowTeleportForm] = useState(false);
+  const [formData, setFormData] = useState<ShipFormData>({
+    name: '',
+    ship_type: SHIP_TYPES[0],
+    owner_id: '',
+    current_sector_id: 1
+  });
+  const [teleportSector, setTeleportSector] = useState<number>(1);
 
-  const shipTypes = ['Light Freighter', 'Medium Freighter', 'Heavy Freighter', 'Battleship', 'Cruiser'];
-
-  useEffect(() => {
-    fetchFleetData();
-  }, []);
-
-  const fetchFleetData = async () => {
+  const fetchShips = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       
-      const shipsResponse = await fetch('/api/admin/ships/all');
-      if (shipsResponse.ok) {
-        const shipsData = await shipsResponse.json();
-        setShips(Array.isArray(shipsData) ? shipsData : []);
-      } else {
-        setShips([]);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
+      
+      if (typeFilter !== 'all') params.append('filter_type', typeFilter);
+      if (ownerFilter) params.append('filter_owner', ownerFilter);
+      if (sectorFilter) params.append('filter_sector', sectorFilter);
+      
+      const response = await api.get(`/api/v1/admin/ships/comprehensive?${params}`);
+      const data = response.data as any;
+      
+      setShips(data.ships || []);
+      setTotalCount(data.total_count || 0);
+      setTotalPages(data.total_pages || 1);
+      
+      // Calculate stats
+      if (data.ships && data.ships.length > 0) {
+        const shipsByType: { [key: string]: number } = {};
+        let totalMaintenance = 0;
+        let inactiveCount = 0;
+        let totalCargo = 0;
+        
+        data.ships.forEach((ship: Ship) => {
+          shipsByType[ship.ship_type] = (shipsByType[ship.ship_type] || 0) + 1;
+          totalMaintenance += ship.maintenance_rating;
+          if (!ship.is_active) inactiveCount++;
+          totalCargo += ship.cargo_capacity;
+        });
+        
+        setStats({
+          total_ships: data.ships.length,
+          ships_by_type: shipsByType,
+          average_maintenance: totalMaintenance / data.ships.length,
+          inactive_ships: inactiveCount,
+          total_cargo_capacity: totalCargo
+        });
       }
       
-      const statsResponse = await fetch('/api/admin/ships/stats');
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        setStats(statsData);
-      } else {
-        setStats(null);
-      }
     } catch (error) {
-      console.error('Failed to fetch fleet data:', error);
+      console.error('Error fetching ships:', error);
+      setError('Failed to fetch fleet data');
       setShips([]);
       setStats(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, typeFilter, ownerFilter, sectorFilter]);
 
-  const handleShipAction = async (shipId: string, action: string) => {
+  const fetchPlayers = useCallback(async () => {
     try {
-      await fetch(`/api/admin/ships/${shipId}/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-      });
-      fetchFleetData();
+      const response = await api.get('/api/v1/admin/players/comprehensive?limit=1000');
+      const data = response.data as any;
+      setPlayers(data.players || []);
     } catch (error) {
-      console.error('Ship action failed:', error);
+      console.error('Error fetching players:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchShips();
+  }, [fetchShips]);
+
+  useEffect(() => {
+    fetchPlayers();
+  }, [fetchPlayers]);
+
+  const handleCreateShip = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post('/api/v1/admin/ships', formData);
+      setShowCreateForm(false);
+      setFormData({
+        name: '',
+        ship_type: SHIP_TYPES[0],
+        owner_id: '',
+        current_sector_id: 1
+      });
+      fetchShips();
+    } catch (error) {
+      console.error('Error creating ship:', error);
+      alert('Failed to create ship');
     }
   };
 
-  const teleportShip = async (shipId: string, sectorId: string) => {
+  const handleUpdateShip = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedShip) return;
+    
     try {
-      await fetch(`/api/admin/ships/${shipId}/teleport`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sector_id: sectorId }),
-      });
-      fetchFleetData();
+      await api.put(`/api/v1/admin/ships/${selectedShip.id}`, formData);
+      setShowEditForm(false);
+      setSelectedShip(null);
+      fetchShips();
     } catch (error) {
-      console.error('Ship teleport failed:', error);
+      console.error('Error updating ship:', error);
+      alert('Failed to update ship');
     }
   };
 
-  const repairShip = async (shipId: string) => {
+  const handleDeleteShip = async (shipId: string) => {
+    if (!confirm('Are you sure you want to delete this ship? This action cannot be undone.')) {
+      return;
+    }
+    
     try {
-      await fetch(`/api/admin/ships/${shipId}/repair`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repair_amount: 100 }),
-      });
-      fetchFleetData();
+      await api.delete(`/api/v1/admin/ships/${shipId}`);
+      fetchShips();
     } catch (error) {
-      console.error('Ship repair failed:', error);
+      console.error('Error deleting ship:', error);
+      alert('Failed to delete ship');
     }
   };
 
-  // Ensure ships is always an array to prevent filter errors
-  const filteredShips = (ships || [])
-    .filter(ship => {
-      const matchesSearch = ship.ship_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           ship.owner.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = typeFilter === 'all' || ship.ship_type === typeFilter;
-      const matchesStatus = statusFilter === 'all' || ship.status === statusFilter;
-      return matchesSearch && matchesType && matchesStatus;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'last_activity':
-          return new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime();
-        case 'hull_integrity':
-          return a.hull_integrity - b.hull_integrity;
-        case 'insurance_value':
-          return b.insurance_value - a.insurance_value;
-        case 'owner':
-          return a.owner.localeCompare(b.owner);
-        default:
-          return 0;
-      }
-    });
+  const handleTeleportShip = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedShip) return;
+    
+    try {
+      await api.post(`/api/v1/admin/ships/${selectedShip.id}/teleport`, {
+        target_sector_id: teleportSector
+      });
+      setShowTeleportForm(false);
+      setSelectedShip(null);
+      setTeleportSector(1);
+      fetchShips();
+    } catch (error) {
+      console.error('Error teleporting ship:', error);
+      alert('Failed to teleport ship');
+    }
+  };
 
-  const openShipDetail = (ship: Ship) => {
+  const openEditForm = (ship: Ship) => {
     setSelectedShip(ship);
+    setFormData({
+      name: ship.name,
+      ship_type: ship.ship_type,
+      owner_id: ship.owner_id,
+      current_sector_id: ship.current_sector_id
+    });
+    setShowEditForm(true);
   };
 
-  const closeShipDetail = () => {
-    setSelectedShip(null);
+  const openTeleportForm = (ship: Ship) => {
+    setSelectedShip(ship);
+    setTeleportSector(ship.current_sector_id);
+    setShowTeleportForm(true);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'status-active';
-      case 'docked': return 'status-docked';
-      case 'destroyed': return 'status-destroyed';
-      case 'maintenance': return 'status-maintenance';
-      default: return '';
-    }
-  };
+  const filteredShips = ships.filter(ship => {
+    const matchesSearch = ship.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ship.owner_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || 
+                         (statusFilter === 'active' && ship.is_active) ||
+                         (statusFilter === 'inactive' && !ship.is_active);
+    
+    return matchesSearch && matchesStatus;
+  });
 
-  const getHullColor = (integrity: number) => {
-    if (integrity > 80) return 'hull-good';
-    if (integrity > 50) return 'hull-warning';
-    return 'hull-critical';
-  };
+  if (loading && ships.length === 0) {
+    return (
+      <div className="fleet-management">
+        <PageHeader 
+          title="Fleet Management" 
+          subtitle="Manage ships across the galaxy"
+        />
+        <div className="loading-spinner">Loading fleet data...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="fleet-management">
       <PageHeader 
         title="Fleet Management" 
-        subtitle="Monitor and manage all ships in the galaxy"
+        subtitle="Manage ships across the galaxy"
       />
       
-      {loading ? (
-        <div className="loading-spinner">Loading fleet data...</div>
-      ) : (
-        <>
-          {/* Fleet Statistics */}
-          <div className="stats-grid">
-            {stats && (
-              <>
-                <div className="stat-card">
-                  <h3>Total Ships</h3>
-                  <span className="stat-value">{stats.total_ships}</span>
-                  <span className="stat-label">Active Fleet</span>
-                </div>
-                <div className="stat-card">
-                  <h3>Avg Hull Integrity</h3>
-                  <span className={`stat-value ${getHullColor(stats.average_hull_integrity)}`}>
-                    {stats.average_hull_integrity.toFixed(1)}%
-                  </span>
-                  <span className="stat-label">Fleet Health</span>
-                </div>
-                <div className="stat-card">
-                  <h3>Need Maintenance</h3>
-                  <span className="stat-value warning">{stats.ships_needing_maintenance}</span>
-                  <span className="stat-label">Ships</span>
-                </div>
-                <div className="stat-card">
-                  <h3>Insurance Value</h3>
-                  <span className="stat-value">{stats.total_insurance_value.toLocaleString()}</span>
-                  <span className="stat-label">Credits</span>
-                </div>
-              </>
-            )}
+      {error && (
+        <div className="error-banner">
+          <span className="error-icon">⚠️</span>
+          <span>{error}</span>
+          <button onClick={fetchShips} className="retry-button">Retry</button>
+        </div>
+      )}
+      
+      {/* Fleet Statistics */}
+      {stats && (
+        <div className="stats-overview">
+          <div className="stat-card">
+            <h3>{stats.total_ships}</h3>
+            <p>Total Ships</p>
           </div>
+          <div className="stat-card">
+            <h3>{stats.average_maintenance.toFixed(1)}%</h3>
+            <p>Avg Maintenance</p>
+          </div>
+          <div className="stat-card">
+            <h3>{stats.inactive_ships}</h3>
+            <p>Inactive Ships</p>
+          </div>
+          <div className="stat-card">
+            <h3>{stats.total_cargo_capacity.toLocaleString()}</h3>
+            <p>Total Cargo Capacity</p>
+          </div>
+        </div>
+      )}
 
-          {/* Ship Type Distribution */}
-          {stats && (
-            <div className="ship-types-section">
-              <h3>Fleet Composition</h3>
-              <div className="ship-types-grid">
-                {Object.entries(stats.ships_by_type).map(([type, count]) => (
-                  <div key={type} className="ship-type-card">
-                    <span className="ship-type-name">{type}</span>
-                    <span className="ship-type-count">{count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Fleet Controls */}
-          <div className="fleet-controls">
-            <div className="filter-controls">
+      <div className="fleet-content">
+        {/* Fleet Controls */}
+        <div className="fleet-controls">
+          <div className="search-and-filters">
+            <div className="search-bar">
               <input
                 type="text"
-                placeholder="Search ships or owners..."
+                placeholder="Search ships by name or owner..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
               />
-              
+            </div>
+            
+            <div className="filter-controls">
               <select 
                 value={typeFilter} 
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="filter-select"
               >
-                <option value="all">All Ship Types</option>
-                {shipTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
+                <option value="all">All Types</option>
+                {SHIP_TYPES.map(type => (
+                  <option key={type} value={type}>{type.replace('_', ' ')}</option>
                 ))}
               </select>
+              
+              <input
+                type="text"
+                placeholder="Filter by owner..."
+                value={ownerFilter}
+                onChange={(e) => setOwnerFilter(e.target.value)}
+              />
+              
+              <input
+                type="number"
+                placeholder="Filter by sector..."
+                value={sectorFilter}
+                onChange={(e) => setSectorFilter(e.target.value)}
+              />
               
               <select 
                 value={statusFilter} 
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="filter-select"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
-                <option value="docked">Docked</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="destroyed">Destroyed</option>
-              </select>
-              
-              <select 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value)}
-                className="sort-select"
-              >
-                <option value="last_activity">Sort by Activity</option>
-                <option value="hull_integrity">Sort by Hull</option>
-                <option value="insurance_value">Sort by Value</option>
-                <option value="owner">Sort by Owner</option>
+                <option value="inactive">Inactive</option>
               </select>
             </div>
-            
-            <button onClick={fetchFleetData} className="refresh-btn">
+          </div>
+          
+          <div className="action-controls">
+            <button 
+              onClick={() => setShowCreateForm(true)}
+              className="create-ship-btn"
+            >
+              + Create Ship
+            </button>
+            <button onClick={fetchShips} className="refresh-btn">
               🔄 Refresh
             </button>
           </div>
+        </div>
 
-          {/* Ships Table */}
-          <div className="ships-table-section">
-            <div className="ships-table-container">
-              <table className="ships-table">
-                <thead>
-                  <tr>
-                    <th>Ship</th>
-                    <th>Owner</th>
-                    <th>Type</th>
-                    <th>Location</th>
-                    <th>Status</th>
-                    <th>Hull</th>
-                    <th>Fighters</th>
-                    <th>Cargo</th>
-                    <th>Last Activity</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredShips.map((ship) => (
-                    <tr key={ship.ship_id} onClick={() => openShipDetail(ship)}>
-                      <td>
-                        <div className="ship-info">
-                          <span className="ship-name">{ship.ship_name}</span>
-                          <span className="ship-id">{ship.ship_id.slice(0, 8)}</span>
-                        </div>
-                      </td>
-                      <td className="owner">{ship.owner}</td>
-                      <td className="ship-type">{ship.ship_type}</td>
-                      <td className="sector">{ship.current_sector}</td>
-                      <td>
-                        <span className={`status-badge ${getStatusColor(ship.status)}`}>
-                          {ship.status}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="hull-display">
-                          <span className={`hull-percentage ${getHullColor(ship.hull_integrity)}`}>
-                            {ship.hull_integrity.toFixed(0)}%
-                          </span>
-                          <div className="hull-bar">
-                            <div 
-                              className={`hull-fill ${getHullColor(ship.hull_integrity)}`}
-                              style={{ width: `${ship.hull_integrity}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="fighters">{ship.fighters}</td>
-                      <td>
-                        <div className="cargo-display">
-                          <span className="cargo-used">
-                            {Object.values(ship.cargo).reduce((a, b) => a + b, 0)}
-                          </span>
-                          <span className="cargo-total">/{ship.cargo_capacity}</span>
-                        </div>
-                      </td>
-                      <td>{new Date(ship.last_activity).toLocaleDateString()}</td>
-                      <td onClick={(e) => e.stopPropagation()}>
-                        <div className="action-buttons">
-                          <button 
-                            className="action-btn view"
-                            onClick={() => openShipDetail(ship)}
-                          >
-                            👁️
-                          </button>
-                          <button 
-                            className="action-btn repair"
-                            onClick={() => repairShip(ship.ship_id)}
-                          >
-                            🔧
-                          </button>
-                          <button 
-                            className="action-btn teleport"
-                            onClick={() => {
-                              const sector = prompt('Teleport to sector:');
-                              if (sector) teleportShip(ship.ship_id, sector);
-                            }}
-                          >
-                            📍
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* Ships Table */}
+        <div className="ships-table-container">
+          <table className="ships-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Owner</th>
+                <th>Sector</th>
+                <th>Maintenance</th>
+                <th>Cargo</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredShips.map(ship => (
+                <tr key={ship.id} className={!ship.is_active ? 'inactive-ship' : ''}>
+                  <td className="ship-name">{ship.name}</td>
+                  <td>{ship.ship_type.replace('_', ' ')}</td>
+                  <td>{ship.owner_name}</td>
+                  <td>{ship.current_sector_id}</td>
+                  <td>
+                    <div className={`maintenance-bar ${ship.maintenance_rating < 50 ? 'low' : ship.maintenance_rating < 80 ? 'medium' : 'high'}`}>
+                      <div 
+                        className="maintenance-fill" 
+                        style={{ width: `${ship.maintenance_rating}%` }}
+                      ></div>
+                      <span>{ship.maintenance_rating.toFixed(1)}%</span>
+                    </div>
+                  </td>
+                  <td>{ship.cargo_used} / {ship.cargo_capacity}</td>
+                  <td>
+                    <span className={`status ${ship.is_active ? 'active' : 'inactive'}`}>
+                      {ship.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="action-buttons">
+                      <button 
+                        onClick={() => openEditForm(ship)}
+                        className="action-btn edit"
+                        title="Edit Ship"
+                      >
+                        ✏️
+                      </button>
+                      <button 
+                        onClick={() => openTeleportForm(ship)}
+                        className="action-btn teleport"
+                        title="Teleport Ship"
+                      >
+                        🌀
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteShip(ship.id)}
+                        className="action-btn delete"
+                        title="Delete Ship"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Pagination */}
+        <div className="pagination">
+          <button 
+            onClick={() => setPage(page - 1)} 
+            disabled={page === 1}
+          >
+            Previous
+          </button>
+          <span>Page {page} of {totalPages} ({totalCount} ships)</span>
+          <button 
+            onClick={() => setPage(page + 1)} 
+            disabled={page === totalPages}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+      
+      {/* Create Ship Modal */}
+      {showCreateForm && (
+        <div className="modal-overlay" onClick={() => setShowCreateForm(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Create New Ship</h3>
+              <button onClick={() => setShowCreateForm(false)} className="close-btn">×</button>
             </div>
-          </div>
-
-          {/* Ship Detail Modal */}
-          {selectedShip && (
-            <div className="modal-overlay" onClick={closeShipDetail}>
-              <div className="ship-detail-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h3>Ship Details: {selectedShip.ship_name}</h3>
-                  <button className="close-btn" onClick={closeShipDetail}>×</button>
+            <div className="modal-content">
+              <form onSubmit={handleCreateShip}>
+                <div className="form-group">
+                  <label>Ship Name:</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    required
+                  />
                 </div>
                 
-                <div className="modal-content">
-                  <div className="ship-overview">
-                    <div className="ship-stats">
-                      <div className="stat-row">
-                        <span className="label">Ship ID:</span>
-                        <span className="value">{selectedShip.ship_id}</span>
-                      </div>
-                      <div className="stat-row">
-                        <span className="label">Owner:</span>
-                        <span className="value">{selectedShip.owner}</span>
-                      </div>
-                      <div className="stat-row">
-                        <span className="label">Type:</span>
-                        <span className="value">{selectedShip.ship_type}</span>
-                      </div>
-                      <div className="stat-row">
-                        <span className="label">Location:</span>
-                        <span className="value">{selectedShip.current_sector}</span>
-                      </div>
-                      <div className="stat-row">
-                        <span className="label">Status:</span>
-                        <span className={`value status-badge ${getStatusColor(selectedShip.status)}`}>
-                          {selectedShip.status}
-                        </span>
-                      </div>
-                      <div className="stat-row">
-                        <span className="label">Hull Integrity:</span>
-                        <span className={`value ${getHullColor(selectedShip.hull_integrity)}`}>
-                          {selectedShip.hull_integrity.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="stat-row">
-                        <span className="label">Fighters:</span>
-                        <span className="value">{selectedShip.fighters}</span>
-                      </div>
-                      <div className="stat-row">
-                        <span className="label">Insurance Value:</span>
-                        <span className="value">{selectedShip.insurance_value.toLocaleString()}</span>
-                      </div>
-                      <div className="stat-row">
-                        <span className="label">Last Activity:</span>
-                        <span className="value">{new Date(selectedShip.last_activity).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="cargo-section">
-                    <h4>Cargo Hold</h4>
-                    <div className="cargo-details">
-                      {Object.keys(selectedShip.cargo).length > 0 ? (
-                        Object.entries(selectedShip.cargo).map(([type, quantity]) => (
-                          <div key={type} className="cargo-item">
-                            <span className={`cargo-type ${type.toLowerCase()}`}>{type}</span>
-                            <span className="cargo-quantity">{quantity}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="empty-cargo">Cargo hold is empty</p>
-                      )}
-                      <div className="cargo-summary">
-                        <span>Total: {Object.values(selectedShip.cargo).reduce((a, b) => a + b, 0)} / {selectedShip.cargo_capacity}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="admin-actions">
-                    <button 
-                      className="action-btn repair"
-                      onClick={() => {
-                        repairShip(selectedShip.ship_id);
-                        closeShipDetail();
-                      }}
-                    >
-                      🔧 Full Repair
-                    </button>
-                    <button 
-                      className="action-btn teleport"
-                      onClick={() => {
-                        const sector = prompt('Teleport to sector:');
-                        if (sector) {
-                          teleportShip(selectedShip.ship_id, sector);
-                          closeShipDetail();
-                        }
-                      }}
-                    >
-                      📍 Teleport Ship
-                    </button>
-                    <button 
-                      className="action-btn grant-fighters"
-                      onClick={() => handleShipAction(selectedShip.ship_id, 'grant_fighters')}
-                    >
-                      ⚡ Grant Fighters
-                    </button>
-                    <button 
-                      className="action-btn emergency"
-                      onClick={() => handleShipAction(selectedShip.ship_id, 'emergency_dock')}
-                    >
-                      🚨 Emergency Dock
-                    </button>
-                  </div>
+                <div className="form-group">
+                  <label>Ship Type:</label>
+                  <select
+                    value={formData.ship_type}
+                    onChange={(e) => setFormData({...formData, ship_type: e.target.value})}
+                    required
+                  >
+                    {SHIP_TYPES.map(type => (
+                      <option key={type} value={type}>{type.replace('_', ' ')}</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
+                
+                <div className="form-group">
+                  <label>Owner:</label>
+                  <select
+                    value={formData.owner_id}
+                    onChange={(e) => setFormData({...formData, owner_id: e.target.value})}
+                    required
+                  >
+                    <option value="">Select Player</option>
+                    {players.map(player => (
+                      <option key={player.id} value={player.id}>{player.username}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label>Starting Sector:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={formData.current_sector_id}
+                    onChange={(e) => setFormData({...formData, current_sector_id: parseInt(e.target.value)})}
+                    required
+                  />
+                </div>
+                
+                <div className="form-actions">
+                  <button type="button" onClick={() => setShowCreateForm(false)}>Cancel</button>
+                  <button type="submit">Create Ship</button>
+                </div>
+              </form>
             </div>
-          )}
-        </>
+          </div>
+        </div>
+      )}
+      
+      {/* Edit Ship Modal */}
+      {showEditForm && selectedShip && (
+        <div className="modal-overlay" onClick={() => setShowEditForm(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Ship: {selectedShip.name}</h3>
+              <button onClick={() => setShowEditForm(false)} className="close-btn">×</button>
+            </div>
+            <div className="modal-content">
+              <form onSubmit={handleUpdateShip}>
+                <div className="form-group">
+                  <label>Ship Name:</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    required
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>Owner:</label>
+                  <select
+                    value={formData.owner_id}
+                    onChange={(e) => setFormData({...formData, owner_id: e.target.value})}
+                    required
+                  >
+                    {players.map(player => (
+                      <option key={player.id} value={player.id}>{player.username}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label>Current Sector:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={formData.current_sector_id}
+                    onChange={(e) => setFormData({...formData, current_sector_id: parseInt(e.target.value)})}
+                    required
+                  />
+                </div>
+                
+                <div className="form-actions">
+                  <button type="button" onClick={() => setShowEditForm(false)}>Cancel</button>
+                  <button type="submit">Update Ship</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Teleport Ship Modal */}
+      {showTeleportForm && selectedShip && (
+        <div className="modal-overlay" onClick={() => setShowTeleportForm(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Teleport Ship: {selectedShip.name}</h3>
+              <button onClick={() => setShowTeleportForm(false)} className="close-btn">×</button>
+            </div>
+            <div className="modal-content">
+              <form onSubmit={handleTeleportShip}>
+                <div className="form-group">
+                  <label>Current Sector: {selectedShip.current_sector_id}</label>
+                </div>
+                
+                <div className="form-group">
+                  <label>Target Sector:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={teleportSector}
+                    onChange={(e) => setTeleportSector(parseInt(e.target.value))}
+                    required
+                  />
+                </div>
+                
+                <div className="form-actions">
+                  <button type="button" onClick={() => setShowTeleportForm(false)}>Cancel</button>
+                  <button type="submit">Teleport Ship</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

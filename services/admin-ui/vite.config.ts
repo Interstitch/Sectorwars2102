@@ -41,7 +41,7 @@ export default defineConfig({
       '/api': {
         // Determine target dynamically based on environment
         target: process.env.API_URL ||
-                (process.env.REPL_ID ? 'http://localhost:8080' : 'http://gameserver:8080'),
+                (process.env.CODESPACE_NAME || process.env.REPL_ID ? 'http://localhost:8080' : 'http://gameserver:8080'),
         // Do not rewrite all paths to /api/v1 - use paths as they are
         changeOrigin: true,
         secure: false,
@@ -53,7 +53,7 @@ export default defineConfig({
           proxy.on('proxyReq', (proxyReq, req, _res) => {
             console.log('Sending Request to the Target:', req.method, req.url);
             console.log('Using API URL:', process.env.API_URL ||
-                       (process.env.REPL_ID ? 'http://localhost:8080' : 'http://gameserver:8080'));
+                       (process.env.CODESPACE_NAME || process.env.REPL_ID ? 'http://localhost:8080' : 'http://gameserver:8080'));
 
             // For GitHub Codespaces, we need to handle the 443 port correctly
             if (process.env.CODESPACE_NAME || process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN) {

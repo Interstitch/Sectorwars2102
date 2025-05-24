@@ -10,7 +10,7 @@ from src.auth.dependencies import get_current_admin_user
 from src.models.game_event import GameEvent, EventTemplate, EventEffect, EventParticipation, EventType, EventStatus
 from src.models.player import Player
 
-router = APIRouter(prefix="/api/v1/admin/events", tags=["events"])
+router = APIRouter(prefix="/admin/events", tags=["events"])
 
 
 class EventEffectResponse(BaseModel):

@@ -102,7 +102,7 @@ class Market(Base):
     
     # Relationships
     port = relationship("Port", back_populates="market")
-    transactions = relationship("MarketTransaction", back_populates="market", cascade="all, delete-orphan")
+    transactions = relationship("src.models.resource.MarketTransaction", back_populates="market", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Market at {self.port.name} - Size: {self.size}>"

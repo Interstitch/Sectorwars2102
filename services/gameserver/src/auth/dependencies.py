@@ -9,7 +9,7 @@ from src.models.user import User
 from src.models.player import Player
 
 # OAuth2 scheme for token authentication
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login/direct")
 
 
 async def get_current_user(

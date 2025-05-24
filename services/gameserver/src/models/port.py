@@ -11,7 +11,6 @@ from src.core.database import Base
 if TYPE_CHECKING:
     from src.models.player import Player
     from src.models.sector import Sector
-    from src.models.combat import Drone
     from src.models.resource import Market
 
 
@@ -200,7 +199,6 @@ class Port(Base):
     # Relationships
     owner = relationship("Player", secondary=player_ports, back_populates="ports")
     sector = relationship("Sector", foreign_keys=[sector_uuid], back_populates="ports")
-    drones = relationship("Drone", back_populates="port")
     market = relationship("Market", back_populates="port", uselist=False, cascade="all, delete-orphan")
     
     def __repr__(self):

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text, func, desc, and_, or_
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import uuid
 
@@ -309,7 +309,7 @@ async def get_ships_comprehensive(
 ):
     """Get comprehensive ship list with filtering"""
     try:
-        query = db.query(Ship).join(Player).join(User)
+        query = db.query(Ship).join(Player, Ship.owner_id == Player.id).join(User, Player.user_id == User.id)
         
         # Apply filters
         if filter_type:
@@ -354,6 +354,173 @@ async def get_ships_comprehensive(
     except Exception as e:
         logger.error(f"Error in get_ships_comprehensive: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch ships: {str(e)}")
+
+class ShipCreateRequest(BaseModel):
+    name: str
+    ship_type: str
+    owner_id: str
+    current_sector_id: int
+    
+class ShipUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    owner_id: Optional[str] = None
+    current_sector_id: Optional[int] = None
+    is_active: Optional[bool] = None
+
+@router.post("/ships", response_model=Dict[str, str])
+async def create_ship(
+    ship_data: ShipCreateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Create a new ship for a player"""
+    try:
+        # Verify player exists
+        player = db.query(Player).filter(Player.id == ship_data.owner_id).first()
+        if not player:
+            raise HTTPException(status_code=404, detail="Player not found")
+        
+        # Verify sector exists
+        sector = db.query(Sector).filter(Sector.sector_id == ship_data.current_sector_id).first()
+        if not sector:
+            raise HTTPException(status_code=404, detail="Sector not found")
+        
+        # Create new ship
+        from src.models.ship import ShipType
+        new_ship = Ship(
+            id=uuid.uuid4(),
+            name=ship_data.name,
+            ship_type=ShipType(ship_data.ship_type),
+            owner_id=ship_data.owner_id,
+            current_sector_id=ship_data.current_sector_id,
+            maintenance_status={"current_rating": 100.0},
+            cargo_status={"used_capacity": 0, "max_capacity": 1000},
+            is_active=True,
+            created_at=datetime.now(timezone.utc)
+        )
+        
+        db.add(new_ship)
+        db.commit()
+        
+        logger.info(f"Admin {current_admin.username} created ship {ship_data.name} for player {player.user.username}")
+        
+        return {"message": "Ship created successfully", "ship_id": str(new_ship.id)}
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating ship: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create ship: {str(e)}")
+
+@router.put("/ships/{ship_id}", response_model=Dict[str, str])
+async def update_ship(
+    ship_id: str,
+    ship_data: ShipUpdateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Update ship properties"""
+    try:
+        ship = db.query(Ship).filter(Ship.id == ship_id).first()
+        if not ship:
+            raise HTTPException(status_code=404, detail="Ship not found")
+        
+        # Update fields if provided
+        if ship_data.name is not None:
+            ship.name = ship_data.name
+        if ship_data.owner_id is not None:
+            # Verify new owner exists
+            player = db.query(Player).filter(Player.id == ship_data.owner_id).first()
+            if not player:
+                raise HTTPException(status_code=404, detail="New owner not found")
+            ship.owner_id = ship_data.owner_id
+        if ship_data.current_sector_id is not None:
+            # Verify sector exists
+            sector = db.query(Sector).filter(Sector.sector_id == ship_data.current_sector_id).first()
+            if not sector:
+                raise HTTPException(status_code=404, detail="Sector not found")
+            ship.current_sector_id = ship_data.current_sector_id
+        if ship_data.is_active is not None:
+            ship.is_active = ship_data.is_active
+        
+        db.commit()
+        
+        logger.info(f"Admin {current_admin.username} updated ship {ship.name}")
+        
+        return {"message": "Ship updated successfully"}
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating ship {ship_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update ship: {str(e)}")
+
+@router.delete("/ships/{ship_id}", response_model=Dict[str, str])
+async def delete_ship(
+    ship_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Delete a ship"""
+    try:
+        ship = db.query(Ship).filter(Ship.id == ship_id).first()
+        if not ship:
+            raise HTTPException(status_code=404, detail="Ship not found")
+        
+        ship_name = ship.name
+        owner = db.query(Player).join(User).filter(Player.id == ship.owner_id).first()
+        owner_name = owner.user.username if owner else "Unknown"
+        
+        # If this is the player's current ship, clear it
+        if owner and owner.current_ship_id == ship.id:
+            owner.current_ship_id = None
+        
+        db.delete(ship)
+        db.commit()
+        
+        logger.info(f"Admin {current_admin.username} deleted ship {ship_name} from player {owner_name}")
+        
+        return {"message": "Ship deleted successfully"}
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting ship {ship_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete ship: {str(e)}")
+
+@router.post("/ships/{ship_id}/teleport", response_model=Dict[str, str])
+async def teleport_ship(
+    ship_id: str,
+    target_sector_id: int,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Teleport a ship to a different sector"""
+    try:
+        ship = db.query(Ship).filter(Ship.id == ship_id).first()
+        if not ship:
+            raise HTTPException(status_code=404, detail="Ship not found")
+        
+        # Verify target sector exists
+        sector = db.query(Sector).filter(Sector.sector_id == target_sector_id).first()
+        if not sector:
+            raise HTTPException(status_code=404, detail="Target sector not found")
+        
+        old_sector = ship.current_sector_id
+        ship.current_sector_id = target_sector_id
+        
+        # Also update player location if this is their current ship
+        owner = db.query(Player).filter(Player.id == ship.owner_id).first()
+        if owner and owner.current_ship_id == ship.id:
+            owner.current_sector_id = target_sector_id
+        
+        db.commit()
+        
+        logger.info(f"Admin {current_admin.username} teleported ship {ship.name} from sector {old_sector} to {target_sector_id}")
+        
+        return {"message": f"Ship teleported to sector {target_sector_id}"}
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error teleporting ship {ship_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to teleport ship: {str(e)}")
 
 # Universe Management Endpoints
 

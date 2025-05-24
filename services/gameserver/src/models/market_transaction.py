@@ -18,7 +18,7 @@ class TransactionType(enum.Enum):
 
 
 class MarketTransaction(Base):
-    __tablename__ = "market_transactions"
+    __tablename__ = "enhanced_market_transactions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
@@ -38,8 +38,9 @@ class MarketTransaction(Base):
     port_sell_price = Column(Integer, nullable=True)  # port's sell price at time
     port_quantity = Column(Integer, nullable=True)   # port's available quantity
     
-    # Location and timing
-    sector_id = Column(Integer, ForeignKey("sectors.id", ondelete="SET NULL"), nullable=True)
+    # Location and timing  
+    sector_id = Column(Integer, nullable=True)  # Human-readable sector number
+    sector_uuid = Column(UUID(as_uuid=True), ForeignKey("sectors.id", ondelete="SET NULL"), nullable=True)
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     # Transaction metadata
@@ -52,9 +53,9 @@ class MarketTransaction(Base):
     reviewed_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     
     # Relationships
-    player = relationship("Player")
+    player = relationship("Player", back_populates="enhanced_market_transactions")
     port = relationship("Port")
-    sector = relationship("Sector")
+    sector = relationship("Sector", foreign_keys=[sector_uuid])
     reviewer = relationship("User", foreign_keys=[reviewed_by])
 
     # Indexes for performance

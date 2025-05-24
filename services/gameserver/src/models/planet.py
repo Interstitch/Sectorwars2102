@@ -11,7 +11,6 @@ from src.core.database import Base
 if TYPE_CHECKING:
     from src.models.player import Player
     from src.models.sector import Sector
-    from src.models.combat import Drone
     from src.models.genesis_device import GenesisDevice, PlanetFormation
 
 
@@ -114,7 +113,6 @@ class Planet(Base):
     # Relationships
     owner = relationship("Player", secondary=player_planets, back_populates="planets")
     sector = relationship("Sector", foreign_keys=[sector_uuid], back_populates="planets")
-    drones = relationship("Drone", back_populates="planet")
     genesis_device = relationship("GenesisDevice", foreign_keys=[genesis_device_id], back_populates="planet")
     formation = relationship("PlanetFormation", foreign_keys="[PlanetFormation.resulting_planet_id]", back_populates="resulting_planet", uselist=False)
     

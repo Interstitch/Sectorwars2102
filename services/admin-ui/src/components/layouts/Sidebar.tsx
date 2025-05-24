@@ -25,16 +25,6 @@ const Sidebar: React.FC = () => {
           
           <li className="nav-item">
             <NavLink 
-              to="/users" 
-              className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
-            >
-              <span className="nav-icon">👥</span>
-              <span className="nav-text">User Management</span>
-            </NavLink>
-          </li>
-          
-          <li className="nav-item">
-            <NavLink 
               to="/universe" 
               className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
             >
@@ -45,11 +35,11 @@ const Sidebar: React.FC = () => {
           
           <li className="nav-item">
             <NavLink 
-              to="/economy" 
+              to="/users" 
               className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
             >
-              <span className="nav-icon">💰</span>
-              <span className="nav-text">Economy</span>
+              <span className="nav-icon">👥</span>
+              <span className="nav-text">User Management</span>
             </NavLink>
           </li>
           
@@ -65,11 +55,11 @@ const Sidebar: React.FC = () => {
           
           <li className="nav-item">
             <NavLink 
-              to="/combat" 
+              to="/teams" 
               className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
             >
-              <span className="nav-icon">⚔️</span>
-              <span className="nav-text">Combat</span>
+              <span className="nav-icon">🤝</span>
+              <span className="nav-text">Teams</span>
             </NavLink>
           </li>
           
@@ -95,11 +85,11 @@ const Sidebar: React.FC = () => {
           
           <li className="nav-item">
             <NavLink 
-              to="/teams" 
+              to="/combat" 
               className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
             >
-              <span className="nav-icon">🤝</span>
-              <span className="nav-text">Teams</span>
+              <span className="nav-icon">⚔️</span>
+              <span className="nav-text">Combat</span>
             </NavLink>
           </li>
           

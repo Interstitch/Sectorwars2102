@@ -15,8 +15,9 @@ from src.models.galaxy import Galaxy, Region, RegionType
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
-from src.models.resource import Resource, ResourceType, ResourceQuality, Market, MarketTransaction
+from src.models.resource import Resource, ResourceType, ResourceQuality, Market
 from src.models.combat_log import CombatLog, CombatStats
 from src.models.game_event import GameEvent, EventTemplate, EventEffect, EventParticipation
+from src.models.market_transaction import MarketTransaction as EnhancedMarketTransaction, MarketPrice, PriceHistory, EconomicMetrics, PriceAlert
 from src.models.genesis_device import GenesisDevice, GenesisType, GenesisStatus, PlanetFormation
 from src.models.first_login import FirstLoginSession, DialogueExchange, PlayerFirstLoginState, ShipChoice, NegotiationSkillLevel, DialogueOutcome
