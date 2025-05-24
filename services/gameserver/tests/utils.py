@@ -78,12 +78,15 @@ def mock_settings_env():
         if key not in os.environ:
             os.environ[key] = value
     
-    # Decide on DATABASE_URL strategy
+    # Decide on DATABASE_URL strategy - always prefer PostgreSQL from .env
     if current_database_url and 'postgresql' in current_database_url:
-        print(f"📊 Test utils using production database: {current_database_url[:50]}...")
-        # Keep the production DATABASE_URL for integration tests
+        print(f"✅ Test utils using PostgreSQL database: {current_database_url[:50]}...")
+        # Keep the production DATABASE_URL for all tests
     else:
-        print("📊 Test utils using in-memory SQLite for unit tests")
+        print("⚠️ Test utils: No PostgreSQL DATABASE_URL found!")
+        if current_database_url:
+            print(f"Current DATABASE_URL: {current_database_url}")
+        print("❌ Using SQLite fallback - tests may not be accurate!")
         os.environ["DATABASE_URL"] = "sqlite:///:memory:"
     
     yield

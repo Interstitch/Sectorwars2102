@@ -48,8 +48,8 @@ def setup_environment():
     sys.path.insert(0, current_dir)  # Make sure the current directory is also in the path
 
     # Add fallback environment variables that might be needed (only if not already set)
+    # NOTE: DATABASE_URL intentionally excluded to force use of .env file
     fallback_env = {
-        "DATABASE_URL": "sqlite:///:memory:",
         "SECRET_KEY": "testsecretkey",
         "ENVIRONMENT": "test",
         "ADMIN_USERNAME": "admin",
@@ -61,7 +61,6 @@ def setup_environment():
         "GOOGLE_CLIENT_SECRET": "mock_google_client_secret",
         "STEAM_API_KEY": "mock_steam_api_key",
         "FRONTEND_URL": "http://localhost:3000",
-        "DATABASE_TEST_URL": "sqlite:///:memory:",
         "NODE_ENV": "test",
         "CLIENT_ID_GITHUB": "mock_github_client_id",
         "CLIENT_SECRET_GITHUB": "mock_github_client_secret",
@@ -74,13 +73,19 @@ def setup_environment():
             os.environ[key] = value
             print(f"  🔧 Set fallback {key}")
     
-    # Show which DATABASE_URL is actually being used
+    # Validate and show which DATABASE_URL is actually being used
     database_url = os.environ.get('DATABASE_URL')
     if database_url:
-        if 'sqlite' in database_url:
-            print(f"📊 Using test database: {database_url}")
+        if 'postgresql' in database_url:
+            print(f"✅ Using PostgreSQL database: {database_url[:50]}...")
+        elif 'sqlite' in database_url:
+            print(f"⚠️ Using SQLite database: {database_url}")
+            print("⚠️ Warning: Tests should use PostgreSQL for accuracy!")
         else:
-            print(f"📊 Using production database: {database_url[:50]}...")
+            print(f"❓ Using unknown database type: {database_url[:50]}...")
+    else:
+        print("❌ ERROR: No DATABASE_URL found! Tests will fail.")
+        print("Please ensure .env file is accessible with DATABASE_URL setting.")
 
     # Patch the settings import before any test imports
     # Import from test_config to get the mock settings

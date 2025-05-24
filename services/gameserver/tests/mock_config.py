@@ -38,15 +38,18 @@ load_env_file()
 # Create a mock settings object that doesn't rely on the real Settings class
 mock_settings = MagicMock()
 
-# Get DATABASE_URL from environment (loaded from .env) or use test fallback
+# Get DATABASE_URL from environment (loaded from .env) - prefer PostgreSQL
 database_url = os.environ.get('DATABASE_URL')
-if database_url and 'sqlite' not in database_url:
-    # Use actual DATABASE_URL for integration testing
-    print(f"📊 Mock config using production DATABASE_URL: {database_url[:50]}...")
+if database_url and 'postgresql' in database_url:
+    # Use actual PostgreSQL DATABASE_URL
+    print(f"✅ Mock config using PostgreSQL DATABASE_URL: {database_url[:50]}...")
     test_database_url = database_url
 else:
-    # Use in-memory SQLite for unit tests
-    print("📊 Mock config using in-memory SQLite for unit tests")
+    # Warn about fallback to SQLite
+    print("⚠️ Mock config: No PostgreSQL DATABASE_URL found!")
+    if database_url:
+        print(f"Current DATABASE_URL: {database_url}")
+    print("❌ Using SQLite fallback - tests may not be accurate!")
     test_database_url = "sqlite:///:memory:"
 
 # Set default values for commonly used settings
