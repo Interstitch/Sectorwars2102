@@ -36,8 +36,15 @@ def load_env_file():
                             print(f"  ✅ Set {key}={value}")
             return True
     
-    print("⚠️ No .env file found in expected locations")
-    return False
+    # Check if environment variables are already available (from docker-compose)
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        print("📁 Using environment variables from docker-compose")
+        print(f"  ✅ DATABASE_URL available: {database_url[:50]}...")
+        return True
+    else:
+        print("⚠️ No .env file found and no DATABASE_URL in environment")
+        return False
 
 def setup_environment():
     """Set up the testing environment with required variables"""

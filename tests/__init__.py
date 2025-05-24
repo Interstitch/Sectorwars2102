@@ -1,1 +1,0 @@
-# Tests package for Sector Wars 2102 Autonomous Quality System

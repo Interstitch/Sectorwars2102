@@ -12,8 +12,18 @@ wait_for_db() {
 from sqlalchemy import create_engine, text
 import os
 import sys
+
+# Check if DATABASE_URL is set
+database_url = os.environ.get('DATABASE_URL')
+if not database_url:
+    print('ERROR: DATABASE_URL environment variable is not set!')
+    print('This container requires DATABASE_URL to be provided by docker-compose.')
+    sys.exit(1)
+
+print(f'Using DATABASE_URL: {database_url[:50]}...')
+
 try:
-    engine = create_engine(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require'))
+    engine = create_engine(database_url)
     with engine.connect() as conn:
         conn.execute(text('SELECT 1'))
     print('Database connection successful')
