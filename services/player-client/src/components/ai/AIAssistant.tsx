@@ -1,21 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, MessageCircle, TrendingUp, Navigation, AlertTriangle, Settings, Star } from 'lucide-react';
+import aiTradingService from '../../services/aiTradingService';
+import { TradingRecommendation as TradingRecommendationType } from './types';
 import './ai-assistant.css';
 
-interface TradingRecommendation {
-  id: string;
-  type: string;
-  commodity_id?: string;
-  sector_id?: string;
-  target_price?: number;
-  expected_profit?: number;
-  confidence: number;
-  risk_level: string;
-  reasoning: string;
-  priority: number;
-  expires_at: string;
-}
+// Use the proper type from types.ts
+type TradingRecommendation = TradingRecommendationType;
 
 interface AIAssistantProps {
   isOpen: boolean;
@@ -76,30 +67,29 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, playerId }) 
 
   const loadRecommendations = async () => {
     try {
-      const response = await fetch('/api/v1/ai/recommendations', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setRecommendations(data);
-        
-        if (data.length > 0) {
-          const recommendationMessage: ChatMessage = {
-            id: Date.now().toString() + '_rec',
-            type: 'recommendation',
-            content: `I've found ${data.length} trading opportunities for you. Here are my top recommendations:`,
-            timestamp: new Date(),
-            data: data
-          };
-          setMessages(prev => [...prev, recommendationMessage]);
-        }
+      const data = await aiTradingService.getRecommendations(5, false);
+      setRecommendations(data);
+      
+      if (data.length > 0) {
+        const recommendationMessage: ChatMessage = {
+          id: Date.now().toString() + '_rec',
+          type: 'recommendation',
+          content: `I've found ${data.length} trading opportunities for you. Here are my top recommendations:`,
+          timestamp: new Date(),
+          data: data
+        };
+        setMessages(prev => [...prev, recommendationMessage]);
       }
     } catch (error) {
       console.error('Error loading recommendations:', error);
+      // Add error message to chat
+      const errorMessage: ChatMessage = {
+        id: Date.now().toString() + '_error',
+        type: 'system',
+        content: 'Unable to load trading recommendations. AI services may be temporarily unavailable.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
     }
   };
 
@@ -149,32 +139,30 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose, playerId }) 
 
   const handleRecommendationAction = async (recommendation: TradingRecommendation, action: 'accept' | 'decline') => {
     try {
-      const response = await fetch(`/api/v1/ai/recommendations/${recommendation.id}/feedback`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          accepted: action === 'accept',
-          feedback_score: action === 'accept' ? 5 : 3
-        })
+      await aiTradingService.submitRecommendationFeedback(recommendation.id, {
+        accepted: action === 'accept',
+        feedback_score: action === 'accept' ? 5 : 3
       });
 
-      if (response.ok) {
-        const systemMessage: ChatMessage = {
-          id: Date.now().toString(),
-          type: 'system',
-          content: `${action === 'accept' ? 'Accepted' : 'Declined'} recommendation: ${recommendation.reasoning}`,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, systemMessage]);
-        
-        // Remove the recommendation from the list
-        setRecommendations(prev => prev.filter(r => r.id !== recommendation.id));
-      }
+      const systemMessage: ChatMessage = {
+        id: Date.now().toString(),
+        type: 'system',
+        content: `${action === 'accept' ? 'Accepted' : 'Declined'} recommendation: ${recommendation.reasoning}`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, systemMessage]);
+      
+      // Remove the recommendation from the list
+      setRecommendations(prev => prev.filter(r => r.id !== recommendation.id));
     } catch (error) {
       console.error('Error handling recommendation feedback:', error);
+      const errorMessage: ChatMessage = {
+        id: Date.now().toString(),
+        type: 'system',
+        content: 'Failed to submit feedback. Please try again.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
     }
   };
 

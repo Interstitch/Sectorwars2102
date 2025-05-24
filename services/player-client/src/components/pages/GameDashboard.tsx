@@ -6,6 +6,7 @@ import { useWebSocket } from '../../contexts/WebSocketContext';
 import GameLayout from '../layouts/GameLayout';
 import TradingInterface from '../trading/TradingInterface';
 import { AIAssistant, AIAssistantButton } from '../ai';
+import aiTradingService from '../../services/aiTradingService';
 import './game-dashboard.css';
 
 const GameDashboard: React.FC = () => {
@@ -42,16 +43,8 @@ const GameDashboard: React.FC = () => {
       if (!playerState?.id) return;
       
       try {
-        const response = await fetch('/api/v1/ai/recommendations?limit=10', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          const recommendations = await response.json();
-          const pendingRecommendations = recommendations.filter((rec: any) => 
+        const recommendations = await aiTradingService.getRecommendations(10, false);
+        const pendingRecommendations = recommendations.filter((rec: any) => 
             new Date(rec.expires_at) > new Date()
           );
           
