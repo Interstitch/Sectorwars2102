@@ -1,12 +1,121 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { api } from '../../utils/auth';
 import './universe-detail.css';
 
 interface PortDetailProps {
   port: any;
   onBack: () => void;
+  onUpdate?: (updatedPort: any) => void;
 }
 
-const PortDetail: React.FC<PortDetailProps> = ({ port, onBack }) => {
+const PortDetail: React.FC<PortDetailProps> = ({ port, onBack, onUpdate }) => {
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<any>({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleEdit = (field: string, currentValue: any) => {
+    setEditingField(field);
+    setEditValues({ ...editValues, [field]: currentValue });
+  };
+
+  const handleSave = async (field: string) => {
+    try {
+      setIsLoading(true);
+      const value = editValues[field];
+      
+      // Update port via API
+      await api.patch(`/api/v1/admin/ports/${port.id}`, {
+        [field]: value
+      });
+      
+      // Update local state
+      const updatedPort = { ...port, [field]: value };
+      if (onUpdate) {
+        onUpdate(updatedPort);
+      }
+      
+      setEditingField(null);
+    } catch (error) {
+      console.error(`Failed to update ${field}:`, error);
+      alert(`Failed to update ${field}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingField(null);
+    setEditValues({});
+  };
+
+  const EditableField: React.FC<{
+    field: string;
+    value: any;
+    type?: 'text' | 'number' | 'select';
+    options?: string[];
+  }> = ({ field, value, type = 'text', options }) => {
+    const isEditing = editingField === field;
+    
+    if (isEditing) {
+      return (
+        <div className="editable-field editing">
+          {type === 'select' && options ? (
+            <select
+              value={editValues[field] || value}
+              onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
+              disabled={isLoading}
+            >
+              {options.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type={type}
+              value={editValues[field] !== undefined ? editValues[field] : value}
+              onChange={(e) => setEditValues({ 
+                ...editValues, 
+                [field]: type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value 
+              })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave(field);
+                if (e.key === 'Escape') handleCancel();
+              }}
+              disabled={isLoading}
+              autoFocus
+            />
+          )}
+          <div className="edit-actions">
+            <button 
+              onClick={() => handleSave(field)} 
+              disabled={isLoading}
+              className="save-btn"
+            >
+              ✓
+            </button>
+            <button 
+              onClick={handleCancel} 
+              disabled={isLoading}
+              className="cancel-btn"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <span 
+        className="editable-field clickable" 
+        onClick={() => handleEdit(field, value)}
+        title="Click to edit"
+      >
+        {value}
+      </span>
+    );
+  };
+
   const getPortClassInfo = (portClass: number) => {
     const classInfo: { [key: number]: { name: string; description: string; color: string } } = {
       1: { name: 'Small Outpost', description: 'Basic trading post with minimal services', color: '#888' },
@@ -18,8 +127,6 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack }) => {
     return classInfo[portClass] || classInfo[1];
   };
 
-  const commodities = port.commodities || {};
-  const services = port.services || {};
   const classInfo = getPortClassInfo(port.port_class);
 
   return (
@@ -39,16 +146,39 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack }) => {
           <h3>Port Overview</h3>
           <div className="info-grid">
             <div className="info-item">
+              <span className="label">Name:</span>
+              <span className="value">
+                <EditableField field="name" value={port.name} type="text" />
+              </span>
+            </div>
+            <div className="info-item">
+              <span className="label">Port Class:</span>
+              <span className="value">
+                <EditableField 
+                  field="port_class" 
+                  value={port.port_class} 
+                  type="select"
+                  options={['1', '2', '3', '4', '5']}
+                />
+              </span>
+            </div>
+            <div className="info-item">
               <span className="label">Owner:</span>
-              <span className="value">{port.owner_name || 'Federation'}</span>
+              <span className="value">
+                <EditableField field="owner_name" value={port.owner_name || 'Federation'} type="text" />
+              </span>
             </div>
             <div className="info-item">
               <span className="label">Tax Rate:</span>
-              <span className="value">{port.tax_rate}%</span>
+              <span className="value">
+                <EditableField field="tax_rate" value={port.tax_rate} type="number" />%
+              </span>
             </div>
             <div className="info-item">
               <span className="label">Defense Drones:</span>
-              <span className="value">{port.defense_fighters}</span>
+              <span className="value">
+                <EditableField field="defense_fighters" value={port.defense_fighters} type="number" />
+              </span>
             </div>
             <div className="info-item">
               <span className="label">Purchase Price:</span>
@@ -61,52 +191,192 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack }) => {
         <div className="commodities-section">
           <h3>Commodities Trading</h3>
           <div className="commodities-grid">
-            {Object.entries(commodities).map(([commodity, data]: [string, any]) => (
-              <div key={commodity} className="commodity-card">
-                <h4>{commodity.charAt(0).toUpperCase() + commodity.slice(1).replace('_', ' ')}</h4>
-                <div className="commodity-info">
-                  <div className="quantity">
-                    <span className="label">Quantity:</span>
-                    <span className="value">{data.quantity.toLocaleString()}</span>
-                  </div>
-                  <div className="prices">
-                    <div className="buy-price">
-                      <span className="label">Buy:</span>
-                      <span className="value">{data.buy_price} cr</span>
-                    </div>
-                    <div className="sell-price">
-                      <span className="label">Sell:</span>
-                      <span className="value">{data.sell_price} cr</span>
-                    </div>
+            <div className="commodity-card">
+              <h4>⛏️ Ore</h4>
+              <div className="commodity-info">
+                <div className="quantity">
+                  <span className="label">Quantity:</span>
+                  <span className="value">
+                    <EditableField field="ore_quantity" value={port.ore_quantity || 0} type="number" />
+                  </span>
+                </div>
+                <div className="prices">
+                  <div className="buy-price">
+                    <span className="label">Buy:</span>
+                    <span className="value">
+                      <EditableField field="ore_price" value={port.ore_price || 25} type="number" /> cr
+                    </span>
                   </div>
                 </div>
               </div>
-            ))}
+            </div>
+            <div className="commodity-card">
+              <h4>🌾 Organics</h4>
+              <div className="commodity-info">
+                <div className="quantity">
+                  <span className="label">Quantity:</span>
+                  <span className="value">
+                    <EditableField field="organics_quantity" value={port.organics_quantity || 0} type="number" />
+                  </span>
+                </div>
+                <div className="prices">
+                  <div className="buy-price">
+                    <span className="label">Buy:</span>
+                    <span className="value">
+                      <EditableField field="organics_price" value={port.organics_price || 15} type="number" /> cr
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="commodity-card">
+              <h4>🔧 Equipment</h4>
+              <div className="commodity-info">
+                <div className="quantity">
+                  <span className="label">Quantity:</span>
+                  <span className="value">
+                    <EditableField field="equipment_quantity" value={port.equipment_quantity || 0} type="number" />
+                  </span>
+                </div>
+                <div className="prices">
+                  <div className="buy-price">
+                    <span className="label">Buy:</span>
+                    <span className="value">
+                      <EditableField field="equipment_price" value={port.equipment_price || 50} type="number" /> cr
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="services-section">
-          <h3>Available Services</h3>
+          <h3>Port Services & Equipment</h3>
           <div className="services-grid">
-            {Object.entries(services).map(([service, available]) => (
-              <div key={service} className={`service-item ${available ? 'available' : 'unavailable'}`}>
-                <span className="service-icon">{getServiceIcon(service)}</span>
-                <span className="service-name">
-                  {service.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                </span>
-                <span className="service-status">{available ? '✓' : '✗'}</span>
-              </div>
-            ))}
+            <div className="service-item">
+              <span className="service-icon">🛡️</span>
+              <span className="service-name">Port Shields</span>
+              <span className="service-status">
+                <EditableField 
+                  field="port_shields" 
+                  value={port.port_shields || 0} 
+                  type="number" 
+                /> / 1000
+              </span>
+            </div>
+            <div className="service-item">
+              <span className="service-icon">🤖</span>
+              <span className="service-name">Defense Fighters</span>
+              <span className="service-status">
+                <EditableField 
+                  field="defense_fighters" 
+                  value={port.defense_fighters || 0} 
+                  type="number" 
+                />
+              </span>
+            </div>
+            <div className="service-item">
+              <span className="service-icon">🔧</span>
+              <span className="service-name">Max Maintenance</span>
+              <span className="service-status">
+                <EditableField 
+                  field="max_maintenance" 
+                  value={port.max_maintenance || 100} 
+                  type="number" 
+                />%
+              </span>
+            </div>
+            <div className="service-item">
+              <span className="service-icon">💰</span>
+              <span className="service-name">Buy Rate</span>
+              <span className="service-status">
+                <EditableField 
+                  field="buy_rate" 
+                  value={port.buy_rate || 95} 
+                  type="number" 
+                />%
+              </span>
+            </div>
+            <div className="service-item">
+              <span className="service-icon">💸</span>
+              <span className="service-name">Sell Rate</span>
+              <span className="service-status">
+                <EditableField 
+                  field="sell_rate" 
+                  value={port.sell_rate || 105} 
+                  type="number" 
+                />%
+              </span>
+            </div>
           </div>
         </div>
 
+        <div className="port-administration">
+          <h3>Port Administration</h3>
+          <div className="admin-actions">
+            <div className="action-group">
+              <h4>Economic Controls</h4>
+              <button 
+                className="admin-action-btn"
+                onClick={() => {
+                  const newQuantity = prompt('Enter new ore quantity:', port.ore_quantity?.toString() || '1000');
+                  if (newQuantity) handleEdit('ore_quantity', parseInt(newQuantity));
+                }}
+              >
+                📦 Adjust Ore Stock
+              </button>
+              <button 
+                className="admin-action-btn"
+                onClick={() => {
+                  const newQuantity = prompt('Enter new organics quantity:', port.organics_quantity?.toString() || '1000');
+                  if (newQuantity) handleEdit('organics_quantity', parseInt(newQuantity));
+                }}
+              >
+                🌾 Adjust Organics Stock
+              </button>
+              <button 
+                className="admin-action-btn"
+                onClick={() => {
+                  const newQuantity = prompt('Enter new equipment quantity:', port.equipment_quantity?.toString() || '1000');
+                  if (newQuantity) handleEdit('equipment_quantity', parseInt(newQuantity));
+                }}
+              >
+                🔧 Adjust Equipment Stock
+              </button>
+            </div>
+            <div className="action-group">
+              <h4>Security Controls</h4>
+              <button 
+                className="admin-action-btn"
+                onClick={() => {
+                  const newFighters = prompt('Enter new defense fighter count:', port.defense_fighters?.toString() || '100');
+                  if (newFighters) handleEdit('defense_fighters', parseInt(newFighters));
+                }}
+              >
+                🤖 Deploy Defense Fighters
+              </button>
+              <button 
+                className="admin-action-btn"
+                onClick={() => {
+                  const newShields = prompt('Enter new shield strength:', port.port_shields?.toString() || '500');
+                  if (newShields) handleEdit('port_shields', parseInt(newShields));
+                }}
+              >
+                🛡️ Adjust Port Shields
+              </button>
+            </div>
+          </div>
+        </div>
+        
         <div className="trading-tips">
-          <h3>Trading Tips</h3>
+          <h3>Port Information</h3>
           <ul>
-            <li>Ports buy commodities at lower prices and sell at higher prices</li>
             <li>Class {port.port_class} ports typically trade in {getPortTradingPattern(port.port_class)}</li>
-            <li>Check neighboring sectors for complementary ports to maximize profits</li>
-            <li>Higher class ports offer better services but charge higher fees</li>
+            <li>Tax rate affects all transactions: {port.tax_rate}% current rate</li>
+            <li>Defense fighters: {port.defense_fighters} protecting the port</li>
+            <li>Port shields: {port.port_shields || 0} / 1000 strength</li>
+            <li>Click any value above to edit it directly</li>
           </ul>
         </div>
       </div>
@@ -114,20 +384,7 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack }) => {
   );
 };
 
-// Helper functions
-const getServiceIcon = (service: string): string => {
-  const icons: { [key: string]: string } = {
-    ship_dealer: '🚀',
-    ship_repair: '🔧',
-    ship_maintenance: '🛠️',
-    insurance: '🛡️',
-    drone_shop: '🤖',
-    genesis_dealer: '🌟',
-    mine_dealer: '💣',
-    diplomatic_services: '🤝'
-  };
-  return icons[service] || '📦';
-};
+// Helper functions (removed unused getServiceIcon)
 
 const getPortTradingPattern = (portClass: number): string => {
   const patterns: { [key: number]: string } = {

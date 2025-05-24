@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import PageHeader from '../ui/PageHeader';
 import PlayerSearchAndFilter from './components/PlayerSearchAndFilter';
+import PlayerDetailEditor from '../admin/PlayerDetailEditor';
+import BulkOperationPanel from '../admin/BulkOperationPanel';
+import PlayerAssetManager from '../admin/PlayerAssetManager';
+import EmergencyOperationsPanel from '../admin/EmergencyOperationsPanel';
 import { api } from '../../utils/auth';
 import './player-analytics.css';
 import {
@@ -104,20 +108,30 @@ const PlayerAnalytics: React.FC = () => {
         }
       }));
       
+      // Fetch real-time analytics separately with fallback to calculated values
+      let analyticsData: any = {};
+      try {
+        const analyticsResponse = await api.get('/api/v1/admin/analytics/real-time');
+        analyticsData = analyticsResponse.data;
+      } catch (analyticsError) {
+        console.warn('Analytics API unavailable, using calculated fallbacks:', analyticsError);
+        // Analytics will fall back to calculated values below
+      }
+      
       setState(prev => ({
         ...prev,
         players: transformedPlayers,
         totalCount: rawData.total || transformedPlayers.length,
         metrics: {
-          total_active_players: transformedPlayers.filter((p: any) => p.status === 'active').length,
-          total_credits_circulation: transformedPlayers.reduce((sum: number, p: any) => sum + p.credits, 0),
-          average_session_time: 2.5,
-          new_players_today: 0,
-          player_retention_rate: 85.0,
-          players_online_now: 0,
-          total_players: transformedPlayers.length,
+          total_active_players: analyticsData.total_active_players || transformedPlayers.filter((p: any) => p.status === 'active').length,
+          total_credits_circulation: analyticsData.total_credits_circulation || transformedPlayers.reduce((sum: number, p: any) => sum + p.credits, 0),
+          average_session_time: analyticsData.average_session_time || 0,
+          new_players_today: analyticsData.new_players_today || 0,
+          player_retention_rate: analyticsData.retention_rate_7_day || 0,
+          players_online_now: analyticsData.players_online_now || 0,
+          total_players: analyticsData.total_players || transformedPlayers.length,
           banned_players: transformedPlayers.filter((p: any) => p.status === 'banned').length,
-          suspicious_activity_alerts: 0
+          suspicious_activity_alerts: analyticsData.suspicious_activity_alerts || 0
         },
         loading: false
       }));
@@ -613,60 +627,72 @@ const PlayerAnalytics: React.FC = () => {
             </div>
           )}
           
-          {/* Placeholder modals - will be implemented as separate components */}
+          {/* Player Detail Editor Modal */}
           {state.selectedPlayer && state.editMode && (
             <div className="modal-overlay" onClick={() => setState(prev => ({ ...prev, editMode: false }))}>
-              <div className="modal enhanced" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h3>Edit Player: {state.selectedPlayer.username}</h3>
-                  <button onClick={() => setState(prev => ({ ...prev, editMode: false }))} className="close-btn">×</button>
-                </div>
-                <div className="modal-content">
-                  <p>PlayerDetailEditor component will be implemented here</p>
-                </div>
-              </div>
+              <PlayerDetailEditor
+                player={state.selectedPlayer}
+                onClose={() => setState(prev => ({ ...prev, editMode: false, selectedPlayer: null }))}
+                onSave={(updatedPlayer) => {
+                  // Update the player in the list
+                  setState(prev => ({
+                    ...prev,
+                    players: prev.players.map(p => p.id === updatedPlayer.id ? updatedPlayer : p),
+                    selectedPlayer: updatedPlayer,
+                    editMode: false
+                  }));
+                }}
+              />
             </div>
           )}
           
           {state.showBulkOperations && (
             <div className="modal-overlay" onClick={() => setState(prev => ({ ...prev, showBulkOperations: false }))}>
-              <div className="modal enhanced" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h3>Bulk Operations ({state.selectedPlayers.length} players)</h3>
-                  <button onClick={() => setState(prev => ({ ...prev, showBulkOperations: false }))} className="close-btn">×</button>
-                </div>
-                <div className="modal-content">
-                  <p>BulkOperationPanel component will be implemented here</p>
-                </div>
-              </div>
+              <BulkOperationPanel
+                selectedPlayers={state.selectedPlayers.map(id => state.players.find(p => p.id === id)!).filter(Boolean)}
+                onClose={() => setState(prev => ({ ...prev, showBulkOperations: false, selectedPlayers: [] }))}
+                onComplete={(operation, results) => {
+                  console.log(`Bulk operation ${operation} completed:`, results);
+                  // Refresh the player data after bulk operation
+                  fetchPlayerData();
+                  // Clear selection after operation
+                  setState(prev => ({ ...prev, selectedPlayers: [] }));
+                }}
+              />
             </div>
           )}
           
           {state.selectedPlayer && state.showAssetManager && (
             <div className="modal-overlay" onClick={() => setState(prev => ({ ...prev, showAssetManager: false }))}>
-              <div className="modal enhanced" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h3>Asset Manager: {state.selectedPlayer.username}</h3>
-                  <button onClick={() => setState(prev => ({ ...prev, showAssetManager: false }))} className="close-btn">×</button>
-                </div>
-                <div className="modal-content">
-                  <p>PlayerAssetManager component will be implemented here</p>
-                </div>
-              </div>
+              <PlayerAssetManager
+                player={state.selectedPlayer}
+                onClose={() => setState(prev => ({ ...prev, showAssetManager: false }))}
+                onUpdate={(updatedPlayer) => {
+                  // Update the player in the list
+                  setState(prev => ({
+                    ...prev,
+                    players: prev.players.map(p => p.id === updatedPlayer.id ? updatedPlayer : p),
+                    selectedPlayer: updatedPlayer
+                  }));
+                }}
+              />
             </div>
           )}
           
           {state.selectedPlayer && state.showEmergencyOps && (
             <div className="modal-overlay" onClick={() => setState(prev => ({ ...prev, showEmergencyOps: false }))}>
-              <div className="modal enhanced" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h3>Emergency Operations: {state.selectedPlayer.username}</h3>
-                  <button onClick={() => setState(prev => ({ ...prev, showEmergencyOps: false }))} className="close-btn">×</button>
-                </div>
-                <div className="modal-content">
-                  <p>EmergencyOperationsPanel component will be implemented here</p>
-                </div>
-              </div>
+              <EmergencyOperationsPanel
+                player={state.selectedPlayer}
+                onClose={() => setState(prev => ({ ...prev, showEmergencyOps: false }))}
+                onUpdate={(updatedPlayer) => {
+                  // Update the player in the list
+                  setState(prev => ({
+                    ...prev,
+                    players: prev.players.map(p => p.id === updatedPlayer.id ? updatedPlayer : p),
+                    selectedPlayer: updatedPlayer
+                  }));
+                }}
+              />
             </div>
           )}
         </>

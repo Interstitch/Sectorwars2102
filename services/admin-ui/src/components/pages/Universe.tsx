@@ -16,6 +16,7 @@ const Universe: React.FC = () => {
     generateGalaxy,
     addSectors,
     createWarpTunnel,
+    clearGalaxyData,
     isLoading,
     error
   } = useAdmin();
@@ -39,6 +40,13 @@ const Universe: React.FC = () => {
   const [planetDensity, setPlanetDensity] = useState<number>(0.25);
   const [warpTunnelProbability] = useState<number>(0.1);
   const [factionTerritorySize] = useState<number>(25);
+  
+  // Region distribution state (percentages that must total 100%)
+  const [regionDistribution, setRegionDistribution] = useState({
+    federation: 40,
+    border: 35,
+    frontier: 25
+  });
 
   // Add sectors form state
   const [addSectorsCount, setAddSectorsCount] = useState(10);
@@ -49,6 +57,10 @@ const Universe: React.FC = () => {
   const [sourceSectorId, setSourceSectorId] = useState<number | null>(null);
   const [targetSectorId, setTargetSectorId] = useState<number | null>(null);
   const [tunnelStability, setTunnelStability] = useState<number>(0.75);
+
+  // Port stock update state
+  const [isUpdatingPortStock, setIsUpdatingPortStock] = useState(false);
+  const [_portStockUpdateResult, setPortStockUpdateResult] = useState<any>(null);
 
   // D3 visualization ref
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -71,6 +83,41 @@ const Universe: React.FC = () => {
     }
   }, [selectedRegion]);
 
+  // Handle region distribution slider changes with automatic adjustment
+  const handleRegionDistributionChange = (regionType: 'federation' | 'border' | 'frontier', newValue: number) => {
+    const currentValue = regionDistribution[regionType];
+    const difference = newValue - currentValue;
+    
+    // Get the other two regions
+    const otherRegions = Object.keys(regionDistribution).filter(key => key !== regionType) as ('federation' | 'border' | 'frontier')[];
+    
+    // Calculate how much to subtract from each other region
+    let remaining = difference;
+    const newDistribution = { ...regionDistribution };
+    newDistribution[regionType] = newValue;
+    
+    // Distribute the difference proportionally among the other regions
+    const otherRegionsTotal = otherRegions.reduce((sum, region) => sum + regionDistribution[region], 0);
+    
+    if (otherRegionsTotal > 0) {
+      for (const otherRegion of otherRegions) {
+        const proportion = regionDistribution[otherRegion] / otherRegionsTotal;
+        const adjustment = remaining * proportion;
+        newDistribution[otherRegion] = Math.max(0, Math.min(100, regionDistribution[otherRegion] - adjustment));
+      }
+    }
+    
+    // Ensure the total is exactly 100%
+    const total = newDistribution.federation + newDistribution.border + newDistribution.frontier;
+    if (total !== 100) {
+      // Adjust the first other region to make total exactly 100
+      const adjustmentNeeded = 100 - total;
+      newDistribution[otherRegions[0]] = Math.max(0, Math.min(100, newDistribution[otherRegions[0]] + adjustmentNeeded));
+    }
+    
+    setRegionDistribution(newDistribution);
+  };
+
   // Handle galaxy generation
   const handleGenerateGalaxy = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,13 +135,47 @@ const Universe: React.FC = () => {
         port_density: portDensity,
         planet_density: planetDensity,
         warp_tunnel_probability: warpTunnelProbability,
-        faction_territory_size: factionTerritorySize
+        faction_territory_size: factionTerritorySize,
+        region_distribution: regionDistribution
       });
       setShowGenerateForm(false);
       setNewGalaxyName('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating galaxy:', error);
-      alert('Failed to generate galaxy. Please try again.');
+      
+      // Check if error is due to existing galaxy (HTTP 400)
+      if (error?.response?.status === 400 && 
+          error?.response?.data?.detail?.includes('already exists')) {
+        const shouldClear = window.confirm(
+          'A galaxy already exists. Would you like to clear the existing galaxy data and generate a new one?\n\n' +
+          'Warning: This will permanently delete all current galaxy data including sectors, planets, ports, and warp tunnels.'
+        );
+        
+        if (shouldClear) {
+          try {
+            await clearGalaxyData();
+            // Try generating again after clearing
+            await generateGalaxy(newGalaxyName, newGalaxySectors, {
+              resource_distribution: resourceDistribution,
+              hazard_levels: hazardLevels,
+              connectivity: connectivity,
+              port_density: portDensity,
+              planet_density: planetDensity,
+              warp_tunnel_probability: warpTunnelProbability,
+              faction_territory_size: factionTerritorySize,
+              region_distribution: regionDistribution
+            });
+            setShowGenerateForm(false);
+            setNewGalaxyName('');
+            alert('Galaxy generated successfully after clearing existing data.');
+          } catch (clearError) {
+            console.error('Error clearing galaxy or regenerating:', clearError);
+            alert('Failed to clear existing galaxy data. Please try again.');
+          }
+        }
+      } else {
+        alert('Failed to generate galaxy. Please try again.');
+      }
     }
   };
 
@@ -140,6 +221,41 @@ const Universe: React.FC = () => {
     } catch (error) {
       console.error('Error creating warp tunnel:', error);
       alert('Failed to create warp tunnel. Please try again.');
+    }
+  };
+
+  // Handle updating port stock levels
+  const handleUpdatePortStock = async () => {
+    if (!confirm('This will update stock levels for all ports in the universe to match their trading roles. Continue?')) {
+      return;
+    }
+
+    try {
+      setIsUpdatingPortStock(true);
+      setPortStockUpdateResult(null);
+      
+      const response = await fetch('/api/v1/admin/ports/update-stock-levels', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update port stock: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      setPortStockUpdateResult(result);
+      
+      alert(`Successfully updated stock levels for ${result.ports_updated} ports out of ${result.total_ports} total!`);
+      
+    } catch (error) {
+      console.error('Error updating port stock:', error);
+      alert('Failed to update port stock levels. Please try again.');
+    } finally {
+      setIsUpdatingPortStock(false);
     }
   };
 
@@ -633,6 +749,13 @@ const Universe: React.FC = () => {
                     Create Warp Tunnel
                   </button>
                   <button 
+                    className="btn btn-info"
+                    onClick={handleUpdatePortStock}
+                    disabled={isUpdatingPortStock}
+                  >
+                    {isUpdatingPortStock ? 'Updating...' : 'Update Port Stock Levels'}
+                  </button>
+                  <button 
                     className="btn btn-danger"
                     onClick={() => {
                       if (confirm('Are you sure you want to regenerate the entire galaxy? This will delete all existing data!')) {
@@ -790,6 +913,48 @@ const Universe: React.FC = () => {
                     value={planetDensity}
                     onChange={(e) => setPlanetDensity(parseFloat(e.target.value))}
                   />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <h4>Region Distribution (Total: {regionDistribution.federation + regionDistribution.border + regionDistribution.frontier}%)</h4>
+                
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Federation Space ({regionDistribution.federation}%)</label>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="100" 
+                      step="1"
+                      value={regionDistribution.federation}
+                      onChange={(e) => handleRegionDistributionChange('federation', parseInt(e.target.value))}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Border Zone ({regionDistribution.border}%)</label>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="100" 
+                      step="1"
+                      value={regionDistribution.border}
+                      onChange={(e) => handleRegionDistributionChange('border', parseInt(e.target.value))}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Frontier ({regionDistribution.frontier}%)</label>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="100" 
+                      step="1"
+                      value={regionDistribution.frontier}
+                      onChange={(e) => handleRegionDistributionChange('frontier', parseInt(e.target.value))}
+                    />
+                  </div>
                 </div>
               </div>
 

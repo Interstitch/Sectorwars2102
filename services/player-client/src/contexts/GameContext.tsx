@@ -9,6 +9,7 @@ export interface Ship {
   type: string;
   sector_id: number;
   cargo: Record<string, number>;
+  cargo_capacity: number;
   current_speed: number;
   base_speed: number;
   combat: any;
@@ -165,9 +166,32 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Market
   const [marketInfo, setMarketInfo] = useState<MarketInfo | null>(null);
   
+  // Get API URL using the same logic as AuthContext
+  const getApiUrl = () => {
+    // If an environment variable is explicitly set, use it
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+
+    const windowUrl = window.location.origin;
+
+    // For GitHub Codespaces, use proxy to avoid authentication issues with external URLs
+    if (windowUrl.includes('.app.github.dev')) {
+      return '';  // Use proxy through Vite dev server
+    }
+
+    // Local development
+    if (windowUrl.includes('localhost')) {
+      return 'http://localhost:8080';
+    }
+
+    // For other environments - use proxy
+    return '';
+  };
+
   // Set up axios with authorization header
   const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || '',
+    baseURL: getApiUrl(),
   });
   
   // Use token from localStorage directly instead of from context
@@ -181,9 +205,16 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   
   // Initialize game state when user logs in
   useEffect(() => {
+    console.log('GameContext: User changed:', user);
     if (user) {
+      console.log('GameContext: Initializing for user:', user.username);
       refreshPlayerState();
       loadShips();
+    } else {
+      console.log('GameContext: No user, clearing state');
+      setPlayerState(null);
+      setCurrentShip(null);
+      setShips([]);
     }
   }, [user]);
   
@@ -197,22 +228,32 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   
   // Refresh player state
   const refreshPlayerState = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('GameContext: No user for refreshPlayerState');
+      return;
+    }
+    
+    console.log('GameContext: Refreshing player state for user:', user.username);
+    console.log('GameContext: API base URL:', getApiUrl());
     
     setIsLoading(true);
     setError(null);
     
     try {
+      console.log('GameContext: Calling /api/v1/player/state');
       const response = await api.get('/api/v1/player/state');
+      console.log('GameContext: Player state response:', response.data);
       setPlayerState(response.data);
       
       // If player has a current ship, load its details
       if (response.data.current_ship_id) {
-        const shipResponse = await api.get(`/api/v1/ships/${response.data.current_ship_id}`);
+        console.log('GameContext: Loading current ship details');
+        const shipResponse = await api.get('/api/v1/player/current-ship');
+        console.log('GameContext: Current ship response:', shipResponse.data);
         setCurrentShip(shipResponse.data);
       }
     } catch (error) {
-      console.error('Error fetching player state:', error);
+      console.error('GameContext: Error fetching player state:', error);
       setError('Failed to load player state');
     } finally {
       setIsLoading(false);
@@ -227,12 +268,12 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     
     try {
-      const response = await api.get('/api/v1/ships');
-      setShips(response.data.ships || []);
+      const response = await api.get('/api/v1/player/ships');
+      setShips(response.data || []);
       
       // If there's a current ship, update it
       if (playerState?.current_ship_id) {
-        const currentShip = response.data.ships.find((ship: Ship) => ship.id === playerState.current_ship_id);
+        const currentShip = response.data.find((ship: Ship) => ship.id === playerState.current_ship_id);
         if (currentShip) {
           setCurrentShip(currentShip);
         }
@@ -274,7 +315,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     
     try {
-      const response = await api.post('/api/v1/movement/move', { destination_sector_id: sectorId });
+      const response = await api.post(`/api/v1/player/move/${sectorId}`);
       
       // Update player state after movement
       await refreshPlayerState();
@@ -297,7 +338,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     
     try {
-      const response = await api.get('/api/v1/movement/available-moves');
+      const response = await api.get('/api/v1/player/available-moves');
       setAvailableMoves(response.data);
     } catch (error) {
       console.error('Error getting available moves:', error);
@@ -316,7 +357,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       // Get sector info
-      const sectorResponse = await api.get(`/api/v1/sectors/${playerState.current_sector_id}`);
+      const sectorResponse = await api.get('/api/v1/player/current-sector');
       setCurrentSector(sectorResponse.data);
       
       // Get planets in sector
@@ -342,7 +383,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     
     try {
-      const response = await api.post('/api/v1/ports/dock', { port_id: portId });
+      const response = await api.post('/api/v1/trading/dock', { port_id: portId });
       
       // Update player state after docking
       await refreshPlayerState();
@@ -365,7 +406,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     
     try {
-      const response = await api.get(`/api/v1/ports/${portId}/market`);
+      const response = await api.get(`/api/v1/trading/market/${portId}`);
       setMarketInfo(response.data);
     } catch (error) {
       console.error('Error getting market info:', error);

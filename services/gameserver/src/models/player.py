@@ -67,6 +67,14 @@ class Player(Base):
     enhanced_market_transactions = relationship("src.models.market_transaction.MarketTransaction", back_populates="player")
     first_login_sessions = relationship("FirstLoginSession", back_populates="player", cascade="all, delete-orphan")
     first_login_state = relationship("PlayerFirstLoginState", back_populates="player", uselist=False, cascade="all, delete-orphan")
+    
+    # Analytics relationships (TODO: Create PlayerSession and PlayerActivity models)
+    # sessions = relationship("PlayerSession", back_populates="player", cascade="all, delete-orphan")
+    # activities = relationship("PlayerActivity", cascade="all, delete-orphan")
+    
+    # AI Trading System relationships
+    trading_profile = relationship("PlayerTradingProfile", back_populates="player", uselist=False, cascade="all, delete-orphan")
+    ai_recommendations = relationship("AIRecommendation", back_populates="player", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Player {self.id} (User: {self.user_id})>"

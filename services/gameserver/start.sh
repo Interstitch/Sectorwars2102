@@ -1,6 +1,40 @@
 #!/bin/bash
 set -e
 
+# Function to wait for database connection
+wait_for_db() {
+    echo "Waiting for database connection..."
+    max_attempts=30
+    attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        if python -c "
+from sqlalchemy import create_engine, text
+import os
+import sys
+try:
+    engine = create_engine(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require'))
+    with engine.connect() as conn:
+        conn.execute(text('SELECT 1'))
+    print('Database connection successful')
+    sys.exit(0)
+except Exception as e:
+    print(f'Database connection failed: {e}')
+    sys.exit(1)
+"; then
+            echo "Database is ready!"
+            return 0
+        fi
+        
+        echo "Attempt $attempt/$max_attempts failed. Waiting 2 seconds..."
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+    
+    echo "WARNING: Could not connect to database after $max_attempts attempts. Starting server anyway..."
+    return 1
+}
+
 # Function to mark the current migration in Alembic if it's not already marked
 mark_migration_version() {
     local migration_version="$1"
@@ -13,21 +47,29 @@ mark_migration_version() {
     fi
 }
 
-# Print the current Alembic revision
-echo "Current Alembic revision:"
-alembic current
+# Wait for database before proceeding
+wait_for_db
+DB_AVAILABLE=$?
 
-# Apply all pending migrations
-echo "Applying pending Alembic migrations..."
-if ! alembic upgrade head; then
-    echo "Migration failed but continuing with startup..."
-    # Mark our migration as complete to prevent repeated failures
-    mark_migration_version "b42e19a78c52"
+if [ $DB_AVAILABLE -eq 0 ]; then
+    # Print the current Alembic revision
+    echo "Current Alembic revision:"
+    alembic current || echo "Could not check current revision"
+
+    # Apply all pending migrations
+    echo "Applying pending Alembic migrations..."
+    if ! alembic upgrade head; then
+        echo "Migration failed but continuing with startup..."
+        # Mark our migration as complete to prevent repeated failures
+        mark_migration_version "b42e19a78c52" || echo "Could not mark migration version"
+    fi
+
+    # Verify the current migration version again
+    echo "Current Alembic revision after migration attempt:"
+    alembic current || echo "Could not check current revision"
+else
+    echo "Skipping database migrations due to connection issues"
 fi
-
-# Verify the current migration version again
-echo "Current Alembic revision after migration attempt:"
-alembic current
 
 # Directly create tables from models if they don't exist
 echo "Ensuring all required tables exist..."

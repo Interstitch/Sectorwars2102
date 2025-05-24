@@ -248,26 +248,31 @@ const TeamManagement: React.FC = () => {
       
       {/* Team Statistics */}
       {teamStats && (
-        <div className="stats-overview">
+        <div className="team-stats-grid">
           <div className="stat-card">
-            <h3>{teamStats.total_teams}</h3>
-            <p>Total Teams</p>
+            <h3>Total Teams</h3>
+            <div className="stat-value">{teamStats.total_teams}</div>
+            <div className="stat-label">All teams in system</div>
           </div>
           <div className="stat-card">
-            <h3>{teamStats.active_teams}</h3>
-            <p>Active Teams</p>
+            <h3>Active Teams</h3>
+            <div className="stat-value">{teamStats.active_teams}</div>
+            <div className="stat-label">Currently active</div>
           </div>
           <div className="stat-card">
-            <h3>{teamStats.total_members}</h3>
-            <p>Total Members</p>
+            <h3>Total Members</h3>
+            <div className="stat-value">{teamStats.total_members}</div>
+            <div className="stat-label">Players in teams</div>
           </div>
           <div className="stat-card">
-            <h3>{teamStats.average_team_size}</h3>
-            <p>Avg Team Size</p>
+            <h3>Average Size</h3>
+            <div className="stat-value">{teamStats.average_team_size}</div>
+            <div className="stat-label">Members per team</div>
           </div>
           <div className="stat-card">
-            <h3>{teamStats.largest_team_size}</h3>
-            <p>Largest Team</p>
+            <h3>Largest Team</h3>
+            <div className="stat-value">{teamStats.largest_team_size}</div>
+            <div className="stat-label">Max team size</div>
           </div>
         </div>
       )}
@@ -275,29 +280,32 @@ const TeamManagement: React.FC = () => {
       <div className="teams-content">
         {/* Teams List */}
         <div className="teams-list-section">
-          <div className="teams-controls">
-            <div className="search-bar">
+          <div className="team-controls">
+            <div className="search-filter-group">
               <input
                 type="text"
                 placeholder="Search teams by name or leader..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
               />
-            </div>
-            
-            <div className="filter-controls">
+              
               <select 
                 value={statusFilter} 
                 onChange={(e) => setStatusFilter(e.target.value)}
+                className="filter-select"
               >
                 <option value="all">All Teams</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
-              
+            </div>
+            
+            <div className="sort-controls">
               <select 
                 value={sortBy} 
                 onChange={(e) => setSortBy(e.target.value)}
+                className="filter-select"
               >
                 <option value="created_at">Created Date</option>
                 <option value="name">Team Name</option>
@@ -307,15 +315,21 @@ const TeamManagement: React.FC = () => {
               
               <button 
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="sort-order-btn"
+                className="sort-button"
               >
                 {sortOrder === 'asc' ? '↑' : '↓'}
               </button>
             </div>
+            
+            <div className="action-buttons">
+              <button className="btn btn-primary">
+                ➕ Create Team
+              </button>
+            </div>
           </div>
 
-          <div className="teams-table">
-            <table>
+          <div className="teams-table-container">
+            <table className="teams-table">
               <thead>
                 <tr>
                   <th>Team Name</th>
@@ -335,12 +349,12 @@ const TeamManagement: React.FC = () => {
                     onClick={() => setSelectedTeam(team)}
                   >
                     <td className="team-name">{team.name}</td>
-                    <td>{team.leader_name}</td>
+                    <td className="team-leader">{team.leader_name}</td>
                     <td>{team.member_count}</td>
                     <td>{formatCredits(team.total_credits)}</td>
                     <td>{formatDate(team.created_at)}</td>
                     <td>
-                      <span className={`status ${team.is_active ? 'active' : 'inactive'}`}>
+                      <span className={`status-badge ${team.is_active ? 'active' : 'inactive'}`}>
                         {team.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
@@ -367,15 +381,19 @@ const TeamManagement: React.FC = () => {
             <button 
               onClick={() => setPage(page - 1)} 
               disabled={page === 1}
+              className="pagination-btn"
             >
-              Previous
+              ← Previous
             </button>
-            <span>Page {page} of {totalPages}</span>
+            <div className="pagination-info">
+              Page {page} of {totalPages}
+            </div>
             <button 
               onClick={() => setPage(page + 1)} 
               disabled={page === totalPages}
+              className="pagination-btn"
             >
-              Next
+              Next →
             </button>
           </div>
         </div>

@@ -22,40 +22,70 @@
   gap: 0.5rem;
 }
 
-.zoom-button, .reset-button {
+.view-mode-button, .zoom-button, .reset-button {
   background-color: #131b2c;
   border: 1px solid #213252;
   color: #ccd6f6;
   border-radius: 4px;
-  width: 30px;
   height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+.view-mode-button {
+  padding: 0 0.75rem;
+  font-weight: bold;
+}
+
+.view-mode-button.active {
+  background-color: #4d8aff;
+  border-color: #4d8aff;
+  color: white;
+}
+
+.zoom-button {
+  width: 30px;
+  font-size: 1.1rem;
 }
 
 .reset-button {
   width: auto;
   padding: 0 0.75rem;
-  font-size: 0.85rem;
 }
 
-.zoom-button:hover, .reset-button:hover {
+.view-mode-button:hover, .zoom-button:hover, .reset-button:hover {
   background-color: #19223a;
   border-color: #4d8aff;
 }
 
+.view-mode-button.active:hover {
+  background-color: #6ba3ff;
+}
+
 .map-view {
   flex: 1;
-  background-color: #0a0e17;
   border-radius: 8px;
   overflow: hidden;
   position: relative;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
   min-height: 500px;
+}
+
+.map-view-2d {
+  background-color: #0a0e17;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
+}
+
+.map-view-3d {
+  background: transparent;
+}
+
+.galaxy-3d-view {
+  width: 100%;
+  height: 100%;
 }
 
 .map-content {

@@ -7,6 +7,8 @@ import './App.css'
 import { AuthProvider } from './contexts/AuthContext'
 import { GameProvider } from './contexts/GameContext'
 import { FirstLoginProvider } from './contexts/FirstLoginContext'
+import { WebSocketProvider } from './contexts/WebSocketContext'
+import { ThemeProvider } from './themes/ThemeProvider'
 
 // Import components
 import LoginForm from './components/auth/LoginForm'
@@ -15,6 +17,8 @@ import UserProfile from './components/auth/UserProfile'
 import OAuthCallback from './components/auth/OAuthCallback'
 import GameDashboard from './components/pages/GameDashboard'
 import GalaxyMap from './components/pages/GalaxyMap'
+import DebugPage from './components/pages/DebugPage'
+import TestAuthPage from './components/pages/TestAuthPage'
 import { FirstLoginContainer } from './components/first-login'
 
 function MainApp() {
@@ -538,29 +542,35 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <GameProvider>
-          <FirstLoginProvider>
-            <Routes>
-            <Route path="/oauth-callback" element={<OAuthCallback />} />
-            <Route path="/game" element={
-              <ProtectedRoute>
-                <GameDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/game/map" element={
-              <ProtectedRoute>
-                <GalaxyMap />
-              </ProtectedRoute>
-            } />
-            <Route path="*" element={<MainApp />} />
-            </Routes>
-            <FirstLoginContainer />
-          </FirstLoginProvider>
-        </GameProvider>
-      </AuthProvider>
-    </Router>
+    <ThemeProvider defaultTheme="cockpit">
+      <Router>
+        <AuthProvider>
+          <WebSocketProvider>
+            <GameProvider>
+              <FirstLoginProvider>
+                <Routes>
+              <Route path="/oauth-callback" element={<OAuthCallback />} />
+              <Route path="/debug" element={<DebugPage />} />
+              <Route path="/test-auth" element={<TestAuthPage />} />
+              <Route path="/game" element={
+                <ProtectedRoute>
+                  <GameDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/game/map" element={
+                <ProtectedRoute>
+                  <GalaxyMap />
+                </ProtectedRoute>
+              } />
+              <Route path="*" element={<MainApp />} />
+                </Routes>
+                <FirstLoginContainer />
+              </FirstLoginProvider>
+            </GameProvider>
+          </WebSocketProvider>
+        </AuthProvider>
+      </Router>
+    </ThemeProvider>
   );
 }
 

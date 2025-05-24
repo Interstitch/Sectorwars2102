@@ -1,4 +1,9 @@
+/* Import responsive design system */
+@import './styles/responsive.css';
+@import './styles/mobile-game.css';
+
 :root {
+  /* Color System */
   --bg-color: #0f172a;
   --text-color: #e2e8f0;
   --primary-color: #3b82f6;
@@ -6,6 +11,27 @@
   --accent-color: #10b981;
   --border-color: #334155;
   --container-bg: #1e293b;
+  --surface-bg: #1e293b;
+  --hover-bg: #334155;
+  
+  /* Game Colors */
+  --health-good: #10b981;
+  --health-warning: #f59e0b;
+  --health-danger: #ef4444;
+  --credits-color: #fbbf24;
+  --energy-color: #06b6d4;
+  --cargo-color: #8b5cf6;
+  
+  /* Shadow System */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  
+  /* Animation System */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.4s ease;
 }
 
 * {
@@ -29,10 +55,24 @@ body {
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: var(--space-xl);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* Responsive container adjustments */
+@media (max-width: 767px) {
+  .container {
+    padding: var(--space-md);
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .container {
+    padding: var(--space-lg);
+  }
 }
 
 header {

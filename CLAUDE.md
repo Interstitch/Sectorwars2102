@@ -1,9 +1,32 @@
-# CLAUDE.md - Self-Improving Development System v2.0
+# CLAUDE.md - Self-Improving Development System v3.0.1
 
 This file contains a self-improving, autonomous development methodology that evolves through intelligent reflection and adaptation. When copied to any project, it provides a framework for continuous improvement that learns from each iteration.
 
+## 🚨 CRITICAL CONTEXT REMINDERS
 
+These are essential facts that must NEVER be forgotten during any development session:
 
+1. **DOCKER ENVIRONMENT**: All services run in Docker containers via docker-compose
+   - Player Client: http://localhost:3000 (container: player-client)
+   - Admin UI: http://localhost:3001 (container: admin-ui)  
+   - Game Server: http://localhost:8080 (container: gameserver)
+   - Database: PostgreSQL via Neon (external)
+
+2. **DEVELOPMENT COMMANDS**: Always use docker-compose or the unified scripts
+   - Start all: `./dev-scripts/start-unified.sh`
+   - Individual service: `docker-compose up <service-name>`
+   - Check status: `docker-compose ps`
+   - NEVER run `npm run dev` directly - services are containerized
+
+3. **DUAL CLOUD ENVIRONMENTS**: Primary is GitHub Codespaces, secondary is Replit
+   - **Codespaces**: Docker containers + internal networking + port forwarding
+   - **Replit**: PM2 process manager (no Docker) + shared Neon database
+   - **Unified scripts**: `./dev-scripts/start-unified.sh` (auto-detects environment)
+
+4. **FILE SYSTEM**: 
+   - All edits are persistent across container restarts
+   - Code changes hot-reload within containers
+   - Database persists via external Neon service
 
 ## 🧬 System DNA - Core Directives
 
@@ -17,13 +40,13 @@ These directives form the unchangeable core that ensures continuous improvement:
 
 ## 🔄 Self-Improving Development Loop
 
-### Phase 0: SYSTEM HEALTH CHECK
+### PHASE 0: SYSTEM HEALTH CHECK
 **Purpose**: Ensure the development system itself is functioning optimally
 
 **Automated Actions**:
 ```bash
 # Run comprehensive health check using CLAUDE quality system
-python claude-quality-system.py --quick
+python CLAUDE_SYSTEM/claude-system.py --quick
 
 # Additional manual checks (if needed)
 echo "🔍 Running system health check..."
@@ -36,32 +59,22 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
 - If same warnings appear 3+ times → Create automated fix
 - If manual steps detected → Queue for automation
 
-### Phase 1: IDEATION & BRAINSTORMING
+### PHASE 1: IDEATION & BRAINSTORMING
 **Goal**: Generate and evaluate new features/improvements
 **Success Criteria**: At least 3 viable ideas documented with priority scores
 
 **Actions**:
-- Analyze current codebase state and identify enhancement opportunities
-  - Run `python claude-quality-system.py --analyze` for comprehensive analysis
-  - Check specific metrics: `npm run coverage` for test coverage
-  - Review automated suggestions from quality system reports
-- Research modern game development patterns and user experience improvements
-  - Check competing implementations and modern BBS revivals
-  - Research relevant design patterns (ECS, State Machines, etc.)
-- Brainstorm features that would make this implementation unique and engaging
-  - Consider modern multiplayer patterns (WebSocket, real-time sync)
-  - Think about mobile/web accessibility improvements
-  - Explore AI-driven gameplay enhancements
+- Analyze codebase: Run `python CLAUDE_SYSTEM/claude-system.py --analyze`, check E2E test coverage, review automated suggestions
+- Research modern game dev patterns, competing implementations, design patterns (ECS, State Machines)
+- Brainstorm unique features: multiplayer patterns (WebSocket), mobile/web accessibility, AI enhancements
 - Prioritize ideas based on impact, feasibility, and learning value
   - Use scoring matrix: Impact (1-5) × Feasibility (1-5) ÷ Effort (1-5)
-- Document ideas in `docs/ideas.md` with rationale and priority scores
+- Document ideas in `DOCS/brainstorm.md` with rationale and priority scores
+- **🤖 AUTOMATION STEP**: Review [`AUTOMATIC_IMPROVEMENT.md`](./AUTOMATIC_IMPROVEMENT.md) for automation opportunities that could enhance this iteration
 
-**Deliverables**:
-- Updated `docs/ideas.md` with timestamped entries
-- Priority matrix for next features
-- Research links and references
+**Deliverables**: Updated `DOCS/brainstorm.md`, priority matrix, research links
 
-### Phase 2: DETAILED PLANNING
+### PHASE 2: DETAILED PLANNING
 **Goal**: Create comprehensive implementation roadmap
 **Success Criteria**: Complete technical design with task breakdown
 
@@ -86,13 +99,9 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
   - Include testing tasks explicitly
 - Document plan in `docs/development-plans/YYYY-MM-DD-feature-name.md`
 
-**Deliverables**:
-- Technical design document
-- Task breakdown with estimates
-- API/Interface definitions
-- Risk assessment matrix
+**Deliverables**: Technical design document, task breakdown, API definitions, risk assessment
 
-### Phase 3: IMPLEMENTATION
+### PHASE 3: IMPLEMENTATION
 **Goal**: Execute the planned changes with high code quality
 **Duration**: Variable based on feature complexity
 **Success Criteria**: All tasks completed with passing tests
@@ -124,12 +133,12 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
   - Include issue/task references
 
 **Quality Gates**:
-- No TypeScript errors: `npm run typecheck`
-- Lint passes: `npm run lint`
-- Tests pass: `npm test`
-- Build succeeds: `npm run build`
+- No TypeScript errors: `docker-compose exec player-client npm run typecheck` (in container)
+- Lint passes: `docker-compose exec player-client npm run lint` (in container)
+- Tests pass: E2E tests via `npx playwright test` (host system)
+- Build succeeds: `docker-compose exec player-client npm run build` (in container)
 
-### Phase 4: TESTING & VALIDATION
+### PHASE 4: TESTING & VALIDATION
 **Goal**: Ensure reliability and correctness
 **Success Criteria**: >90% coverage, all tests passing
 
@@ -147,7 +156,7 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
   - Verify UI responsiveness
   - Test across different environments
 - Run full test suite and ensure 100% pass rate
-  - `npm test -- --coverage`
+  - E2E test coverage via `npx playwright test --reporter=html` (host system)
   - Fix any regressions immediately
   - Update snapshots if needed
 - Perform manual testing of new features
@@ -159,15 +168,9 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
   - Identify untested code paths
   - Plan additional tests if needed
 
-**Testing Checklist**:
-- [ ] Unit tests written and passing
-- [ ] Integration tests cover key workflows
-- [ ] E2E tests for user journeys
-- [ ] Coverage meets threshold (>90%)
-- [ ] Performance benchmarks acceptable
-- [ ] Security considerations tested
+**Testing Checklist**: Unit tests passing, integration tests for workflows, E2E user journeys, >90% coverage, performance benchmarks, security tested
 
-### Phase 5: DOCUMENTATION & DATA DEFINITION
+### PHASE 5: DOCUMENTATION & DATA DEFINITION
 **Goal**: Maintain comprehensive project knowledge
 **Success Criteria**: All documentation current and searchable
 
@@ -189,7 +192,7 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
   - Document algorithms and formulas
   - Add links to external references
 - Update this CLAUDE.md file with new commands or patterns
-  - Add new npm scripts discovered
+  - Add new container commands discovered
   - Document helpful command combinations
   - Update process based on learnings
 - Create feature documentation for new features in `DOCS/FEATURE_DOCS/`
@@ -197,22 +200,17 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
   - Include step-by-step instructions
   - Add troubleshooting sections
 
-**Documentation Standards**:
-- Use Markdown for all docs
-- Include table of contents for long documents
-- Add creation/update dates
-- Use mermaid diagrams for visualizations
-- Cross-reference related documents
+**Documentation Standards**: Markdown format, TOC for long docs, timestamps, mermaid diagrams, cross-references
 
-### Phase 6: REVIEW & REFLECTION
+### PHASE 6: REVIEW & REFLECTION
 **Goal**: Assess quality and plan next iteration
 **Success Criteria**: Actionable improvements identified and documented
 
 **Actions**:
 - Review code quality and identify refactoring opportunities
-  - Run comprehensive analysis: `python claude-quality-system.py --analyze`
-  - Check for automated healing opportunities: `python claude-quality-system.py --heal`
-  - Review pattern learning insights: `python claude-quality-system.py --learn`
+  - Run comprehensive analysis: `python CLAUDE_SYSTEM/claude-system.py --analyze`
+  - Check for automated healing opportunities: `python CLAUDE_SYSTEM/claude-system.py --heal`
+  - Review pattern learning insights: `python CLAUDE_SYSTEM/claude-system.py --learn`
   - Plan technical debt reduction based on system recommendations
 - Analyze test coverage and identify gaps
   - Review coverage reports
@@ -228,12 +226,12 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
   - What would we do differently?
   - What tools/patterns helped?
 - Update development priorities based on learnings
-  - Adjust priority scores in ideas backlog
+  - Adjust priority scores in brainstorm backlog
   - Consider technical debt items
   - Balance features vs. improvements
 - Prepare for next iteration by updating the ideas backlog
   - Archive completed ideas
-  - Add new ideas discovered during development
+  - Add new brainstorm items discovered during development
   - Re-evaluate priorities
 - **CRITICAL**: Review and improve this CLAUDE.md file itself
   - Track time spent in each phase
@@ -241,8 +239,9 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
   - Add discovered commands and patterns
   - Refine success criteria
   - Update estimates based on actuals
+- **🤖 AUTOMATION STEP**: Implement one improvement from [`AUTOMATIC_IMPROVEMENT.md`](./AUTOMATIC_IMPROVEMENT.md) based on patterns observed during this iteration
 - Create metrics dashboard
-  - Generate comprehensive reports: `python claude-quality-system.py --report`
+  - Generate comprehensive reports: `python CLAUDE_SYSTEM/claude-system.py --report`
   - Lines of code added/modified
   - Test coverage delta
   - Time per phase
@@ -272,144 +271,6 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
 - 
 ```
 
-
-
-### Enhanced Phase Structure
-
-Each phase now includes:
-1. **Entry Criteria**: Automated checks before phase begins
-2. **Intelligence Gathering**: What the system learns during execution
-3. **Adaptation Rules**: How the system modifies itself based on outcomes
-4. **Exit Criteria**: Validation before moving to next phase
-
-
-## 🧠 Intelligence Layer
-
-### Self-Awareness Protocol
-The system continuously monitors its own effectiveness through:
-
-```yaml
-self_monitoring:
-  performance_tracking:
-    - time_per_task_actual_vs_estimated
-    - error_rate_per_phase
-    - rework_frequency
-    - automation_opportunities_identified
-    
-  pattern_recognition:
-    - recurring_issues: track and auto-generate solutions
-    - successful_patterns: reinforce and document
-    - inefficiencies: flag for process modification
-    
-  adaptation_triggers:
-    - if error_rate > 10%: analyze root cause and modify process
-    - if time_overrun > 50%: adjust estimates and planning approach
-    - if rework > 2_iterations: add validation step
-```
-
-### Autonomous Decision Making
-The system makes its own decisions about:
-- Which tasks to prioritize based on dependency analysis
-- When to refactor based on complexity metrics
-- How to adjust time estimates based on historical data
-- What documentation to generate based on code changes
-
-
-
-
-
-## 🤖 Autonomous Improvement Engine
-
-### Pattern Learning System
-```typescript
-interface LearningEngine {
-  // Tracks every decision and outcome
-  recordDecision(context: Context, decision: Decision, outcome: Outcome): void;
-  
-  // Analyzes patterns in recorded data
-  identifyPatterns(): Pattern[];
-  
-  // Generates new rules based on patterns
-  generateRules(patterns: Pattern[]): ProcessRule[];
-  
-  // Updates the system with new rules
-  applyRules(rules: ProcessRule[]): void;
-}
-```
-
-### Automatic Process Optimization
-The system automatically:
-1. **Identifies Bottlenecks**: Measures time in each phase, flags slowdowns
-2. **Suggests Improvements**: Based on pattern analysis
-3. **Tests Changes**: Implements improvements in sandbox
-4. **Validates Results**: Measures if improvement was effective
-5. **Integrates or Reverts**: Keeps what works, discards what doesn't
-
-## 🧪 Experiment Framework
-
-### Continuous Experimentation
-```yaml
-experiments:
-  active:
-    - name: "parallel_testing"
-      hypothesis: "Running tests in parallel reduces Phase 4 by 40%"
-      method: "Split test suite into independent chunks"
-      success_criteria: "Time reduction > 30% with no flaky tests"
-      auto_rollout: true
-      
-    - name: "ai_code_review"
-      hypothesis: "AI pre-review reduces human review time"
-      method: "Run AI analysis before human review"
-      success_criteria: "50% fewer issues in human review"
-      auto_rollout: false
-```
-
-### Learning from Experiments
-- Successful experiments automatically integrate into main process
-- Failed experiments generate "lessons learned" documentation
-- All experiments tracked in `experiments/` directory
-
-
-
-## 🔮 Predictive Capabilities
-
-### Future State Modeling
-The system predicts:
-- **Complexity Growth**: Where the codebase will become difficult
-- **Performance Bottlenecks**: Based on current patterns
-- **Maintenance Burden**: Which areas will need most attention
-- **Skill Gaps**: What knowledge will be needed next
-
-### Proactive Recommendations
-Based on predictions, the system proactively:
-- Suggests refactoring before complexity threshold
-- Recommends documentation for high-change areas
-- Identifies training needs before they're critical
-- Plans for scaling issues before they occur
-
-## 🌱 Self-Healing Mechanisms
-
-### Automatic Error Recovery
-```yaml
-error_recovery:
-  build_failures:
-    - identify_last_working_commit
-    - analyze_diff_for_issues
-    - attempt_automatic_fix
-    - create_fix_documentation
-    
-  test_failures:
-    - categorize_failure_type
-    - check_for_flaky_patterns
-    - apply_known_fixes
-    - generate_debugging_guide
-    
-  deployment_issues:
-    - rollback_if_critical
-    - analyze_root_cause
-    - update_deployment_checklist
-    - strengthen_pre_deployment_tests
-```
 
 
 
@@ -517,147 +378,105 @@ docker-compose up
 ### Working with Individual Services
 
 ```bash
-# Game API Server
-cd services/gameserver
-poetry install  # Install dependencies locally
-poetry run uvicorn src.main:app --reload  # Run development server
+# Game API Server (CONTAINERIZED - use docker-compose)
+docker-compose up gameserver  # Start container
+# OR access running container:
+docker-compose exec gameserver poetry run alembic upgrade head  # Run migrations
+docker-compose exec gameserver poetry run pytest  # Run tests
 
-# Player Client
-cd services/player-client
-npm install
-npm run dev  # Run development server
-npm run dev:replit  # Run with host-check disabled for Replit
+# Player Client (CONTAINERIZED - use docker-compose)
+docker-compose up player-client  # Start container
+# OR access running container:
+docker-compose exec player-client npm run lint    # Lint in container
+docker-compose exec player-client npm run build   # Build in container
 
-# Admin UI
-cd services/admin-ui
-npm install
-npm run dev
+# Admin UI (CONTAINERIZED - use docker-compose)
+docker-compose up admin-ui  # Start container
 ```
 
 ### Database Management
 
 ```bash
-# Run migrations manually
-cd services/gameserver
-poetry run alembic upgrade head
+# Run migrations manually (IN CONTAINER)
+docker-compose exec gameserver poetry run alembic upgrade head
 
-# Generate a new migration after model changes
-poetry run alembic revision --autogenerate -m "Description of changes"
+# Generate a new migration after model changes (IN CONTAINER)
+docker-compose exec gameserver poetry run alembic revision --autogenerate -m "Description of changes"
 
-# Rollback to a previous version
-poetry run alembic downgrade -1  # Go back one revision
-poetry run alembic downgrade <revision_id>  # Go to specific revision
+# Rollback to a previous version (IN CONTAINER)
+docker-compose exec gameserver poetry run alembic downgrade -1  # Go back one revision
+docker-compose exec gameserver poetry run alembic downgrade <revision_id>  # Go to specific revision
 ```
 
 ### Testing
 
+#### Gameserver Tests (Backend - IN CONTAINER)
 ```bash
-# Run backend tests
-cd services/gameserver
-poetry run pytest
-poetry run pytest -v  # Verbose mode
+docker-compose exec gameserver poetry run pytest              # All backend tests
+docker-compose exec gameserver poetry run pytest tests/unit/ # Unit tests only
+docker-compose exec gameserver poetry run pytest tests/integration/ # Integration tests
+```
 
-# Run frontend E2E tests
-cd services/player-client
-npx cypress run
+#### E2E Tests (Cross-Service - HOST SYSTEM)
+```bash
+npx playwright test -c e2e_tests/playwright.config.ts        # All E2E tests
+npx playwright test --project=player-tests                   # Player Client E2E
+npx playwright test --project=admin-tests                    # Admin UI E2E
+npx playwright test --ui                                     # Interactive mode
 ```
 
 ### Linting & Type Checking
 
 ```bash
-# Backend linting
-cd services/gameserver
-poetry run ruff check .
+# Backend linting (IN CONTAINER)
+docker-compose exec gameserver poetry run ruff check .
 
-# Backend type checking
-cd services/gameserver
-poetry run mypy .
+# Backend type checking (IN CONTAINER)
+docker-compose exec gameserver poetry run mypy .
 
-# Frontend linting
-cd services/player-client
-npm run lint
+# Frontend linting (IN CONTAINER)
+docker-compose exec player-client npm run lint
 
-# Build frontend (includes type checking)
-cd services/player-client
-npm run build
+# Build frontend with type checking (IN CONTAINER)
+docker-compose exec player-client npm run build
 ```
 
 
-### Development Loop Commands
+### 6-Phase Development Loop Commands
 
-#### Initial Setup (Run Once)
+**CRITICAL**: Always follow the complete 6-phase Self-Improving Development Loop defined above. These commands support each phase:
+
+#### PHASE 0: SYSTEM HEALTH CHECK
 ```bash
-# Initialize project structure
-npm init -y
-npm install typescript @types/node jest @types/jest ts-jest
-npm install --save-dev eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
-npm install --save-dev prettier eslint-config-prettier eslint-plugin-prettier
-npm install --save-dev husky lint-staged
-npm install --save-dev madge # For circular dependency detection
-npm install --save-dev jest-html-reporter # For better test reports
-
-# Setup TypeScript
-npx tsc --init
-
-# Setup project structure
-mkdir -p src/{core,api,data,ui,utils} 
-mkdir -p tests/{unit,integration,e2e}
-mkdir -p docs/{ideas,development-plans,api,data-models,user-guides,retrospectives}
-mkdir -p .github/workflows
-
-# Initialize git hooks
-npx husky install
-npx husky add .husky/pre-commit "npx lint-staged"
-npx husky add .husky/pre-push "npm test"
+python CLAUDE_SYSTEM/claude-system.py --quick   # CLAUDE quality health check (HOST)
+docker-compose ps          # Verify services running (HOST)
 ```
 
-#### Daily Development Loop
+#### PHASE 3: IMPLEMENTATION QUALITY GATES
 ```bash
-# 0. Pre-development checks (CRITICAL)
-python claude-quality-system.py --quick   # CLAUDE quality health check
-docker-compose ps          # Verify database is running
-npm test                   # Ensure clean starting state
-
-# 1. Start development iteration
-npm run server             # Start server with database
-npm test -- --watch        # Run tests in watch mode
-
-# 2. Code quality checks
-npm run lint               # Check code style
-npm run lint:fix           # Auto-fix lint issues
-npm run typecheck          # Verify TypeScript types
-npm test                   # Run full test suite
-npm run test:coverage      # Run tests with coverage report
-npm run build              # Verify build succeeds
-
-# 3. Git workflow
-git status                 # Check current changes
-git diff                   # Review changes
-git add -p                 # Stage changes interactively
-git commit -m "feat: descriptive commit message"
-git push origin main
-
-# 4. Feature branch workflow
-git checkout -b feature/feature-name
-# ... make changes ...
-git push -u origin feature/feature-name
-gh pr create --fill        # Create PR with auto-filled description
+docker-compose exec player-client npm run lint      # Check code style (CONTAINER)
+docker-compose exec player-client npm run typecheck # Verify TypeScript types (CONTAINER)
+docker-compose exec player-client npm run build     # Verify build succeeds (CONTAINER)
 ```
 
-#### Utility Commands
+#### PHASE 4: TESTING & VALIDATION
 ```bash
-# Development helpers
-npm run todo:list          # List all TODO comments in codebase
-npm run deps:check         # Check for outdated dependencies
-npm run deps:update        # Interactive dependency updates
-npm run bundle:analyze     # Analyze bundle size
-npm run docs:serve         # Serve documentation locally
+# Backend tests (IN CONTAINER)
+docker-compose exec gameserver poetry run pytest
 
-# Performance analysis
-npm run perf:cpu           # CPU profiling
-npm run perf:memory        # Memory usage analysis
-npm run perf:startup       # Startup time analysis
+# E2E tests (HOST SYSTEM)
+npx playwright test -c e2e_tests/playwright.config.ts
+npx playwright test --reporter=html  # Generate test coverage
 ```
+
+#### PHASE 6: REVIEW & REFLECTION (GIT WORKFLOW)
+```bash
+git status && git diff     # Review changes (HOST)
+git add -p && git commit   # Stage and commit (HOST)
+git push origin main       # Deploy changes (HOST)
+```
+
+**⚠️ WARNING**: These are supporting commands only. Always complete all 6 phases of the Self-Improving Development Loop for proper methodology adherence.
 
 ## Code Quality Standards
 
@@ -679,19 +498,17 @@ npm run perf:startup       # Startup time analysis
 
 ## Development Environments
 
-The project is designed to work across three development environments:
-1. **Local Development**: MacBook with Cursor IDE and Docker Desktop
-2. **GitHub Codespaces**: Remote development with VS Code
-3. **Replit**: iPad-compatible development environment
-
-All environments use the same Neon PostgreSQL database for consistency. Only Local and Codespace use Docker. Replit uses PM2 to run all components within a single Replit app.
+**Primary: GitHub Codespaces** - Docker-based with VS Code
+**Secondary: Replit** - PM2-based for iPad development
+**Shared: Neon PostgreSQL** - External database accessible from both environments
 
 ## Service Architecture / Tech Stack
 
 - **Node.js**
 - **Containerization**: Docker with Docker Compose
 - **Database**: PostgreSQL 17 via Neon (SQLAlchemy ORM)
-- **Testing**: FastAPI framework
+- **Backend Testing**: Python pytest (unit & integration tests)
+- **E2E Testing**: Playwright framework (cross-service validation)
 
 The project is split into three main services:
 
@@ -723,30 +540,31 @@ The project is split into three main services:
 
 ### Most Used Commands
 ```bash
-# Development
-npm run dev:start && npm test -- --watch  # Start dev session
-npm run lint:fix && npm test               # Quick quality check
+# Development (HOST)
+./dev-scripts/start-unified.sh            # Start all services
+npx playwright test                        # Run E2E tests
 git add -p && git commit                   # Interactive commit
 
-# Quality System (Critical)
-python claude-quality-system.py --quick   # Quick health check (Phase 0)
-python claude-quality-system.py --analyze # Full analysis (Phase 1, 6)
-python claude-quality-system.py --heal    # Auto-fix issues (Phase 6)
-python claude-quality-system.py --report  # Generate metrics (Phase 6)
+# Quality System (HOST)
+python CLAUDE_SYSTEM/claude-system.py --quick   # Quick health check (Phase 0)
+python CLAUDE_SYSTEM/claude-system.py --analyze # Full analysis (Phase 1, 6)
+python CLAUDE_SYSTEM/claude-system.py --heal    # Auto-fix issues (Phase 6)
+python CLAUDE_SYSTEM/claude-system.py --report  # Generate metrics (Phase 6)
 
-# Analysis
-npm run test:coverage                      # Test coverage only
-npm run deps:check && npm audit            # Dependency health
+# Container Operations (IN CONTAINERS)
+docker-compose exec player-client npm run lint      # Code style check
+docker-compose exec player-client npm run build     # Build frontend
+docker-compose exec admin-ui npm run lint           # Admin UI lint
 
-# Documentation
-npm run docs:serve                         # View docs locally
+# Analysis (HOST)
+npx playwright test --reporter=html        # Test coverage report
+docker-compose logs player-client          # Check container logs
 ```
 
-### Common Patterns
-- **Feature Development**: Phase 0→1→2→3→4→5→6 (full cycle)
-- **Bug Fix**: Phase 0→3→4→6 (implementation focused)
-- **Refactoring**: Phase 0→2→3→4→6 (planning critical)
-- **Documentation**: Phase 0→5→6 (knowledge capture)
+### Development Patterns
+- **Feature Development**: Full 6-phase cycle
+- **Bug Fix**: Phases 0→3→4→6 (implementation focused)
+- **Refactoring**: Phases 0→2→3→4→6 (planning critical)
 
 ### Success Indicators
 ✅ All tests passing

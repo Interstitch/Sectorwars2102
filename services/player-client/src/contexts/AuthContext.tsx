@@ -49,18 +49,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
     const windowUrl = window.location.origin;
     console.log('Current window URL:', windowUrl);
 
-    // For GitHub Codespaces, use direct URL to gameserver
+    // For GitHub Codespaces, use proxy to avoid authentication issues with external URLs
     if (windowUrl.includes('.app.github.dev')) {
-      // Extract the codespace name from the hostname
-      const hostname = window.location.hostname;
-      const parts = hostname.split('.');
-      const hostnamePart = parts[0]; // e.g., super-duper-carnival-qppjvq94q9vcxwqp-3000
-      const lastDashIndex = hostnamePart.lastIndexOf('-');
-      const codespaceName = lastDashIndex !== -1 ? hostnamePart.substring(0, lastDashIndex) : hostnamePart;
-      
-      const directUrl = `https://${codespaceName}-8080.app.github.dev`;
-      console.log('Using direct gameserver URL for Codespaces:', directUrl);
-      return directUrl;
+      console.log('GitHub Codespaces detected - using proxy for API calls');
+      return '';  // Use proxy through Vite dev server
     }
 
     // Local development - still use direct URL to avoid Docker network issues

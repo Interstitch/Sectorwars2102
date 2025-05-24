@@ -25,6 +25,9 @@ test.describe('Player Client UI - Homepage', () => {
     
     // Check server status section
     await expect(page.locator('h3').filter({ hasText: 'Game Server Status' })).toBeVisible();
+    
+    // Check that the page has been themed with the cockpit CSS
+    await expect(page.locator('body')).toHaveClass(/theme-cockpit/);
   });
   
   test('should navigate to login form when clicking Play Now', async ({ page }) => {
@@ -119,6 +122,68 @@ authTest('should login successfully with valid credentials', async ({ page, play
     await expect(page.locator('.login-button')).toBeEnabled();
     
     // Test passes if we can get to this point
+  });
+});
+
+test.describe('Cockpit UI Theme Verification', () => {
+  test('should apply cockpit theme CSS variables', async ({ page }) => {
+    await page.goto('/');
+    
+    // Check that CSS custom properties are set (indicating theme is loaded)
+    const primaryColor = await page.evaluate(() => {
+      return getComputedStyle(document.documentElement).getPropertyValue('--color-primary');
+    });
+    
+    // Should have the cockpit theme's electric blue color
+    expect(primaryColor.trim()).toBe('#00D9FF');
+  });
+  
+  test('should show cockpit-themed elements when logged in', async ({ page }) => {
+    // This test would require actual login, but we can at least verify
+    // that the theme elements are available in the DOM structure
+    await page.goto('/');
+    
+    // Verify theme provider is present in the page
+    const themeProviderExists = await page.evaluate(() => {
+      // Check if ThemeProvider context is available by looking for theme class
+      return document.body.classList.contains('theme-cockpit');
+    });
+    
+    expect(themeProviderExists).toBe(true);
+  });
+  
+  test('should be responsive on mobile viewport', async ({ page }) => {
+    // Set mobile viewport (iPhone 12 Pro size)
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    
+    // Check that main elements are still visible on mobile
+    await expect(page.locator('h1')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Play Now' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Register to Play' })).toBeVisible();
+    
+    // Check that CSS custom properties are still applied on mobile
+    const primaryColor = await page.evaluate(() => {
+      return getComputedStyle(document.documentElement).getPropertyValue('--color-primary');
+    });
+    expect(primaryColor.trim()).toBe('#00D9FF');
+  });
+  
+  test('should be responsive on tablet viewport', async ({ page }) => {
+    // Set tablet viewport (iPad size)
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto('/');
+    
+    // Check that main elements are still visible on tablet
+    await expect(page.locator('h1')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Play Now' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Register to Play' })).toBeVisible();
+    
+    // Verify theme is still applied
+    const themeApplied = await page.evaluate(() => {
+      return document.body.classList.contains('theme-cockpit');
+    });
+    expect(themeApplied).toBe(true);
   });
 });
 

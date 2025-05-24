@@ -103,6 +103,191 @@
   padding: 20px;
 }
 
+/* Enhanced Table Header Controls */
+.table-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.5rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border: 1px solid rgba(106, 90, 205, 0.3);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.table-info {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.result-count {
+  color: #e6e6fa;
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sort-select {
+  padding: 0.5rem 0.75rem;
+  border: 2px solid rgba(106, 90, 205, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(4px);
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8"><path fill="%23ffffff" d="M6 8L0 2h12z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  padding-right: 2rem;
+  min-width: 160px;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: #6a5acd;
+  box-shadow: 0 0 0 3px rgba(106, 90, 205, 0.2);
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.sort-select:hover {
+  border-color: rgba(106, 90, 205, 0.6);
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.sort-select option {
+  background: #2c1810;
+  color: white;
+  padding: 0.5rem;
+}
+
+.sort-order-btn {
+  padding: 0.5rem 0.75rem;
+  border: 2px solid rgba(106, 90, 205, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(4px);
+  font-weight: 600;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sort-order-btn:hover {
+  border-color: rgba(106, 90, 205, 0.6);
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.sort-order-btn:focus {
+  outline: none;
+  border-color: #6a5acd;
+  box-shadow: 0 0 0 3px rgba(106, 90, 205, 0.2);
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.select-all {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #e6e6fa;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 2px solid rgba(106, 90, 205, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(4px);
+  user-select: none;
+}
+
+.select-all:hover {
+  border-color: rgba(106, 90, 205, 0.5);
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.select-all input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid rgba(106, 90, 205, 0.6);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  appearance: none;
+  position: relative;
+}
+
+.select-all input[type="checkbox"]:checked {
+  background: linear-gradient(135deg, #6a5acd, #9370db);
+  border-color: #6a5acd;
+}
+
+.select-all input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.select-all input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(106, 90, 205, 0.3);
+}
+
+@media (max-width: 768px) {
+  .table-header {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .table-info {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  
+  .sort-controls {
+    justify-content: center;
+  }
+  
+  .table-actions {
+    justify-content: center;
+  }
+}
+
 .players-table-container {
   overflow-x: auto;
 }

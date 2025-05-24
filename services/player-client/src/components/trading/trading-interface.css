@@ -1,0 +1,624 @@
+/* =============================================================================
+   TRADING INTERFACE STYLES
+============================================================================= */
+
+.trading-interface {
+  background: var(--container-bg);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.trading-header {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  padding: var(--space-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.trading-header h2 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: 600;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.status-indicator {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 6px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.status-indicator.connected {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--accent-color);
+  border: 1px solid var(--accent-color);
+}
+
+.status-indicator.disconnected {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.trading-content {
+  padding: var(--space-lg);
+}
+
+/* Error Messages */
+.error-message {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: #ef4444;
+}
+
+.error-icon {
+  font-size: var(--text-lg);
+}
+
+/* Not Docked State */
+.not-docked-message {
+  text-align: center;
+  padding: var(--space-3xl) var(--space-lg);
+  color: var(--text-color);
+}
+
+.message-icon {
+  font-size: 4rem;
+  margin-bottom: var(--space-lg);
+}
+
+.not-docked-message h3 {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-md);
+  color: var(--primary-color);
+}
+
+.not-docked-message p {
+  font-size: var(--text-lg);
+  opacity: 0.8;
+  margin-bottom: var(--space-xl);
+}
+
+.available-ports {
+  background: var(--bg-color);
+  border-radius: 8px;
+  padding: var(--space-lg);
+  border: 1px solid var(--border-color);
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.available-ports h4 {
+  margin-bottom: var(--space-md);
+  color: var(--primary-color);
+}
+
+.available-ports ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.port-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.port-item:last-child {
+  border-bottom: none;
+}
+
+.port-name {
+  font-weight: 600;
+}
+
+.port-type {
+  opacity: 0.7;
+  font-size: var(--text-sm);
+}
+
+/* Port Selection */
+.port-selection {
+  margin-bottom: var(--space-lg);
+}
+
+.port-selection label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+  color: var(--primary-color);
+}
+
+.port-selection select {
+  width: 100%;
+  padding: var(--space-md);
+  background: var(--bg-color);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-color);
+  font-size: var(--text-base);
+  transition: border-color var(--transition-normal);
+}
+
+.port-selection select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Trade Mode Selection */
+.trade-mode-selection {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.mode-button {
+  flex: 1;
+  padding: var(--space-md);
+  background: var(--bg-color);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-color);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.mode-button:hover {
+  border-color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.mode-button.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+/* Market Information */
+.market-info {
+  margin-bottom: var(--space-lg);
+}
+
+.market-info h3 {
+  font-size: var(--text-xl);
+  margin-bottom: var(--space-md);
+  color: var(--primary-color);
+}
+
+.port-details {
+  display: flex;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  padding: var(--space-md);
+  background: var(--bg-color);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.port-details span {
+  font-size: var(--text-sm);
+  opacity: 0.8;
+}
+
+/* Resources Grid */
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.resource-card {
+  background: var(--bg-color);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: var(--space-md);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+}
+
+.resource-card:hover:not(.disabled) {
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.resource-card.selected {
+  border-color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.resource-card.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.resource-icon {
+  font-size: var(--text-3xl);
+  text-align: center;
+  margin-bottom: var(--space-sm);
+}
+
+.resource-name {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: var(--space-sm);
+  color: var(--primary-color);
+}
+
+.resource-prices {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+  font-size: var(--text-sm);
+}
+
+.buy-price {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.sell-price {
+  color: var(--credits-color);
+  font-weight: 600;
+}
+
+.resource-quantity {
+  text-align: center;
+  font-size: var(--text-sm);
+  opacity: 0.8;
+}
+
+/* Trade Configuration */
+.trade-configuration {
+  background: var(--bg-color);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  padding: var(--space-lg);
+}
+
+.trade-configuration h3 {
+  font-size: var(--text-xl);
+  margin-bottom: var(--space-lg);
+  color: var(--primary-color);
+  text-align: center;
+}
+
+.quantity-selector {
+  margin-bottom: var(--space-lg);
+}
+
+.quantity-selector label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+  color: var(--primary-color);
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.quantity-controls button {
+  width: 40px;
+  height: 40px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition-normal);
+}
+
+.quantity-controls button:hover:not(:disabled) {
+  background: var(--secondary-color);
+}
+
+.quantity-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quantity-controls input {
+  flex: 1;
+  padding: var(--space-sm);
+  text-align: center;
+  background: var(--container-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-color);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.quantity-controls input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.max-button {
+  background: var(--accent-color) !important;
+  padding: 0 var(--space-md) !important;
+  width: auto !important;
+}
+
+/* Trade Calculation */
+.trade-calculation {
+  background: var(--container-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  padding: var(--space-md);
+}
+
+.calculation-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.calculation-row:last-child {
+  border-bottom: none;
+}
+
+.calculation-row.total {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--primary-color);
+  border-top: 2px solid var(--border-color);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-md);
+}
+
+.calculation-row.error {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  padding: var(--space-sm);
+  border-radius: 4px;
+}
+
+.execute-trade-button {
+  width: 100%;
+  padding: var(--space-md);
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  margin-top: var(--space-md);
+}
+
+.execute-trade-button:hover:not(:disabled) {
+  background: #0d9488;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.execute-trade-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Confirmation Dialog */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-md);
+}
+
+.confirmation-dialog {
+  background: var(--container-bg);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  padding: var(--space-xl);
+  max-width: 500px;
+  width: 100%;
+  box-shadow: var(--shadow-xl);
+}
+
+.confirmation-dialog h3 {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-lg);
+  color: var(--primary-color);
+  text-align: center;
+}
+
+.trade-summary {
+  background: var(--bg-color);
+  border-radius: 8px;
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  border: 1px solid var(--border-color);
+}
+
+.trade-summary p {
+  margin-bottom: var(--space-sm);
+  font-size: var(--text-base);
+}
+
+.dialog-buttons {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.dialog-buttons button {
+  flex: 1;
+  padding: var(--space-md);
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.dialog-buttons button:first-child {
+  background: var(--bg-color);
+  color: var(--text-color);
+  border: 2px solid var(--border-color);
+}
+
+.dialog-buttons button:first-child:hover {
+  border-color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.confirm-button {
+  background: var(--accent-color) !important;
+  color: white !important;
+  border: 2px solid var(--accent-color) !important;
+}
+
+.confirm-button:hover:not(:disabled) {
+  background: #0d9488 !important;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.confirm-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* =============================================================================
+   MOBILE RESPONSIVE STYLES
+============================================================================= */
+
+@media (max-width: 767px) {
+  .trading-interface {
+    margin: 0;
+    border-radius: 0;
+    min-height: 100vh;
+  }
+
+  .trading-header {
+    padding: var(--space-md);
+    flex-direction: column;
+    gap: var(--space-sm);
+    text-align: center;
+  }
+
+  .trading-header h2 {
+    font-size: var(--text-xl);
+  }
+
+  .trading-content {
+    padding: var(--space-md);
+  }
+
+  .resources-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
+  }
+
+  .resource-card {
+    padding: var(--space-sm);
+  }
+
+  .port-details {
+    flex-direction: column;
+    gap: var(--space-sm);
+    text-align: center;
+  }
+
+  .trade-mode-selection {
+    flex-direction: column;
+  }
+
+  .quantity-controls {
+    flex-wrap: wrap;
+  }
+
+  .quantity-controls input {
+    min-width: 120px;
+  }
+
+  .confirmation-dialog {
+    margin: var(--space-md);
+    padding: var(--space-lg);
+  }
+
+  .dialog-buttons {
+    flex-direction: column;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .resources-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .trading-content {
+    padding: var(--space-lg);
+  }
+}
+
+/* =============================================================================
+   ACCESSIBILITY IMPROVEMENTS
+============================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .resource-card:hover {
+    transform: none;
+  }
+
+  .execute-trade-button:hover {
+    transform: none;
+  }
+
+  .confirm-button:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .resource-card {
+    border-width: 3px;
+  }
+
+  .status-indicator {
+    border-width: 2px;
+  }
+}

@@ -1,216 +1,286 @@
+/* Cockpit-themed Game Dashboard */
+
 .game-dashboard {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--space-lg);
+  height: 100%;
+  animation: hud-boot 1s ease-out;
 }
 
+/* Dashboard Header */
 .dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-lg);
+  padding: var(--space-lg);
+  border-radius: var(--border-radius-lg);
 }
 
-.dashboard-header h2 {
-  margin: 0;
-  color: #4d8aff;
-  font-size: 1.75rem;
-}
-
-.player-welcome {
-  font-size: 1.1rem;
-  color: #ccd6f6;
-}
-
-.error-message {
-  background-color: rgba(239, 68, 68, 0.15);
-  border: 1px solid #ef4444;
-  color: #ef4444;
-  padding: 0.75rem 1rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
-}
-
-.result-message {
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
-}
-
-.success-message {
-  background-color: rgba(16, 185, 129, 0.1);
-  border: 1px solid #10b981;
-  color: #d1fae5;
-}
-
-.result-message h4 {
-  margin: 0 0 0.5rem 0;
-  color: #10b981;
-}
-
-.result-message p {
-  margin: 0 0 0.5rem 0;
-}
-
-.encounter-info {
-  margin-top: 0.5rem;
-}
-
-.encounter-info h5 {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.9rem;
-  color: #ccd6f6;
-}
-
-.encounter-info ul {
-  margin: 0;
-  padding-left: 1.5rem;
-  font-size: 0.9rem;
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
-.current-location, .sector-objects, .navigation {
-  background-color: #131b2c;
-  border-radius: 8px;
-  padding: 1.25rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.current-location h3, .sector-objects h3, .navigation h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  color: #4d8aff;
-  font-size: 1.2rem;
-  border-bottom: 1px solid #213252;
-  padding-bottom: 0.5rem;
-}
-
-.sector-details h4 {
-  margin: 0 0 0.75rem 0;
-  font-size: 1.1rem;
-  color: #e6f1ff;
-}
-
-.sector-type-badge {
-  display: inline-block;
-  background-color: #213252;
-  color: #8892b0;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  margin-bottom: 1rem;
-  text-transform: capitalize;
-}
-
-.sector-hazard-info, .sector-radiation-info {
+.commander-status {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.hazard-label, .radiation-label, .features-label {
+  gap: var(--space-sm);
+  font-family: var(--font-monospace);
   font-size: 0.9rem;
-  color: #8892b0;
-  min-width: 110px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.hazard-level, .radiation-level {
-  font-size: 0.85rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  font-weight: 500;
+.status-text {
+  color: var(--color-success);
+  text-shadow: 0 0 10px rgba(0, 255, 127, 0.5);
 }
 
-.hazard-level.level-1, .radiation-level.level-1 {
-  background-color: rgba(34, 197, 94, 0.2);
-  color: #22c55e;
-}
-
-.hazard-level.level-2, .radiation-level.level-2 {
-  background-color: rgba(234, 179, 8, 0.2);
-  color: #eab308;
-}
-
-.hazard-level.level-3, .radiation-level.level-3 {
-  background-color: rgba(249, 115, 22, 0.2);
-  color: #f97316;
-}
-
-.hazard-level.level-4, .radiation-level.level-4 {
-  background-color: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-}
-
-.hazard-level.level-5, .radiation-level.level-5 {
-  background-color: rgba(239, 68, 68, 0.3);
-  color: #ef4444;
-}
-
-.special-features {
-  display: flex;
-  margin-bottom: 0.75rem;
-}
-
-.features-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.feature-badge {
-  background-color: #1c2439;
-  color: #ccd6f6;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  text-transform: capitalize;
-}
-
-.sector-description {
-  font-size: 0.9rem;
-  color: #8892b0;
-  margin-top: 1rem;
-  line-height: 1.5;
-}
-
-.unknown-location, .empty-sector, .no-exits {
-  color: #64748b;
-  font-style: italic;
-  text-align: center;
-  padding: 2rem 0;
-}
-
-.objects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-}
-
-.ports-list h4, .planets-list h4 {
-  margin: 0 0 0.75rem 0;
-  color: #ccd6f6;
+/* Alert Messages */
+.alert-header {
+  font-family: var(--font-primary);
+  font-weight: 600;
   font-size: 1rem;
+  margin-bottom: var(--space-sm);
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.ports-list ul, .planets-list ul {
+.alert-message {
+  font-family: var(--font-secondary);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.encounter-log {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.log-header {
+  font-family: var(--font-monospace);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  margin-bottom: var(--space-sm);
+  letter-spacing: 0.5px;
+}
+
+.encounter-list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-xs);
 }
 
-.port-item, .planet-item {
-  background-color: #19223a;
-  border-radius: 6px;
-  padding: 0.75rem;
+.encounter-item {
+  font-family: var(--font-monospace);
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  padding: var(--space-xs) var(--space-sm);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border-left: 3px solid var(--color-warning);
+}
+
+/* Tab Content */
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.overview-tab,
+.trading-tab,
+.navigation-tab,
+.players-tab {
+  flex: 1;
+  padding: var(--space-lg);
+  overflow-y: auto;
+}
+
+.trading-tab {
+  padding: 0;
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: var(--space-lg);
+  height: 100%;
+}
+
+/* Current Location Section */
+.current-location {
+  animation: power-up 0.8s ease-out;
+}
+
+.sector-details h4 {
+  margin: 0 0 var(--space-md) 0;
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
+}
+
+.sector-type-badge {
+  display: inline-block;
+  background: linear-gradient(145deg, rgba(0, 217, 255, 0.2), rgba(0, 217, 255, 0.1));
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-family: var(--font-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--space-lg);
+  box-shadow: 0 0 10px rgba(0, 217, 255, 0.3);
+}
+
+.sector-hazard-info,
+.sector-radiation-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(255, 68, 68, 0.1);
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  border-radius: var(--border-radius);
+}
+
+.hazard-label,
+.radiation-label,
+.features-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hazard-level,
+.radiation-level {
+  font-family: var(--font-monospace);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 4px;
+  color: var(--color-error);
+  background: rgba(255, 68, 68, 0.2);
+  border: 1px solid var(--color-error);
+}
+
+.special-features {
+  margin-bottom: var(--space-md);
+}
+
+.features-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.feature-badge {
+  background: linear-gradient(145deg, rgba(0, 255, 127, 0.2), rgba(0, 255, 127, 0.1));
+  color: var(--color-success);
+  border: 1px solid var(--color-success);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-family: var(--font-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 8px rgba(0, 255, 127, 0.3);
+}
+
+.sector-description {
+  font-family: var(--font-secondary);
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-lg);
+  line-height: 1.6;
+  padding: var(--space-md);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--border-radius);
+  border-left: 3px solid var(--color-primary);
+}
+
+.unknown-location,
+.empty-sector,
+.no-exits {
+  color: var(--color-text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: var(--space-3xl) var(--space-lg);
+  font-family: var(--font-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+
+/* Sector Objects Section */
+.sector-objects {
+  animation: power-up 1s ease-out;
+}
+
+.objects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-lg);
+}
+
+.ports-list h4,
+.planets-list h4 {
+  margin: 0 0 var(--space-lg) 0;
+  color: var(--color-primary);
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-sm);
+}
+
+.ports-list ul,
+.planets-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.port-item,
+.planet-item {
+  background: linear-gradient(145deg, rgba(26, 26, 34, 0.8), rgba(19, 27, 44, 0.8));
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: var(--space-md);
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.port-item::before,
+.planet-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  opacity: 0.3;
+}
+
+.port-item:hover,
+.planet-item:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--glow-primary);
+  transform: translateY(-2px);
 }
 
 .port-item {
@@ -219,164 +289,457 @@
   align-items: center;
 }
 
-.port-name, .planet-name {
-  font-weight: 500;
-  font-size: 1rem;
-  color: #e6f1ff;
-  margin-bottom: 0.25rem;
+.port-details,
+.planet-details {
+  flex: 1;
 }
 
-.port-type, .planet-type {
+.port-name,
+.planet-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text);
+  margin-bottom: var(--space-xs);
+  font-family: var(--font-primary);
+  text-transform: uppercase;
+}
+
+.port-type,
+.planet-type {
   font-size: 0.85rem;
-  color: #8892b0;
-  margin-bottom: 0.2rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-xs);
+  text-transform: uppercase;
 }
 
 .port-faction {
   font-size: 0.8rem;
-  color: #4d8aff;
+  color: var(--color-warning);
+  font-family: var(--font-monospace);
+  text-transform: uppercase;
 }
 
 .planet-status {
   font-size: 0.85rem;
-  color: #8892b0;
-  margin-bottom: 0.2rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-xs);
+  text-transform: uppercase;
 }
 
 .planet-habitability {
   font-size: 0.85rem;
-  color: #10b981;
+  color: var(--color-success);
+  font-family: var(--font-monospace);
 }
 
 .dock-button {
-  background-color: #213252;
-  color: #4d8aff;
-  border: 1px solid #4d8aff;
-  border-radius: 4px;
-  padding: 0.3rem 0.75rem;
+  margin-left: var(--space-md);
   font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s;
+  padding: var(--space-sm) var(--space-lg);
 }
 
-.dock-button:hover {
-  background-color: #2c3e50;
-}
-
-.dock-button:disabled {
-  background-color: #131b2c;
-  color: #64748b;
-  border-color: #213252;
-  cursor: not-allowed;
+/* Navigation Section */
+.navigation {
+  animation: power-up 1.2s ease-out;
 }
 
 .navigation-options {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--space-xl);
 }
 
-.warp-options h4, .tunnel-options h4 {
-  margin: 0 0 0.75rem 0;
+.warp-options h4,
+.tunnel-options h4 {
+  margin: 0 0 var(--space-lg) 0;
+  font-family: var(--font-heading);
   font-size: 1rem;
-  color: #ccd6f6;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-sm);
 }
 
-.warp-grid, .tunnel-grid {
+.warp-grid,
+.tunnel-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-md);
 }
 
-.warp-button, .tunnel-button {
+.warp-movement,
+.tunnel-movement {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background-color: #19223a;
-  border: none;
-  border-radius: 6px;
-  padding: 0.75rem;
-  color: #ccd6f6;
-  cursor: pointer;
-  transition: all 0.2s;
   text-align: center;
-  height: 100%;
+  padding: var(--space-lg);
+  min-height: 120px;
+  position: relative;
+  font-family: var(--font-primary);
+  transition: all var(--transition-normal);
 }
 
-.warp-button:hover {
-  background-color: #213252;
-  transform: translateY(-2px);
+.warp-movement:hover,
+.tunnel-movement:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: var(--glow-primary);
 }
 
-.tunnel-button {
-  border-top: 3px solid #4d8aff;
+.tunnel-movement {
+  border-top: 3px solid var(--color-warning);
+  background: linear-gradient(145deg, 
+    rgba(255, 140, 0, 0.1), 
+    rgba(255, 140, 0, 0.05));
 }
 
-.tunnel-button.tunnel-unstable {
-  border-top-color: #ef4444;
+.tunnel-movement.tunnel-unstable {
+  border-top-color: var(--color-error);
+  background: linear-gradient(145deg, 
+    rgba(255, 68, 68, 0.1), 
+    rgba(255, 68, 68, 0.05));
 }
 
-.tunnel-button.tunnel-moderate {
-  border-top-color: #eab308;
+.tunnel-movement.tunnel-moderate {
+  border-top-color: var(--color-warning);
 }
 
-.tunnel-button.tunnel-stable {
-  border-top-color: #10b981;
+.tunnel-movement.tunnel-stable {
+  border-top-color: var(--color-success);
+  background: linear-gradient(145deg, 
+    rgba(0, 255, 127, 0.1), 
+    rgba(0, 255, 127, 0.05));
 }
 
-.tunnel-button:hover {
-  background-color: #213252;
-  transform: translateY(-2px);
+.warp-sector-id,
+.tunnel-sector-id {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: var(--space-sm);
+  color: var(--color-primary);
+  text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
 }
 
-.warp-button.disabled, .tunnel-button.disabled {
-  background-color: #131b2c;
-  color: #64748b;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.warp-sector-id, .tunnel-sector-id {
-  font-weight: 500;
-  font-size: 0.9rem;
-  margin-bottom: 0.25rem;
-  color: #e6f1ff;
-}
-
-.warp-name, .tunnel-name {
+.warp-name,
+.tunnel-name {
   font-size: 0.85rem;
-  color: #8892b0;
-  margin-bottom: 0.25rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-sm);
   word-break: break-word;
+  text-transform: uppercase;
 }
 
-.warp-type, .tunnel-type {
+.warp-type,
+.tunnel-type {
   font-size: 0.8rem;
-  color: #8892b0;
-  margin-bottom: 0.5rem;
-  text-transform: capitalize;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-md);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.warp-cost, .tunnel-cost {
+.warp-cost,
+.tunnel-cost {
   font-size: 0.8rem;
-  color: #4d8aff;
+  color: var(--color-warning);
   margin-top: auto;
+  font-family: var(--font-monospace);
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .tunnel-stability {
   width: 100%;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-md);
 }
 
 .stability-label {
   font-size: 0.75rem;
-  color: #8892b0;
+  color: var(--color-text-muted);
   text-align: left;
-  margin-bottom: 0.2rem;
+  margin-bottom: var(--space-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .stability-meter {
-  height: 4px;
-  background-color: #10b981;
-  border-radius: 2px;
+  height: 6px;
+  background: var(--color-success);
+  border-radius: 3px;
+  box-shadow: 0 0 8px rgba(0, 255, 127, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.stability-meter::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: energy-flow 2s linear infinite;
+}
+
+/* Players Tab */
+.sector-players h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-lg);
+  color: var(--color-primary);
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-family: var(--font-monospace);
+  text-transform: uppercase;
+}
+
+.no-players {
+  text-align: center;
+  padding: var(--space-3xl) var(--space-lg);
+  color: var(--color-text-muted);
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: var(--space-lg);
+  opacity: 0.5;
+}
+
+.no-players p {
+  font-size: var(--text-lg);
+  opacity: 0.8;
+  margin-bottom: var(--space-sm);
+  font-family: var(--font-primary);
+  text-transform: uppercase;
+}
+
+.offline-note {
+  font-size: var(--text-sm) !important;
+  color: var(--color-primary) !important;
+  font-family: var(--font-secondary) !important;
+  text-transform: none !important;
+}
+
+.players-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: linear-gradient(145deg, rgba(26, 26, 34, 0.8), rgba(19, 27, 44, 0.8));
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.player-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-success), transparent);
+  opacity: 0.3;
+}
+
+.player-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--glow-primary);
+}
+
+.player-avatar {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: white;
+  box-shadow: 0 0 15px rgba(0, 217, 255, 0.5);
+}
+
+.player-info {
+  flex: 1;
+}
+
+.player-name {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: var(--space-xs);
+  color: var(--color-primary);
+  font-family: var(--font-primary);
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
+}
+
+.player-status {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-family: var(--font-monospace);
+  text-transform: uppercase;
+}
+
+.player-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.action-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+  background: linear-gradient(145deg, #1A1A22, #151519);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: var(--glow-primary);
+  transform: scale(1.1);
+}
+
+.action-btn.message:hover {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+  box-shadow: 0 0 15px rgba(255, 140, 0, 0.5);
+}
+
+.action-btn.trade:hover {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  box-shadow: 0 0 15px rgba(0, 255, 127, 0.5);
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .warp-grid,
+  .tunnel-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .game-dashboard {
+    gap: var(--space-md);
+  }
+  
+  .dashboard-header {
+    padding: var(--space-md);
+  }
+  
+  .overview-tab,
+  .navigation-tab,
+  .players-tab {
+    padding: var(--space-md);
+  }
+  
+  .dashboard-grid {
+    gap: var(--space-md);
+  }
+  
+  .objects-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+  
+  .warp-grid,
+  .tunnel-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--space-sm);
+  }
+  
+  .warp-movement,
+  .tunnel-movement {
+    padding: var(--space-md);
+    min-height: 100px;
+  }
+  
+  .player-card {
+    padding: var(--space-sm);
+    gap: var(--space-sm);
+  }
+  
+  .player-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+  }
+  
+  .action-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .cockpit-tabs {
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+  
+  .cockpit-tab {
+    flex: 1;
+    min-width: 120px;
+    padding: var(--space-sm);
+    font-size: 0.7rem;
+  }
+  
+  .cockpit-tab-icon {
+    font-size: 1rem;
+  }
+  
+  .warp-grid,
+  .tunnel-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .sector-details h4 {
+    font-size: 1rem;
+  }
+  
+  .port-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+  
+  .dock-button {
+    margin-left: 0;
+    align-self: stretch;
+  }
 }

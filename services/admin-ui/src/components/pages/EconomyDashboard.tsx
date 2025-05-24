@@ -58,7 +58,7 @@ const EconomyDashboard: React.FC = () => {
       
       // Fetch price alerts
       const alertsResponse = await api.get('/api/v1/admin/economy/price-alerts');
-      setPriceAlerts(alertsResponse.data);
+      setPriceAlerts(Array.isArray(alertsResponse.data) ? alertsResponse.data : []);
       
     } catch (error) {
       console.error('Failed to fetch economic data:', error);

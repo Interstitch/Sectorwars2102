@@ -1,0 +1,219 @@
+/* Galaxy 3D Renderer Styles */
+.galaxy-3d-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(ellipse at center, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+}
+
+/* Performance indicator */
+.performance-indicator {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+}
+
+.performance-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.performance-badge.high {
+  background: rgba(0, 255, 0, 0.1);
+  color: #00ff00;
+  border-color: rgba(0, 255, 0, 0.3);
+}
+
+.performance-badge.balanced {
+  background: rgba(255, 255, 0, 0.1);
+  color: #ffff00;
+  border-color: rgba(255, 255, 0, 0.3);
+}
+
+.performance-badge.low {
+  background: rgba(255, 0, 0, 0.1);
+  color: #ff0000;
+  border-color: rgba(255, 0, 0, 0.3);
+}
+
+/* UI Overlay */
+.galaxy-ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.galaxy-controls {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  pointer-events: auto;
+}
+
+.control-button {
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  color: white;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.control-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Loading states */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: white;
+  font-size: 1.125rem;
+}
+
+.loading-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top: 3px solid #4488ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Sector info popup */
+.sector-info-popup {
+  pointer-events: auto;
+}
+
+.sector-info-card {
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  color: white;
+  font-size: 0.875rem;
+  min-width: 200px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.sector-info-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: #4488ff;
+}
+
+.sector-info-card p {
+  margin: 0.25rem 0;
+  opacity: 0.9;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .galaxy-controls {
+    bottom: 0.5rem;
+    left: 0.5rem;
+    right: 0.5rem;
+    justify-content: center;
+  }
+  
+  .control-button {
+    flex: 1;
+    padding: 1rem;
+    font-size: 0.75rem;
+  }
+  
+  .performance-indicator {
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+  
+  .performance-badge {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.625rem;
+  }
+  
+  .sector-info-card {
+    font-size: 0.75rem;
+    padding: 0.75rem;
+    min-width: 150px;
+  }
+}
+
+/* Touch-friendly enhancements */
+@media (pointer: coarse) {
+  .control-button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .sector-info-card {
+    padding: 1.5rem;
+    font-size: 1rem;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .galaxy-3d-container {
+    background: #000000;
+  }
+  
+  .control-button {
+    background: #000000;
+    border-color: #ffffff;
+  }
+  
+  .sector-info-card {
+    background: #000000;
+    border-color: #ffffff;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner {
+    animation: none;
+  }
+  
+  .control-button {
+    transition: none;
+  }
+  
+  .control-button:hover {
+    transform: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .galaxy-3d-container {
+    display: none;
+  }
+}

@@ -4,7 +4,7 @@
 CLAUDE.md Unified Quality System - Complete Self-Improving Development Platform
 ================================================================================
 
-VERSION: 3.0.0
+VERSION: 3.0.1
 GENERATED: 2025-05-23
 COMPATIBILITY: Python 3.8+
 
@@ -56,7 +56,7 @@ from enum import Enum
 
 
 # Version constants
-SYSTEM_VERSION = "3.0.0"
+SYSTEM_VERSION = "3.0.1"
 RELEASE_DATE = "2025-05-23"
 
 

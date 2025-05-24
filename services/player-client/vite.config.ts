@@ -13,10 +13,12 @@ export default defineConfig({
     port: 3000,
     strictPort: true,
 
-    // Completely disable host checking in development mode
+    // Fix HMR for GitHub Codespaces
     hmr: {
-      clientPort: 443,
-      host: '0.0.0.0'
+      port: 443,
+      host: process.env.CODESPACE_NAME 
+        ? `${process.env.CODESPACE_NAME}-3000.app.github.dev`
+        : 'localhost'
     },
 
     // Direct configuration to allow any host

@@ -147,6 +147,35 @@
   color: #11111b;
 }
 
+/* Logout Button in Sidebar */
+.logout-button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: transparent;
+  color: #cdd6f4;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.logout-button:hover {
+  background-color: #f38ba8;
+  border-color: #f38ba8;
+  color: #11111b;
+  transform: translateY(-1px);
+}
+
+.logout-button:active {
+  transform: translateY(0);
+}
+
 /* Login Page */
 .login-page {
   display: flex;

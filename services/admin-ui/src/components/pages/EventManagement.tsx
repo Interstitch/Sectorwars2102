@@ -89,9 +89,9 @@ const EventManagement: React.FC = () => {
         }
       });
       
-      const data = response.data;
-      setEvents(data.events || []);
-      setTotalPages(data.total_pages || 1);
+      const data = response.data as any;
+      setEvents(Array.isArray(data?.events) ? data.events : []);
+      setTotalPages(typeof data?.total_pages === 'number' ? data.total_pages : 1);
       
       // Fetch event statistics
       const statsResponse = await api.get('/api/v1/admin/events/stats');

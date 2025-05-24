@@ -31,6 +31,11 @@ export interface GalaxyGenerationConfig {
   planet_density?: number;
   warp_tunnel_probability?: number;
   faction_territory_size?: number;
+  region_distribution?: {
+    federation: number;
+    border: number;
+    frontier: number;
+  };
 }
 
 export interface SectorGenerationConfig {
@@ -139,6 +144,7 @@ interface AdminContextType {
   generateEnhancedGalaxy: (config: any) => Promise<void>;
   addSectors: (galaxyId: string, numSectors: number, config?: SectorGenerationConfig) => Promise<void>;
   createWarpTunnel: (sourceSectorId: number, targetSectorId: number, stability?: number) => Promise<void>;
+  clearGalaxyData: () => Promise<void>;
   
   // Sector data for visualization
   sectors: SectorData[];
@@ -308,17 +314,23 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     try {
       const finalConfig = { ...defaultGalaxyConfig, ...config };
-      
-      const response = await api.post<GalaxyState>('/api/v1/admin/galaxy/generate', {
+      const requestPayload = {
         name, 
         num_sectors: numSectors,
         config: finalConfig
-      });
+      };
+      
+      console.log('generateGalaxy: Sending request payload:', requestPayload);
+      
+      const response = await api.post<GalaxyState>('/api/v1/admin/galaxy/generate', requestPayload);
       
       console.log('generateGalaxy: Got response:', response.data);
       await loadGalaxyInfo();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating galaxy:', error);
+      console.error('Error response data:', error?.response?.data);
+      console.error('Error response status:', error?.response?.status);
+      console.error('Error response headers:', error?.response?.headers);
       setError('Failed to generate galaxy');
       throw error; // Re-throw to allow component to handle it
     } finally {
@@ -373,6 +385,32 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.error('Error adding sectors:', error);
       setError('Failed to add sectors to galaxy');
       throw error; // Re-throw to allow component to handle it
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Clear all galaxy data
+  const clearGalaxyData = async () => {
+    if (!user || !user.is_admin) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      await api.delete('/api/v1/admin/galaxy/clear');
+      
+      // After clearing, reset all state
+      setGalaxyState(null);
+      setRegions([]);
+      setClusters([]);
+      setSectors([]);
+      
+      console.log('Galaxy data cleared successfully');
+    } catch (error) {
+      console.error('Error clearing galaxy data:', error);
+      setError('Failed to clear galaxy data');
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -542,6 +580,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     generateEnhancedGalaxy,
     addSectors,
     createWarpTunnel,
+    clearGalaxyData,
     
     // Sector data for visualization
     sectors,

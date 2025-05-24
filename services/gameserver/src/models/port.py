@@ -238,4 +238,66 @@ class Port(Base):
                 
         for commodity in pattern.get("sells", []):
             if commodity in self.commodities:
-                self.commodities[commodity]["sells"] = True 
+                self.commodities[commodity]["sells"] = True
+    
+    def update_commodity_stock_levels(self):
+        """Update commodity stock levels to match port's trading role."""
+        import random
+        
+        pattern = self.get_trading_pattern()
+        is_premium_seller = self.port_class == PortClass.CLASS_9  # Nova
+        is_premium_buyer = self.port_class == PortClass.CLASS_8   # Black Hole
+        is_distribution = self.port_class == PortClass.CLASS_4    # Distribution Center
+        is_collection = self.port_class == PortClass.CLASS_5     # Collection Hub
+        
+        for commodity_name, commodity_data in self.commodities.items():
+            base_capacity = commodity_data.get("capacity", 1000)
+            
+            # Determine stock level based on port's role with this commodity
+            if commodity_name in pattern.get("sells", []):
+                # Port sells this commodity - needs high stock
+                if is_premium_seller:
+                    # Premium sellers have maximum stock
+                    stock_level = int(base_capacity * random.uniform(0.8, 1.0))
+                    production_rate = commodity_data.get("production_rate", 50) * 2
+                elif is_distribution:
+                    # Distribution centers have very high stock for selling
+                    stock_level = int(base_capacity * random.uniform(0.7, 0.9))
+                    production_rate = commodity_data.get("production_rate", 50) * 1.5
+                else:
+                    # Regular sellers have good stock
+                    stock_level = int(base_capacity * random.uniform(0.4, 0.7))
+                    production_rate = commodity_data.get("production_rate", 50)
+                    
+            elif commodity_name in pattern.get("buys", []):
+                # Port buys this commodity - needs low stock, high capacity
+                if is_premium_buyer or is_collection:
+                    # Premium buyers and collection hubs have minimal stock, maximum capacity
+                    stock_level = int(base_capacity * random.uniform(0.05, 0.15))
+                    production_rate = 0  # They don't produce, they collect
+                else:
+                    # Regular buyers have low stock
+                    stock_level = int(base_capacity * random.uniform(0.1, 0.3))
+                    production_rate = 0
+            else:
+                # Port doesn't trade this commodity - minimal stock
+                stock_level = int(base_capacity * random.uniform(0.1, 0.25))
+                production_rate = commodity_data.get("production_rate", 10)
+            
+            # Ensure minimum stock of 1 for all commodities
+            stock_level = max(1, stock_level)
+            
+            # Update the commodity data
+            self.commodities[commodity_name]["quantity"] = stock_level
+            self.commodities[commodity_name]["production_rate"] = production_rate
+            
+            # Adjust pricing for premium ports
+            base_price = commodity_data.get("base_price", 50)
+            if is_premium_seller and commodity_name in pattern.get("sells", []):
+                # Premium sellers charge less (better deals for players)
+                self.commodities[commodity_name]["current_price"] = int(base_price * 0.8)
+            elif is_premium_buyer and commodity_name in pattern.get("buys", []):
+                # Premium buyers pay more (better deals for players)
+                self.commodities[commodity_name]["current_price"] = int(base_price * 1.3)
+            else:
+                self.commodities[commodity_name]["current_price"] = base_price 

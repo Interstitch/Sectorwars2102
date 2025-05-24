@@ -25,13 +25,25 @@ class GalaxyGenerator:
         self.sectors_map: Dict[int, Sector] = {}  # Sector number to Sector object mapping
         self.sector_grid: Dict[Tuple[int, int, int], int] = {}  # Coordinates to sector number mapping
         
-    def generate_galaxy(self, name: str = "Milky Way", num_sectors: int = 500) -> Galaxy:
+    def generate_galaxy(self, name: str = "Milky Way", num_sectors: int = 500, config: dict = None) -> Galaxy:
         """Generate a complete galaxy with regions, clusters, sectors, warps, etc."""
         logger.info(f"Generating new galaxy '{name}' with {num_sectors} sectors")
+        
+        # Apply default config if none provided
+        if config is None:
+            config = {}
+        
+        # Set up region distribution
+        region_distribution = {
+            "federation": config.get("federation_percentage", 25),
+            "border": config.get("border_percentage", 35), 
+            "frontier": config.get("frontier_percentage", 40)
+        }
         
         # Create galaxy record
         galaxy = Galaxy(
             name=name,
+            region_distribution=region_distribution,
             statistics={
                 "total_sectors": num_sectors,
                 "discovered_sectors": 0,
@@ -42,7 +54,13 @@ class GalaxyGenerator:
                 "warp_tunnel_count": 0,
                 "genesis_count": 0
             },
-            max_sectors=num_sectors
+            max_sectors=num_sectors,
+            density={
+                "port_density": int(config.get("port_density", 0.15) * 100),
+                "planet_density": int(config.get("planet_density", 0.25) * 100),
+                "one_way_warp_percentage": int(config.get("warp_tunnel_probability", 0.1) * 100),
+                "resource_distribution": config.get("resource_distribution", "balanced")
+            }
         )
         self.db.add(galaxy)
         self.db.flush()  # Ensure galaxy ID is available
@@ -397,8 +415,48 @@ class GalaxyGenerator:
                 description=f"Class {port_class.value} {port_type.name} port in Sector {sector_num}"
             )
             
+            # Ensure commodities is properly initialized before calling methods that depend on it
+            if port.commodities is None:
+                port.commodities = {
+                    "ore": {
+                        "quantity": 1000, "capacity": 5000, "base_price": 15, "current_price": 15,
+                        "production_rate": 100, "price_variance": 20, "buys": False, "sells": True
+                    },
+                    "organics": {
+                        "quantity": 800, "capacity": 3000, "base_price": 18, "current_price": 18,
+                        "production_rate": 80, "price_variance": 25, "buys": True, "sells": False
+                    },
+                    "equipment": {
+                        "quantity": 500, "capacity": 2000, "base_price": 35, "current_price": 35,
+                        "production_rate": 50, "price_variance": 30, "buys": True, "sells": True
+                    },
+                    "fuel": {
+                        "quantity": 1500, "capacity": 4000, "base_price": 12, "current_price": 12,
+                        "production_rate": 120, "price_variance": 15, "buys": False, "sells": True
+                    },
+                    "luxury_goods": {
+                        "quantity": 200, "capacity": 800, "base_price": 100, "current_price": 100,
+                        "production_rate": 20, "price_variance": 40, "buys": False, "sells": False
+                    },
+                    "gourmet_food": {
+                        "quantity": 150, "capacity": 600, "base_price": 80, "current_price": 80,
+                        "production_rate": 15, "price_variance": 35, "buys": False, "sells": False
+                    },
+                    "exotic_technology": {
+                        "quantity": 50, "capacity": 200, "base_price": 250, "current_price": 250,
+                        "production_rate": 5, "price_variance": 50, "buys": False, "sells": False
+                    },
+                    "colonists": {
+                        "quantity": 100, "capacity": 500, "base_price": 50, "current_price": 50,
+                        "production_rate": 10, "price_variance": 10, "buys": False, "sells": False
+                    }
+                }
+            
             # Update trading flags based on port class
             port.update_commodity_trading_flags()
+            
+            # Update stock levels to match trading role
+            port.update_commodity_stock_levels()
             
             self.db.add(port)
             self.db.flush()

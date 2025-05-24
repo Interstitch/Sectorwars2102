@@ -25,6 +25,9 @@ class GalaxyGenerateRequest(BaseModel):
     name: str
     num_sectors: int
     config: Optional[dict] = None
+    federation_percentage: Optional[int] = 25
+    border_percentage: Optional[int] = 35
+    frontier_percentage: Optional[int] = 40
 
 class SectorAddRequest(BaseModel):
     num_sectors: int
@@ -229,37 +232,21 @@ async def generate_galaxy(
         )
     
     try:
+        # Use the comprehensive GalaxyGenerator service
+        from src.services.galaxy_service import GalaxyGenerator
         
-        # Create new galaxy
-        galaxy = Galaxy(
-            name=request.name,
-            statistics={
-                "total_sectors": request.num_sectors,
-                "discovered_sectors": 0,
-                "port_count": 0,
-                "planet_count": 0,
-                "player_count": 0,
-                "team_count": 0,
-                "warp_tunnel_count": 0,
-                "genesis_count": 0
-            }
-        )
+        generator = GalaxyGenerator(db)
         
-        if request.config:
-            # Apply configuration
-            galaxy.density = {
-                "port_density": int(request.config.get("port_density", 0.15) * 100),
-                "planet_density": int(request.config.get("planet_density", 0.25) * 100),
-                "one_way_warp_percentage": int(request.config.get("warp_tunnel_probability", 0.1) * 100),
-                "resource_distribution": request.config.get("resource_distribution", "balanced")
-            }
+        # Prepare configuration with region distribution
+        config = request.config or {}
+        config.update({
+            "federation_percentage": request.federation_percentage,
+            "border_percentage": request.border_percentage, 
+            "frontier_percentage": request.frontier_percentage
+        })
         
-        db.add(galaxy)
-        db.commit()
-        db.refresh(galaxy)
-        
-        # Generate regions, clusters, and sectors
-        await generate_galaxy_structure(db, galaxy, request.num_sectors, request.config or {})
+        # Generate complete galaxy with ports, planets, and warp tunnels
+        galaxy = generator.generate_galaxy(request.name, request.num_sectors, config)
         
         return {
             "id": str(galaxy.id),
@@ -559,30 +546,52 @@ async def get_sector_port(
     if not port:
         raise HTTPException(status_code=404, detail="No port found in this sector")
     
+    # Extract defense data from JSONB field
+    defenses = port.defenses or {}
+    
     return {
         "id": str(port.id),
         "name": port.name,
         "sector_id": port.sector_id,
+        "port_class": port.port_class.value if port.port_class else None,
         "type": port.type.value if port.type else None,
         "status": port.status.value if port.status else None,
         "size": port.size,
         "owner_id": str(port.owner_id) if port.owner_id else None,
         "faction_affiliation": port.faction_affiliation,
-        "tax_rate": port.tax_rate,
         "trade_volume": port.trade_volume,
-        "defense_level": port.defense_level,
-        "shields": port.shields,
-        "defense_weapons": port.defense_weapons,
-        "security_rating": port.security_rating,
+        "market_volatility": port.market_volatility,
+        "tax_rate": 5.0,  # Default tax rate - TODO: Add to Port model
+        
+        # Defense information from JSONB
+        "defense_level": defenses.get("defense_drones", 0),
+        "defense_drones": defenses.get("defense_drones", 0),
+        "max_defense_drones": defenses.get("max_defense_drones", 50),
+        "shields": defenses.get("shield_strength", 50),
+        "defense_weapons": defenses.get("defense_drones", 0),  # Using defense_drones as weapons count
+        "patrol_ships": defenses.get("patrol_ships", 0),
+        
+        # Services and pricing
         "services": port.services,
         "service_prices": port.service_prices,
         "price_modifiers": port.price_modifiers,
-        "import_restrictions": port.import_restrictions,
-        "export_restrictions": port.export_restrictions,
-        "special_features": port.special_features,
-        "description": port.description,
-        "last_attacked": port.last_attacked.isoformat() if port.last_attacked else None,
-        "active_events": port.active_events
+        "commodities": port.commodities,
+        
+        # Management
+        "ownership": port.ownership,
+        "is_player_ownable": port.is_player_ownable,
+        "reputation_threshold": port.reputation_threshold,
+        
+        # Market information
+        "last_market_update": port.last_market_update.isoformat() if port.last_market_update else None,
+        "market_update_frequency": port.market_update_frequency,
+        
+        # Special flags
+        "is_quest_hub": port.is_quest_hub,
+        "is_faction_headquarters": port.is_faction_headquarters,
+        
+        # Acquisition requirements
+        "acquisition_requirements": port.acquisition_requirements
     }
 
 @router.get("/sectors/{sector_id}/planet", response_model=dict)
@@ -642,13 +651,13 @@ async def get_sector_ships(
     """Get all ships currently in a specific sector"""
     from src.models.ship import Ship
     
-    ships = db.query(Ship).filter(Ship.current_sector_id == sector_id).all()
+    ships = db.query(Ship).filter(Ship.sector_id == sector_id).all()
     
     ship_list = [
         {
             "id": str(ship.id),
             "name": ship.name,
-            "type": ship.ship_type.value,
+            "type": ship.type.value,
             "owner_id": str(ship.owner_id),
             "owner_name": ship.owner.username if ship.owner else "Unknown"
         }
@@ -924,3 +933,54 @@ async def generate_galaxy_structure(db: Session, galaxy: Galaxy, total_sectors: 
     }
     
     db.commit()
+
+
+@router.patch("/ports/{port_id}", response_model=dict)
+async def update_port(
+    port_id: str,
+    port_updates: dict,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Update port details including commodity quantities"""
+    try:
+        port = db.query(Port).filter(Port.id == port_id).first()
+        
+        if not port:
+            raise HTTPException(status_code=404, detail="Port not found")
+        
+        # Handle commodity updates
+        if 'commodities' in port_updates:
+            # Update specific commodity fields
+            for commodity_name, updates in port_updates['commodities'].items():
+                if commodity_name in port.commodities:
+                    for field, value in updates.items():
+                        port.commodities[commodity_name][field] = value
+        
+        # Handle direct field updates (like quantity updates from frontend)
+        for field, value in port_updates.items():
+            if field == 'commodities':
+                continue  # Already handled above
+            elif hasattr(port, field):
+                setattr(port, field, value)
+            elif field.endswith('_quantity'):
+                # Handle direct quantity updates like "ore_quantity"
+                commodity_name = field.replace('_quantity', '')
+                if commodity_name in port.commodities:
+                    port.commodities[commodity_name]['quantity'] = value
+        
+        # Mark commodities as modified for SQLAlchemy
+        port.commodities = dict(port.commodities)
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Port updated successfully",
+            "port_id": str(port.id)
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating port: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update port: {str(e)}")

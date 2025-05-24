@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../../contexts/GameContext';
 import GameLayout from '../layouts/GameLayout';
+import Galaxy3DRenderer from '../galaxy/Galaxy3DRenderer';
+import ErrorBoundary from '../common/ErrorBoundary';
 import './galaxy-map.css';
+import '../galaxy/styles/galaxy-3d.css';
 
 interface MapSector {
   id: number;
@@ -23,20 +26,21 @@ interface MapConnection {
 
 const GalaxyMap: React.FC = () => {
   const { playerState, currentSector, availableMoves, getAvailableMoves, moveToSector } = useGame();
-  const [sectors, setSectors] = useState<MapSector[]>([]);
+  const [localSectors, setLocalSectors] = useState<MapSector[]>([]);
   const [connections, setConnections] = useState<MapConnection[]>([]);
   const [selectedSector, setSelectedSector] = useState<MapSector | null>(null);
   const [mapOffset, setMapOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const mapRef = useRef<HTMLDivElement>(null);
   
   // Simulated data for visualization - in a real game, this would come from API
   useEffect(() => {
     if (currentSector) {
       // Clear previous data
-      setSectors([]);
+      setLocalSectors([]);
       setConnections([]);
       
       // Add current sector
@@ -112,7 +116,7 @@ const GalaxyMap: React.FC = () => {
         });
       }
       
-      setSectors(newSectors);
+      setLocalSectors(newSectors);
       setConnections(newConnections);
     }
   }, [currentSector, availableMoves]);
@@ -172,37 +176,86 @@ const GalaxyMap: React.FC = () => {
           <h2>Galaxy Map</h2>
           <div className="map-controls">
             <button 
-              className="zoom-button" 
-              onClick={() => setZoom(Math.min(2, zoom + 0.1))}
+              className={`view-mode-button ${viewMode === '3d' ? 'active' : ''}`}
+              onClick={() => setViewMode('3d')}
+              title="3D Galaxy View"
             >
-              +
+              🌌 3D
             </button>
             <button 
-              className="zoom-button" 
-              onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
+              className={`view-mode-button ${viewMode === '2d' ? 'active' : ''}`}
+              onClick={() => setViewMode('2d')}
+              title="2D Galaxy Map"
             >
-              -
+              📍 2D
             </button>
-            <button 
-              className="reset-button" 
-              onClick={() => {
-                setMapOffset({ x: 0, y: 0 });
-                setZoom(1);
-              }}
-            >
-              Reset
-            </button>
+            {viewMode === '2d' && (
+              <>
+                <button 
+                  className="zoom-button" 
+                  onClick={() => setZoom(Math.min(2, zoom + 0.1))}
+                >
+                  +
+                </button>
+                <button 
+                  className="zoom-button" 
+                  onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
+                >
+                  -
+                </button>
+                <button 
+                  className="reset-button" 
+                  onClick={() => {
+                    setMapOffset({ x: 0, y: 0 });
+                    setZoom(1);
+                  }}
+                >
+                  Reset
+                </button>
+              </>
+            )}
           </div>
         </div>
         
-        <div 
-          className="map-view"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onWheel={handleWheel}
-        >
+        {viewMode === '3d' ? (
+          <div className="map-view map-view-3d">
+            <ErrorBoundary fallback={
+              <div style={{ padding: '20px', textAlign: 'center' }}>
+                <h3>3D Galaxy View Unavailable</h3>
+                <p>There was an issue loading the 3D galaxy map.</p>
+                <button onClick={() => setViewMode('2d')}>
+                  Switch to 2D Map
+                </button>
+              </div>
+            }>
+              <Galaxy3DRenderer 
+                className="galaxy-3d-view"
+                onSectorSelect={(sector) => {
+                  // Convert from full Sector to MapSector for compatibility
+                  const mapSector: MapSector = {
+                    id: sector.id,
+                    name: sector.name,
+                    type: sector.sector_type || 'normal',
+                    x: 0, // Position handled by 3D renderer
+                    y: 0,
+                    isConnected: true,
+                    isDiscovered: true,
+                    isCurrent: sector.id === currentSector?.id
+                  };
+                  setSelectedSector(mapSector);
+                }}
+              />
+            </ErrorBoundary>
+          </div>
+        ) : (
+          <div 
+            className="map-view map-view-2d"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onWheel={handleWheel}
+          >
           <div 
             className="map-content"
             ref={mapRef}
@@ -214,8 +267,8 @@ const GalaxyMap: React.FC = () => {
             {/* Draw connections */}
             <svg className="connections-layer" width="100%" height="100%">
               {connections.map((conn, i) => {
-                const fromSector = sectors.find(s => s.id === conn.from);
-                const toSector = sectors.find(s => s.id === conn.to);
+                const fromSector = localSectors.find(s => s.id === conn.from);
+                const toSector = localSectors.find(s => s.id === conn.to);
                 
                 if (!fromSector || !toSector) return null;
                 
@@ -251,7 +304,7 @@ const GalaxyMap: React.FC = () => {
             
             {/* Draw sectors */}
             <div className="sectors-layer">
-              {sectors.map(sector => {
+              {localSectors.map(sector => {
                 // Calculate position based on map center
                 const mapWidth = mapRef.current?.clientWidth || 800;
                 const mapHeight = mapRef.current?.clientHeight || 600;
@@ -279,7 +332,8 @@ const GalaxyMap: React.FC = () => {
               })}
             </div>
           </div>
-        </div>
+          </div>
+        )}
         
         {selectedSector && (
           <div className="sector-details-panel">

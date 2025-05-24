@@ -19,7 +19,8 @@ const UniverseManager: React.FC = () => {
     loadGalaxyInfo, 
     loadSectors, 
     loadRegions,
-    generateEnhancedGalaxy,
+    generateGalaxy,
+    clearGalaxyData,
     isLoading,
     error
   } = useAdmin();
@@ -110,15 +111,67 @@ const UniverseManager: React.FC = () => {
     }
 
     try {
-      await generateEnhancedGalaxy(galaxyConfig);
+      // Use the simpler galaxy generation instead of enhanced version
+      await generateGalaxy(
+        galaxyConfig.name,
+        galaxyConfig.total_sectors,
+        {
+          resource_distribution: 'balanced',
+          hazard_levels: 'moderate', 
+          connectivity: 'normal',
+          port_density: galaxyConfig.density.port_density / 100,
+          planet_density: galaxyConfig.density.planet_density / 100,
+          warp_tunnel_probability: galaxyConfig.density.one_way_warp_percentage / 100,
+          faction_territory_size: galaxyConfig.region_distribution.federation
+        }
+      );
       setShowGalaxyGenerator(false);
       // Reload data after generation
       await loadGalaxyInfo();
       await loadRegions();
       await loadSectors();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating galaxy:', error);
-      alert('Failed to generate galaxy');
+      
+      // Check if error is due to existing galaxy (HTTP 400)
+      if (error?.response?.status === 400 && 
+          error?.response?.data?.detail?.includes('already exists')) {
+        const shouldClear = window.confirm(
+          'A galaxy already exists. Would you like to clear the existing galaxy data and generate a new one?\n\n' +
+          'Warning: This will permanently delete all current galaxy data including sectors, planets, ports, and warp tunnels.'
+        );
+        
+        if (shouldClear) {
+          try {
+            await clearGalaxyData();
+            // Try generating again after clearing
+            await generateGalaxy(
+              galaxyConfig.name,
+              galaxyConfig.num_sectors,
+              {
+                resource_distribution: 'balanced',
+                hazard_levels: 'moderate',
+                connectivity: 'normal',
+                port_density: galaxyConfig.density.port_density / 100,
+                planet_density: galaxyConfig.density.planet_density / 100,
+                warp_tunnel_probability: galaxyConfig.density.one_way_warp_percentage / 100,
+                faction_territory_size: galaxyConfig.region_distribution.federation
+              }
+            );
+            setShowGalaxyGenerator(false);
+            // Reload data after generation
+            await loadGalaxyInfo();
+            await loadRegions();
+            await loadSectors();
+            alert('Galaxy generated successfully after clearing existing data.');
+          } catch (clearError) {
+            console.error('Error clearing galaxy or regenerating:', clearError);
+            alert('Failed to clear existing galaxy data. Please try again.');
+          }
+        }
+      } else {
+        alert('Failed to generate galaxy');
+      }
     }
   };
 

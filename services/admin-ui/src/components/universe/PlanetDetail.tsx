@@ -172,7 +172,6 @@ const PlanetDetail: React.FC<PlanetDetailProps> = ({ planet, onBack, onUpdate })
   const typeInfo = getPlanetTypeInfo(planet.planet_type);
   const colonists = planet.colonists || { fuel: 0, organics: 0, equipment: 0 };
   const production = planet.production || { fuel: 0, organics: 0, equipment: 0 };
-  const totalColonists = colonists.fuel + colonists.organics + colonists.equipment;
 
   return (
     <div className="planet-detail">
@@ -209,7 +208,9 @@ const PlanetDetail: React.FC<PlanetDetailProps> = ({ planet, onBack, onUpdate })
             </div>
             <div className="info-item">
               <span className="label">Owner:</span>
-              <span className="value">{planet.owner_name || 'Uncolonized'}</span>
+              <span className="value">
+                <EditableField field="owner_name" value={planet.owner_name || 'Uncolonized'} type="text" />
+              </span>
             </div>
             <div className="info-item">
               <span className="label">Citadel Level:</span>
@@ -255,7 +256,9 @@ const PlanetDetail: React.FC<PlanetDetailProps> = ({ planet, onBack, onUpdate })
             <div className="colonist-card fuel">
               <h4>⚡ Fuel Colonists</h4>
               <div className="colonist-info">
-                <div className="count">{colonists.fuel.toLocaleString()}</div>
+                <div className="count">
+                  <EditableField field="colonists.fuel" value={colonists.fuel} type="number" />
+                </div>
                 <div className="capacity">Max: {(planet.colonistCapacity?.fuel || 5000).toLocaleString()}</div>
                 <div className="percentage">
                   {Math.round((colonists.fuel / (planet.colonistCapacity?.fuel || 5000)) * 100)}% capacity
@@ -265,7 +268,9 @@ const PlanetDetail: React.FC<PlanetDetailProps> = ({ planet, onBack, onUpdate })
             <div className="colonist-card organics">
               <h4>🌿 Organics Colonists</h4>
               <div className="colonist-info">
-                <div className="count">{colonists.organics.toLocaleString()}</div>
+                <div className="count">
+                  <EditableField field="colonists.organics" value={colonists.organics} type="number" />
+                </div>
                 <div className="capacity">Max: {(planet.colonistCapacity?.organics || 5000).toLocaleString()}</div>
                 <div className="percentage">
                   {Math.round((colonists.organics / (planet.colonistCapacity?.organics || 5000)) * 100)}% capacity
@@ -275,7 +280,9 @@ const PlanetDetail: React.FC<PlanetDetailProps> = ({ planet, onBack, onUpdate })
             <div className="colonist-card equipment">
               <h4>⚙️ Equipment Colonists</h4>
               <div className="colonist-info">
-                <div className="count">{colonists.equipment.toLocaleString()}</div>
+                <div className="count">
+                  <EditableField field="colonists.equipment" value={colonists.equipment} type="number" />
+                </div>
                 <div className="capacity">Max: {(planet.colonistCapacity?.equipment || 5000).toLocaleString()}</div>
                 <div className="percentage">
                   {Math.round((colonists.equipment / (planet.colonistCapacity?.equipment || 5000)) * 100)}% capacity
@@ -292,25 +299,31 @@ const PlanetDetail: React.FC<PlanetDetailProps> = ({ planet, onBack, onUpdate })
               <span className="resource-icon">⛏️</span>
               <span className="resource-name">Ore</span>
               <div className="production-bar">
-                <div className="bar-fill" style={{ width: `${production.ore * 10}%` }}></div>
+                <div className="bar-fill" style={{ width: `${(production.ore || 0) * 10}%` }}></div>
               </div>
-              <span className="production-value">{production.ore}/10</span>
+              <span className="production-value">
+                <EditableField field="production.ore" value={production.ore || 0} type="number" />/10
+              </span>
             </div>
             <div className="production-item">
               <span className="resource-icon">🌾</span>
               <span className="resource-name">Organics</span>
               <div className="production-bar">
-                <div className="bar-fill" style={{ width: `${production.organics * 10}%` }}></div>
+                <div className="bar-fill" style={{ width: `${(production.organics || 0) * 10}%` }}></div>
               </div>
-              <span className="production-value">{production.organics}/10</span>
+              <span className="production-value">
+                <EditableField field="production.organics" value={production.organics || 0} type="number" />/10
+              </span>
             </div>
             <div className="production-item">
               <span className="resource-icon">🔧</span>
               <span className="resource-name">Equipment</span>
               <div className="production-bar">
-                <div className="bar-fill" style={{ width: `${production.equipment * 10}%` }}></div>
+                <div className="bar-fill" style={{ width: `${(production.equipment || 0) * 10}%` }}></div>
               </div>
-              <span className="production-value">{production.equipment}/10</span>
+              <span className="production-value">
+                <EditableField field="production.equipment" value={production.equipment || 0} type="number" />/10
+              </span>
             </div>
           </div>
         </div>

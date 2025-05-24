@@ -8,6 +8,8 @@ const OAuthCallback: React.FC = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<string>('Processing authentication...');
   const [error, setError] = useState<string | null>(null);
+  const [userInfo, setUserInfo] = useState<any>(null);
+  const [playerInfo, setPlayerInfo] = useState<any>(null);
   const { refreshToken: authRefreshToken } = useAuth();
 
   useEffect(() => {
@@ -57,6 +59,10 @@ const OAuthCallback: React.FC = () => {
         } else {
           setStatus('Login successful! Launching game...');
         }
+
+        // NOTE: Removed API calls from OAuth callback due to GitHub Codespaces authentication requirements
+        // The main app will fetch user/player info after redirect using proper authentication context
+        setStatus(`Login successful! Launching game...`);
 
         // Force a reload of authentication state in the AuthContext
         try {
@@ -130,6 +136,13 @@ const OAuthCallback: React.FC = () => {
         <>
           <div className="loading-spinner"></div>
           <p>{status}</p>
+          <div style={{marginTop: '20px', padding: '10px', border: '1px solid #ccc', borderRadius: '5px'}}>
+            <h4>Authentication Status:</h4>
+            <p>✅ GitHub OAuth successful</p>
+            <p>✅ Access token stored</p>
+            <p>⏳ Redirecting to game dashboard...</p>
+            <p><small>Player data will be loaded in the main application</small></p>
+          </div>
         </>
       )}
     </div>

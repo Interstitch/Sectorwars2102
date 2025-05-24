@@ -25,6 +25,7 @@ from src.models.galaxy import Galaxy, Region
 from src.models.warp_tunnel import WarpTunnel
 from src.models.team import Team
 from src.services.galaxy_service import GalaxyService
+from src.services.analytics_service import AnalyticsService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -329,16 +330,25 @@ async def get_ships_comprehensive(
         # Build response data
         ships_data = []
         for ship in ships:
+            # Extract maintenance rating from maintenance JSONB field
+            maintenance_data = ship.maintenance or {}
+            maintenance_rating = maintenance_data.get('current_rating', 100.0)
+            
+            # Extract cargo info from cargo JSONB field
+            cargo_data = ship.cargo or {}
+            cargo_used = cargo_data.get('used_capacity', 0)
+            cargo_capacity = cargo_data.get('max_capacity', 1000)  # Default capacity
+            
             ships_data.append(ShipManagementResponse(
                 id=str(ship.id),
                 name=ship.name,
-                ship_type=ship.ship_type.value,
+                ship_type=ship.type.value,
                 owner_id=str(ship.owner_id),
-                owner_name=ship.owner.user.username,
-                current_sector_id=ship.current_sector_id,
-                maintenance_rating=ship.maintenance_status.get('current_rating', 100.0),
-                cargo_used=ship.cargo_status.get('used_capacity', 0),
-                cargo_capacity=ship.cargo_status.get('max_capacity', 0),
+                owner_name=ship.owner.username if ship.owner else "Unknown",
+                current_sector_id=ship.sector_id,
+                maintenance_rating=maintenance_rating,
+                cargo_used=cargo_used,
+                cargo_capacity=cargo_capacity,
                 is_active=ship.is_active,
                 created_at=ship.created_at
             ))
@@ -1005,3 +1015,123 @@ def calculate_reputation_level(value: int) -> str:
         return "Criminal"
     else:
         return "Public Enemy"
+
+
+# Analytics Endpoints
+
+@router.get("/analytics/real-time", response_model=Dict[str, Any])
+async def get_real_time_analytics(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get real-time analytics data from the database
+    """
+    try:
+        analytics_service = AnalyticsService(db)
+        metrics = analytics_service.get_real_time_metrics()
+        
+        logger.info(f"Admin {current_admin.username} requested real-time analytics")
+        
+        return {
+            "success": True,
+            "data": metrics,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching real-time analytics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch analytics: {str(e)}")
+
+
+@router.post("/analytics/snapshot", response_model=Dict[str, Any])
+async def create_analytics_snapshot(
+    snapshot_type: str = "manual",
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Create an analytics snapshot for historical tracking
+    """
+    try:
+        analytics_service = AnalyticsService(db)
+        snapshot = analytics_service.create_analytics_snapshot(snapshot_type)
+        
+        logger.info(f"Admin {current_admin.username} created analytics snapshot: {snapshot_type}")
+        
+        return {
+            "success": True,
+            "message": f"Analytics snapshot created successfully",
+            "snapshot_id": str(snapshot.id),
+            "timestamp": snapshot.snapshot_time.isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error creating analytics snapshot: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create snapshot: {str(e)}")
+
+
+@router.post("/ports/update-stock-levels", response_model=Dict[str, Any])
+async def update_all_port_stock_levels(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Update stock levels for all existing ports to match their trading roles.
+    This ensures ports have appropriate inventory for the commodities they trade.
+    """
+    try:
+        from src.models.port import Port
+        
+        # Get all ports
+        ports = db.query(Port).all()
+        
+        updated_ports = []
+        
+        for port in ports:
+            # Store original stock levels for reporting
+            original_commodities = dict(port.commodities)
+            
+            # Update trading flags and stock levels
+            port.update_commodity_trading_flags()
+            port.update_commodity_stock_levels()
+            
+            # Track changes
+            changes = {}
+            for commodity_name, commodity_data in port.commodities.items():
+                old_quantity = original_commodities.get(commodity_name, {}).get("quantity", 0)
+                new_quantity = commodity_data.get("quantity", 0)
+                if old_quantity != new_quantity:
+                    changes[commodity_name] = {
+                        "old_quantity": old_quantity,
+                        "new_quantity": new_quantity
+                    }
+            
+            if changes:
+                updated_ports.append({
+                    "port_id": str(port.id),
+                    "port_name": port.name,
+                    "port_class": port.port_class.value,
+                    "port_type": port.type.value,
+                    "sector_id": port.sector_id,
+                    "changes": changes
+                })
+        
+        # Commit all changes
+        db.commit()
+        
+        logger.info(f"Admin {current_admin.username} updated stock levels for {len(updated_ports)} ports")
+        
+        return {
+            "success": True,
+            "message": f"Updated stock levels for {len(updated_ports)} ports out of {len(ports)} total",
+            "ports_updated": len(updated_ports),
+            "total_ports": len(ports),
+            "updated_ports": updated_ports[:20],  # Limit response size, show first 20
+            "has_more": len(updated_ports) > 20
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating port stock levels: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update port stock levels: {str(e)}")

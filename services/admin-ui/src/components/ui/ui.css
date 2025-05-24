@@ -215,6 +215,118 @@ input:checked + .slider:before {
   transform: translateX(26px);
 }
 
+/* Game Server Status Component */
+.game-server-status {
+  background-color: var(--card-bg, white);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.server-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.server-status-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-color, #333);
+}
+
+.refresh-status-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  color: var(--text-color, #666);
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.refresh-status-btn:hover:not(:disabled) {
+  background-color: var(--secondary-bg, #f5f5f5);
+  transform: rotate(180deg);
+}
+
+.refresh-status-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.server-status-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+.status-text {
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.server-metrics {
+  display: flex;
+  gap: 1rem;
+  margin: 0.25rem 0;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.metric-label {
+  font-size: 0.7rem;
+  color: var(--subtitle-color, #666);
+  font-weight: 500;
+}
+
+.metric-value {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-color, #333);
+}
+
+.last-checked {
+  font-size: 0.7rem;
+  color: var(--subtitle-color, #666);
+  margin-top: 0.25rem;
+}
+
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   :root {

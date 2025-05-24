@@ -11,6 +11,8 @@ from urllib.parse import urlencode
 from src.core.config import settings
 from src.models.user import User
 from src.models.oauth_account import OAuthAccount
+from src.models.player import Player
+from src.models.ship import Ship, ShipType
 
 
 async def get_oauth_user(
@@ -67,9 +69,64 @@ async def create_oauth_user(
         deleted=False
     )
     db.add(oauth_account)
+    
+    # Create Player record for OAuth user
+    player = await create_player_for_user(db, user)
+    
     db.commit()
     
     return user
+
+
+async def create_player_for_user(db: Session, user: User) -> Player:
+    """
+    Create a Player record for a User (OAuth or otherwise).
+    Also creates a starter ship for the player.
+    """
+    # Create player
+    player = Player(
+        user_id=user.id,
+        nickname=None,  # Can be set later by user
+        credits=10000,  # Starting credits
+        turns=1000,     # Starting turns
+        reputation={},  # Empty reputation
+        home_sector_id=1,     # Start in sector 1
+        current_sector_id=1,  # Start in sector 1
+        is_ported=False,
+        is_landed=False,
+        team_id=None,
+        attack_drones=0,
+        defense_drones=0,
+        mines=0,
+        insurance=None,
+        settings={},
+        first_login={"completed": False}
+    )
+    db.add(player)
+    db.flush()  # Get the player ID
+    
+    # Create starter ship
+    starter_ship = Ship(
+        name="Starter Ship",
+        type=ShipType.LIGHT_FREIGHTER,
+        owner_id=player.id,
+        sector_id=1,  # Start in sector 1
+        cargo={},
+        current_speed=1.0,
+        base_speed=1.0,
+        combat={},
+        maintenance={},
+        is_flagship=True,
+        purchase_value=10000,
+        current_value=10000
+    )
+    db.add(starter_ship)
+    db.flush()  # Get the ship ID
+    
+    # Set the starter ship as current ship
+    player.current_ship_id = starter_ship.id
+    
+    return player
 
 
 class GitHubOAuth:

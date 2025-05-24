@@ -91,3 +91,29 @@ async def get_current_player(
             detail="Player account not found"
         )
     return player
+
+
+async def get_current_user_from_token(
+    token: str, 
+    db: Session
+) -> User:
+    """
+    Function to get the current authenticated user from a token string.
+    Used for WebSocket authentication where we can't use FastAPI dependencies.
+    """
+    if not token:
+        return None
+    
+    try:
+        payload = decode_token(token)
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+    except JWTError:
+        return None
+        
+    user = db.query(User).filter(User.id == user_id, User.deleted == False).first()
+    if user is None or not user.is_active:
+        return None
+        
+    return user

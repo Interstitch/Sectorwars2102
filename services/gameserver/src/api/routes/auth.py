@@ -530,6 +530,16 @@ async def github_callback(request: Request, code: str, register: bool = False, d
         if not user:
             user = await create_oauth_user(db, "github", provider_user_id, user_data)
             is_new_user = True
+        else:
+            # Check if existing user has a Player record
+            from src.models.player import Player
+            existing_player = db.query(Player).filter(Player.user_id == user.id).first()
+            if not existing_player:
+                # Existing OAuth user without Player record - create one
+                from src.auth.oauth import create_player_for_user
+                await create_player_for_user(db, user)
+                db.commit()
+                print(f"Created Player record for existing OAuth user: {user.username}")
 
         # Create tokens and update last login
         access_token, refresh_token = create_tokens(str(user.id), db)
