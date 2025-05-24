@@ -27,10 +27,13 @@ def load_env_file():
                     line = line.strip()
                     if line and not line.startswith('#') and '=' in line:
                         key, value = line.split('=', 1)
+                        # Remove inline comments
+                        if '#' in value:
+                            value = value.split('#')[0].strip()
                         # Don't override existing environment variables
                         if key not in os.environ:
                             os.environ[key] = value
-                            print(f"  ✅ Set {key}")
+                            print(f"  ✅ Set {key}={value}")
             return True
     
     print("⚠️ No .env file found in expected locations")

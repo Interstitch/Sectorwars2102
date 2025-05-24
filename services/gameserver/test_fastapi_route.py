@@ -21,14 +21,24 @@ def load_env_file():
                     line = line.strip()
                     if line and not line.startswith('#') and '=' in line:
                         key, value = line.split('=', 1)
+                        # Remove inline comments
+                        if '#' in value:
+                            value = value.split('#')[0].strip()
                         # Don't override existing environment variables
                         if key not in os.environ:
                             os.environ[key] = value
-                            print(f"  ✅ Set {key}")
+                            print(f"  ✅ Set {key}={value}")
             return True
     
-    print("⚠️ No .env file found in expected locations")
-    return False
+    # Check if environment variables are already available (from docker-compose)
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        print("📁 Using environment variables from docker-compose")
+        print(f"  ✅ DATABASE_URL available: {database_url[:50]}...")
+        return True
+    else:
+        print("⚠️ No .env file found and no DATABASE_URL in environment")
+        return False
 
 # Load environment before imports
 load_env_file()
