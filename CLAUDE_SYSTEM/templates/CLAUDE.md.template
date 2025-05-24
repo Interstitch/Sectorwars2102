@@ -2,6 +2,18 @@
 
 This file contains a self-improving, autonomous development methodology that evolves through intelligent reflection and adaptation. When copied to any project, it provides a framework for continuous improvement that learns from each iteration.
 
+## 🚨 CRITICAL DEVELOPMENT REMINDERS
+
+These facts must NEVER be forgotten during any development session:
+
+1. **🔴 GIT COMMITS ARE MANDATORY**: NEVER end a session without committing changes
+   - **COMMIT AFTER EVERY COMPLETED TASK** - No exceptions!
+   - **COMMIT BEFORE TESTING** - Save progress before running tests
+   - **COMMIT BEFORE PHASE TRANSITIONS** - Preserve work at each phase boundary
+   - Use descriptive messages: `feat: add user authentication system`
+   - Command: `git add -A && git commit -m "your message here"`
+   - **⚠️ CRITICAL**: Uncommitted work is LOST work!
+
 ## 🧬 System DNA - Core Directives
 
 These directives form the unchangeable core that ensures continuous improvement:
@@ -95,7 +107,11 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
 - Write clean, well-documented code with proper error handling
 - Use TypeScript for type safety and better developer experience
 - Follow SOLID principles and maintain separation of concerns
-- Commit changes incrementally with descriptive commit messages
+- 🔴 **COMMIT CHANGES IMMEDIATELY** after each completed task
+  - **MANDATORY**: `git add -A && git commit -m "descriptive message"`
+  - Follow conventional commits format: `feat:`, `fix:`, `refactor:`, `test:`
+  - **NEVER SKIP COMMITS** - they preserve your work!
+  - **COMMIT BEFORE MOVING TO NEXT TASK** - No exceptions!
 
 **Quality Gates**:
 - No TypeScript errors: `npm run typecheck`
@@ -147,6 +163,9 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
 **Success Criteria**: Actionable improvements identified and documented
 
 **Actions**:
+- 🔴 **MANDATORY GIT COMMIT CHECK**: Ensure all work is committed before review
+  - Command: `git status` (should show "working tree clean")
+  - If not clean: `git add -A && git commit -m "final changes before review"`
 - Review code quality and identify refactoring opportunities
   - Run comprehensive analysis: `python CLAUDE_SYSTEM/claude-system.py --analyze`
   - Check for automated healing opportunities: `python CLAUDE_SYSTEM/claude-system.py --heal`
@@ -158,6 +177,7 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
 - Update development priorities based on learnings
 - Prepare for next iteration by updating the ideas backlog
 - **CRITICAL**: Review and improve this CLAUDE.md file itself
+- 🔴 **FINAL COMMIT**: `git add -A && git commit -m "phase 6: complete iteration review"`
 - Create metrics dashboard
   - Generate comprehensive reports: `python CLAUDE_SYSTEM/claude-system.py --report`
 
@@ -241,6 +261,7 @@ The system can automatically:
 - Remove or modify approaches that didn't work well
 - Evolve the development process based on actual usage, not assumptions
 - Track improvement metrics over time
+- 🔴 **COMMIT ALL IMPROVEMENTS**: `git add -A && git commit -m "improve: enhance CLAUDE.md based on iteration learnings"`
 
 ## 🎯 Success Metrics for Self-Improvement
 

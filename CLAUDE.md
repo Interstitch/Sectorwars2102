@@ -6,24 +6,32 @@ This file contains a self-improving, autonomous development methodology that evo
 
 These are essential facts that must NEVER be forgotten during any development session:
 
-1. **DOCKER ENVIRONMENT**: All services run in Docker containers via docker-compose
+1. **🔴 GIT COMMITS ARE MANDATORY**: NEVER end a session without committing changes
+   - **COMMIT AFTER EVERY COMPLETED TASK** - No exceptions!
+   - **COMMIT BEFORE TESTING** - Save progress before running tests
+   - **COMMIT BEFORE PHASE TRANSITIONS** - Preserve work at each phase boundary
+   - Use descriptive messages: `feat: add async DB support to AI routes`
+   - Command: `git add -A && git commit -m "your message here"`
+   - **⚠️ CRITICAL**: Uncommitted work is LOST work!
+
+2. **DOCKER ENVIRONMENT**: All services run in Docker containers via docker-compose
    - Player Client: http://localhost:3000 (container: player-client)
    - Admin UI: http://localhost:3001 (container: admin-ui)  
    - Game Server: http://localhost:8080 (container: gameserver)
    - Database: PostgreSQL via Neon (external)
 
-2. **DEVELOPMENT COMMANDS**: Always use docker-compose or the unified scripts
+3. **DEVELOPMENT COMMANDS**: Always use docker-compose or the unified scripts
    - Start all: `./dev-scripts/start-unified.sh`
    - Individual service: `docker-compose up <service-name>`
    - Check status: `docker-compose ps`
    - NEVER run `npm run dev` directly - services are containerized
 
-3. **DUAL CLOUD ENVIRONMENTS**: Primary is GitHub Codespaces, secondary is Replit
+4. **DUAL CLOUD ENVIRONMENTS**: Primary is GitHub Codespaces, secondary is Replit
    - **Codespaces**: Docker containers + internal networking + port forwarding
    - **Replit**: PM2 process manager (no Docker) + shared Neon database
    - **Unified scripts**: `./dev-scripts/start-unified.sh` (auto-detects environment)
 
-4. **FILE SYSTEM**: 
+5. **FILE SYSTEM**: 
    - All edits are persistent across container restarts
    - Code changes hot-reload within containers
    - Database persists via external Neon service
@@ -127,10 +135,12 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
   - Single Responsibility: One class, one purpose
   - Open/Closed: Extend, don't modify
   - Interface Segregation: Small, focused interfaces
-- Commit changes incrementally with descriptive commit messages
-  - Follow conventional commits format
-  - Commit after each completed task
+- 🔴 **COMMIT CHANGES IMMEDIATELY** after each completed task
+  - **MANDATORY**: `git add -A && git commit -m "descriptive message"`
+  - Follow conventional commits format: `feat:`, `fix:`, `refactor:`, `test:`
+  - **NEVER SKIP COMMITS** - they preserve your work!
   - Include issue/task references
+  - **COMMIT BEFORE MOVING TO NEXT TASK** - No exceptions!
 
 **Quality Gates**:
 - No TypeScript errors: `docker-compose exec player-client npm run typecheck` (in container)
@@ -469,12 +479,18 @@ npx playwright test -c e2e_tests/playwright.config.ts
 npx playwright test --reporter=html  # Generate test coverage
 ```
 
-#### PHASE 6: REVIEW & REFLECTION (GIT WORKFLOW)
+#### PHASE 6: REVIEW & REFLECTION (🔴 MANDATORY GIT WORKFLOW)
 ```bash
+# 🔴 CRITICAL: ALWAYS commit your work - NO EXCEPTIONS!
 git status && git diff     # Review changes (HOST)
-git add -p && git commit   # Stage and commit (HOST)
+git add -A && git commit -m "feat: your descriptive message here"   # Stage and commit (HOST)
 git push origin main       # Deploy changes (HOST)
+
+# Alternative interactive staging (if you prefer):
+git add -p && git commit   # Interactive staging and commit
 ```
+
+**⚠️ COMMIT REMINDER**: If you haven't committed in the last 30 minutes, STOP and commit now!
 
 **⚠️ WARNING**: These are supporting commands only. Always complete all 6 phases of the Self-Improving Development Loop for proper methodology adherence.
 
@@ -543,7 +559,7 @@ The project is split into three main services:
 # Development (HOST)
 ./dev-scripts/start-unified.sh            # Start all services
 npx playwright test                        # Run E2E tests
-git add -p && git commit                   # Interactive commit
+git add -A && git commit -m "your message"  # 🔴 COMMIT YOUR WORK!
 
 # Quality System (HOST)
 python CLAUDE_SYSTEM/claude-system.py --quick   # Quick health check (Phase 0)
@@ -573,6 +589,7 @@ docker-compose logs player-client          # Check container logs
 ✅ Documentation updated
 ✅ Retrospective completed
 ✅ CLAUDE.md improved
+🔴 **✅ ALL WORK COMMITTED TO GIT** ← MOST IMPORTANT!
 
 ## Current Project Analysis
 ### Project Type: node

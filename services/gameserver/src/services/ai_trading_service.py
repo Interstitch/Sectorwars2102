@@ -28,6 +28,8 @@ from src.models.ai_trading import (
 from src.models.player import Player
 from src.models.sector import Sector
 from src.models.market_transaction import MarketTransaction
+from src.services.market_prediction_engine import MarketPredictionEngine
+from src.services.route_optimizer import RouteOptimizer, RouteObjective
 
 
 logger = logging.getLogger(__name__)
@@ -110,6 +112,8 @@ class AITradingService:
         self.model_version = "1.0.0"
         self.prediction_horizon_hours = 24
         self.max_recommendations_per_player = 10
+        self.prediction_engine = MarketPredictionEngine()
+        self.route_optimizer = RouteOptimizer()
         
     async def get_trading_recommendations(
         self, 
@@ -228,38 +232,62 @@ class AITradingService:
         max_stops: int = 5
     ) -> OptimalRoute:
         """
-        Calculate optimal trade route for maximum profit
+        Calculate optimal trade route for maximum profit using advanced algorithms
         """
         try:
             player = await self._get_player_with_profile(db, player_id)
             if not player:
                 raise ValueError(f"Player {player_id} not found")
             
-            # Get available sectors and market data
-            sectors = await self._get_accessible_sectors(db, start_sector, max_stops)
-            market_data = await self._get_current_market_data(db, sectors)
+            # Get player preferences from profile
+            risk_tolerance = player.trading_profile.risk_tolerance if player.trading_profile else 0.5
+            max_time = 24.0  # Default 24 hours
             
-            # Calculate profit opportunities for each sector pair
-            opportunities = []
-            for i, sector_a in enumerate(sectors):
-                for sector_b in sectors[i+1:]:
-                    profit = await self._calculate_route_profit(
-                        market_data, sector_a, sector_b, cargo_capacity
-                    )
-                    if profit > 0:
-                        opportunities.append({
-                            'from': sector_a,
-                            'to': sector_b,
-                            'profit': profit,
-                            'distance': await self._calculate_distance(db, sector_a, sector_b)
-                        })
-            
-            # Find optimal route using dynamic programming approach
-            optimal_route = await self._find_optimal_route(
-                opportunities, start_sector, max_stops
+            # Use the advanced route optimizer
+            optimized_route = await self.route_optimizer.find_optimal_route(
+                db=db,
+                start_sector_id=start_sector,
+                player_id=player_id,
+                cargo_capacity=cargo_capacity,
+                max_route_time=max_time,
+                objective=RouteObjective.MAX_PROFIT,
+                risk_tolerance=risk_tolerance
             )
             
-            return optimal_route
+            if not optimized_route:
+                # Return empty route if no optimization possible
+                return OptimalRoute(
+                    sectors=[start_sector],
+                    total_profit=0.0,
+                    total_distance=0,
+                    estimated_time=0,
+                    risk_score=0.0,
+                    commodity_chain=[]
+                )
+            
+            # Convert to legacy OptimalRoute format
+            commodity_chain = []
+            for i, opportunity in enumerate(optimized_route.opportunities):
+                commodity_chain.append({
+                    'step': i + 1,
+                    'from_sector': opportunity.from_sector_id,
+                    'to_sector': opportunity.to_sector_id,
+                    'commodity': opportunity.commodity_id,
+                    'buy_price': opportunity.buy_price,
+                    'sell_price': opportunity.sell_price,
+                    'profit_per_unit': opportunity.profit_per_unit,
+                    'max_quantity': opportunity.max_quantity,
+                    'confidence': opportunity.confidence
+                })
+            
+            return OptimalRoute(
+                sectors=optimized_route.sectors,
+                total_profit=optimized_route.total_profit,
+                total_distance=optimized_route.total_distance,
+                estimated_time=int(optimized_route.total_time_hours * 60),  # Convert to minutes
+                risk_score=optimized_route.total_risk,
+                commodity_chain=commodity_chain
+            )
             
         except Exception as e:
             logger.error(f"Error optimizing trade route for player {player_id}: {e}")
@@ -503,11 +531,29 @@ class AITradingService:
         return []
     
     async def _predict_future_price(self, db: AsyncSession, commodity_id: str, sector_id: Optional[str], history: List) -> float:
-        """Predict future price using ML model"""
-        # Simplified - real implementation would use trained ML models
-        if history:
-            return history[-1]['price'] * 1.05  # Simple 5% increase prediction
-        return 0.0
+        """Predict future price using Prophet ML model"""
+        try:
+            # Use the real prediction engine
+            prediction = await self.prediction_engine.predict_prices(
+                db, commodity_id, sector_id, self.prediction_horizon_hours
+            )
+            
+            if prediction:
+                return prediction['predicted_price']
+            
+            # Fallback to simple prediction if Prophet fails
+            if history:
+                prices = [h['price'] for h in history]
+                return prices[-1] * 1.05  # Simple 5% increase prediction
+            return 0.0
+            
+        except Exception as e:
+            logger.error(f"Error predicting future price: {e}")
+            # Fallback
+            if history:
+                prices = [h['price'] for h in history]
+                return prices[-1] * 1.05
+            return 0.0
     
     def _calculate_price_trend(self, prices: List[float]) -> str:
         """Calculate price trend from historical data"""

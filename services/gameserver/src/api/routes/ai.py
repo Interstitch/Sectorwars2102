@@ -80,7 +80,7 @@ class PlayerTradingProfileResponse(BaseModel):
 
 
 class AIPreferences(BaseModel):
-    ai_assistance_level: str = Field(..., regex="^(minimal|medium|full)$")
+    ai_assistance_level: str = Field(..., pattern="^(minimal|medium|full)$")
     risk_tolerance: float = Field(..., ge=0.0, le=1.0)
     notification_preferences: Optional[Dict[str, bool]] = None
 
