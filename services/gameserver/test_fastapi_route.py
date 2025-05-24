@@ -13,7 +13,12 @@ sys.path.insert(0, str(src_path))
 sys.path.append('/app')
 sys.path.append('.')
 
-from fastapi.testclient import TestClient
+try:
+    from fastapi.testclient import TestClient
+except ImportError:
+    # Fallback for older FastAPI versions
+    from starlette.testclient import TestClient
+
 try:
     from main import app
 except ImportError:
@@ -23,6 +28,7 @@ def test_fastapi_sectors_route():
     """Test FastAPI sectors route with comprehensive error handling"""
     print("Initializing FastAPI test client...")
     try:
+        from fastapi.testclient import TestClient
         client = TestClient(app)
         print("Test client created successfully")
     except Exception as e:

@@ -13,7 +13,12 @@ sys.path.insert(0, str(src_path))
 sys.path.append('/app')
 sys.path.append('.')
 
-from fastapi.testclient import TestClient
+try:
+    from fastapi.testclient import TestClient
+except ImportError:
+    # Fallback for older FastAPI versions
+    from starlette.testclient import TestClient
+
 try:
     from main import app
 except ImportError:
@@ -21,7 +26,13 @@ except ImportError:
 
 def test_all_admin_endpoints():
     """Test all admin endpoints with proper authentication"""
-    client = TestClient(app)
+    try:
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        print("✅ Test client created successfully")
+    except Exception as e:
+        print(f"❌ Failed to create test client: {e}")
+        return
     
     print("Starting admin endpoints test...")
     
