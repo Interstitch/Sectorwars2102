@@ -252,17 +252,17 @@ class FirstLoginService:
         # Generate a rarity roll (0-100)
         rarity_roll = random.randint(0, 100)
         
-        # Determine the tier range based on the rarity roll
+        # Determine the tier range based on the rarity roll (expanded to ensure enough ships)
         if rarity_roll >= 96:  # 5% chance for top tier
-            tier_range = [4, 5]
+            tier_range = [4, 5, 6, 7]  # Include super rare ships
         elif rarity_roll >= 86:  # 10% chance for high tier
-            tier_range = [3, 4]
+            tier_range = [3, 4, 5]  # Include higher tier ships
         elif rarity_roll >= 61:  # 25% chance for medium tier
-            tier_range = [2, 3]
+            tier_range = [2, 3, 4]  # Include medium tier ships
         else:  # 60% chance for low tier
-            tier_range = [1, 2]
+            tier_range = [2, 3]  # Always include at least tiers 2-3 to ensure 2+ ships
         
-        # Select one additional ship from the determined tier range
+        # Select two additional ships from the determined tier range
         eligible_ships = [
             config.ship_type.name for config in ship_configs 
             if config.rarity_tier in tier_range and config.ship_type != ShipChoice.ESCAPE_POD
@@ -274,8 +274,28 @@ class FirstLoginService:
                 config.spawn_chance for config in ship_configs
                 if config.ship_type.name in eligible_ships
             ]
-            additional_ship = random.choices(eligible_ships, weights=weights, k=1)[0]
-            available_ships.append(additional_ship)
+            # Select 2 additional ships (or all available if less than 2)
+            num_to_select = min(2, len(eligible_ships))
+            additional_ships = random.choices(eligible_ships, weights=weights, k=num_to_select)
+            
+            # Remove duplicates while preserving order and ensuring we get 2 different ships
+            unique_ships = []
+            for ship in additional_ships:
+                if ship not in unique_ships:
+                    unique_ships.append(ship)
+            
+            # If we only got 1 unique ship and there are more available, try to get a second different one
+            if len(unique_ships) < 2 and len(eligible_ships) > 1:
+                remaining_ships = [ship for ship in eligible_ships if ship not in unique_ships]
+                if remaining_ships:
+                    remaining_weights = [
+                        config.spawn_chance for config in ship_configs
+                        if config.ship_type.name in remaining_ships
+                    ]
+                    second_ship = random.choices(remaining_ships, weights=remaining_weights, k=1)[0]
+                    unique_ships.append(second_ship)
+            
+            available_ships.extend(unique_ships)
         
         # Create ship presentation options
         return ShipPresentationOptions(
