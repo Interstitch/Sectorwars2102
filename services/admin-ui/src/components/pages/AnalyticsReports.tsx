@@ -644,6 +644,124 @@ const AnalyticsReports: React.FC = () => {
                 </div>
               </div>
 
+              {/* ARIA Intelligence System */}
+              <div className="analytics-section aria-section">
+                <h3>🤖 ARIA Intelligence System</h3>
+                <div className="section-subtitle">
+                  Autonomous Resource Intelligence Assistant - Personal AI for each player
+                </div>
+                <div className="metrics-grid">
+                  <div className="metric-card aria-card">
+                    <h4>{formatNumber(analytics.aria_intelligence.active_aria_users)}</h4>
+                    <p>Active ARIA Users</p>
+                    <span className="metric-subtitle">Players with personal AI assistants</span>
+                  </div>
+                  <div className="metric-card aria-card">
+                    <h4>{formatNumber(analytics.aria_intelligence.total_aria_interactions_24h)}</h4>
+                    <p>AI Interactions (24h)</p>
+                    <span className="metric-subtitle">Total player-ARIA communications</span>
+                  </div>
+                  <div className="metric-card aria-card">
+                    <h4>{formatPercentage(analytics.aria_intelligence.recommendation_acceptance_rate)}</h4>
+                    <p>Recommendation Acceptance</p>
+                    <span className="metric-subtitle">Players trust their ARIA</span>
+                  </div>
+                  <div className="metric-card aria-card">
+                    <h4>{(analytics.aria_intelligence.average_ai_trust_level * 100).toFixed(1)}%</h4>
+                    <p>Average AI Trust Level</p>
+                    <span className="metric-subtitle">Player confidence in ARIA</span>
+                  </div>
+                  <div className="metric-card aria-card">
+                    <h4>{formatNumber(analytics.aria_intelligence.players_with_trained_models)}</h4>
+                    <p>Trained Personal Models</p>
+                    <span className="metric-subtitle">ARIAs with sufficient learning data</span>
+                  </div>
+                  <div className="metric-card aria-card">
+                    <h4>{formatNumber(analytics.aria_intelligence.ai_generated_profits_24h)}</h4>
+                    <p>AI-Generated Profits</p>
+                    <span className="metric-subtitle">Credits earned from ARIA recommendations</span>
+                  </div>
+                  <div className="metric-card aria-card warning">
+                    <h4>{formatNumber(analytics.aria_intelligence.behavioral_anomalies_detected)}</h4>
+                    <p>Anomalies Detected</p>
+                    <span className="metric-subtitle">Unusual player behavior alerts</span>
+                  </div>
+                  <div className="metric-card aria-card">
+                    <h4>{formatNumber(analytics.aria_intelligence.aria_response_time_avg)}ms</h4>
+                    <p>Avg Response Time</p>
+                    <span className="metric-subtitle">ARIA processing speed</span>
+                  </div>
+                </div>
+                
+                <div className="ai-features-usage">
+                  <h4>🔧 Popular ARIA Features</h4>
+                  <div className="feature-bars">
+                    {Object.entries(analytics.aria_intelligence.popular_ai_features).map(([feature, usage]) => (
+                      <div key={feature} className="feature-bar">
+                        <span className="feature-name">{feature}</span>
+                        <div className="bar-container">
+                          <div 
+                            className="bar-fill aria-bar" 
+                            style={{ width: `${usage}%` }}
+                          />
+                        </div>
+                        <span className="feature-percentage">{formatPercentage(usage)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ML Model Performance */}
+              <div className="analytics-section ml-section">
+                <h3>⚙️ Machine Learning Model Performance</h3>
+                <div className="section-subtitle">
+                  Real-time performance metrics for Prophet, scikit-learn, and custom ML models
+                </div>
+                <div className="metrics-grid">
+                  <div className="metric-card ml-card">
+                    <h4>{formatPercentage(analytics.ml_model_performance.market_prediction_accuracy)}</h4>
+                    <p>Market Prediction Accuracy</p>
+                    <span className="metric-subtitle">Prophet time series forecasting</span>
+                  </div>
+                  <div className="metric-card ml-card">
+                    <h4>{formatPercentage(analytics.ml_model_performance.route_optimization_success_rate)}</h4>
+                    <p>Route Optimization Success</p>
+                    <span className="metric-subtitle">Graph algorithm performance</span>
+                  </div>
+                  <div className="metric-card ml-card">
+                    <h4>{formatPercentage(analytics.ml_model_performance.player_behavior_classification_confidence)}</h4>
+                    <p>Behavior Classification</p>
+                    <span className="metric-subtitle">Scikit-learn clustering accuracy</span>
+                  </div>
+                  <div className="metric-card ml-card">
+                    <h4>{formatNumber(analytics.ml_model_performance.prophet_model_mae, 1)}</h4>
+                    <p>Prophet MAE</p>
+                    <span className="metric-subtitle">Mean Absolute Error in credits</span>
+                  </div>
+                  <div className="metric-card ml-card">
+                    <h4>{analytics.ml_model_performance.clustering_silhouette_score.toFixed(2)}</h4>
+                    <p>Clustering Quality</p>
+                    <span className="metric-subtitle">Silhouette score (higher is better)</span>
+                  </div>
+                  <div className="metric-card ml-card">
+                    <h4>{formatPercentage(analytics.ml_model_performance.anomaly_detection_precision)}</h4>
+                    <p>Anomaly Detection</p>
+                    <span className="metric-subtitle">Isolation Forest precision</span>
+                  </div>
+                  <div className="metric-card ml-card">
+                    <h4>{formatNumber(analytics.ml_model_performance.models_retrained_24h)}</h4>
+                    <p>Models Retrained (24h)</p>
+                    <span className="metric-subtitle">Automatic model updates</span>
+                  </div>
+                  <div className="metric-card ml-card error">
+                    <h4>{formatNumber(analytics.ml_model_performance.prediction_errors_24h)}</h4>
+                    <p>Prediction Errors</p>
+                    <span className="metric-subtitle">Failed ML predictions</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Server Performance */}
               <div className="analytics-section">
                 <h3>Server Performance</h3>

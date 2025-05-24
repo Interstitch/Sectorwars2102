@@ -57,41 +57,46 @@ function GalaxyScene({ onSectorSelect }: { onSectorSelect?: (sector: Sector) => 
 
   // Create sectors array from current sector and available moves
   const sectors = useMemo(() => {
-    const sectorList: Sector[] = [];
+    const sectorMap = new Map<number, Sector>();
     
     // Add current sector
     if (currentSector) {
-      sectorList.push(currentSector);
+      sectorMap.set(currentSector.id, currentSector);
     }
     
     // Add sectors from available moves (create minimal Sector objects)
+    // Use Map to avoid duplicates if same sector appears in both warps and tunnels
     availableMoves.warps.forEach(warp => {
-      sectorList.push({
-        id: warp.sector_id,
-        name: warp.name,
-        type: warp.type,
-        hazard_level: 0,
-        radiation_level: 0,
-        resources: {},
-        players_present: [],
-        special_features: []
-      });
+      if (!sectorMap.has(warp.sector_id)) {
+        sectorMap.set(warp.sector_id, {
+          id: warp.sector_id,
+          name: warp.name,
+          type: warp.type,
+          hazard_level: 0,
+          radiation_level: 0,
+          resources: {},
+          players_present: [],
+          special_features: []
+        });
+      }
     });
     
     availableMoves.tunnels.forEach(tunnel => {
-      sectorList.push({
-        id: tunnel.sector_id,
-        name: tunnel.name,
-        type: tunnel.type,
-        hazard_level: 0,
-        radiation_level: 0,
-        resources: {},
-        players_present: [],
-        special_features: []
-      });
+      if (!sectorMap.has(tunnel.sector_id)) {
+        sectorMap.set(tunnel.sector_id, {
+          id: tunnel.sector_id,
+          name: tunnel.name,
+          type: tunnel.type,
+          hazard_level: 0,
+          radiation_level: 0,
+          resources: {},
+          players_present: [],
+          special_features: []
+        });
+      }
     });
     
-    return sectorList;
+    return Array.from(sectorMap.values());
   }, [currentSector, availableMoves]);
 
   // Galaxy layout calculation with 3D positioning
