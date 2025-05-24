@@ -328,6 +328,22 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
 - Evolve the development process based on actual usage, not assumptions
 - Track improvement metrics over time
 
+### Recent Improvements (2025-05-24)
+**Database Schema Validation Added:**
+- Automated schema inspection patterns for migration verification
+- Safe PostgreSQL enum modification procedures  
+- SQLAlchemy relationship conflict resolution patterns
+
+**Process Refinements:**
+- Phase 1 now includes Task agent utilization for focused searches
+- Phase 3 includes immediate commits after each completed task
+- Phase 6 includes comprehensive retrospective documentation
+
+**Command Library Expanded:**
+- Database migration commands with container execution
+- Schema validation one-liners for quick debugging
+- Enum modification patterns for safe database updates
+
 
 ## 🎯 Success Metrics for Self-Improvement
 
@@ -572,6 +588,19 @@ docker-compose exec player-client npm run lint      # Code style check
 docker-compose exec player-client npm run build     # Build frontend
 docker-compose exec admin-ui npm run lint           # Admin UI lint
 
+# Database Operations (IN CONTAINERS)
+docker-compose exec gameserver poetry run alembic upgrade head  # Apply migrations
+docker-compose exec gameserver poetry run alembic revision -m "description"  # Create migration  
+docker-compose exec gameserver poetry run alembic current       # Check migration status
+
+# Database Validation (IN CONTAINERS)
+docker-compose exec gameserver python -c "
+from sqlalchemy import inspect
+from src.core.database import get_db
+inspector = inspect(next(get_db()).bind)
+print(inspector.get_table_names())
+"  # Check database schema
+
 # Analysis (HOST)
 npx playwright test --reporter=html        # Test coverage report
 docker-compose logs player-client          # Check container logs
@@ -581,6 +610,35 @@ docker-compose logs player-client          # Check container logs
 - **Feature Development**: Full 6-phase cycle
 - **Bug Fix**: Phases 0→3→4→6 (implementation focused)
 - **Refactoring**: Phases 0→2→3→4→6 (planning critical)
+- **Database Schema Updates**: Phases 0→1→2→3→6 (validation critical)
+
+### Database Patterns (Learned 2025-05-24)
+```bash
+# Safe PostgreSQL enum modification
+ALTER TYPE enum_name ADD VALUE 'NEW_VALUE';  # Safe - can add values
+# Note: Cannot remove enum values without recreating type
+
+# Schema validation pattern
+from sqlalchemy import inspect
+inspector = inspect(db.bind)
+columns = inspector.get_columns('table_name')
+column_exists = any(col['name'] == 'target' for col in columns)
+
+# Safe migration testing
+docker-compose exec gameserver poetry run alembic upgrade head --sql  # Preview SQL
+docker-compose exec gameserver poetry run alembic current             # Verify state
+```
+
+### SQLAlchemy Relationship Patterns
+```python
+# Avoid naming conflicts between columns and relationships
+class Ship(Base):
+    genesis_devices = Column(Integer)  # Count of devices
+    genesis_device_objects = relationship("GenesisDevice")  # Actual objects
+    
+class GenesisDevice(Base):
+    ship = relationship("Ship", back_populates="genesis_device_objects")
+```
 
 ### Success Indicators
 ✅ All tests passing
