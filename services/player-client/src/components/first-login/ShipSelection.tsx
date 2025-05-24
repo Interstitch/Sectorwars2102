@@ -63,7 +63,9 @@ const ShipSelection: React.FC = () => {
       </div>
       
       <div className="dialogue-text">
-        {currentPrompt || "Hold it right there! This area is restricted to registered pilots only. Which of these vessels belongs to you?"}
+        {currentPrompt || `The year is 2102. You find yourself in a bustling shipyard on the outskirts of the Callisto Colony. Your memory is hazy—a side effect of the cryo-sleep required for the journey here. A small orange cat darts between the landing gear of nearby ships, disappearing into the shadows. You're approaching what appears to be your escape pod when a stern-looking Security Guard blocks your path.
+
+Guard: "Hold it right there! This area is restricted to registered pilots only. Which of these vessels belongs to you?"`}
       </div>
       
       {/* Ship selection grid */}
