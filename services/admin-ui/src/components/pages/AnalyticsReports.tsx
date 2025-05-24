@@ -1,0 +1,711 @@
+import React, { useState, useEffect } from 'react';
+import PageHeader from '../ui/PageHeader';
+import './analytics-reports.css';
+
+interface AnalyticsDashboard {
+  player_engagement: {
+    daily_active_users: number;
+    weekly_active_users: number;
+    monthly_active_users: number;
+    new_registrations_24h: number;
+    total_players: number;
+    average_session_length: number;
+    retention_rate_7d: number;
+    retention_rate_30d: number;
+  };
+  economic_health: {
+    total_credits_in_circulation: number;
+    average_player_wealth: number;
+    active_traders_24h: number;
+    trade_volume_24h: number;
+    price_volatility_index: number;
+    resource_distribution: { [key: string]: number };
+  };
+  combat_activity: {
+    combat_events_24h: number;
+    unique_combatants_24h: number;
+    average_combat_duration: number;
+    ship_destruction_rate: number;
+    active_sectors: number;
+    pirate_encounters: number;
+  };
+  exploration_progress: {
+    total_sectors: number;
+    discovered_sectors: number;
+    exploration_percentage: number;
+    new_discoveries_24h: number;
+    active_explorers: number;
+    undiscovered_regions: string[];
+  };
+  server_performance: {
+    active_players: number;
+    response_time: number;
+    memory_usage: number;
+    cpu_usage: number;
+    uptime_percentage: number;
+    error_rate: number;
+  };
+}
+
+interface Report {
+  id: string;
+  name: string;
+  description: string;
+  type: 'player' | 'economic' | 'combat' | 'exploration' | 'custom';
+  created_at: string;
+  generated_by: string;
+  file_url?: string;
+  status: 'generating' | 'ready' | 'error';
+}
+
+interface ReportTemplate {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  parameters: { [key: string]: any };
+}
+
+const AnalyticsReports: React.FC = () => {
+  const [analytics, setAnalytics] = useState<AnalyticsDashboard | null>(null);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [templates, setTemplates] = useState<ReportTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [showCreateReport, setShowCreateReport] = useState(false);
+  const [newReport, setNewReport] = useState({
+    name: '',
+    description: '',
+    type: 'player' as const,
+    date_range: '7d',
+    filters: {} as { [key: string]: any }
+  });
+
+  useEffect(() => {
+    fetchAnalyticsData();
+    if (activeTab === 'reports') {
+      fetchReports();
+      fetchReportTemplates();
+    }
+  }, [selectedTimeRange, activeTab]);
+
+  const fetchAnalyticsData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch(
+        `/api/v1/admin/analytics/dashboard?time_range=${selectedTimeRange}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch analytics: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setAnalytics(data);
+
+    } catch (error) {
+      console.error('Error fetching analytics data:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch analytics data');
+      
+      // Provide mock data for demonstration
+      setAnalytics({
+        player_engagement: {
+          daily_active_users: 156,
+          weekly_active_users: 432,
+          monthly_active_users: 1247,
+          new_registrations_24h: 12,
+          total_players: 2834,
+          average_session_length: 45.3,
+          retention_rate_7d: 68.5,
+          retention_rate_30d: 42.1
+        },
+        economic_health: {
+          total_credits_in_circulation: 15623890,
+          average_player_wealth: 5512,
+          active_traders_24h: 89,
+          trade_volume_24h: 234567,
+          price_volatility_index: 1.23,
+          resource_distribution: {
+            'Food': 25.3,
+            'Tech': 23.1,
+            'Ore': 28.7,
+            'Fuel': 22.9
+          }
+        },
+        combat_activity: {
+          combat_events_24h: 47,
+          unique_combatants_24h: 34,
+          average_combat_duration: 8.7,
+          ship_destruction_rate: 12.3,
+          active_sectors: 89,
+          pirate_encounters: 23
+        },
+        exploration_progress: {
+          total_sectors: 500,
+          discovered_sectors: 387,
+          exploration_percentage: 77.4,
+          new_discoveries_24h: 8,
+          active_explorers: 45,
+          undiscovered_regions: ['Outer Rim', 'Void Expanse', 'Unknown Nebula']
+        },
+        server_performance: {
+          active_players: 156,
+          response_time: 0.156,
+          memory_usage: 67.8,
+          cpu_usage: 23.4,
+          uptime_percentage: 99.97,
+          error_rate: 0.02
+        }
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchReports = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(
+        '/api/v1/admin/reports',
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setReports(data.reports || []);
+      } else {
+        // Mock data for demonstration
+        setReports([
+          {
+            id: '1',
+            name: 'Weekly Player Activity Report',
+            description: 'Comprehensive player engagement analysis',
+            type: 'player',
+            created_at: new Date().toISOString(),
+            generated_by: 'admin',
+            status: 'ready',
+            file_url: '/reports/weekly-activity.pdf'
+          },
+          {
+            id: '2',
+            name: 'Economic Balance Analysis',
+            description: 'Credit distribution and trading patterns',
+            type: 'economic',
+            created_at: new Date(Date.now() - 24*60*60*1000).toISOString(),
+            generated_by: 'admin',
+            status: 'ready',
+            file_url: '/reports/economic-analysis.pdf'
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+    }
+  };
+
+  const fetchReportTemplates = async () => {
+    // Mock templates for demonstration
+    setTemplates([
+      {
+        id: '1',
+        name: 'Player Engagement Report',
+        description: 'Detailed analysis of player activity and retention',
+        type: 'player',
+        parameters: { include_retention: true, include_activity: true }
+      },
+      {
+        id: '2',
+        name: 'Economic Health Report',
+        description: 'Credit flows, trading patterns, and market analysis',
+        type: 'economic',
+        parameters: { include_trading: true, include_inflation: true }
+      },
+      {
+        id: '3',
+        name: 'Combat Activity Report',
+        description: 'PvP statistics and combat balance analysis',
+        type: 'combat',
+        parameters: { include_ship_losses: true, include_sector_activity: true }
+      },
+      {
+        id: '4',
+        name: 'Exploration Progress Report',
+        description: 'Galaxy discovery rates and exploration patterns',
+        type: 'exploration',
+        parameters: { include_discovery_rate: true, include_sector_mapping: true }
+      }
+    ]);
+  };
+
+  const handleGenerateReport = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(
+        '/api/v1/admin/reports/generate',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(newReport)
+        }
+      );
+
+      if (response.ok) {
+        await fetchReports();
+        setShowCreateReport(false);
+        setNewReport({
+          name: '',
+          description: '',
+          type: 'player',
+          date_range: '7d',
+          filters: {}
+        });
+      } else {
+        alert('Failed to generate report');
+      }
+    } catch (error) {
+      console.error('Error generating report:', error);
+      alert('Error generating report');
+    }
+  };
+
+  const applyTemplate = (template: ReportTemplate) => {
+    setNewReport({
+      ...newReport,
+      name: template.name,
+      description: template.description,
+      type: template.type as any,
+      filters: template.parameters
+    });
+  };
+
+  const exportData = (format: 'csv' | 'json' | 'pdf') => {
+    const dataStr = JSON.stringify(analytics, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `analytics-${selectedTimeRange}.${format}`;
+    link.click();
+  };
+
+  const formatNumber = (num: number, decimals: number = 0) => {
+    return num.toLocaleString(undefined, { 
+      minimumFractionDigits: decimals, 
+      maximumFractionDigits: decimals 
+    });
+  };
+
+  const formatPercentage = (num: number) => {
+    return `${num.toFixed(1)}%`;
+  };
+
+  const formatDuration = (minutes: number) => {
+    return `${Math.floor(minutes)}m ${Math.floor((minutes % 1) * 60)}s`;
+  };
+
+  if (loading) {
+    return (
+      <div className="analytics-reports">
+        <PageHeader 
+          title="Analytics & Reports" 
+          subtitle="Advanced analytics and custom reporting"
+        />
+        <div className="loading-spinner">Loading analytics data...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="analytics-reports">
+      <PageHeader 
+        title="Analytics & Reports" 
+        subtitle="Advanced analytics and custom reporting"
+      />
+      
+      {/* Tab Navigation */}
+      <div className="tab-navigation">
+        <button 
+          className={activeTab === 'dashboard' ? 'active' : ''}
+          onClick={() => setActiveTab('dashboard')}
+        >
+          Analytics Dashboard
+        </button>
+        <button 
+          className={activeTab === 'reports' ? 'active' : ''}
+          onClick={() => setActiveTab('reports')}
+        >
+          Reports
+        </button>
+      </div>
+
+      {activeTab === 'dashboard' && (
+        <div className="dashboard-content">
+          {/* Time Range Selector */}
+          <div className="time-range-selector">
+            <label>Time Range:</label>
+            <select 
+              value={selectedTimeRange} 
+              onChange={(e) => setSelectedTimeRange(e.target.value)}
+            >
+              <option value="1h">Last Hour</option>
+              <option value="24h">Last 24 Hours</option>
+              <option value="7d">Last 7 Days</option>
+              <option value="30d">Last 30 Days</option>
+              <option value="90d">Last 90 Days</option>
+            </select>
+            
+            <div className="export-buttons">
+              <button onClick={() => exportData('json')}>Export JSON</button>
+              <button onClick={() => exportData('csv')}>Export CSV</button>
+              <button onClick={() => exportData('pdf')}>Export PDF</button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="error-notice">
+              <p>Using demo data due to API error: {error}</p>
+            </div>
+          )}
+
+          {analytics && (
+            <>
+              {/* Player Engagement */}
+              <div className="analytics-section">
+                <h3>Player Engagement</h3>
+                <div className="metrics-grid">
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.player_engagement.daily_active_users)}</h4>
+                    <p>Daily Active Users</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.player_engagement.weekly_active_users)}</h4>
+                    <p>Weekly Active Users</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.player_engagement.monthly_active_users)}</h4>
+                    <p>Monthly Active Users</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.player_engagement.new_registrations_24h)}</h4>
+                    <p>New Registrations (24h)</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatDuration(analytics.player_engagement.average_session_length)}</h4>
+                    <p>Avg Session Length</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatPercentage(analytics.player_engagement.retention_rate_7d)}</h4>
+                    <p>7-Day Retention</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Economic Health */}
+              <div className="analytics-section">
+                <h3>Economic Health</h3>
+                <div className="metrics-grid">
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.economic_health.total_credits_in_circulation)}</h4>
+                    <p>Total Credits</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.economic_health.average_player_wealth)}</h4>
+                    <p>Avg Player Wealth</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.economic_health.active_traders_24h)}</h4>
+                    <p>Active Traders (24h)</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.economic_health.trade_volume_24h)}</h4>
+                    <p>Trade Volume (24h)</p>
+                  </div>
+                </div>
+                
+                <div className="resource-distribution">
+                  <h4>Resource Distribution</h4>
+                  <div className="resource-bars">
+                    {Object.entries(analytics.economic_health.resource_distribution).map(([resource, percentage]) => (
+                      <div key={resource} className="resource-bar">
+                        <span className="resource-name">{resource}</span>
+                        <div className="bar-container">
+                          <div 
+                            className="bar-fill" 
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                        <span className="resource-percentage">{formatPercentage(percentage)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Combat Activity */}
+              <div className="analytics-section">
+                <h3>Combat Activity</h3>
+                <div className="metrics-grid">
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.combat_activity.combat_events_24h)}</h4>
+                    <p>Combat Events (24h)</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.combat_activity.unique_combatants_24h)}</h4>
+                    <p>Unique Combatants</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatDuration(analytics.combat_activity.average_combat_duration)}</h4>
+                    <p>Avg Combat Duration</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatPercentage(analytics.combat_activity.ship_destruction_rate)}</h4>
+                    <p>Ship Destruction Rate</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Exploration Progress */}
+              <div className="analytics-section">
+                <h3>Exploration Progress</h3>
+                <div className="metrics-grid">
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.exploration_progress.discovered_sectors)}/{formatNumber(analytics.exploration_progress.total_sectors)}</h4>
+                    <p>Sectors Discovered</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatPercentage(analytics.exploration_progress.exploration_percentage)}</h4>
+                    <p>Galaxy Explored</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.exploration_progress.new_discoveries_24h)}</h4>
+                    <p>New Discoveries (24h)</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.exploration_progress.active_explorers)}</h4>
+                    <p>Active Explorers</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Server Performance */}
+              <div className="analytics-section">
+                <h3>Server Performance</h3>
+                <div className="metrics-grid">
+                  <div className="metric-card">
+                    <h4>{formatNumber(analytics.server_performance.response_time, 3)}ms</h4>
+                    <p>Avg Response Time</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatPercentage(analytics.server_performance.memory_usage)}</h4>
+                    <p>Memory Usage</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatPercentage(analytics.server_performance.cpu_usage)}</h4>
+                    <p>CPU Usage</p>
+                  </div>
+                  <div className="metric-card">
+                    <h4>{formatPercentage(analytics.server_performance.uptime_percentage)}</h4>
+                    <p>Uptime</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'reports' && (
+        <div className="reports-content">
+          {/* Reports Controls */}
+          <div className="reports-controls">
+            <button 
+              onClick={() => setShowCreateReport(!showCreateReport)}
+              className="create-report-btn"
+            >
+              {showCreateReport ? 'Cancel' : 'Generate Report'}
+            </button>
+          </div>
+
+          {/* Create Report Form */}
+          {showCreateReport && (
+            <div className="create-report-form">
+              <h3>Generate New Report</h3>
+              
+              {/* Report Templates */}
+              <div className="templates-section">
+                <h4>Report Templates</h4>
+                <div className="templates-grid">
+                  {templates.map(template => (
+                    <div 
+                      key={template.id} 
+                      className="template-card"
+                      onClick={() => applyTemplate(template)}
+                    >
+                      <h5>{template.name}</h5>
+                      <p>{template.description}</p>
+                      <span className="template-type">{template.type}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Report Form */}
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Report Name</label>
+                  <input
+                    type="text"
+                    value={newReport.name}
+                    onChange={(e) => setNewReport({...newReport, name: e.target.value})}
+                    placeholder="Enter report name"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>Report Type</label>
+                  <select
+                    value={newReport.type}
+                    onChange={(e) => setNewReport({...newReport, type: e.target.value as any})}
+                  >
+                    <option value="player">Player Analytics</option>
+                    <option value="economic">Economic Analysis</option>
+                    <option value="combat">Combat Statistics</option>
+                    <option value="exploration">Exploration Progress</option>
+                    <option value="custom">Custom Report</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label>Date Range</label>
+                  <select
+                    value={newReport.date_range}
+                    onChange={(e) => setNewReport({...newReport, date_range: e.target.value})}
+                  >
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                    <option value="90d">Last 90 Days</option>
+                    <option value="1y">Last Year</option>
+                    <option value="all">All Time</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  value={newReport.description}
+                  onChange={(e) => setNewReport({...newReport, description: e.target.value})}
+                  placeholder="Enter report description"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="form-actions">
+                <button onClick={handleGenerateReport} className="generate-btn">
+                  Generate Report
+                </button>
+                <button 
+                  onClick={() => setShowCreateReport(false)} 
+                  className="cancel-btn"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Reports List */}
+          <div className="reports-list">
+            <h3>Generated Reports</h3>
+            
+            {reports.length > 0 ? (
+              <div className="reports-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Report Name</th>
+                      <th>Type</th>
+                      <th>Generated</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reports.map(report => (
+                      <tr key={report.id}>
+                        <td>{report.name}</td>
+                        <td>
+                          <span className={`report-type ${report.type}`}>
+                            {report.type}
+                          </span>
+                        </td>
+                        <td>
+                          {new Date(report.created_at).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </td>
+                        <td>
+                          <span className={`status ${report.status}`}>
+                            {report.status}
+                          </span>
+                        </td>
+                        <td>
+                          {report.status === 'ready' && report.file_url && (
+                            <a 
+                              href={report.file_url} 
+                              download 
+                              className="download-btn"
+                            >
+                              Download
+                            </a>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="no-reports">
+                <p>No reports generated yet. Create your first report using the button above.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AnalyticsReports;

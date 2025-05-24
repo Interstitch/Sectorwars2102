@@ -12,6 +12,12 @@ if TYPE_CHECKING:
     from src.models.ship import Ship
     from src.models.team import Team
     from src.models.reputation import Reputation
+    from src.models.sector import Sector
+    from src.models.combat_log import CombatLog
+    from src.models.warp_tunnel import WarpTunnel
+    from src.models.genesis_device import GenesisDevice
+    from src.models.resource import MarketTransaction
+    from src.models.first_login import FirstLoginSession, PlayerFirstLoginState
 
 
 class Player(Base):
@@ -50,6 +56,16 @@ class Player(Base):
     # Many-to-many relationships
     planets = relationship("Planet", secondary="player_planets", back_populates="owner")
     ports = relationship("Port", secondary="player_ports", back_populates="owner")
+    
+    # New relationships
+    discovered_sectors = relationship("Sector", back_populates="discovered_by")
+    genesis_devices = relationship("GenesisDevice", back_populates="owner")
+    combat_logs_as_attacker = relationship("CombatLog", foreign_keys="CombatLog.attacker_id", back_populates="attacker")
+    combat_logs_as_defender = relationship("CombatLog", foreign_keys="CombatLog.defender_id", back_populates="defender")
+    created_warp_tunnels = relationship("WarpTunnel", back_populates="created_by")
+    market_transactions = relationship("MarketTransaction", back_populates="player")
+    first_login_sessions = relationship("FirstLoginSession", back_populates="player", cascade="all, delete-orphan")
+    first_login_state = relationship("PlayerFirstLoginState", back_populates="player", uselist=False, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Player {self.id} (User: {self.user_id})>"

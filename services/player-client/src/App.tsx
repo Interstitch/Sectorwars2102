@@ -3,14 +3,19 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import axios from 'axios'
 import './App.css'
 
-// Import context
+// Import contexts
 import { AuthProvider } from './contexts/AuthContext'
+import { GameProvider } from './contexts/GameContext'
+import { FirstLoginProvider } from './contexts/FirstLoginContext'
 
 // Import components
 import LoginForm from './components/auth/LoginForm'
 import RegisterForm from './components/auth/RegisterForm'
 import UserProfile from './components/auth/UserProfile'
 import OAuthCallback from './components/auth/OAuthCallback'
+import GameDashboard from './components/pages/GameDashboard'
+import GalaxyMap from './components/pages/GalaxyMap'
+import { FirstLoginContainer } from './components/first-login'
 
 function MainApp() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -403,79 +408,8 @@ function MainApp() {
   };
   
   if (isAuthenticated) {
-    return (
-      <div className="container">
-        <header>
-          <h1>Sector Wars 2102</h1>
-          <p className="subtitle">Player Client</p>
-          <div className="api-status">
-            <span className={`status-dot ${apiStatus.includes('Connected') ? 'connected' : 'disconnected'}`}></span>
-            <span className="status-text">{apiStatus}</span>
-          </div>
-        </header>
-        
-        <main className="dashboard">
-          <div className="dashboard-header">
-            <h2>Player Dashboard</h2>
-            {user && (
-              <div className="user-profile">
-                <div className="user-info">
-                  <span className="username">{user.username}</span>
-                  <span className="user-role">Player</span>
-                </div>
-                <button 
-                  onClick={handleLogout} 
-                  className="logout-button"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
-          </div>
-          
-          <div className="dashboard-content">
-            <section className="welcome-section">
-              <h3>Welcome, {user?.username || 'Player'}!</h3>
-              <p>Welcome to Sector Wars 2102, where you can navigate the galaxy, trade valuable resources, and build your own space empire.</p>
-            </section>
-            
-            <section className="status-section">
-              <h3>Game Server Status</h3>
-              <div className="status-indicator">
-                <span className={`status-dot ${apiStatus.includes('Connected') ? 'connected' : 'disconnected'}`}></span>
-                <span className="status-text">{apiStatus}</span>
-              </div>
-              {apiStatus.includes('Connected') ? (
-                <div className="api-info">
-                  <p><strong>Message:</strong> {apiMessage}</p>
-                  <p><strong>Environment:</strong> {apiEnvironment}</p>
-                </div>
-              ) : (
-                <div className="api-info error-info">
-                  <p><strong>API URL:</strong> {getFullApiUrl()}</p>
-                  <p><strong>URLs tried:</strong></p>
-                  <pre className="api-urls-tried">{getAllTestUrls()}</pre>
-                </div>
-              )}
-            </section>
-            
-            <section className="game-actions">
-              <h3>Quick Actions</h3>
-              <div className="action-buttons">
-                <button className="action-button">Start New Game</button>
-                <button className="action-button">Continue Game</button>
-                <button className="action-button">View Markets</button>
-                <button className="action-button">Fleet Management</button>
-              </div>
-            </section>
-          </div>
-        </main>
-        
-        <footer>
-          <p>Sector Wars 2102 - Player Client v0.1.0</p>
-        </footer>
-      </div>
-    );
+    // Redirect to game dashboard
+    return <Navigate to="/game" replace />;
   }
   
   return (
@@ -583,14 +517,48 @@ function MainApp() {
   )
 }
 
+// Protected route component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const accessToken = localStorage.getItem('accessToken');
+  const isAuthenticated = !!accessToken;
+  
+  if (!isAuthenticated) {
+    console.log('Access token not found, redirecting to home');
+    return <Navigate to="/" replace />;
+  }
+  
+  // Ensure the token is set in axios headers
+  if (accessToken && !axios.defaults.headers.common['Authorization']) {
+    console.log('Setting axios auth header in ProtectedRoute');
+    axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+  }
+  
+  return <>{children}</>;
+};
+
 function App() {
   return (
     <Router>
       <AuthProvider>
-        <Routes>
-          <Route path="/oauth-callback" element={<OAuthCallback />} />
-          <Route path="*" element={<MainApp />} />
-        </Routes>
+        <GameProvider>
+          <FirstLoginProvider>
+            <Routes>
+            <Route path="/oauth-callback" element={<OAuthCallback />} />
+            <Route path="/game" element={
+              <ProtectedRoute>
+                <GameDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/game/map" element={
+              <ProtectedRoute>
+                <GalaxyMap />
+              </ProtectedRoute>
+            } />
+            <Route path="*" element={<MainApp />} />
+            </Routes>
+            <FirstLoginContainer />
+          </FirstLoginProvider>
+        </GameProvider>
       </AuthProvider>
     </Router>
   );

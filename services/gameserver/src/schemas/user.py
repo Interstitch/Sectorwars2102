@@ -47,3 +47,15 @@ class UserInDB(UserInDBBase):
 class AdminCreate(UserCreate):
     password: str = Field(..., min_length=8)
     is_admin: bool = True
+
+
+# Admin response schema for user data
+class UserAdminResponse(BaseModel):
+    id: str
+    username: str
+    email: Optional[str] = None
+    is_active: bool
+    is_admin: bool
+    created_at: str
+    last_login: Optional[str] = None
+    verified: bool

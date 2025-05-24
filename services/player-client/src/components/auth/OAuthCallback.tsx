@@ -80,18 +80,23 @@ const OAuthCallback: React.FC = () => {
         // Create a function to directly navigate to the dashboard with the token
         const navigateWithToken = () => {
           try {
-            const encoded = encodeURIComponent(JSON.stringify({
-              accessToken,
-              refreshToken,
-              userId
-            }));
+            // First, make sure the token is correctly set in localStorage
+            console.log('Verifying token data is correctly stored in localStorage...');
+            if (localStorage.getItem('accessToken') !== accessToken) {
+              console.log('Token mismatch! Resetting localStorage values...');
+              localStorage.setItem('accessToken', accessToken);
+              localStorage.setItem('refreshToken', refreshToken);
+              localStorage.setItem('userId', userId);
+              
+              // Set axios defaults for current session
+              axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+            }
             
-            console.log('Redirecting to home page with token data...');
-            console.log('Auth flow: Using URL parameter to pass tokens to main app');
-            // Encode the tokens in the URL as a workaround to avoid state loss
-            window.location.href = `/?auth=${encoded}`;
+            // No need to use URL parameters - instead direct to game page
+            console.log('Directly navigating to game dashboard...');
+            window.location.href = '/game';
           } catch (err) {
-            console.error('Error encoding tokens for navigation:', err);
+            console.error('Error during navigation:', err);
             // Fallback to simple navigation
             window.location.href = '/';
           }

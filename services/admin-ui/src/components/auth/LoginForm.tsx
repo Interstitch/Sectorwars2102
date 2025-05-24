@@ -74,7 +74,7 @@ Redirecting to dashboard...`);
           setError(`API test failed with status ${response.status}: ${data.detail || 'Unknown error'}`);
         }
       } catch (jsonError) {
-        setError(`Failed to parse JSON response: ${jsonError.message}`);
+        setError(`Failed to parse JSON response: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`);
       }
     } catch (err: any) {
       console.error('API test failed:', err);
@@ -176,7 +176,7 @@ Redirecting to dashboard...`);
         {debug && <div className="debug-info">{debug}</div>}
       </form>
       
-      <style jsx>{`
+      <style>{`
         .button-group {
           display: flex;
           gap: 10px;

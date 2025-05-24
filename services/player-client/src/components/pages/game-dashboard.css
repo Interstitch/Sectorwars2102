@@ -1,0 +1,382 @@
+.game-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.dashboard-header h2 {
+  margin: 0;
+  color: #4d8aff;
+  font-size: 1.75rem;
+}
+
+.player-welcome {
+  font-size: 1.1rem;
+  color: #ccd6f6;
+}
+
+.error-message {
+  background-color: rgba(239, 68, 68, 0.15);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.result-message {
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.success-message {
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid #10b981;
+  color: #d1fae5;
+}
+
+.result-message h4 {
+  margin: 0 0 0.5rem 0;
+  color: #10b981;
+}
+
+.result-message p {
+  margin: 0 0 0.5rem 0;
+}
+
+.encounter-info {
+  margin-top: 0.5rem;
+}
+
+.encounter-info h5 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: #ccd6f6;
+}
+
+.encounter-info ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.current-location, .sector-objects, .navigation {
+  background-color: #131b2c;
+  border-radius: 8px;
+  padding: 1.25rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.current-location h3, .sector-objects h3, .navigation h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #4d8aff;
+  font-size: 1.2rem;
+  border-bottom: 1px solid #213252;
+  padding-bottom: 0.5rem;
+}
+
+.sector-details h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  color: #e6f1ff;
+}
+
+.sector-type-badge {
+  display: inline-block;
+  background-color: #213252;
+  color: #8892b0;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  margin-bottom: 1rem;
+  text-transform: capitalize;
+}
+
+.sector-hazard-info, .sector-radiation-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.hazard-label, .radiation-label, .features-label {
+  font-size: 0.9rem;
+  color: #8892b0;
+  min-width: 110px;
+}
+
+.hazard-level, .radiation-level {
+  font-size: 0.85rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.hazard-level.level-1, .radiation-level.level-1 {
+  background-color: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.hazard-level.level-2, .radiation-level.level-2 {
+  background-color: rgba(234, 179, 8, 0.2);
+  color: #eab308;
+}
+
+.hazard-level.level-3, .radiation-level.level-3 {
+  background-color: rgba(249, 115, 22, 0.2);
+  color: #f97316;
+}
+
+.hazard-level.level-4, .radiation-level.level-4 {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.hazard-level.level-5, .radiation-level.level-5 {
+  background-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.special-features {
+  display: flex;
+  margin-bottom: 0.75rem;
+}
+
+.features-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.feature-badge {
+  background-color: #1c2439;
+  color: #ccd6f6;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+.sector-description {
+  font-size: 0.9rem;
+  color: #8892b0;
+  margin-top: 1rem;
+  line-height: 1.5;
+}
+
+.unknown-location, .empty-sector, .no-exits {
+  color: #64748b;
+  font-style: italic;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.objects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.ports-list h4, .planets-list h4 {
+  margin: 0 0 0.75rem 0;
+  color: #ccd6f6;
+  font-size: 1rem;
+}
+
+.ports-list ul, .planets-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.port-item, .planet-item {
+  background-color: #19223a;
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.port-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.port-name, .planet-name {
+  font-weight: 500;
+  font-size: 1rem;
+  color: #e6f1ff;
+  margin-bottom: 0.25rem;
+}
+
+.port-type, .planet-type {
+  font-size: 0.85rem;
+  color: #8892b0;
+  margin-bottom: 0.2rem;
+}
+
+.port-faction {
+  font-size: 0.8rem;
+  color: #4d8aff;
+}
+
+.planet-status {
+  font-size: 0.85rem;
+  color: #8892b0;
+  margin-bottom: 0.2rem;
+}
+
+.planet-habitability {
+  font-size: 0.85rem;
+  color: #10b981;
+}
+
+.dock-button {
+  background-color: #213252;
+  color: #4d8aff;
+  border: 1px solid #4d8aff;
+  border-radius: 4px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dock-button:hover {
+  background-color: #2c3e50;
+}
+
+.dock-button:disabled {
+  background-color: #131b2c;
+  color: #64748b;
+  border-color: #213252;
+  cursor: not-allowed;
+}
+
+.navigation-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.warp-options h4, .tunnel-options h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: #ccd6f6;
+}
+
+.warp-grid, .tunnel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.warp-button, .tunnel-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #19223a;
+  border: none;
+  border-radius: 6px;
+  padding: 0.75rem;
+  color: #ccd6f6;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  height: 100%;
+}
+
+.warp-button:hover {
+  background-color: #213252;
+  transform: translateY(-2px);
+}
+
+.tunnel-button {
+  border-top: 3px solid #4d8aff;
+}
+
+.tunnel-button.tunnel-unstable {
+  border-top-color: #ef4444;
+}
+
+.tunnel-button.tunnel-moderate {
+  border-top-color: #eab308;
+}
+
+.tunnel-button.tunnel-stable {
+  border-top-color: #10b981;
+}
+
+.tunnel-button:hover {
+  background-color: #213252;
+  transform: translateY(-2px);
+}
+
+.warp-button.disabled, .tunnel-button.disabled {
+  background-color: #131b2c;
+  color: #64748b;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.warp-sector-id, .tunnel-sector-id {
+  font-weight: 500;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+  color: #e6f1ff;
+}
+
+.warp-name, .tunnel-name {
+  font-size: 0.85rem;
+  color: #8892b0;
+  margin-bottom: 0.25rem;
+  word-break: break-word;
+}
+
+.warp-type, .tunnel-type {
+  font-size: 0.8rem;
+  color: #8892b0;
+  margin-bottom: 0.5rem;
+  text-transform: capitalize;
+}
+
+.warp-cost, .tunnel-cost {
+  font-size: 0.8rem;
+  color: #4d8aff;
+  margin-top: auto;
+}
+
+.tunnel-stability {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.stability-label {
+  font-size: 0.75rem;
+  color: #8892b0;
+  text-align: left;
+  margin-bottom: 0.2rem;
+}
+
+.stability-meter {
+  height: 4px;
+  background-color: #10b981;
+  border-radius: 2px;
+}

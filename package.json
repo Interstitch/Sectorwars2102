@@ -11,5 +11,13 @@
     "eslint": "^9.27.0",
     "form-data": "^4.0.2",
     "uuid": "^11.1.0"
+  },
+  "scripts": {
+    "claude:analyze": "echo \"Running CLAUDE.md analysis...\" && find . -name \"*.js\" -o -name \"*.ts\" | xargs wc -l",
+    "claude:metrics": "bash .claude/metrics/track.sh test",
+    "claude:learn": "bash .claude/patterns/learn.sh",
+    "claude:report": "echo \"Generating CLAUDE.md report...\" && node .claude/report.js",
+    "claude:quality": "python claude-quality-system.py --quick",
+    "claude:heal": "python claude-quality-system.py --heal"
   }
 }

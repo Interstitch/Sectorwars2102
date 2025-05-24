@@ -1,5 +1,4 @@
 import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import UserProfile from '../auth/UserProfile';
 import './ui.css';
 
@@ -10,7 +9,6 @@ interface PageHeaderProps {
 }
 
 const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, actions }) => {
-  const { user } = useAuth();
   
   return (
     <header className="page-header">

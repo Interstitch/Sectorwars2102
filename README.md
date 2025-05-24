@@ -12,7 +12,7 @@ The project uses a flexible architecture with three main components:
 
 1. **Game API Server**: Core backend service containing all game logic, database operations, and API endpoints
 2. **Player Client**: Web interface for playing the game
-3. **Admin UI**: Specialized interface for game administration and universe management
+3. **Admin UI**: Comprehensive administrative interface with advanced game management tools
 
 All services can be deployed using Docker or run directly with PM2 process management in environments like Replit.
 
@@ -140,6 +140,15 @@ This approach keeps your environment configuration simple while providing contro
 ### Admin UI
 
 - **URL**: <http://localhost:3001>
+- **Features**:
+  - **Economy Dashboard**: Real-time market monitoring and price intervention tools
+  - **Player Analytics**: Comprehensive player tracking and account management
+  - **Combat Overview**: Combat monitoring, balance analysis, and dispute resolution
+  - **Fleet Management**: Galaxy-wide ship tracking and emergency operations
+  - **Colonization Oversight**: Planetary colonization and Genesis device monitoring
+  - **Team Management**: Faction administration and diplomatic relations
+  - **Event Management**: Dynamic event creation and seasonal content
+  - **Analytics & Reports**: Advanced reporting and predictive analytics
 
 ## Process Management
 
@@ -215,6 +224,7 @@ Detailed testing documentation can be found in [DOCS/FEATURE_DOCS/TESTING.md](./
 ## Documentation
 
 - **Developer Documentation**: See [CLAUDE.md](./CLAUDE.md) for development guide
+- **Admin UI Guide**: See [DOCS/FEATURE_DOCS/ADMIN_UI_COMPREHENSIVE.md](./DOCS/FEATURE_DOCS/ADMIN_UI_COMPREHENSIVE.md) for comprehensive admin interface documentation
 - **Architecture Overview**: See [DOCS/FEATURE_DOCS/ARCHITECTURE.md](./DOCS/FEATURE_DOCS/ARCHITECTURE.md)
 - **Deployment Guide**: See [DOCS/FEATURE_DOCS/DEPLOYMENT.md](./DOCS/FEATURE_DOCS/DEPLOYMENT.md)
 - **Replit Troubleshooting**: See [DOCS/FEATURE_DOCS/REPLIT_TROUBLESHOOTING.md](./DOCS/FEATURE_DOCS/REPLIT_TROUBLESHOOTING.md)

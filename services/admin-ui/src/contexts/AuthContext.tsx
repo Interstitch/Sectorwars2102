@@ -1,13 +1,18 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 
-interface User {
+export interface User {
   id: string;
   username: string;
+  email: string;
+  is_admin: boolean;
+  is_active: boolean;
+  last_login: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
@@ -23,6 +28,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
   // Get API URL based on environment
@@ -53,6 +59,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('refreshToken');
     axios.defaults.headers.common['Authorization'] = '';
     setUser(null);
+    setToken(null);
   };
   
   // Refresh token function
@@ -119,6 +126,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Store new tokens
       localStorage.setItem('accessToken', access_token);
       localStorage.setItem('refreshToken', refresh_token);
+      setToken(access_token);
       
       // Update auth header for axios requests
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
@@ -180,9 +188,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         // Add token to default headers
         axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        setToken(accessToken);
         
         // Try to get user profile
-        const response = await axios.get(`${apiUrl}/api/v1/auth/me`);
+        const response = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
         setUser(response.data);
         console.log('Auth successful - user loaded:', response.data);
       } catch (error) {
@@ -191,7 +200,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Try token refresh if initial check fails
         try {
           await refreshToken();
-          const userResponse = await axios.get(`${apiUrl}/api/v1/auth/me`);
+          const userResponse = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
           setUser(userResponse.data);
           console.log('Auth successful after refresh');
         } catch (refreshError) {
@@ -283,6 +292,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Store tokens in localStorage
         localStorage.setItem('accessToken', access_token);
         localStorage.setItem('refreshToken', refresh_token);
+        setToken(access_token);
 
         // Set authorization header for future axios requests
         axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
@@ -312,7 +322,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (user_id) {
             setUser({
               id: user_id,
-              username: username
+              username: username,
+              email: '',
+              is_admin: false,
+              is_active: true,
+              last_login: null
             });
           }
         }
@@ -355,6 +369,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Context value
   const value = {
     user,
+    token,
     isAuthenticated: !!user,
     isLoading,
     login,

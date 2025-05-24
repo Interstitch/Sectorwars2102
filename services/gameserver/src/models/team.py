@@ -3,7 +3,7 @@ import enum
 from datetime import datetime
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from sqlalchemy import Boolean, Column, DateTime, String, Integer, Float, ForeignKey, Text, func
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import relationship
 
 from src.core.database import Base
@@ -11,6 +11,8 @@ from src.core.database import Base
 if TYPE_CHECKING:
     from src.models.player import Player
     from src.models.reputation import TeamReputation
+    from src.models.sector import Sector
+    from src.models.combat import CombatLog
 
 
 class TeamReputationHandling(enum.Enum):
@@ -30,9 +32,29 @@ class Team(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     reputation_calculation_method = Column(String(20), nullable=False, default="AVERAGE")
 
+    # Team properties
+    tag = Column(String(10), nullable=True)  # Short team tag for display
+    logo = Column(String, nullable=True)  # URL to team logo
+    is_public = Column(Boolean, nullable=False, default=True)  # Whether the team can be joined without invitation
+    max_members = Column(Integer, nullable=False, default=4)  # Maximum team size
+    sector_claims = Column(ARRAY(Integer), nullable=False, default=[])  # Sectors claimed by this team
+    home_sector_id = Column(Integer, nullable=True)  # Team's home base
+    
+    # Team statistics
+    total_credits = Column(Integer, nullable=False, default=0)  # Combined credits of all members
+    total_planets = Column(Integer, nullable=False, default=0)  # Number of planets owned by team members
+    combat_rating = Column(Float, nullable=False, default=0.0)  # Team's overall combat effectiveness
+    trade_rating = Column(Float, nullable=False, default=0.0)  # Team's overall trading effectiveness
+    
+    # Team management
+    join_requirements = Column(JSONB, nullable=False, default={})  # Requirements to join this team
+    member_roles = Column(JSONB, nullable=False, default={})  # Roles assigned to members
+    resource_sharing = Column(JSONB, nullable=False, default={})  # Resource sharing settings
+    
     # Relationships
     members = relationship("Player", back_populates="team")
     reputation = relationship("TeamReputation", back_populates="team", uselist=False, cascade="all, delete-orphan")
+    controlled_sectors = relationship("Sector", back_populates="controlling_team")
 
     def __repr__(self):
         return f"<Team {self.name} (Leader: {self.leader_id})>"

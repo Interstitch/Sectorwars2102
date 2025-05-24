@@ -113,19 +113,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
       const accessToken = localStorage.getItem('accessToken');
       if (accessToken) {
         try {
-          // Add token to default headers
-          axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+          // Check if the token is already in headers - if not, add it
+          if (axios.defaults.headers.common['Authorization'] !== `Bearer ${accessToken}`) {
+            console.log('Setting axios authorization header');
+            axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+          }
 
           // Standard approach - verify token by getting user profile
-          console.log('Using standard /me endpoint');
+          console.log('Using standard /me endpoint with', apiUrl);
           const response = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
+          
+          // Successfully got user data - update state
+          console.log('Auth check successful - user data retrieved');
           setUser(response.data);
         } catch (error) {
           console.error('Failed to validate token:', error);
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          axios.defaults.headers.common['Authorization'] = '';
+          
+          // Try token refresh before giving up
+          try {
+            await refreshToken();
+            
+            // If refresh succeeded, try again to get user data
+            const response = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
+            setUser(response.data);
+            console.log('Auth successful after token refresh');
+          } catch (refreshError) {
+            console.error('Token refresh failed, clearing auth data:', refreshError);
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            axios.defaults.headers.common['Authorization'] = '';
+          }
         }
+      } else {
+        console.log('No access token found in localStorage');
       }
 
       setIsLoading(false);

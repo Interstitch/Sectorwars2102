@@ -2,6 +2,30 @@
  * Authentication utility functions
  */
 
+import axios from 'axios';
+
+// Create axios instance with default config
+export const api = axios.create({
+  baseURL: '', // Will use proxy
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add auth token to requests
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 /**
  * Decode a JWT token to get payload without validation
  */

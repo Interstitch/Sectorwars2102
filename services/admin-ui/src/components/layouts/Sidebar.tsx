@@ -45,31 +45,81 @@ const Sidebar: React.FC = () => {
           
           <li className="nav-item">
             <NavLink 
-              to="/sectors" 
+              to="/economy" 
               className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
             >
-              <span className="nav-icon">🔳</span>
-              <span className="nav-text">Sectors</span>
+              <span className="nav-icon">💰</span>
+              <span className="nav-text">Economy</span>
             </NavLink>
           </li>
           
           <li className="nav-item">
             <NavLink 
-              to="/trading" 
+              to="/players" 
               className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
             >
-              <span className="nav-icon">💱</span>
-              <span className="nav-text">Trading</span>
+              <span className="nav-icon">👤</span>
+              <span className="nav-text">Players</span>
             </NavLink>
           </li>
           
           <li className="nav-item">
             <NavLink 
-              to="/settings" 
+              to="/combat" 
               className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
             >
-              <span className="nav-icon">⚙️</span>
-              <span className="nav-text">Settings</span>
+              <span className="nav-icon">⚔️</span>
+              <span className="nav-text">Combat</span>
+            </NavLink>
+          </li>
+          
+          <li className="nav-item">
+            <NavLink 
+              to="/fleets" 
+              className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+            >
+              <span className="nav-icon">🚀</span>
+              <span className="nav-text">Fleets</span>
+            </NavLink>
+          </li>
+          
+          <li className="nav-item">
+            <NavLink 
+              to="/colonies" 
+              className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+            >
+              <span className="nav-icon">🪐</span>
+              <span className="nav-text">Colonies</span>
+            </NavLink>
+          </li>
+          
+          <li className="nav-item">
+            <NavLink 
+              to="/teams" 
+              className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+            >
+              <span className="nav-icon">🤝</span>
+              <span className="nav-text">Teams</span>
+            </NavLink>
+          </li>
+          
+          <li className="nav-item">
+            <NavLink 
+              to="/events" 
+              className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+            >
+              <span className="nav-icon">🎯</span>
+              <span className="nav-text">Events</span>
+            </NavLink>
+          </li>
+          
+          <li className="nav-item">
+            <NavLink 
+              to="/analytics" 
+              className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+            >
+              <span className="nav-icon">📈</span>
+              <span className="nav-text">Analytics</span>
             </NavLink>
           </li>
         </ul>

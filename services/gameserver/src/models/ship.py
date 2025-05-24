@@ -10,6 +10,7 @@ from src.core.database import Base
 
 if TYPE_CHECKING:
     from src.models.player import Player
+    from src.models.genesis_device import GenesisDevice
 
 
 class ShipType(enum.Enum):
@@ -95,7 +96,11 @@ class Ship(Base):
 
     # Relationships
     owner = relationship("Player", back_populates="ships", foreign_keys=[owner_id])
-    flagship_of = relationship("Player", foreign_keys="Player.current_ship_id", post_update=True)
+    flagship_of = relationship("Player", foreign_keys="Player.current_ship_id", post_update=True, overlaps="current_ship")
+    sector = relationship("Sector", primaryjoin="Ship.sector_id==Sector.sector_id", foreign_keys=[sector_id])
+    
+    # New relationships
+    genesis_devices = relationship("GenesisDevice", back_populates="ship")
 
     def __repr__(self):
         return f"<Ship {self.name} ({self.type.name}) - Owner: {self.owner_id}>"

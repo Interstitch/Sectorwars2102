@@ -2,7 +2,7 @@
 """
 Test runner for verifying GitHub Codespaces URL behavior.
 
-This script runs tests to verify that the API status endpoints 
+This script runs tests to verify that the API status endpoints
 work correctly without port doubling in GitHub Codespaces.
 """
 import os
@@ -15,7 +15,7 @@ if __name__ == "__main__":
     print("===============================================")
     print("🧪 Running Codespaces URL Tests")
     print("===============================================")
-    
+
     # Check if running in Codespaces
     codespace_name = os.environ.get("CODESPACE_NAME")
     if codespace_name:
@@ -24,12 +24,12 @@ if __name__ == "__main__":
     else:
         print("⚠️  Not running in GitHub Codespaces - some tests will be skipped")
     print("===============================================\n")
-    
+
     # Run the tests
     loader = unittest.TestLoader()
     suite = loader.loadTestsFromTestCase(TestCodespacesUrls)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
-    
+
     # Print summary
     print("\n===============================================")
     print(f"Tests run: {result.testsRun}")
@@ -37,6 +37,6 @@ if __name__ == "__main__":
     print(f"Failures: {len(result.failures)}")
     print(f"Skipped: {len(result.skipped)}")
     print("===============================================")
-    
+
     # Exit with appropriate code
     sys.exit(not result.wasSuccessful())

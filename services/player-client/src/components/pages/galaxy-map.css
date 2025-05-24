@@ -1,0 +1,212 @@
+.galaxy-map-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.map-header h2 {
+  margin: 0;
+  color: #4d8aff;
+  font-size: 1.75rem;
+}
+
+.map-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.zoom-button, .reset-button {
+  background-color: #131b2c;
+  border: 1px solid #213252;
+  color: #ccd6f6;
+  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-button {
+  width: auto;
+  padding: 0 0.75rem;
+  font-size: 0.85rem;
+}
+
+.zoom-button:hover, .reset-button:hover {
+  background-color: #19223a;
+  border-color: #4d8aff;
+}
+
+.map-view {
+  flex: 1;
+  background-color: #0a0e17;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
+  min-height: 500px;
+}
+
+.map-content {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+  transition: transform 0.1s ease-out;
+}
+
+.connections-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.warp-path {
+  stroke: #213252;
+  stroke-width: 2;
+}
+
+.warp-tunnel {
+  stroke: #4d8aff;
+  stroke-width: 2;
+}
+
+.direction-arrow {
+  fill: #4d8aff;
+}
+
+.sectors-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.sector-node {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #131b2c;
+  border: 2px solid #213252;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+.sector-node:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  z-index: 10;
+}
+
+.sector-node.current {
+  background-color: #4d8aff;
+  border-color: #e6f1ff;
+  z-index: 5;
+}
+
+.sector-node.selected {
+  border-color: #f97316;
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.6);
+}
+
+.sector-node.standard {
+  background-color: #213252;
+}
+
+.sector-node.nebula {
+  background-color: #4c1d95;
+  border-color: #8b5cf6;
+}
+
+.sector-node.asteroid_field {
+  background-color: #65470e;
+  border-color: #ca8a04;
+}
+
+.sector-node.black_hole {
+  background-color: #1e1e1e;
+  border-color: #525252;
+  box-shadow: 0 0 10px rgba(75, 85, 99, 0.8);
+}
+
+.sector-node.wormhole {
+  background-color: #9d174d;
+  border-color: #ec4899;
+}
+
+.sector-id {
+  font-size: 0.8rem;
+  color: #e6f1ff;
+  font-weight: 500;
+}
+
+.sector-details-panel {
+  background-color: #131b2c;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.sector-details-panel h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  color: #4d8aff;
+  font-size: 1.1rem;
+  border-bottom: 1px solid #213252;
+  padding-bottom: 0.5rem;
+}
+
+.sector-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sector-name {
+  font-size: 1rem;
+  color: #e6f1ff;
+  font-weight: 500;
+}
+
+.sector-type {
+  font-size: 0.9rem;
+  color: #8892b0;
+  text-transform: capitalize;
+}
+
+.travel-button {
+  background-color: #4d8aff;
+  color: #e6f1ff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  margin-top: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.travel-button:hover {
+  background-color: #2563eb;
+}

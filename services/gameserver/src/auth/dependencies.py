@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from src.auth.jwt import decode_token
 from src.core.database import get_db
 from src.models.user import User
+from src.models.player import Player
 
 # OAuth2 scheme for token authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -63,6 +64,9 @@ async def get_current_admin_user(
         )
     return current_user
 
+# Alias for get_current_admin_user to match naming convention in admin routes
+get_current_admin = get_current_admin_user
+
 # Allow both OPTIONS and other methods
 # This is needed for CORS preflight requests in GitHub Codespaces
 def admin_or_options(
@@ -72,3 +76,18 @@ def admin_or_options(
     Wrapper for get_current_admin_user that allows OPTIONS requests.
     """
     return _
+
+async def get_current_player(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Player:
+    """
+    Dependency to get the current player associated with the authenticated user.
+    """
+    player = db.query(Player).filter(Player.user_id == current_user.id).first()
+    if player is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Player account not found"
+        )
+    return player

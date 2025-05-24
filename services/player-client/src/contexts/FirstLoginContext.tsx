@@ -1,0 +1,308 @@
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import axios from 'axios';
+import { useAuth } from './AuthContext';
+
+// Types for first login state
+export interface FirstLoginSession {
+  session_id: string;
+  player_id: string;
+  available_ships: string[];
+  current_step: 'ship_selection' | 'dialogue' | 'completion';
+  npc_prompt: string;
+  exchange_id?: string;
+  sequence_number?: number;
+}
+
+export interface DialogueAnalysis {
+  exchange_id: string;
+  analysis: {
+    persuasiveness: number;
+    confidence: number;
+    consistency: number;
+  };
+  is_final: boolean;
+  outcome?: {
+    outcome: string;
+    awarded_ship: string;
+    starting_credits: number;
+    negotiation_skill: string;
+    final_persuasion_score: number;
+    negotiation_bonus: boolean;
+    notoriety_penalty: boolean;
+    guard_response: string;
+  };
+  next_question?: string;
+  next_exchange_id?: string;
+}
+
+export interface CompleteFirstLoginResult {
+  player_id: string;
+  nickname?: string;
+  credits: number;
+  ship: {
+    id: string;
+    name: string;
+    type: string;
+  };
+  negotiation_bonus: boolean;
+  notoriety_penalty: boolean;
+}
+
+interface FirstLoginContextType {
+  requiresFirstLogin: boolean;
+  isLoading: boolean;
+  error: string | null;
+  
+  // Session data
+  session: FirstLoginSession | null;
+  startSession: () => Promise<void>;
+  
+  // Dialogue state
+  currentPrompt: string;
+  exchangeId: string | null;
+  dialogueHistory: {
+    npc: string;
+    player: string;
+  }[];
+  
+  // Ship selection
+  availableShips: string[];
+  claimShip: (shipType: string, response: string) => Promise<void>;
+  
+  // Dialogue interaction
+  submitResponse: (response: string) => Promise<DialogueAnalysis>;
+  
+  // Dialogue outcome
+  dialogueOutcome: DialogueAnalysis['outcome'] | null;
+  completeFirstLogin: () => Promise<CompleteFirstLoginResult>;
+  
+  // UI state helpers
+  resetError: () => void;
+}
+
+const FirstLoginContext = createContext<FirstLoginContextType | undefined>(undefined);
+
+export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
+  
+  // Basic state
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [requiresFirstLogin, setRequiresFirstLogin] = useState<boolean>(false);
+  
+  // Session state
+  const [session, setSession] = useState<FirstLoginSession | null>(null);
+  const [dialogueHistory, setDialogueHistory] = useState<{ npc: string; player: string; }[]>([]);
+  const [currentPrompt, setCurrentPrompt] = useState<string>('');
+  const [exchangeId, setExchangeId] = useState<string | null>(null);
+  const [dialogueOutcome, setDialogueOutcome] = useState<DialogueAnalysis['outcome'] | null>(null);
+  
+  // Set up axios with authorization header
+  const api = axios.create({
+    baseURL: import.meta.env.VITE_API_URL || '',
+  });
+  
+  // Use token from localStorage directly instead of from context
+  api.interceptors.request.use(config => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+  
+  // Check if first login is required when user logs in
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      checkFirstLoginStatus();
+    }
+  }, [isAuthenticated, user]);
+  
+  // Check if the player needs to go through first login
+  const checkFirstLoginStatus = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.get('/api/v1/first-login/status');
+      setRequiresFirstLogin(response.data.requires_first_login);
+      
+      // If first login is required and there's an active session, load it
+      if (response.data.requires_first_login && response.data.session_id) {
+        await startSession();
+      }
+    } catch (error) {
+      console.error('Error checking first login status:', error);
+      setError('Failed to check first login status.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Start or resume a first login session
+  const startSession = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.post('/api/v1/first-login/session');
+      setSession(response.data);
+      
+      // Set initial prompt and exchange ID
+      setCurrentPrompt(response.data.npc_prompt);
+      setExchangeId(response.data.exchange_id || null);
+      
+      // Initialize dialogue history with the first NPC prompt
+      setDialogueHistory([{ npc: response.data.npc_prompt, player: '' }]);
+    } catch (error) {
+      console.error('Error starting first login session:', error);
+      setError('Failed to start first login session.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Claim a ship and submit initial dialogue response
+  const claimShip = async (shipType: string, response: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const result = await api.post('/api/v1/first-login/claim-ship', {
+        ship_type: shipType,
+        dialogue_response: response
+      });
+      
+      setSession(result.data);
+      
+      // Update dialogue history
+      setDialogueHistory(prev => [
+        ...prev,
+        { npc: '', player: response },
+        { npc: result.data.npc_prompt, player: '' }
+      ]);
+      
+      // Set new prompt and exchange ID
+      setCurrentPrompt(result.data.npc_prompt);
+      setExchangeId(result.data.exchange_id || null);
+    } catch (error) {
+      console.error('Error claiming ship:', error);
+      setError('Failed to claim ship.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Submit a dialogue response
+  const submitResponse = async (response: string): Promise<DialogueAnalysis> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      if (!exchangeId) {
+        throw new Error('No active dialogue exchange.');
+      }
+      
+      const result = await api.post(`/api/v1/first-login/dialogue/${exchangeId}`, {
+        response
+      });
+      
+      // Update dialogue history
+      setDialogueHistory(prev => [
+        ...prev.slice(0, prev.length - 1),
+        { ...prev[prev.length - 1], player: response }
+      ]);
+      
+      // If there's a next question, add it to history and update state
+      if (result.data.next_question) {
+        setDialogueHistory(prev => [
+          ...prev,
+          { npc: result.data.next_question, player: '' }
+        ]);
+        setCurrentPrompt(result.data.next_question);
+        setExchangeId(result.data.next_exchange_id || null);
+      }
+      
+      // If this is the final response, store the outcome
+      if (result.data.is_final && result.data.outcome) {
+        setDialogueOutcome(result.data.outcome);
+        
+        // Add the guard's final response to the history
+        setDialogueHistory(prev => [
+          ...prev,
+          { npc: result.data.outcome.guard_response, player: '' }
+        ]);
+        
+        // Update the current prompt
+        setCurrentPrompt(result.data.outcome.guard_response);
+      }
+      
+      return result.data;
+    } catch (error) {
+      console.error('Error submitting dialogue response:', error);
+      setError('Failed to submit dialogue response.');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Complete the first login process
+  const completeFirstLogin = async (): Promise<CompleteFirstLoginResult> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const result = await api.post('/api/v1/first-login/complete');
+      
+      // First login is now complete
+      setRequiresFirstLogin(false);
+      
+      return result.data;
+    } catch (error) {
+      console.error('Error completing first login:', error);
+      setError('Failed to complete first login process.');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Reset error state
+  const resetError = () => setError(null);
+  
+  // Context value
+  const value = {
+    requiresFirstLogin,
+    isLoading,
+    error,
+    
+    session,
+    startSession,
+    
+    currentPrompt,
+    exchangeId,
+    dialogueHistory,
+    
+    availableShips: session?.available_ships || [],
+    claimShip,
+    
+    submitResponse,
+    
+    dialogueOutcome,
+    completeFirstLogin,
+    
+    resetError
+  };
+  
+  return <FirstLoginContext.Provider value={value}>{children}</FirstLoginContext.Provider>;
+};
+
+// Hook for using the first login context
+export const useFirstLogin = () => {
+  const context = useContext(FirstLoginContext);
+  if (context === undefined) {
+    throw new Error('useFirstLogin must be used within a FirstLoginProvider');
+  }
+  return context;
+};

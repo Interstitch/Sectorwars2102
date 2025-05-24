@@ -50,6 +50,11 @@
   
   --toggle-bg: #4a6cf7;
   --slider-off: #ccc;
+  
+  /* Additional variables for universe manager */
+  --background-color: #f5f5f5;
+  --text-secondary: #666;
+  --hover-color: #f0f0f0;
 }
 
 /* Dark mode */
@@ -97,5 +102,10 @@
     
     --toggle-bg: #4a6cf7;
     --slider-off: #3a3b3c;
+    
+    /* Additional variables for universe manager */
+    --background-color: #18191a;
+    --text-secondary: #b0b3b8;
+    --hover-color: #323436;
   }
 }

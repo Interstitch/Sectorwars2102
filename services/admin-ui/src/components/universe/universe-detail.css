@@ -1,0 +1,461 @@
+/* Universe Detail Components Styling */
+
+/* Common Styles */
+.sector-detail,
+.port-detail,
+.planet-detail {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.back-button {
+  padding: 8px 16px;
+  background: var(--surface-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-button:hover {
+  background: var(--hover-color);
+  transform: translateX(-2px);
+}
+
+.detail-header h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 28px;
+}
+
+.port-class,
+.planet-type {
+  padding: 8px 16px;
+  border-radius: 20px;
+  color: white;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.detail-content {
+  display: grid;
+  gap: 30px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin: 15px 0;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.info-item .label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-item .value {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Sector Detail Specific */
+.sector-info-panel,
+.sector-features {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.hazard-level[data-level="0"],
+.hazard-level[data-level="1"],
+.hazard-level[data-level="2"] {
+  color: #4CAF50;
+}
+
+.hazard-level[data-level="3"],
+.hazard-level[data-level="4"],
+.hazard-level[data-level="5"] {
+  color: #FFC107;
+}
+
+.hazard-level[data-level="6"],
+.hazard-level[data-level="7"],
+.hazard-level[data-level="8"] {
+  color: #FF5722;
+}
+
+.hazard-level[data-level="9"],
+.hazard-level[data-level="10"] {
+  color: #F44336;
+}
+
+.sector-features {
+  display: grid;
+  gap: 20px;
+}
+
+.feature-card {
+  background: var(--background-color);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.port-card {
+  border-color: #4A90E2;
+}
+
+.planet-card {
+  border-color: #7CB342;
+}
+
+.warp-card {
+  border-color: #9C27B0;
+  cursor: default;
+}
+
+.feature-card h3 {
+  margin: 0 0 15px 0;
+  font-size: 20px;
+}
+
+.feature-info p {
+  margin: 5px 0;
+  color: var(--text-secondary);
+}
+
+.view-details {
+  margin-top: 10px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-details:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ships-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.ships-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.ship-item {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 10px;
+  padding: 10px;
+  background: var(--background-color);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Port Detail Specific */
+.port-overview,
+.commodities-section,
+.services-section,
+.trading-tips {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.port-description {
+  margin-top: 15px;
+  color: var(--text-secondary);
+}
+
+.commodities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.commodity-card {
+  background: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 15px;
+}
+
+.commodity-card h4 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+
+.commodity-info {
+  font-size: 14px;
+}
+
+.quantity {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.prices {
+  display: flex;
+  justify-content: space-between;
+}
+
+.buy-price .value {
+  color: #F44336;
+}
+
+.sell-price .value {
+  color: #4CAF50;
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.service-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.service-item.available {
+  border-color: #4CAF50;
+}
+
+.service-item.unavailable {
+  opacity: 0.5;
+}
+
+.service-icon {
+  font-size: 20px;
+}
+
+.service-name {
+  flex: 1;
+}
+
+.service-status {
+  font-weight: bold;
+}
+
+.trading-tips ul {
+  margin: 10px 0 0 0;
+  padding-left: 20px;
+}
+
+.trading-tips li {
+  margin: 5px 0;
+  color: var(--text-secondary);
+}
+
+/* Planet Detail Specific */
+.planet-overview,
+.colonist-section,
+.production-section,
+.planet-defenses,
+.colonization-info {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.colonist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.colonist-card {
+  background: var(--background-color);
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  padding: 15px;
+  text-align: center;
+}
+
+.colonist-card.fuel {
+  border-color: #FF9800;
+}
+
+.colonist-card.organics {
+  border-color: #4CAF50;
+}
+
+.colonist-card.equipment {
+  border-color: #2196F3;
+}
+
+.colonist-card h4 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+}
+
+.colonist-info .count {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.colonist-info .capacity {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+
+.colonist-info .percentage {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.production-grid {
+  display: grid;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.production-item {
+  display: grid;
+  grid-template-columns: 40px 100px 1fr 50px;
+  align-items: center;
+  gap: 15px;
+}
+
+.resource-icon {
+  font-size: 24px;
+}
+
+.resource-name {
+  font-weight: 500;
+}
+
+.production-bar {
+  height: 20px;
+  background: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  transition: width 0.3s;
+}
+
+.production-value {
+  text-align: right;
+  font-weight: 500;
+}
+
+.defense-grid {
+  display: grid;
+  gap: 20px;
+  margin-top: 15px;
+}
+
+.defense-item {
+  display: flex;
+  gap: 15px;
+  align-items: start;
+}
+
+.defense-icon {
+  font-size: 36px;
+}
+
+.defense-info h4 {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+}
+
+.defense-info p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.defense-desc {
+  color: var(--text-secondary);
+  margin-top: 5px !important;
+}
+
+.colonization-info ul {
+  margin: 10px 0 0 0;
+  padding-left: 20px;
+}
+
+.colonization-info li {
+  margin: 5px 0;
+  color: var(--text-secondary);
+}
+
+/* Loading State */
+.loading {
+  text-align: center;
+  padding: 50px;
+  color: var(--text-secondary);
+  font-size: 18px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .feature-card {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  
+  .commodity-card,
+  .service-item,
+  .colonist-card,
+  .ship-item {
+    background: rgba(255, 255, 255, 0.03);
+  }
+}
