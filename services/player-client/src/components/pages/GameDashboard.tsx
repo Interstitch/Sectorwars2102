@@ -44,7 +44,7 @@ const GameDashboard: React.FC = () => {
       try {
         const response = await fetch('/api/v1/ai/recommendations?limit=10', {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
             'Content-Type': 'application/json'
           }
         });
