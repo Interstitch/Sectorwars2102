@@ -23,6 +23,7 @@ from src.services.ai_dialogue_service import (
     ShipType as AIShipType,
     GuardMood
 )
+from src.services.ai_provider_service import get_ai_provider_service, ProviderType
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +150,8 @@ class FirstLoginService:
     def __init__(self, db: Session, ai_service: Optional[AIDialogueService] = None):
         self.db = db
         self.ai_service = ai_service or AIDialogueService()
+        # Use the enhanced AI provider service for better fallback support
+        self.ai_provider_service = get_ai_provider_service()
     
     def initialize_ship_configs(self) -> None:
         """Initialize the default ship rarity configurations if they don't exist"""
@@ -487,44 +490,44 @@ class FirstLoginService:
         # Determine the next sequence number
         next_sequence = len(exchanges) + 1
         
-        # Try AI-powered question generation first
+        # Try AI-powered question generation with enhanced provider fallback
         question = None
         topic = "ai_generated"
         ai_used = False
+        provider_used = None
         
-        if self.ai_service.is_available():
-            try:
-                # Build context for AI service
-                context = self._build_dialogue_context(session, exchanges)
-                
-                # For AI generation, we need a mock analysis of the last response
-                # In real flow, this would come from the previous analysis step
-                from src.services.ai_dialogue_service import ResponseAnalysis
-                mock_analysis = ResponseAnalysis(
-                    persuasiveness_score=0.5,
-                    confidence_level=0.5,
-                    consistency_score=0.5,
-                    negotiation_skill=context.negotiation_skill_level,
-                    detected_inconsistencies=context.inconsistencies,
-                    extracted_claims=[],
-                    overall_believability=0.5,
-                    suggested_guard_mood=context.guard_mood
-                )
-                
-                # Generate AI response
-                guard_response = await self.ai_service.generate_guard_question(context, mock_analysis)
-                question = guard_response.dialogue_text
-                ai_used = True
-                
-                # Update session flags
-                session.ai_service_used = True
-                session.fallback_to_rules = False
-                
-                logger.info(f"Generated AI question for session {session_id}")
-                
-            except Exception as e:
-                logger.error(f"AI question generation failed for session {session_id}: {e}")
-                # Fall back to rule-based generation
+        try:
+            # Build context for AI service
+            context = self._build_dialogue_context(session, exchanges)
+            
+            # For AI generation, we need a mock analysis of the last response
+            # In real flow, this would come from the previous analysis step
+            from src.services.ai_dialogue_service import ResponseAnalysis
+            mock_analysis = ResponseAnalysis(
+                persuasiveness_score=0.5,
+                confidence_level=0.5,
+                consistency_score=0.5,
+                negotiation_skill=context.negotiation_skill_level,
+                detected_inconsistencies=context.inconsistencies,
+                extracted_claims=[],
+                overall_believability=0.5,
+                suggested_guard_mood=context.guard_mood
+            )
+            
+            # Use enhanced AI provider service
+            guard_response, provider_used = await self.ai_provider_service.generate_question(context, mock_analysis)
+            question = guard_response.dialogue_text
+            ai_used = provider_used != ProviderType.MANUAL
+            
+            # Update session flags
+            session.ai_service_used = ai_used
+            session.fallback_to_rules = not ai_used
+            
+            logger.info(f"Generated question using {provider_used.value} provider for session {session_id}")
+            
+        except Exception as e:
+            logger.error(f"All AI providers failed for question generation in session {session_id}: {e}")
+            # Fall back to rule-based generation
         
         # Fallback to rule-based generation if AI failed or unavailable
         if not question:
@@ -738,58 +741,59 @@ class FirstLoginService:
             DialogueExchange.sequence_number < exchange.sequence_number
         ).all()
         
-        # Try AI-powered analysis first
+        # Try AI-powered analysis with enhanced provider fallback
         ai_analysis = None
         ai_used = False
+        provider_used = None
         
-        if self.ai_service.is_available():
-            try:
-                # Build context for AI analysis
-                context = self._build_dialogue_context(session, previous_exchanges + [exchange])
-                
-                # Analyze player response with AI
-                ai_analysis = await self.ai_service.analyze_player_response(player_response, context)
-                ai_used = True
-                
-                # Store AI analysis in the exchange
-                exchange.ai_analysis_data = {
-                    "persuasiveness_score": ai_analysis.persuasiveness_score,
-                    "confidence_level": ai_analysis.confidence_level,
-                    "consistency_score": ai_analysis.consistency_score,
-                    "negotiation_skill": ai_analysis.negotiation_skill,
-                    "detected_inconsistencies": ai_analysis.detected_inconsistencies,
-                    "extracted_claims": ai_analysis.extracted_claims,
-                    "overall_believability": ai_analysis.overall_believability,
-                    "suggested_guard_mood": ai_analysis.suggested_guard_mood.value
-                }
-                
-                # Set scores from AI analysis
-                exchange.persuasiveness = ai_analysis.persuasiveness_score
-                exchange.confidence = ai_analysis.confidence_level
-                exchange.consistency = ai_analysis.consistency_score
-                exchange.key_extracted_info = {"claims": ai_analysis.extracted_claims}
-                exchange.detected_contradictions = ai_analysis.detected_inconsistencies
-                
-                # Extract player name from AI claims if not already set
-                if not session.extracted_player_name:
-                    for claim in ai_analysis.extracted_claims:
-                        if any(keyword in claim.lower() for keyword in ["name", "captain", "pilot"]):
-                            # Try to extract name from the claim
-                            extracted_name = self._extract_player_name(claim)
-                            if extracted_name:
-                                session.extracted_player_name = extracted_name
-                                break
-                
-                # Update session flags
-                session.ai_service_used = True
-                exchange.ai_service_used = True
-                exchange.fallback_to_rules = False
-                
-                logger.info(f"AI analysis completed for exchange {exchange_id}")
-                
-            except Exception as e:
-                logger.error(f"AI analysis failed for exchange {exchange_id}: {e}")
-                ai_used = False
+        try:
+            # Build context for AI analysis
+            context = self._build_dialogue_context(session, previous_exchanges + [exchange])
+            
+            # Analyze player response with enhanced AI provider service
+            ai_analysis, provider_used = await self.ai_provider_service.analyze_response(player_response, context)
+            ai_used = provider_used != ProviderType.MANUAL
+            
+            # Store AI analysis in the exchange
+            exchange.ai_analysis_data = {
+                "persuasiveness_score": ai_analysis.persuasiveness_score,
+                "confidence_level": ai_analysis.confidence_level,
+                "consistency_score": ai_analysis.consistency_score,
+                "negotiation_skill": ai_analysis.negotiation_skill,
+                "detected_inconsistencies": ai_analysis.detected_inconsistencies,
+                "extracted_claims": ai_analysis.extracted_claims,
+                "overall_believability": ai_analysis.overall_believability,
+                "suggested_guard_mood": ai_analysis.suggested_guard_mood.value,
+                "provider_used": provider_used.value
+            }
+            
+            # Set scores from AI analysis
+            exchange.persuasiveness = ai_analysis.persuasiveness_score
+            exchange.confidence = ai_analysis.confidence_level
+            exchange.consistency = ai_analysis.consistency_score
+            exchange.key_extracted_info = {"claims": ai_analysis.extracted_claims}
+            exchange.detected_contradictions = ai_analysis.detected_inconsistencies
+            
+            # Extract player name from AI claims if not already set
+            if not session.extracted_player_name:
+                for claim in ai_analysis.extracted_claims:
+                    if any(keyword in claim.lower() for keyword in ["name", "captain", "pilot"]):
+                        # Try to extract name from the claim
+                        extracted_name = self._extract_player_name(claim)
+                        if extracted_name:
+                            session.extracted_player_name = extracted_name
+                            break
+            
+            # Update session flags
+            session.ai_service_used = ai_used
+            exchange.ai_service_used = ai_used
+            exchange.fallback_to_rules = not ai_used
+            
+            logger.info(f"Analysis completed using {provider_used.value} provider for exchange {exchange_id}")
+            
+        except Exception as e:
+            logger.error(f"All AI providers failed for analysis in exchange {exchange_id}: {e}")
+            ai_used = False
         
         # Fallback to rule-based analysis if AI failed or unavailable
         if not ai_used:

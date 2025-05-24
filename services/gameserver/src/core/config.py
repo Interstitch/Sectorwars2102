@@ -30,6 +30,18 @@ class Settings(BaseSettings):
     # Admin credentials
     ADMIN_USERNAME: str = os.environ.get("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD: str = os.environ.get("ADMIN_PASSWORD", "admin")  # Changed from "adminpassword"
+    
+    # AI Provider Configuration
+    OPENAI_API_KEY: Optional[str] = os.environ.get("OPENAI_API_KEY")
+    ANTHROPIC_API_KEY: Optional[str] = os.environ.get("ANTHROPIC_API_KEY")
+    AI_PROVIDER_PRIMARY: str = os.environ.get("AI_PROVIDER_PRIMARY", "openai")
+    AI_PROVIDER_SECONDARY: str = os.environ.get("AI_PROVIDER_SECONDARY", "anthropic")
+    AI_PROVIDER_FALLBACK: str = os.environ.get("AI_PROVIDER_FALLBACK", "manual")
+    
+    # AI Model Configuration
+    OPENAI_MODEL: str = os.environ.get("OPENAI_MODEL", "gpt-3.5-turbo")
+    ANTHROPIC_MODEL: str = os.environ.get("ANTHROPIC_MODEL", "claude-3-sonnet-20240229")
+    AI_DIALOGUE_ENABLED: bool = os.environ.get("AI_DIALOGUE_ENABLED", "true").lower() == "true"
 
     # Development Environment Type
     DEV_ENVIRONMENT: str = os.environ.get("DEV_ENVIRONMENT", "")  # local, replit, codespaces
