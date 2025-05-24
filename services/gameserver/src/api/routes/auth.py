@@ -125,14 +125,18 @@ async def options_login():
 
 @router.post("/login/direct", response_model=AuthResponse)
 async def login_direct(
-    username: str = Body(...),
-    password: str = Body(...),
+    json_data: LoginForm,
     db: Session = Depends(get_db)
 ):
     """
     Direct authentication endpoint that doesn't require preflight CORS.
     This is a simplified endpoint for environments with CORS issues.
+    Accepts JSON body with username and password.
     """
+    # Get credentials from JSON data
+    username = json_data.username
+    password = json_data.password
+    
     # Authenticate user
     user = authenticate_admin(db, username, password)
     if not user:
