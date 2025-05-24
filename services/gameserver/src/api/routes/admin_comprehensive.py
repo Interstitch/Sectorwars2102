@@ -26,6 +26,7 @@ from src.models.warp_tunnel import WarpTunnel
 from src.models.team import Team
 from src.services.galaxy_service import GalaxyService
 from src.services.analytics_service import AnalyticsService
+from src.services.ai_security_service import get_security_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -1135,3 +1136,190 @@ async def update_all_port_stock_levels(
         db.rollback()
         logger.error(f"Error updating port stock levels: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to update port stock levels: {str(e)}")
+
+
+# =============================================================================
+# AI SECURITY MONITORING ENDPOINTS
+# =============================================================================
+
+@router.get("/security/report", summary="Get comprehensive security report")
+async def get_security_report(current_admin: User = Depends(get_current_admin)):
+    """
+    Get comprehensive security monitoring report including:
+    - Player statistics (blocked, high risk, etc.)
+    - Violation statistics by type
+    - API cost usage and limits
+    - Current rate limits
+    """
+    try:
+        security_service = get_security_service()
+        report = security_service.generate_security_report()
+        
+        logger.info(f"Admin {current_admin.username} generated security report")
+        return report
+        
+    except Exception as e:
+        logger.error(f"Error generating security report: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate security report: {str(e)}")
+
+
+@router.get("/security/alerts", summary="Get current security alerts")
+async def get_security_alerts(current_admin: User = Depends(get_current_admin)):
+    """
+    Get current security alerts that need admin attention:
+    - High cost usage warnings
+    - Multiple violations by players
+    - Currently blocked players
+    """
+    try:
+        security_service = get_security_service()
+        alerts = security_service.get_security_alerts()
+        
+        logger.info(f"Admin {current_admin.username} checked security alerts")
+        return {
+            "alerts": alerts,
+            "alert_count": len(alerts),
+            "high_priority_count": sum(1 for alert in alerts if alert.get("severity") == "high")
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting security alerts: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get security alerts: {str(e)}")
+
+
+@router.get("/security/player/{player_id}/risk", summary="Get player risk assessment")
+async def get_player_risk_assessment(
+    player_id: str,
+    current_admin: User = Depends(get_current_admin)
+):
+    """
+    Get detailed risk assessment for a specific player including:
+    - Risk level and score
+    - Risk factors (trust score, violations, etc.)
+    - Current blocking status
+    - API cost usage
+    """
+    try:
+        security_service = get_security_service()
+        assessment = security_service.get_player_risk_assessment(player_id)
+        
+        logger.info(f"Admin {current_admin.username} assessed risk for player {player_id}")
+        return assessment
+        
+    except Exception as e:
+        logger.error(f"Error getting player risk assessment: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get player risk assessment: {str(e)}")
+
+
+@router.get("/security/player/{player_id}/status", summary="Get player security status")
+async def get_player_security_status(
+    player_id: str,
+    current_admin: User = Depends(get_current_admin)
+):
+    """
+    Get current security status for a specific player including:
+    - Block status and expiration
+    - Trust score and violation count
+    - Request counts and rate limiting
+    """
+    try:
+        security_service = get_security_service()
+        status = security_service.get_player_security_status(player_id)
+        
+        logger.info(f"Admin {current_admin.username} checked status for player {player_id}")
+        return status
+        
+    except Exception as e:
+        logger.error(f"Error getting player security status: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get player security status: {str(e)}")
+
+
+@router.post("/security/cleanup", summary="Clean up old security data")
+async def cleanup_security_data(
+    days_to_keep: int = Query(default=7, ge=1, le=30, description="Number of days of data to keep"),
+    current_admin: User = Depends(get_current_admin)
+):
+    """
+    Clean up old security tracking data to prevent memory growth.
+    Removes cost tracking and violation data older than specified days.
+    """
+    try:
+        security_service = get_security_service()
+        security_service.cleanup_old_data(days_to_keep)
+        
+        logger.info(f"Admin {current_admin.username} cleaned up security data (keeping {days_to_keep} days)")
+        return {
+            "success": True,
+            "message": f"Cleaned up security data older than {days_to_keep} days",
+            "days_kept": days_to_keep
+        }
+        
+    except Exception as e:
+        logger.error(f"Error cleaning up security data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to clean up security data: {str(e)}")
+
+
+class PlayerSecurityAction(BaseModel):
+    action: str = Field(..., description="Action to take: 'block', 'unblock', 'reset_violations', 'reset_trust'")
+    duration_hours: Optional[int] = Field(None, description="Block duration in hours (for 'block' action)")
+    reason: Optional[str] = Field(None, description="Reason for the action")
+
+
+@router.post("/security/player/{player_id}/action", summary="Take security action on player")
+async def take_security_action(
+    player_id: str,
+    action: PlayerSecurityAction,
+    current_admin: User = Depends(get_current_admin)
+):
+    """
+    Take security action on a player:
+    - block: Block player for specified duration
+    - unblock: Immediately unblock player
+    - reset_violations: Reset violation count to 0
+    - reset_trust: Reset trust score to 1.0
+    """
+    try:
+        security_service = get_security_service()
+        profile = security_service.get_or_create_player_profile(player_id)
+        
+        if action.action == "block":
+            if action.duration_hours is None:
+                raise HTTPException(status_code=400, detail="duration_hours required for block action")
+            
+            profile.is_blocked = True
+            profile.block_expires = datetime.utcnow() + timedelta(hours=action.duration_hours)
+            message = f"Player {player_id} blocked for {action.duration_hours} hours"
+            
+        elif action.action == "unblock":
+            profile.is_blocked = False
+            profile.block_expires = None
+            message = f"Player {player_id} unblocked"
+            
+        elif action.action == "reset_violations":
+            profile.violation_count = 0
+            profile.last_violation = None
+            message = f"Violation count reset for player {player_id}"
+            
+        elif action.action == "reset_trust":
+            profile.trust_score = 1.0
+            message = f"Trust score reset for player {player_id}"
+            
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown action: {action.action}")
+        
+        logger.info(f"Admin {current_admin.username} took security action '{action.action}' on player {player_id}: {action.reason}")
+        
+        return {
+            "success": True,
+            "message": message,
+            "action": action.action,
+            "player_id": player_id,
+            "reason": action.reason,
+            "new_status": security_service.get_player_security_status(player_id)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error taking security action: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to take security action: {str(e)}")

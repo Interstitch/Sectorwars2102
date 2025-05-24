@@ -1,5 +1,6 @@
 from uuid import UUID
 from typing import Dict, Any, Optional
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
@@ -10,6 +11,7 @@ from src.models.player import Player
 from src.models.first_login import ShipChoice
 from src.services.first_login_service import FirstLoginService
 from src.services.ai_dialogue_service import get_ai_dialogue_service, AIDialogueService
+from src.services.ai_security_service import get_security_service, AISecurityService
 
 router = APIRouter(
     tags=["first-login"],
@@ -181,13 +183,53 @@ async def answer_dialogue(
     response: DialogueResponse,
     player: Player = Depends(get_current_player),
     db: Session = Depends(get_db),
-    ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
+    ai_service: AIDialogueService = Depends(get_ai_dialogue_service),
+    security_service: AISecurityService = Depends(get_security_service)
 ):
     """Submit a dialogue response and get analysis and the next question (if any)"""
+    # CRITICAL SECURITY: Validate input before any processing
+    is_safe, violations = security_service.validate_input(
+        response.response, 
+        str(player.id), 
+        str(exchange_id)
+    )
+    
+    if not is_safe:
+        # Log security violation for monitoring
+        logger.warning(f"Security violation by player {player.id}: {[v.violation_type.value for v in violations]}")
+        raise HTTPException(
+            status_code=400,
+            detail="Input validation failed due to security policy"
+        )
+    
+    # Check rate limits to prevent abuse
+    if not security_service.check_rate_limits(str(player.id)):
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Please wait before making another request."
+        )
+    
+    # Estimate and check AI costs to prevent cost abuse
+    estimated_cost = security_service.estimate_ai_cost(response.response)
+    if not security_service.check_cost_limits(str(player.id), estimated_cost):
+        raise HTTPException(
+            status_code=402,
+            detail="Daily AI usage limit reached. Try again tomorrow."
+        )
+    
+    # Sanitize input for safe AI processing
+    sanitized_input = security_service.sanitize_input(response.response)
+    
     service = FirstLoginService(db, ai_service)
     
-    # Record the player's answer
-    result = await service.record_player_answer(exchange_id, response.response)
+    # Record the player's answer using sanitized input
+    result = await service.record_player_answer(exchange_id, sanitized_input)
+    
+    # Track actual AI costs if AI was used
+    if result.get("analysis", {}).get("ai_used", False):
+        # Estimate actual cost based on response (real cost tracking would need API response data)
+        actual_cost = estimated_cost  # Simplified for now
+        security_service.track_cost(str(player.id), actual_cost)
     
     # If not final, generate the next question
     next_question = None
@@ -199,6 +241,10 @@ async def answer_dialogue(
         question_data = await service.generate_guard_question(state.current_session_id)
         next_question = question_data["question"]
         next_exchange_id = str(question_data["exchange_id"])
+        
+        # SECURITY: Sanitize AI-generated response before returning
+        if next_question:
+            next_question = security_service.sanitize_output(next_question)
     
     return {
         "exchange_id": str(result["exchange_id"]),
