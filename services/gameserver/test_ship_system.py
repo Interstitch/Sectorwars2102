@@ -7,24 +7,46 @@ Tests all ship implementations and the enhanced first login experience
 import sys
 import os
 import uuid
+from pathlib import Path
 
-# Add the src directory to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+# Add the src directory to Python path for container compatibility
+project_root = Path(__file__).parent
+src_path = project_root / 'src'
+sys.path.insert(0, str(src_path))
 
-from src.core.database import get_db
-from src.models.ship import ShipType, ShipSpecification, Ship
-from src.models.first_login import ShipChoice
-from src.services.ship_service import ShipService
-from src.services.first_login_service import FirstLoginService, SHIP_CHOICE_TO_TYPE
-from src.models.player import Player
-from src.models.user import User
-import uuid
+# Add both /app and current directory for flexibility
+sys.path.append('/app')
+sys.path.append('.')
+
+try:
+    from core.database import get_db
+    from models.ship import ShipType, ShipSpecification, Ship
+    from models.first_login import ShipChoice
+    from services.ship_service import ShipService
+    from services.first_login_service import FirstLoginService, SHIP_CHOICE_TO_TYPE
+    from models.player import Player
+    from models.user import User
+except ImportError:
+    # Fallback to src. imports
+    from src.core.database import get_db
+    from src.models.ship import ShipType, ShipSpecification, Ship
+    from src.models.first_login import ShipChoice
+    from src.services.ship_service import ShipService
+    from src.services.first_login_service import FirstLoginService, SHIP_CHOICE_TO_TYPE
+    from src.models.player import Player
+    from src.models.user import User
 
 def test_ship_specifications():
     """Test that all ship specifications are properly seeded"""
     print("🔍 Testing ship specifications...")
     
-    db = next(get_db())
+    try:
+        db = next(get_db())
+        print("✅ Database connection established")
+    except Exception as db_error:
+        print(f"❌ Failed to connect to database: {db_error}")
+        return False
+    
     try:
         all_ship_types = list(ShipType)
         missing_specs = []
@@ -46,8 +68,14 @@ def test_ship_specifications():
         print(f"  ✅ All {len(all_ship_types)} ship types have specifications")
         return True
         
+    except Exception as e:
+        print(f"  ❌ Error during ship specifications test: {e}")
+        return False
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception as close_error:
+            print(f"  ⚠️ Error closing database: {close_error}")
 
 def test_ship_choice_mapping():
     """Test that all ship choices map to valid ship types"""
@@ -77,7 +105,13 @@ def test_escape_pod_special_properties():
     """Test that Escape Pod has special indestructible properties"""
     print("🔍 Testing Escape Pod special properties...")
     
-    db = next(get_db())
+    try:
+        db = next(get_db())
+        print("  ✅ Database connection established")
+    except Exception as db_error:
+        print(f"  ❌ Failed to connect to database: {db_error}")
+        return False
+    
     try:
         ship_service = ShipService(db)
         
@@ -150,14 +184,26 @@ def test_escape_pod_special_properties():
             print("    ❌ Indestructible check failed")
             return False
         
+    except Exception as e:
+        print(f"  ❌ Error during escape pod test: {e}")
+        return False
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception as close_error:
+            print(f"  ⚠️ Error closing database: {close_error}")
 
 def test_ship_creation():
     """Test ship creation for all ship types"""
     print("🔍 Testing ship creation...")
     
-    db = next(get_db())
+    try:
+        db = next(get_db())
+        print("  ✅ Database connection established")
+    except Exception as db_error:
+        print(f"  ❌ Failed to connect to database: {db_error}")
+        return False
+    
     try:
         ship_service = ShipService(db)
         
@@ -233,7 +279,13 @@ def test_first_login_ship_variety():
     """Test that first login offers variety of ships"""
     print("🔍 Testing first login ship variety...")
     
-    db = next(get_db())
+    try:
+        db = next(get_db())
+        print("  ✅ Database connection established")
+    except Exception as db_error:
+        print(f"  ❌ Failed to connect to database: {db_error}")
+        return False
+    
     try:
         first_login_service = FirstLoginService(db)
         
@@ -263,17 +315,34 @@ def test_first_login_ship_variety():
             print("  ❌ Insufficient ship variety in first login")
             return False
         
+    except Exception as e:
+        print(f"  ❌ Error during first login variety test: {e}")
+        return False
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception as close_error:
+            print(f"  ⚠️ Error closing database: {close_error}")
 
 def test_ship_descriptions():
     """Test that all ships have proper descriptions in UI"""
     print("🔍 Testing ship descriptions...")
     
-    # Skip this test when running in container without frontend access
-    frontend_path = '/workspaces/Sectorwars2102/services/player-client/src/components/first-login/ShipSelection.tsx'
-    if not os.path.exists(frontend_path):
-        print("  ⚠️  Frontend files not accessible from container, skipping UI tests")
+    # Check multiple possible frontend paths
+    possible_paths = [
+        '/workspaces/Sectorwars2102/services/player-client/src/components/first-login/ShipSelection.tsx',
+        '../player-client/src/components/first-login/ShipSelection.tsx',
+        './services/player-client/src/components/first-login/ShipSelection.tsx'
+    ]
+    
+    frontend_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            frontend_path = path
+            break
+    
+    if not frontend_path:
+        print("  ⚠️ Frontend files not accessible from container, skipping UI tests")
         return True
     
     # Import the ship descriptions from the frontend
@@ -315,10 +384,21 @@ def test_game_title_display():
     """Test that game title is displayed in first login"""
     print("🔍 Testing game title display...")
     
-    # Skip this test when running in container without frontend access
-    frontend_path = '/workspaces/Sectorwars2102/services/player-client/src/components/first-login/ShipSelection.tsx'
-    if not os.path.exists(frontend_path):
-        print("  ⚠️  Frontend files not accessible from container, skipping UI tests")
+    # Check multiple possible frontend paths
+    possible_paths = [
+        '/workspaces/Sectorwars2102/services/player-client/src/components/first-login/ShipSelection.tsx',
+        '../player-client/src/components/first-login/ShipSelection.tsx',
+        './services/player-client/src/components/first-login/ShipSelection.tsx'
+    ]
+    
+    frontend_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            frontend_path = path
+            break
+    
+    if not frontend_path:
+        print("  ⚠️ Frontend files not accessible from container, skipping UI tests")
         return True
     
     try:
