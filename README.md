@@ -4,16 +4,25 @@ A web-based space trading simulation game built with a microservices architectur
 
 ## Overview
 
-Sector Wars 2102 is a turn-based space trading game where players navigate through different sectors, trade commodities, manage ships, and colonize planets. The game features a dynamic universe with interconnected sectors, a robust trading system, planet colonization mechanics, and **revolutionary AI trading intelligence**.
+Sector Wars 2102 is a turn-based space trading game where players navigate through different sectors, trade commodities, manage ships, and colonize planets. The game features a dynamic universe with interconnected sectors, a robust trading system, planet colonization mechanics, and **revolutionary AI-powered systems**.
 
-### 🤖 AI Trading Intelligence System (NEW!)
+### 🤖 AI-Powered Features
 
+#### ARIA Trading Intelligence System
 **ARIA** (Autonomous Resource Intelligence Assistant) - The first AI trading companion in a space trading game:
 - **Personalized Recommendations**: AI learns your trading style and provides tailored suggestions
 - **Market Predictions**: Advanced algorithms forecast commodity price movements
 - **Route Optimization**: AI calculates optimal multi-sector trading paths
 - **Risk Assessment**: Early warnings for dangerous sectors and market conditions
 - **Real-time Learning**: Continuously improves based on your feedback and success
+
+#### AI-Powered First Login Experience ✨ NEW!
+**Dynamic Narrative Dialogue** - Immersive AI-driven character interactions:
+- **Adaptive Conversations**: Guard NPCs respond dynamically using LLM AI (Anthropic Claude/OpenAI GPT)
+- **Contextual Questioning**: Questions adapt based on your responses and claimed ship type
+- **Intelligent Analysis**: AI analyzes persuasiveness, confidence, and consistency in real-time
+- **Natural Language Processing**: Free-form text input with sophisticated response understanding
+- **Seamless Fallback**: Robust rule-based system ensures 100% reliability when AI is unavailable
 
 ## Architecture
 
