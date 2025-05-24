@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
 
 import sys
-sys.path.append('/app')
+import os
+from pathlib import Path
 
-from src.core.database import SessionLocal
-from src.models.sector import Sector
-from src.models.port import Port
-from src.models.planet import Planet
-from src.models.warp_tunnel import WarpTunnel
+# Add the src directory to Python path for container compatibility
+project_root = Path(__file__).parent
+src_path = project_root / 'src'
+sys.path.insert(0, str(src_path))
+
+# Add both /app and current directory for flexibility
+sys.path.append('/app')
+sys.path.append('.')
+
+from core.database import SessionLocal
+from models.sector import Sector
+from models.port import Port
+from models.planet import Planet
+from models.warp_tunnel import WarpTunnel
 
 def test_admin_sectors_logic():
+    """Test the admin sectors endpoint logic with proper error handling"""
     db = SessionLocal()
     try:
         print('Testing admin sectors endpoint logic...')
+        print(f'Database session created: {type(db)}')
 
         query = db.query(Sector)
         sectors = query.offset(0).limit(100).all()
@@ -43,8 +55,12 @@ def test_admin_sectors_logic():
                 "id": str(sector.id),
                 "sector_id": sector.sector_id,
                 "name": sector.name,
-                "type": sector.special_type.value if hasattr(sector, 'special_type') and sector.special_type is not None else sector.type.value,
-                "cluster_id": str(sector.cluster_id),
+                "type": (
+                    sector.special_type.value 
+                    if hasattr(sector, 'special_type') and sector.special_type is not None 
+                    else (sector.type.value if hasattr(sector, 'type') and sector.type is not None else 'unknown')
+                ),
+                "cluster_id": str(sector.cluster_id) if sector.cluster_id else None,
                 "x_coord": sector.x_coord,
                 "y_coord": sector.y_coord,
                 "z_coord": sector.z_coord,
@@ -55,7 +71,7 @@ def test_admin_sectors_logic():
                 "has_planet": has_planet,
                 "has_warp_tunnel": has_warp_tunnel,
                 "resource_richness": "average",  # TODO: Calculate from resources
-                "controlling_faction": sector.controlling_faction
+                "controlling_faction": getattr(sector, 'controlling_faction', None)
             }
 
             sector_list.append(sector_data)
@@ -70,7 +86,10 @@ def test_admin_sectors_logic():
         traceback.print_exc()
         return None
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception as close_error:
+            print(f'Error closing database: {close_error}')
 
 if __name__ == "__main__":
     result = test_admin_sectors_logic()
