@@ -147,7 +147,7 @@ const UniverseManager: React.FC = () => {
             // Try generating again after clearing
             await generateGalaxy(
               galaxyConfig.name,
-              galaxyConfig.num_sectors,
+              galaxyConfig.total_sectors,
               {
                 resource_distribution: 'balanced',
                 hazard_levels: 'moderate',

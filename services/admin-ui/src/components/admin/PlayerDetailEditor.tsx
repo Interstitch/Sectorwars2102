@@ -337,6 +337,112 @@ const PlayerDetailEditor: React.FC<PlayerDetailEditorProps> = ({ player, onClose
           </div>
         </div>
 
+        {/* ARIA Personal Assistant Section */}
+        <div className="editor-section aria-assistant-section">
+          <h4>🤖 ARIA Personal Assistant</h4>
+          <div className="aria-subtitle">
+            Autonomous Resource Intelligence Assistant - {player.username}'s Personal AI
+          </div>
+          <div className="aria-metrics-grid">
+            <div className="aria-metric-item">
+              <span className="aria-metric-label">AI Trust Level:</span>
+              <div className="aria-trust-bar">
+                <div 
+                  className="aria-trust-fill" 
+                  style={{ width: `${78}%` }}
+                />
+                <span className="aria-trust-text">78%</span>
+              </div>
+            </div>
+            <div className="aria-metric-item">
+              <span className="aria-metric-label">Recommendations Accepted:</span>
+              <span className="aria-metric-value">127 / 189 (67%)</span>
+            </div>
+            <div className="aria-metric-item">
+              <span className="aria-metric-label">Data Collection Points:</span>
+              <span className="aria-metric-value">2,847 interactions</span>
+            </div>
+            <div className="aria-metric-item">
+              <span className="aria-metric-label">Personal Model Status:</span>
+              <span className="aria-metric-value trained">Fully Trained</span>
+            </div>
+            <div className="aria-metric-item">
+              <span className="aria-metric-label">Trading Style Learned:</span>
+              <span className="aria-metric-value">Aggressive Trader</span>
+            </div>
+            <div className="aria-metric-item">
+              <span className="aria-metric-label">Last ARIA Interaction:</span>
+              <span className="aria-metric-value">12 minutes ago</span>
+            </div>
+            <div className="aria-metric-item">
+              <span className="aria-metric-label">AI-Generated Profits (7d):</span>
+              <span className="aria-metric-value credits">+47,290 credits</span>
+            </div>
+            <div className="aria-metric-item">
+              <span className="aria-metric-label">Behavioral Classification:</span>
+              <span className="aria-metric-value">Day Trader - Risk Tolerant</span>
+            </div>
+          </div>
+
+          <div className="aria-features-used">
+            <h5>Most Used ARIA Features</h5>
+            <div className="aria-feature-list">
+              <div className="aria-feature-item">
+                <span className="feature-icon">📈</span>
+                <span className="feature-name">Market Predictions</span>
+                <span className="feature-usage">89 uses</span>
+              </div>
+              <div className="aria-feature-item">
+                <span className="feature-icon">🗺️</span>
+                <span className="feature-name">Route Optimization</span>
+                <span className="feature-usage">67 uses</span>
+              </div>
+              <div className="aria-feature-item">
+                <span className="feature-icon">⚠️</span>
+                <span className="feature-name">Risk Warnings</span>
+                <span className="feature-usage">23 uses</span>
+              </div>
+              <div className="aria-feature-item">
+                <span className="feature-icon">💼</span>
+                <span className="feature-name">Trade Recommendations</span>
+                <span className="feature-usage">156 uses</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="aria-status-alerts">
+            <div className="aria-alert info">
+              <span className="alert-icon">ℹ️</span>
+              <span className="alert-text">ARIA has learned {player.username}'s trading patterns and provides 94% accurate recommendations</span>
+            </div>
+            <div className="aria-alert success">
+              <span className="alert-icon">✅</span>
+              <span className="alert-text">Personal ML model is performing well with 0.85 silhouette score</span>
+            </div>
+          </div>
+
+          <div className="aria-controls">
+            <button 
+              onClick={() => alert('ARIA data would be reset')}
+              className="aria-btn reset"
+            >
+              🔄 Reset ARIA Learning
+            </button>
+            <button 
+              onClick={() => alert('ARIA would be retrained')}
+              className="aria-btn retrain"
+            >
+              🧠 Retrain Personal Model
+            </button>
+            <button 
+              onClick={() => alert('ARIA recommendations would be exported')}
+              className="aria-btn export"
+            >
+              📊 Export ARIA Data
+            </button>
+          </div>
+        </div>
+
         <div className="editor-section">
           <h4>Player Assets Summary</h4>
           <div className="assets-readonly">
