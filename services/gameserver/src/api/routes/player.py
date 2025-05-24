@@ -191,7 +191,7 @@ async def move_to_sector(
 ):
     """Move the player to a specified sector"""
     # Basic validation - check if sector exists
-    target_sector = db.query(Sector).filter(Sector.id == sector_id).first()
+    target_sector = db.query(Sector).filter(Sector.sector_id == sector_id).first()
     if not target_sector:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

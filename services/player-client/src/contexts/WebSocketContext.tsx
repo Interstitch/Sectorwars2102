@@ -208,6 +208,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     // Handle other message types
     const generalHandler = (message: WebSocketMessage) => {
       switch (message.type) {
+        case 'connection_status':
+          // This is handled by the websocketService's onConnectionStatus
+          // No additional handling needed here
+          break;
+          
         case 'heartbeat_ack':
           // Handle heartbeat acknowledgment
           break;
@@ -253,7 +258,10 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
           break;
           
         default:
-          console.log('WebSocket: Unhandled message type:', message.type);
+          // Only log truly unhandled message types, not ones handled by specific handlers
+          if (!['sector_players', 'connection_status', 'chat_message', 'player_entered_sector', 'player_left_sector', 'notification'].includes(message.type)) {
+            console.log('WebSocket: Unhandled message type:', message.type);
+          }
       }
     };
     
