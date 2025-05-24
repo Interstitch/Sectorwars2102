@@ -63,14 +63,23 @@ The player has just created their account and logged in for the first time. Inst
 
 ## Technical Implementation
 
-### AI Integration ✅ IMPLEMENTED
+### AI Integration ✅ ENHANCED (2025-05-24)
 
-The First Login experience now features fully implemented AI-powered dialogue using Large Language Model (LLM) APIs with comprehensive fallback to rule-based logic.
+The First Login experience features a robust multi-provider AI system with intelligent fallback chains and enhanced manual simulation.
 
-**Implementation Status**: ✅ Complete (2025-05-24)
-**AI Providers**: Anthropic Claude, OpenAI GPT
-**Fallback Strategy**: Sophisticated rule-based analysis
+**Implementation Status**: ✅ Enhanced (2025-05-24)
+**AI Providers**: OpenAI GPT (primary), Anthropic Claude (secondary), Enhanced Manual (fallback)
+**Provider Priority**: OpenAI-first for cost efficiency, Anthropic for quality backup
+**Fallback Strategy**: Sophisticated rule-based analysis with cat boost and ship tier logic
 **Documentation**: See `/DOCS/DEV_DOCS/AI_POWERED_FIRST_LOGIN_IMPLEMENTATION.md`
+
+#### Enhanced Provider System Features
+- **Cost Optimization**: OpenAI used as primary provider (cheaper for dialogue)
+- **Quality Assurance**: Anthropic Claude as high-quality secondary fallback
+- **Zero Downtime**: Enhanced manual provider ensures service continuity
+- **Cat Boost Mechanic**: 15% persuasion boost for mentioning the orange cat ✅
+- **Ship Tier Difficulty**: Dynamic guard skepticism based on claimed ship value ✅
+- **Provider Tracking**: Full visibility into which AI system generated each response
 
 #### Dynamic Guard Questioning ✅ IMPLEMENTED
 
@@ -107,20 +116,53 @@ The system analyzes player responses using AI to determine:
 - Sophisticated negotiation skill assessment
 - Adaptive guard mood suggestions
 
-**Fallback Logic**: When AI services are unavailable, the system seamlessly falls back to sophisticated rule-based dialogue analysis with predefined patterns and responses, maintaining full functionality.
+**Enhanced Fallback Logic**: When AI services are unavailable, the system uses an sophisticated enhanced manual provider that includes:
+- **Cat Boost Detection**: Automatically detects cat mentions and applies 15% persuasion boost
+- **Ship Tier Scaling**: Adjusts guard skepticism based on claimed ship value/rarity  
+- **Dynamic Personality**: Simulates realistic guard behavior with contextual responses
+- **Pattern Recognition**: Advanced rule-based analysis rivaling AI quality
 
-### Decision Matrix
+### Enhanced Decision Matrix
 
-| Dialogue Choice | Negotiation Skill | Persuasion Score | Outcome |
-|-----------------|-------------------|------------------|---------|
-| Scout Ship      | Strong            | > 0.7            | Success: Scout Ship + 2000 credits |
-| Scout Ship      | Weak              | > 0.8            | Success: Scout Ship + 2000 credits |
-| Cargo Freighter | Strong            | > 0.6            | Success: Cargo Freighter + 5000 credits |
-| Cargo Freighter | Weak              | > 0.8            | Success: Cargo Freighter + 5000 credits |
-| Escape Pod      | Strong/Weak       | > 0.3            | Success: Escape Pod + 1000 credits |
-| Scout/Freighter | Any               | < threshold      | Failure: Guard realizes player belongs to Escape Pod + 500 credits |
-| Escape Pod      | Any               | < threshold      | Partial Success: Granted Escape Pod but with only 800 credits |
+The decision matrix now incorporates ship tier difficulty and cat boost mechanics:
 
+| Ship Choice | Base Tier | Cat Boost | Negotiation | Final Threshold | Success Outcome |
+|-------------|-----------|-----------|-------------|-----------------|-----------------|
+| Escape Pod | Tier 1 (0.3) | +15% if mentioned | Any | 0.3 → 0.45 | Escape Pod + 1000 credits |
+| Light Freighter | Tier 2 (0.5) | +15% if mentioned | Strong | 0.5 → 0.65 | Light Freighter + 2500 credits |
+| Scout Ship | Tier 3 (0.6) | +15% if mentioned | Strong | 0.6 → 0.75 | Scout Ship + 2000 credits |
+| Cargo Hauler | Tier 4 (0.7) | +15% if mentioned | Strong | 0.7 → 0.85 | Cargo Hauler + 5000 credits |
+| Defender | Tier 5 (0.8) | +15% if mentioned | Strong | 0.8 → 0.95 | Defender + 7000 credits |
+
+**Special Mechanics**:
+- **Cat Boost**: Mentioning the orange cat provides a significant persuasion advantage
+- **Ship Tier Scaling**: Higher-value ships require proportionally higher persuasion scores
+- **Provider Fallback**: If AI providers fail, enhanced manual logic maintains quality experience
+- **Failure Outcome**: All failed attempts default to Escape Pod + 500 credits
+
+### Environment Configuration
+
+The AI provider system can be configured via environment variables:
+
+```bash
+# AI Provider Configuration
+AI_PROVIDER_PRIMARY=openai           # Primary provider (openai/anthropic)
+AI_PROVIDER_SECONDARY=anthropic      # Secondary fallback
+AI_PROVIDER_FALLBACK=manual          # Final fallback (always manual)
+
+# API Keys
+OPENAI_API_KEY=sk-your-openai-key    # Required for OpenAI provider
+ANTHROPIC_API_KEY=sk-ant-your-key    # Required for Anthropic provider
+
+# Model Selection
+OPENAI_MODEL=gpt-3.5-turbo          # OpenAI model to use
+ANTHROPIC_MODEL=claude-3-sonnet-20240229  # Anthropic model to use
+
+# Feature Toggles
+AI_DIALOGUE_ENABLED=true            # Enable/disable AI dialogue
+```
+
+**Provider Priority**: The system tries providers in order (Primary → Secondary → Manual) until one succeeds, ensuring zero service downtime even without API keys.
 
 ## UI/UX Considerations
 
