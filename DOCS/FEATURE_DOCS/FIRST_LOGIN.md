@@ -17,7 +17,7 @@ The First Login Experience establishes the player's identity, starting resources
 
 The player has just created their account and logged in for the first time. Instead of a traditional character creation screen, they are immediately immersed in a narrative scenario at a spaceport on Earth (Sector 1):
 
-> The year is 2102. You find yourself in a bustling shipyard on the outskirts of the Callisto Colony. Your memory is hazy—a side effect of the cryo-sleep required for the journey here. You're approaching what appears to be your escape pod when a stern-looking Security Guard blocks your path.
+> The year is 2102. You find yourself in a bustling shipyard on the outskirts of the Callisto Colony. Your memory is hazy—a side effect of the cryo-sleep required for the journey here. A small orange cat darts between the landing gear of nearby ships, disappearing into the shadows. You're approaching what appears to be your escape pod when a stern-looking Security Guard blocks your path.
 
 ### Dialogue Sequence
 
