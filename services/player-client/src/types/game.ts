@@ -1,5 +1,5 @@
 // Re-export types from GameContext for easier importing
-export type {
+import type {
   Ship,
   Sector,
   Planet,
@@ -8,6 +8,16 @@ export type {
   MarketInfo,
   PlayerState
 } from '../contexts/GameContext';
+
+export type {
+  Ship,
+  Sector,
+  Planet,
+  Port,
+  MoveOption,
+  MarketInfo,
+  PlayerState
+};
 
 // Additional types for 3D galaxy
 export interface Warp {

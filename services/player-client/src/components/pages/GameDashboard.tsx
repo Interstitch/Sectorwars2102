@@ -45,12 +45,11 @@ const GameDashboard: React.FC = () => {
       try {
         const recommendations = await aiTradingService.getRecommendations(10, false);
         const pendingRecommendations = recommendations.filter((rec: any) => 
-            new Date(rec.expires_at) > new Date()
-          );
-          
-          setRecommendationCount(pendingRecommendations.length);
-          setHasNewRecommendations(pendingRecommendations.length > 0);
-        }
+          new Date(rec.expires_at) > new Date()
+        );
+        
+        setRecommendationCount(pendingRecommendations.length);
+        setHasNewRecommendations(pendingRecommendations.length > 0);
       } catch (error) {
         console.error('Error checking AI recommendations:', error);
       }

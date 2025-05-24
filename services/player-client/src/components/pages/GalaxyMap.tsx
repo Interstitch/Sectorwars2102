@@ -235,7 +235,7 @@ const GalaxyMap: React.FC = () => {
                   const mapSector: MapSector = {
                     id: sector.id,
                     name: sector.name,
-                    type: sector.sector_type || 'normal',
+                    type: (sector as any).sector_type || 'normal',
                     x: 0, // Position handled by 3D renderer
                     y: 0,
                     isConnected: true,
