@@ -1,12 +1,120 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { api } from '../../utils/auth';
 import './universe-detail.css';
 
 interface PlanetDetailProps {
   planet: any;
   onBack: () => void;
+  onUpdate?: (updatedPlanet: any) => void;
 }
 
-const PlanetDetail: React.FC<PlanetDetailProps> = ({ planet, onBack }) => {
+const PlanetDetail: React.FC<PlanetDetailProps> = ({ planet, onBack, onUpdate }) => {
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<any>({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleEdit = (field: string, currentValue: any) => {
+    setEditingField(field);
+    setEditValues({ ...editValues, [field]: currentValue });
+  };
+
+  const handleSave = async (field: string) => {
+    try {
+      setIsLoading(true);
+      const value = editValues[field];
+      
+      // Update planet via API
+      await api.patch(`/api/v1/admin/planets/${planet.id}`, {
+        [field]: value
+      });
+      
+      // Update local state
+      const updatedPlanet = { ...planet, [field]: value };
+      if (onUpdate) {
+        onUpdate(updatedPlanet);
+      }
+      
+      setEditingField(null);
+    } catch (error) {
+      console.error(`Failed to update ${field}:`, error);
+      alert(`Failed to update ${field}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingField(null);
+    setEditValues({});
+  };
+
+  const EditableField: React.FC<{
+    field: string;
+    value: any;
+    type?: 'text' | 'number' | 'select';
+    options?: string[];
+  }> = ({ field, value, type = 'text', options }) => {
+    const isEditing = editingField === field;
+    
+    if (isEditing) {
+      return (
+        <div className="editable-field editing">
+          {type === 'select' && options ? (
+            <select
+              value={editValues[field] || value}
+              onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
+              disabled={isLoading}
+            >
+              {options.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type={type}
+              value={editValues[field] !== undefined ? editValues[field] : value}
+              onChange={(e) => setEditValues({ 
+                ...editValues, 
+                [field]: type === 'number' ? parseInt(e.target.value) || 0 : e.target.value 
+              })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave(field);
+                if (e.key === 'Escape') handleCancel();
+              }}
+              disabled={isLoading}
+              autoFocus
+            />
+          )}
+          <div className="edit-actions">
+            <button 
+              onClick={() => handleSave(field)} 
+              disabled={isLoading}
+              className="save-btn"
+            >
+              ✓
+            </button>
+            <button 
+              onClick={handleCancel} 
+              disabled={isLoading}
+              className="cancel-btn"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <span 
+        className="editable-field clickable" 
+        onClick={() => handleEdit(field, value)}
+        title="Click to edit"
+      >
+        {value}
+      </span>
+    );
+  };
   const getPlanetTypeInfo = (type: string) => {
     const typeInfo: { [key: string]: { name: string; description: string; color: string; icon: string } } = {
       'TERRA': { 
@@ -83,28 +191,59 @@ const PlanetDetail: React.FC<PlanetDetailProps> = ({ planet, onBack }) => {
           <h3>Planet Overview</h3>
           <div className="info-grid">
             <div className="info-item">
+              <span className="label">Name:</span>
+              <span className="value">
+                <EditableField field="name" value={planet.name} type="text" />
+              </span>
+            </div>
+            <div className="info-item">
+              <span className="label">Planet Type:</span>
+              <span className="value">
+                <EditableField 
+                  field="planet_type" 
+                  value={planet.planet_type} 
+                  type="select"
+                  options={['TERRA', 'M_CLASS', 'L_CLASS', 'O_CLASS', 'K_CLASS', 'H_CLASS', 'D_CLASS', 'C_CLASS']}
+                />
+              </span>
+            </div>
+            <div className="info-item">
               <span className="label">Owner:</span>
               <span className="value">{planet.owner_name || 'Uncolonized'}</span>
             </div>
             <div className="info-item">
-              <span className="label">Total Colonists:</span>
-              <span className="value">{totalColonists.toLocaleString()}</span>
-            </div>
-            <div className="info-item">
               <span className="label">Citadel Level:</span>
-              <span className="value">{planet.citadel_level} / 5</span>
+              <span className="value">
+                <EditableField 
+                  field="citadel_level" 
+                  value={planet.citadel_level} 
+                  type="select"
+                  options={['0', '1', '2', '3', '4', '5']}
+                /> / 5
+              </span>
             </div>
             <div className="info-item">
               <span className="label">Shield Level:</span>
-              <span className="value">{planet.shield_level} / 3</span>
+              <span className="value">
+                <EditableField 
+                  field="shield_level" 
+                  value={planet.shield_level} 
+                  type="select"
+                  options={['0', '1', '2', '3']}
+                /> / 3
+              </span>
             </div>
             <div className="info-item">
               <span className="label">Defense Fighters:</span>
-              <span className="value">{planet.fighters || 0}</span>
+              <span className="value">
+                <EditableField field="fighters" value={planet.fighters || 0} type="number" />
+              </span>
             </div>
             <div className="info-item">
               <span className="label">Breeding Rate:</span>
-              <span className="value">{planet.breeding_rate}% per day</span>
+              <span className="value">
+                <EditableField field="breeding_rate" value={planet.breeding_rate} type="number" />% per day
+              </span>
             </div>
           </div>
           <p className="planet-description">{typeInfo.description}</p>

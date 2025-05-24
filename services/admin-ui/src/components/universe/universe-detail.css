@@ -1,5 +1,83 @@
 /* Universe Detail Components Styling */
 
+/* Editable Fields */
+.editable-field {
+  position: relative;
+  display: inline-block;
+}
+
+.editable-field.clickable {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+  border: 1px solid transparent;
+}
+
+.editable-field.clickable:hover {
+  background-color: var(--hover-color, #f0f0f0);
+  border-color: var(--border-color, #ddd);
+}
+
+.editable-field.editing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editable-field.editing input,
+.editable-field.editing select {
+  padding: 4px 8px;
+  border: 1px solid var(--primary-color, #007bff);
+  border-radius: 3px;
+  font-size: 14px;
+  min-width: 100px;
+}
+
+.editable-field.editing input:focus,
+.editable-field.editing select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.edit-actions button {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.save-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.save-btn:hover {
+  background-color: #218838;
+}
+
+.cancel-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background-color: #c82333;
+}
+
+.save-btn:disabled,
+.cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Common Styles */
 .sector-detail,
 .port-detail,

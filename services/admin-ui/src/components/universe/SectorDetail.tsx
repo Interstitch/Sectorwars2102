@@ -7,13 +7,17 @@ interface SectorDetailProps {
   onBack: () => void;
   onPortClick: (port: any) => void;
   onPlanetClick: (planet: any) => void;
+  onUpdate?: (updatedSector: any) => void;
 }
 
-const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick, onPlanetClick }) => {
+const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick, onPlanetClick, onUpdate }) => {
   const [portData, setPortData] = useState<any>(null);
   const [planetData, setPlanetData] = useState<any>(null);
   const [shipsInSector, setShipsInSector] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<any>({});
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     loadSectorDetails();
@@ -45,6 +49,118 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
     }
   };
 
+  const handleEdit = (field: string, currentValue: any) => {
+    setEditingField(field);
+    setEditValues({ ...editValues, [field]: currentValue });
+  };
+
+  const handleSave = async (field: string) => {
+    try {
+      setIsUpdating(true);
+      const value = editValues[field];
+      
+      // Update sector via API
+      await api.patch(`/api/v1/admin/sectors/${sector.id}`, {
+        [field]: value
+      });
+      
+      // Update local state
+      const updatedSector = { ...sector, [field]: value };
+      if (onUpdate) {
+        onUpdate(updatedSector);
+      }
+      
+      setEditingField(null);
+    } catch (error) {
+      console.error(`Failed to update ${field}:`, error);
+      alert(`Failed to update ${field}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingField(null);
+    setEditValues({});
+  };
+
+  const EditableField: React.FC<{
+    field: string;
+    value: any;
+    type?: 'text' | 'number' | 'select' | 'boolean';
+    options?: string[];
+  }> = ({ field, value, type = 'text', options }) => {
+    const isEditing = editingField === field;
+    
+    if (isEditing) {
+      return (
+        <div className="editable-field editing">
+          {type === 'select' && options ? (
+            <select
+              value={editValues[field] || value}
+              onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value })}
+              disabled={isUpdating}
+            >
+              {options.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          ) : type === 'boolean' ? (
+            <select
+              value={editValues[field] !== undefined ? editValues[field] : value}
+              onChange={(e) => setEditValues({ ...editValues, [field]: e.target.value === 'true' })}
+              disabled={isUpdating}
+            >
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          ) : (
+            <input
+              type={type}
+              value={editValues[field] !== undefined ? editValues[field] : value}
+              onChange={(e) => setEditValues({ 
+                ...editValues, 
+                [field]: type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value 
+              })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave(field);
+                if (e.key === 'Escape') handleCancel();
+              }}
+              disabled={isUpdating}
+              autoFocus
+            />
+          )}
+          <div className="edit-actions">
+            <button 
+              onClick={() => handleSave(field)} 
+              disabled={isUpdating}
+              className="save-btn"
+            >
+              ✓
+            </button>
+            <button 
+              onClick={handleCancel} 
+              disabled={isUpdating}
+              className="cancel-btn"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <span 
+        className="editable-field clickable" 
+        onClick={() => handleEdit(field, value)}
+        title="Click to edit"
+      >
+        {type === 'boolean' ? (value ? 'Yes' : 'No') : value}
+      </span>
+    );
+  };
+
   const getSectorTypeColor = (type: string) => {
     switch (type.toUpperCase()) {
       case 'NEBULA': return '#8B4D8B';
@@ -72,28 +188,57 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
             <h3>Sector Information</h3>
             <div className="info-grid">
               <div className="info-item">
-                <span className="label">Type:</span>
-                <span className="value" style={{ color: getSectorTypeColor(sector.type) }}>
-                  {sector.type}
+                <span className="label">Name:</span>
+                <span className="value">
+                  <EditableField field="name" value={sector.name} type="text" />
                 </span>
               </div>
               <div className="info-item">
-                <span className="label">Coordinates:</span>
-                <span className="value">({sector.x_coord}, {sector.y_coord}, {sector.z_coord})</span>
+                <span className="label">Type:</span>
+                <span className="value" style={{ color: getSectorTypeColor(sector.type) }}>
+                  <EditableField 
+                    field="type" 
+                    value={sector.type} 
+                    type="select"
+                    options={['NORMAL', 'NEBULA', 'ASTEROID_FIELD', 'RADIATION_ZONE', 'WARP_STORM']}
+                  />
+                </span>
+              </div>
+              <div className="info-item">
+                <span className="label">X Coordinate:</span>
+                <span className="value">
+                  <EditableField field="x_coord" value={sector.x_coord} type="number" />
+                </span>
+              </div>
+              <div className="info-item">
+                <span className="label">Y Coordinate:</span>
+                <span className="value">
+                  <EditableField field="y_coord" value={sector.y_coord} type="number" />
+                </span>
+              </div>
+              <div className="info-item">
+                <span className="label">Z Coordinate:</span>
+                <span className="value">
+                  <EditableField field="z_coord" value={sector.z_coord} type="number" />
+                </span>
               </div>
               <div className="info-item">
                 <span className="label">Hazard Level:</span>
                 <span className="value hazard-level" data-level={Math.floor(sector.hazard_level)}>
-                  {sector.hazard_level.toFixed(1)} / 10
+                  <EditableField field="hazard_level" value={sector.hazard_level} type="number" /> / 10
                 </span>
               </div>
               <div className="info-item">
                 <span className="label">Discovered:</span>
-                <span className="value">{sector.is_discovered ? 'Yes' : 'No'}</span>
+                <span className="value">
+                  <EditableField field="is_discovered" value={sector.is_discovered} type="boolean" />
+                </span>
               </div>
               <div className="info-item">
                 <span className="label">Controlling Faction:</span>
-                <span className="value">{sector.controlling_faction || 'None'}</span>
+                <span className="value">
+                  <EditableField field="controlling_faction" value={sector.controlling_faction || 'None'} type="text" />
+                </span>
               </div>
               <div className="info-item">
                 <span className="label">Ships in Sector:</span>

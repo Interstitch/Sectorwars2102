@@ -522,6 +522,85 @@ async def teleport_ship(
         logger.error(f"Error teleporting ship {ship_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to teleport ship: {str(e)}")
 
+# Player Management Endpoints
+
+@router.post("/players/create-from-user", response_model=Dict[str, str])
+async def create_player_from_user(
+    user_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Create a player account from an existing user account"""
+    try:
+        # Check if user exists
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check if player already exists for this user
+        existing_player = db.query(Player).filter(Player.user_id == user.id).first()
+        if existing_player:
+            raise HTTPException(status_code=400, detail="Player already exists for this user")
+        
+        # Create new player
+        new_player = Player(
+            user_id=user.id,
+            credits=10000,  # Starting credits
+            turns=1000,     # Starting turns
+            current_sector_id=1  # Default starting sector
+        )
+        
+        db.add(new_player)
+        db.commit()
+        db.refresh(new_player)
+        
+        logger.info(f"Admin {current_admin.username} created player for user {user.username}")
+        
+        return {"message": f"Player created successfully for user {user.username}", "player_id": str(new_player.id)}
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating player for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create player: {str(e)}")
+
+@router.post("/players/create-bulk", response_model=Dict[str, Any])
+async def create_players_from_all_users(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Create player accounts for all users who don't have them"""
+    try:
+        # Get all users who don't have player accounts
+        users_without_players = db.query(User).filter(
+            ~User.id.in_(db.query(Player.user_id))
+        ).all()
+        
+        created_count = 0
+        for user in users_without_players:
+            new_player = Player(
+                user_id=user.id,
+                credits=10000,  # Starting credits
+                turns=1000,     # Starting turns
+                current_sector_id=1  # Default starting sector
+            )
+            db.add(new_player)
+            created_count += 1
+        
+        db.commit()
+        
+        logger.info(f"Admin {current_admin.username} created {created_count} players from existing users")
+        
+        return {
+            "message": f"Successfully created {created_count} players", 
+            "created_count": created_count,
+            "total_users": len(users_without_players)
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating players from users: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create players: {str(e)}")
+
 # Universe Management Endpoints
 
 @router.get("/universe/sectors/comprehensive", response_model=Dict[str, Any])

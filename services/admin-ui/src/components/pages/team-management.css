@@ -1,8 +1,376 @@
 .team-management {
-  padding: 20px;
-  background: #0a0f1c;
-  color: #e2e8f0;
+  padding: 24px;
+  background: var(--bg-color, #0a0f1c);
+  color: var(--text-color, #e2e8f0);
   min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Team Stats Grid */
+.team-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: var(--surface-color, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.stat-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-card .stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--primary-color, #3b82f6);
+  margin: 0;
+}
+
+.stat-card .stat-label {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  margin-top: 4px;
+}
+
+/* Controls Section */
+.team-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: var(--surface-color, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 8px;
+}
+
+.search-filter-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 6px;
+  background: var(--bg-color, #0f172a);
+  color: var(--text-color, #e2e8f0);
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 6px;
+  background: var(--bg-color, #0f172a);
+  color: var(--text-color, #e2e8f0);
+  font-size: 14px;
+}
+
+.sort-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sort-button {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 6px;
+  background: var(--surface-color, #1e293b);
+  color: var(--text-color, #e2e8f0);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.sort-button:hover {
+  background: var(--hover-color, #334155);
+}
+
+.sort-button.active {
+  background: var(--primary-color, #3b82f6);
+  border-color: var(--primary-color, #3b82f6);
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: var(--primary-color, #3b82f6);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--surface-color, #1e293b);
+  color: var(--text-color, #e2e8f0);
+  border: 1px solid var(--border-color, #334155);
+}
+
+.btn-secondary:hover {
+  background: var(--hover-color, #334155);
+}
+
+/* Teams Table */
+.teams-table-container {
+  background: var(--surface-color, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.teams-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.teams-table th,
+.teams-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #334155);
+}
+
+.teams-table th {
+  background: var(--bg-color, #0f172a);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.teams-table tr:hover {
+  background: var(--hover-color, rgba(51, 65, 85, 0.3));
+}
+
+.teams-table .team-name {
+  font-weight: 600;
+  color: var(--text-color, #e2e8f0);
+}
+
+.teams-table .team-leader {
+  color: var(--primary-color, #3b82f6);
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.status-badge.inactive {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 20px;
+}
+
+.pagination-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 6px;
+  background: var(--surface-color, #1e293b);
+  color: var(--text-color, #e2e8f0);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--hover-color, #334155);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  color: var(--text-secondary, #94a3b8);
+  font-size: 14px;
+}
+
+/* Create Team Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.create-team-modal {
+  background: var(--surface-color, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 12px;
+  padding: 32px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color, #334155);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-color, #e2e8f0);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary, #94a3b8);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: var(--hover-color, rgba(51, 65, 85, 0.5));
+  color: var(--text-color, #e2e8f0);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--text-color, #e2e8f0);
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 6px;
+  background: var(--bg-color, #0f172a);
+  color: var(--text-color, #e2e8f0);
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color, #334155);
+}
+
+/* Error States */
+.error-message {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+/* Loading States */
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: var(--text-secondary, #94a3b8);
 }
 
 .feature-placeholder {
