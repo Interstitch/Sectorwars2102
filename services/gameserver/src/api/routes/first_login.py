@@ -12,7 +12,6 @@ from src.services.first_login_service import FirstLoginService
 from src.services.ai_dialogue_service import get_ai_dialogue_service, AIDialogueService
 
 router = APIRouter(
-    prefix="/first-login",
     tags=["first-login"],
     responses={404: {"description": "Not found"}},
 )
