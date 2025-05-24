@@ -22,14 +22,20 @@ async def get_oauth_user(
 ) -> Optional[User]:
     """
     Get a user by OAuth provider and provider user ID.
+    Check for both active and soft-deleted accounts.
     """
     oauth_account = db.query(OAuthAccount).filter(
         OAuthAccount.provider == provider,
-        OAuthAccount.provider_user_id == provider_user_id,
-        OAuthAccount.deleted == False
+        OAuthAccount.provider_user_id == provider_user_id
     ).first()
     
     if oauth_account:
+        # If OAuth account is soft-deleted, reactivate it
+        if oauth_account.deleted:
+            oauth_account.deleted = False
+            db.commit()
+        
+        # Get the associated user (only return if user is active)
         return db.query(User).filter(
             User.id == oauth_account.user_id,
             User.deleted == False
@@ -46,7 +52,34 @@ async def create_oauth_user(
 ) -> User:
     """
     Create a new user from OAuth data.
+    Check if OAuth account already exists and handle appropriately.
     """
+    # First check if OAuth account already exists (might be orphaned)
+    existing_oauth = db.query(OAuthAccount).filter(
+        OAuthAccount.provider == provider,
+        OAuthAccount.provider_user_id == provider_user_id
+    ).first()
+    
+    if existing_oauth:
+        # OAuth account exists - check if user exists
+        if existing_oauth.deleted:
+            # Reactivate deleted OAuth account
+            existing_oauth.deleted = False
+            db.commit()
+        
+        # Get the associated user
+        user = db.query(User).filter(
+            User.id == existing_oauth.user_id,
+            User.deleted == False
+        ).first()
+        
+        if user:
+            return user
+        else:
+            # OAuth account exists but user is deleted - clean up and recreate
+            db.delete(existing_oauth)
+            db.commit()
+    
     username = user_data.get("username", f"{provider}_{provider_user_id}")
     email = user_data.get("email")
     
@@ -87,7 +120,7 @@ async def create_player_for_user(db: Session, user: User) -> Player:
     player = Player(
         user_id=user.id,
         nickname=None,  # Can be set later by user
-        credits=10000,  # Starting credits
+        credits=1000,   # Starting credits (as per FIRST_LOGIN.md)
         turns=1000,     # Starting turns
         reputation={},  # Empty reputation
         home_sector_id=1,     # Start in sector 1
@@ -105,20 +138,21 @@ async def create_player_for_user(db: Session, user: User) -> Player:
     db.add(player)
     db.flush()  # Get the player ID
     
-    # Create starter ship
+    # Create starter escape pod (as per FIRST_LOGIN.md)
     starter_ship = Ship(
-        name="Starter Ship",
-        type=ShipType.LIGHT_FREIGHTER,
+        name="Escape Pod",
+        type=ShipType.ESCAPE_POD,  # Start with escape pod
         owner_id=player.id,
         sector_id=1,  # Start in sector 1
         cargo={},
         current_speed=1.0,
         base_speed=1.0,
+        turn_cost=1,  # Standard turn cost for escape pod
         combat={},
         maintenance={},
         is_flagship=True,
-        purchase_value=10000,
-        current_value=10000
+        purchase_value=1000,  # Escape pod value
+        current_value=1000
     )
     db.add(starter_ship)
     db.flush()  # Get the ship ID

@@ -105,7 +105,8 @@ async def start_first_login_session(
     session = service.get_or_create_session(player.id)
     
     # Get the initial dialogue exchange
-    exchange = db.query(service.db.query).filter_by(
+    from src.models.first_login import DialogueExchange
+    exchange = db.query(DialogueExchange).filter_by(
         session_id=session.id,
         sequence_number=1
     ).first()
