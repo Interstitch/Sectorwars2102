@@ -81,7 +81,7 @@ DEFAULT_SHIP_CONFIGS = [
         "strong_threshold": 0.65
     },
     {
-        "ship_type": ShipChoice.CARGO_FREIGHTER,
+        "ship_type": ShipChoice.CARGO_HAULER,
         "rarity_tier": 4,
         "spawn_chance": 10,
         "base_credits": 5000,
@@ -97,27 +97,49 @@ DEFAULT_SHIP_CONFIGS = [
         "weak_threshold": 0.95,
         "average_threshold": 0.9,
         "strong_threshold": 0.8
+    },
+    {
+        "ship_type": ShipChoice.COLONY_SHIP,
+        "rarity_tier": 6,
+        "spawn_chance": 3,
+        "base_credits": 10000,
+        "weak_threshold": 0.97,
+        "average_threshold": 0.92,
+        "strong_threshold": 0.85
+    },
+    {
+        "ship_type": ShipChoice.CARRIER,
+        "rarity_tier": 7,
+        "spawn_chance": 1,
+        "base_credits": 15000,
+        "weak_threshold": 0.99,
+        "average_threshold": 0.95,
+        "strong_threshold": 0.9
     }
 ]
 
 # Mapping between ShipChoice and ShipType
 SHIP_CHOICE_TO_TYPE = {
-    ShipChoice.ESCAPE_POD: ShipType.LIGHT_FREIGHTER,  # Temporary mapping - in a real game, ESCAPE_POD would be its own type
+    ShipChoice.ESCAPE_POD: ShipType.ESCAPE_POD,
     ShipChoice.LIGHT_FREIGHTER: ShipType.LIGHT_FREIGHTER,
     ShipChoice.SCOUT_SHIP: ShipType.SCOUT_SHIP,
     ShipChoice.FAST_COURIER: ShipType.FAST_COURIER,
-    ShipChoice.CARGO_FREIGHTER: ShipType.CARGO_HAULER,
-    ShipChoice.DEFENDER: ShipType.DEFENDER
+    ShipChoice.CARGO_HAULER: ShipType.CARGO_HAULER,
+    ShipChoice.DEFENDER: ShipType.DEFENDER,
+    ShipChoice.COLONY_SHIP: ShipType.COLONY_SHIP,
+    ShipChoice.CARRIER: ShipType.CARRIER
 }
 
 # Mapping from ShipChoice to AI service ShipType
 SHIP_CHOICE_TO_AI_TYPE = {
     ShipChoice.ESCAPE_POD: AIShipType.ESCAPE_POD,
-    ShipChoice.LIGHT_FREIGHTER: AIShipType.CARGO_FREIGHTER,
+    ShipChoice.LIGHT_FREIGHTER: AIShipType.CARGO_HAULER,
     ShipChoice.SCOUT_SHIP: AIShipType.SCOUT_SHIP,
     ShipChoice.FAST_COURIER: AIShipType.SCOUT_SHIP,  # Similar to scout
-    ShipChoice.CARGO_FREIGHTER: AIShipType.CARGO_FREIGHTER,
-    ShipChoice.DEFENDER: AIShipType.PATROL_CRAFT
+    ShipChoice.CARGO_HAULER: AIShipType.CARGO_HAULER,
+    ShipChoice.DEFENDER: AIShipType.PATROL_CRAFT,
+    ShipChoice.COLONY_SHIP: AIShipType.CARGO_HAULER,  # Large ship similar to cargo
+    ShipChoice.CARRIER: AIShipType.PATROL_CRAFT  # Military ship similar to patrol craft
 }
 
 class FirstLoginService:
@@ -594,7 +616,7 @@ class FirstLoginService:
                     "What's your clearance code for this sector?",
                     "May I see your pilot's license ID number?"
                 ],
-                ShipChoice.CARGO_FREIGHTER: [
+                ShipChoice.CARGO_HAULER: [
                     "As a freighter captain, you should have a merchant guild ID. What is it?",
                     "What's your cargo hauling certification number?",
                     "Which shipping company do you represent?"
@@ -611,7 +633,7 @@ class FirstLoginService:
                     "Who processed your landing clearance?",
                     "What was your approach vector when you arrived?"
                 ],
-                ShipChoice.CARGO_FREIGHTER: [
+                ShipChoice.CARGO_HAULER: [
                     "Where was your last cargo picked up?",
                     "Which docking bay are you assigned to?",
                     "What's your delivery schedule for this shipment?"
@@ -633,7 +655,7 @@ class FirstLoginService:
                     "What propulsion system does your scout use?",
                     "What's the scout ship's maximum sustainable speed?"
                 ],
-                ShipChoice.CARGO_FREIGHTER: [
+                ShipChoice.CARGO_HAULER: [
                     "What's your freighter's maximum cargo capacity?",
                     "What type of cargo shielding does your freighter use?",
                     "How many cargo bays does your ship have?"

@@ -30,6 +30,39 @@
   box-shadow: 0 0 20px rgba(74, 144, 226, 0.5);
 }
 
+/* Game Title Header Styling */
+.game-title-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #4a90e2;
+}
+
+.game-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #4a90e2;
+  margin: 0 0 10px 0;
+  text-shadow: 0 0 10px rgba(74, 144, 226, 0.8);
+  letter-spacing: 4px;
+  font-family: 'Orbitron', 'Roboto', sans-serif;
+}
+
+.game-subtitle {
+  font-size: 1.2rem;
+  color: #b0c4de;
+  margin: 0 0 15px 0;
+  font-weight: 300;
+  letter-spacing: 2px;
+}
+
+.location-context {
+  font-size: 0.9rem;
+  color: #888;
+  font-style: italic;
+  margin: 0;
+}
+
 .dialogue-header {
   display: flex;
   align-items: center;

@@ -101,7 +101,7 @@ class Ship(Base):
     sector = relationship("Sector", primaryjoin="Ship.sector_id==Sector.sector_id", foreign_keys=[sector_id])
     
     # New relationships
-    genesis_devices = relationship("GenesisDevice", back_populates="ship")
+    genesis_device_objects = relationship("GenesisDevice", back_populates="ship")
 
     def __repr__(self):
         return f"<Ship {self.name} ({self.type.name}) - Owner: {self.owner_id}>"

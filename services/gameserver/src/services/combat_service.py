@@ -13,6 +13,7 @@ from src.models.sector import Sector
 from src.models.combat import CombatLog, CombatType, CombatResult, Drone, DroneDeployment
 from src.models.planet import Planet
 from src.models.port import Port
+from src.services.ship_service import ShipService
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class CombatService:
     
     def __init__(self, db: Session):
         self.db = db
+        self.ship_service = ShipService(db)
     
     def attack_player(self, attacker_id: uuid.UUID, defender_id: uuid.UUID) -> Dict[str, Any]:
         """Initiate ship-to-ship combat between two players."""
@@ -1545,29 +1547,22 @@ class CombatService:
     
     def _handle_ship_destruction(self, player: Player, destroyer: Optional[Player], cause: str) -> None:
         """Handle a player's ship being destroyed."""
-        # Record ship as destroyed
-        if player.current_ship:
-            player.current_ship.is_destroyed = True
+        if not player.current_ship:
+            return
         
-        # Set player to not have a current ship
-        player.current_ship_id = None
+        # Check if ship is indestructible (like Escape Pod)
+        if self.ship_service.is_ship_indestructible(player.current_ship):
+            logger.info(f"Ship {player.current_ship.name} is indestructible, cannot be destroyed")
+            return
         
-        # Apply insurance if available
-        if player.insurance:
-            insurance_type = player.insurance.get("type", "NONE")
-            if insurance_type != "NONE":
-                # Calculate compensation based on insurance type
-                if insurance_type == "PREMIUM":
-                    compensation = player.current_ship.purchase_value
-                elif insurance_type == "STANDARD":
-                    compensation = int(player.current_ship.purchase_value * 0.75)
-                elif insurance_type == "BASIC":
-                    compensation = int(player.current_ship.purchase_value * 0.5)
-                else:
-                    compensation = 0
-                
-                # Apply compensation
-                player.credits += compensation
+        # Use ship service to handle destruction and escape pod ejection
+        escape_pod = self.ship_service.destroy_ship(
+            ship=player.current_ship,
+            destroyer=destroyer,
+            cause=cause
+        )
+        
+        logger.info(f"Player {player.id} ship destroyed, ejected to {escape_pod.name}")
     
     def _transfer_cargo(self, source_ship: Ship, target_ship: Ship, cargo_to_transfer: Dict[str, int]) -> None:
         """Transfer cargo from one ship to another."""

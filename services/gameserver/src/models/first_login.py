@@ -10,11 +10,13 @@ from src.core.database import Base
 
 class ShipChoice(enum.Enum):
     SCOUT_SHIP = "SCOUT_SHIP"              # Fast ship with good sensors
-    CARGO_FREIGHTER = "CARGO_FREIGHTER"    # Spacious trading vessel
+    CARGO_HAULER = "CARGO_HAULER"          # Spacious trading vessel
     ESCAPE_POD = "ESCAPE_POD"              # Basic starter ship (always present)
     LIGHT_FREIGHTER = "LIGHT_FREIGHTER"    # Balanced ship option
     DEFENDER = "DEFENDER"                  # Combat-focused ship (rare)
     FAST_COURIER = "FAST_COURIER"          # Speed-focused ship (uncommon)
+    COLONY_SHIP = "COLONY_SHIP"            # Specialized colonization vessel (very rare)
+    CARRIER = "CARRIER"                    # Heavy combat vessel (ultra rare)
 
 
 class NegotiationSkillLevel(enum.Enum):

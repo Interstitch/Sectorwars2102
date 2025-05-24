@@ -5,21 +5,25 @@ import './first-login.css';
 // Ship descriptions for display
 const SHIP_DESCRIPTIONS: Record<string, string> = {
   SCOUT_SHIP: "Fast ship with excellent sensors and moderate cargo capacity. Great for exploration and reconnaissance missions.",
-  CARGO_FREIGHTER: "Large vessel with extensive cargo holds. Slower but ideal for trade routes with high volume goods.",
+  CARGO_HAULER: "Large vessel with extensive cargo holds. Slower but ideal for trade routes with high volume goods.",
   ESCAPE_POD: "Small, basic ship with minimal features but good maneuverability. Built for survival, not comfort.",
   LIGHT_FREIGHTER: "Balanced ship with decent speed and cargo capacity. A popular choice for new traders in the sector.",
   DEFENDER: "Combat-focused vessel with reinforced hull and weapon hardpoints. Lower cargo capacity but high survivability.",
-  FAST_COURIER: "Extremely fast ship designed for rapid transit between sectors. Limited cargo space but excellent for high-value, low-volume goods."
+  FAST_COURIER: "Extremely fast ship designed for rapid transit between sectors. Limited cargo space but excellent for high-value, low-volume goods.",
+  COLONY_SHIP: "Specialized vessel designed for colonization missions. Equipped with terraforming modules and space for many colonists.",
+  CARRIER: "Massive military vessel with multiple drone bays and fleet coordination capabilities. The backbone of any serious fleet operation."
 };
 
 // Ship display names
 const SHIP_NAMES: Record<string, string> = {
   SCOUT_SHIP: "Scout Ship",
-  CARGO_FREIGHTER: "Cargo Freighter",
+  CARGO_HAULER: "Cargo Hauler",
   ESCAPE_POD: "Escape Pod",
   LIGHT_FREIGHTER: "Light Freighter",
   DEFENDER: "Defender",
-  FAST_COURIER: "Fast Courier"
+  FAST_COURIER: "Fast Courier",
+  COLONY_SHIP: "Colony Ship",
+  CARRIER: "Carrier"
 };
 
 /**
@@ -47,6 +51,12 @@ const ShipSelection: React.FC = () => {
 
   return (
     <div className="dialogue-box">
+      <div className="game-title-header">
+        <h1 className="game-title">SECTOR WARS 2102</h1>
+        <h2 className="game-subtitle">Welcome to the Galaxy</h2>
+        <div className="location-context">Callisto Colony Shipyard</div>
+      </div>
+      
       <div className="dialogue-header">
         <div className="npc-avatar"></div>
         <div className="speaker-name">Security Guard</div>

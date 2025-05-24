@@ -82,7 +82,7 @@ class GenesisDevice(Base):
     
     # Relationships
     owner = relationship("Player", back_populates="genesis_devices")
-    ship = relationship("Ship", back_populates="genesis_devices")
+    ship = relationship("Ship", back_populates="genesis_device_objects")
     planet = relationship("Planet", foreign_keys="[Planet.genesis_device_id]", back_populates="genesis_device")
     
     def __repr__(self):
