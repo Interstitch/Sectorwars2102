@@ -73,12 +73,18 @@ class ShipTierInfo:
 class CatBoostDetector:
     """Detects cat mentions and calculates persuasion boost"""
     
-    # Cat-related phrases for detection
+    # Cat-related phrases for detection - specific patterns to avoid false positives
     CAT_PHRASES = [
-        r"\bcat\b", r"\bcats\b", r"\bkitten\b", r"\bkittens\b",
+        r"\bkitten\b", r"\bkittens\b", r"\bkitty\b", r"\bkitties\b",
         r"\bfeline\b", r"\bfelines\b", r"\borange cat\b",
         r"\bwhiskers\b", r"\bpurr\b", r"\bpurring\b", r"\bmeow\b",
-        r"\bmeowing\b", r"\bfurry\b", r"\btabby\b", r"\bstray\b"
+        r"\bmeowing\b", r"\btabby\b", r"\bstray\b"
+    ]
+    
+    # Special handling for "cat" and "cats" to avoid cargo/category false positives
+    CAT_WORD_PATTERNS = [
+        r"\bcat\b(?!\s*(?:alog|egory|astrophe|erpillar|hedral|egories))",  # cat but not catalog, category, etc.
+        r"\bcats\b(?!\s*(?:alog|egory|astrophe|erpillar|hedral|egories))"   # cats but not in compound words
     ]
     
     # Context phrases that enhance cat boost
@@ -91,7 +97,23 @@ class CatBoostDetector:
     def detect_cat_mention(cls, text: str) -> bool:
         """Detect if text mentions cats"""
         text_lower = text.lower()
-        return any(re.search(phrase, text_lower) for phrase in cls.CAT_PHRASES)
+        
+        # Simple approach: check for cat/cats but exclude if it's part of cargo
+        words = text_lower.split()
+        
+        # Direct cat words (not part of other words)
+        cat_words = ['cat', 'cats', 'kitten', 'kittens', 'kitty', 'kitties', 'feline', 'felines']
+        for word in words:
+            # Remove punctuation for comparison
+            clean_word = re.sub(r'[^\w]', '', word)
+            if clean_word in cat_words:
+                return True
+        
+        # Check for other cat-related phrases
+        if any(re.search(phrase, text_lower) for phrase in cls.CAT_PHRASES):
+            return True
+            
+        return False
     
     @classmethod
     def calculate_cat_boost(cls, text: str, guard_personality: GuardPersonality) -> float:
