@@ -15,7 +15,7 @@ export const api = axios.create({
 // Add auth token to requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -60,13 +60,14 @@ export const decodeToken = (token: string): any => {
 /**
  * Check if token is expired
  */
-export const isTokenExpired = (token: string): boolean => {
-  if (!token) {
+export const isTokenExpired = (token?: string): boolean => {
+  const tokenToCheck = token || localStorage.getItem('accessToken');
+  if (!tokenToCheck) {
     console.error('No token provided to isTokenExpired');
     return true;
   }
   
-  const decodedToken = decodeToken(token);
+  const decodedToken = decodeToken(tokenToCheck);
   if (!decodedToken || !decodedToken.exp) {
     console.error('Token invalid or missing expiration:', decodedToken);
     return true;
@@ -82,13 +83,14 @@ export const isTokenExpired = (token: string): boolean => {
 /**
  * Get time until token expiration in seconds
  */
-export const getTokenTimeRemaining = (token: string): number => {
-  if (!token) {
+export const getTokenTimeRemaining = (token?: string): number => {
+  const tokenToCheck = token || localStorage.getItem('accessToken');
+  if (!tokenToCheck) {
     console.error('No token provided to getTokenTimeRemaining');
     return 0;
   }
   
-  const decodedToken = decodeToken(token);
+  const decodedToken = decodeToken(tokenToCheck);
   if (!decodedToken || !decodedToken.exp) {
     console.error('Token invalid or missing expiration');
     return 0;
