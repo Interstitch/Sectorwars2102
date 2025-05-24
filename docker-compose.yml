@@ -16,6 +16,13 @@ services:
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - DEV_ENVIRONMENT=${DEV_ENVIRONMENT:-local}
       - CODESPACE_NAME=${CODESPACE_NAME:-}
+      # AI Dialogue Service Configuration
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - AI_DIALOGUE_ENABLED=${AI_DIALOGUE_ENABLED:-true}
+      - AI_DIALOGUE_PROVIDER=${AI_DIALOGUE_PROVIDER:-anthropic}
+      - AI_DIALOGUE_MODEL=${AI_DIALOGUE_MODEL:-claude-3-sonnet-20240229}
+      - AI_DIALOGUE_FALLBACK=${AI_DIALOGUE_FALLBACK:-true}
     restart: unless-stopped
     networks:
       - sectorwars-network

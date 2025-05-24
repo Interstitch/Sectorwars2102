@@ -17,6 +17,12 @@ from src.models.first_login import (
     DialogueOutcome
 )
 from src.models.ship import Ship, ShipType
+from src.services.ai_dialogue_service import (
+    AIDialogueService, 
+    DialogueContext, 
+    ShipType as AIShipType,
+    GuardMood
+)
 
 logger = logging.getLogger(__name__)
 
@@ -104,11 +110,22 @@ SHIP_CHOICE_TO_TYPE = {
     ShipChoice.DEFENDER: ShipType.DEFENDER
 }
 
+# Mapping from ShipChoice to AI service ShipType
+SHIP_CHOICE_TO_AI_TYPE = {
+    ShipChoice.ESCAPE_POD: AIShipType.ESCAPE_POD,
+    ShipChoice.LIGHT_FREIGHTER: AIShipType.CARGO_FREIGHTER,
+    ShipChoice.SCOUT_SHIP: AIShipType.SCOUT_SHIP,
+    ShipChoice.FAST_COURIER: AIShipType.SCOUT_SHIP,  # Similar to scout
+    ShipChoice.CARGO_FREIGHTER: AIShipType.CARGO_FREIGHTER,
+    ShipChoice.DEFENDER: AIShipType.PATROL_CRAFT
+}
+
 class FirstLoginService:
     """Service for managing the first login experience"""
     
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, ai_service: Optional[AIDialogueService] = None):
         self.db = db
+        self.ai_service = ai_service or AIDialogueService()
     
     def initialize_ship_configs(self) -> None:
         """Initialize the default ship rarity configurations if they don't exist"""
@@ -356,7 +373,159 @@ class FirstLoginService:
         
         return None
     
-    def generate_guard_question(self, session_id: uuid.UUID) -> Dict[str, Any]:
+    def _build_dialogue_context(self, session: FirstLoginSession, exchanges: List[DialogueExchange]) -> DialogueContext:
+        """Build dialogue context for AI service"""
+        # Get dialogue history
+        dialogue_history = []
+        for exchange in exchanges:
+            if exchange.topic != "introduction" and exchange.player_response:
+                dialogue_history.append({
+                    "guard": exchange.npc_prompt,
+                    "player": exchange.player_response
+                })
+        
+        # Extract inconsistencies from previous analyses
+        inconsistencies = []
+        for exchange in exchanges:
+            if exchange.ai_analysis_data and isinstance(exchange.ai_analysis_data, dict):
+                detected = exchange.ai_analysis_data.get("detected_inconsistencies", [])
+                inconsistencies.extend(detected)
+        
+        # Calculate negotiation skill level based on previous exchanges
+        negotiation_scores = []
+        for exchange in exchanges:
+            if exchange.ai_analysis_data and isinstance(exchange.ai_analysis_data, dict):
+                score = exchange.ai_analysis_data.get("negotiation_skill", 0.5)
+                negotiation_scores.append(score)
+        
+        avg_negotiation = sum(negotiation_scores) / len(negotiation_scores) if negotiation_scores else 0.5
+        
+        # Determine guard mood based on session progress
+        if session.outcome == DialogueOutcome.SUCCESSFUL_PERSUASION:
+            guard_mood = GuardMood.CONVINCED
+        elif len(inconsistencies) > 2:
+            guard_mood = GuardMood.VERY_SUSPICIOUS
+        elif inconsistencies:
+            guard_mood = GuardMood.SUSPICIOUS
+        else:
+            guard_mood = GuardMood.NEUTRAL
+        
+        # Map ship choice to AI service ship type
+        claimed_ship = SHIP_CHOICE_TO_AI_TYPE.get(session.ship_claimed, AIShipType.ESCAPE_POD)
+        
+        return DialogueContext(
+            session_id=str(session.id),
+            claimed_ship=claimed_ship,
+            actual_ship=AIShipType.ESCAPE_POD,  # Always escape pod in this scenario
+            dialogue_history=dialogue_history,
+            inconsistencies=inconsistencies,
+            guard_mood=guard_mood,
+            negotiation_skill_level=avg_negotiation,
+            player_name=session.extracted_player_name,
+            security_protocol_level="standard",
+            time_of_day="day_shift"
+        )
+    
+    async def generate_guard_question(self, session_id: uuid.UUID) -> Dict[str, Any]:
+        """
+        Generate the next guard question using AI service with fallback to rule-based logic
+        Returns the question and metadata
+        """
+        session = self.db.query(FirstLoginSession).filter_by(id=session_id).first()
+        
+        if not session:
+            raise ValueError("Invalid session ID")
+        
+        # Get the current dialogue exchanges
+        exchanges = self.db.query(DialogueExchange).filter_by(
+            session_id=session_id
+        ).order_by(DialogueExchange.sequence_number).all()
+        
+        # Determine the next sequence number
+        next_sequence = len(exchanges) + 1
+        
+        # Try AI-powered question generation first
+        question = None
+        topic = "ai_generated"
+        ai_used = False
+        
+        if self.ai_service.is_available():
+            try:
+                # Build context for AI service
+                context = self._build_dialogue_context(session, exchanges)
+                
+                # For AI generation, we need a mock analysis of the last response
+                # In real flow, this would come from the previous analysis step
+                from src.services.ai_dialogue_service import ResponseAnalysis
+                mock_analysis = ResponseAnalysis(
+                    persuasiveness_score=0.5,
+                    confidence_level=0.5,
+                    consistency_score=0.5,
+                    negotiation_skill=context.negotiation_skill_level,
+                    detected_inconsistencies=context.inconsistencies,
+                    extracted_claims=[],
+                    overall_believability=0.5,
+                    suggested_guard_mood=context.guard_mood
+                )
+                
+                # Generate AI response
+                guard_response = await self.ai_service.generate_guard_question(context, mock_analysis)
+                question = guard_response.dialogue_text
+                ai_used = True
+                
+                # Update session flags
+                session.ai_service_used = True
+                session.fallback_to_rules = False
+                
+                logger.info(f"Generated AI question for session {session_id}")
+                
+            except Exception as e:
+                logger.error(f"AI question generation failed for session {session_id}: {e}")
+                # Fall back to rule-based generation
+        
+        # Fallback to rule-based generation if AI failed or unavailable
+        if not question:
+            # Choose a topic based on the ship claimed and what's been asked already
+            asked_topics = [exchange.topic for exchange in exchanges if exchange.topic != "introduction"]
+            remaining_topics = [topic for topic in QUESTION_TOPICS if topic not in asked_topics]
+            
+            # If all topics have been asked, choose a random one
+            topic = random.choice(remaining_topics) if remaining_topics else random.choice(QUESTION_TOPICS)
+            
+            # Generate a question based on the topic and claimed ship
+            question = self._generate_question_for_topic(session, topic, exchanges)
+            
+            if not ai_used:
+                session.fallback_to_rules = True
+                logger.info(f"Using rule-based question generation for session {session_id}")
+        
+        # Create a new dialogue exchange
+        exchange = DialogueExchange(
+            session_id=session_id,
+            sequence_number=next_sequence,
+            npc_prompt=question,
+            player_response="",  # Player hasn't responded yet
+            topic=topic,
+            ai_service_used=ai_used,
+            fallback_to_rules=not ai_used
+        )
+        self.db.add(exchange)
+        
+        # Update player's first login state
+        state = self.get_player_first_login_state(session.player_id)
+        
+        self.db.commit()
+        self.db.refresh(exchange)
+        
+        return {
+            "exchange_id": exchange.id,
+            "sequence_number": exchange.sequence_number,
+            "question": question,
+            "topic": topic,
+            "ai_used": ai_used
+        }
+    
+    def generate_guard_question_sync(self, session_id: uuid.UUID) -> Dict[str, Any]:
         """
         Generate the next guard question based on the conversation history
         Returns the question and metadata
@@ -505,12 +674,12 @@ class FirstLoginService:
         else:
             return f"Guard: \"{random.choice(ship_questions)}\""
     
-    def record_player_answer(
+    async def record_player_answer(
         self, 
         exchange_id: uuid.UUID, 
         player_response: str
     ) -> Dict[str, Any]:
-        """Record the player's answer to a guard question"""
+        """Record the player's answer to a guard question with AI-powered analysis"""
         exchange = self.db.query(DialogueExchange).filter_by(id=exchange_id).first()
         
         if not exchange:
@@ -526,7 +695,141 @@ class FirstLoginService:
             DialogueExchange.sequence_number < exchange.sequence_number
         ).all()
         
-        # Analyze the player's response
+        # Try AI-powered analysis first
+        ai_analysis = None
+        ai_used = False
+        
+        if self.ai_service.is_available():
+            try:
+                # Build context for AI analysis
+                context = self._build_dialogue_context(session, previous_exchanges + [exchange])
+                
+                # Analyze player response with AI
+                ai_analysis = await self.ai_service.analyze_player_response(player_response, context)
+                ai_used = True
+                
+                # Store AI analysis in the exchange
+                exchange.ai_analysis_data = {
+                    "persuasiveness_score": ai_analysis.persuasiveness_score,
+                    "confidence_level": ai_analysis.confidence_level,
+                    "consistency_score": ai_analysis.consistency_score,
+                    "negotiation_skill": ai_analysis.negotiation_skill,
+                    "detected_inconsistencies": ai_analysis.detected_inconsistencies,
+                    "extracted_claims": ai_analysis.extracted_claims,
+                    "overall_believability": ai_analysis.overall_believability,
+                    "suggested_guard_mood": ai_analysis.suggested_guard_mood.value
+                }
+                
+                # Set scores from AI analysis
+                exchange.persuasiveness = ai_analysis.persuasiveness_score
+                exchange.confidence = ai_analysis.confidence_level
+                exchange.consistency = ai_analysis.consistency_score
+                exchange.key_extracted_info = {"claims": ai_analysis.extracted_claims}
+                exchange.detected_contradictions = ai_analysis.detected_inconsistencies
+                
+                # Extract player name from AI claims if not already set
+                if not session.extracted_player_name:
+                    for claim in ai_analysis.extracted_claims:
+                        if any(keyword in claim.lower() for keyword in ["name", "captain", "pilot"]):
+                            # Try to extract name from the claim
+                            extracted_name = self._extract_player_name(claim)
+                            if extracted_name:
+                                session.extracted_player_name = extracted_name
+                                break
+                
+                # Update session flags
+                session.ai_service_used = True
+                exchange.ai_service_used = True
+                exchange.fallback_to_rules = False
+                
+                logger.info(f"AI analysis completed for exchange {exchange_id}")
+                
+            except Exception as e:
+                logger.error(f"AI analysis failed for exchange {exchange_id}: {e}")
+                ai_used = False
+        
+        # Fallback to rule-based analysis if AI failed or unavailable
+        if not ai_used:
+            analysis = self._analyze_player_response_in_context(player_response, previous_exchanges)
+            exchange.persuasiveness = analysis.get("persuasiveness", 0.5)
+            exchange.confidence = analysis.get("confidence", 0.5)
+            exchange.consistency = analysis.get("consistency", 0.5)
+            exchange.key_extracted_info = analysis.get("extracted_info", {})
+            exchange.detected_contradictions = analysis.get("contradictions", [])
+            
+            # Traditional name extraction
+            if not session.extracted_player_name and exchange.sequence_number > 1:
+                extracted_name = self._extract_player_name(player_response)
+                if extracted_name:
+                    session.extracted_player_name = extracted_name
+            
+            exchange.fallback_to_rules = True
+            logger.info(f"Using rule-based analysis for exchange {exchange_id}")
+        
+        # Check if we've completed enough exchanges for a decision
+        completed_exchanges = len(previous_exchanges) + 1
+        
+        self.db.commit()
+        self.db.refresh(exchange)
+        
+        # Build analysis response
+        analysis_data = {
+            "persuasiveness": exchange.persuasiveness,
+            "confidence": exchange.confidence,
+            "consistency": exchange.consistency,
+            "ai_used": ai_used
+        }
+        
+        # Add AI-specific analysis if available
+        if ai_analysis:
+            analysis_data.update({
+                "negotiation_skill": ai_analysis.negotiation_skill,
+                "overall_believability": ai_analysis.overall_believability,
+                "detected_inconsistencies": ai_analysis.detected_inconsistencies,
+                "extracted_claims": ai_analysis.extracted_claims,
+                "guard_mood": ai_analysis.suggested_guard_mood.value
+            })
+        
+        result = {
+            "exchange_id": exchange.id,
+            "analysis": analysis_data,
+            "is_final": completed_exchanges >= 3  # After 3 exchanges, make a decision
+        }
+        
+        # If this is the final exchange, evaluate the outcome
+        if result["is_final"]:
+            outcome = self._evaluate_dialogue_outcome(session)
+            result["outcome"] = outcome
+            
+            # Mark the player as having completed questions
+            state = self.get_player_first_login_state(session.player_id)
+            state.answered_questions = True
+            self.db.commit()
+        
+        return result
+    
+    def record_player_answer_sync(
+        self, 
+        exchange_id: uuid.UUID, 
+        player_response: str
+    ) -> Dict[str, Any]:
+        """Synchronous version of record_player_answer for backward compatibility"""
+        exchange = self.db.query(DialogueExchange).filter_by(id=exchange_id).first()
+        
+        if not exchange:
+            raise ValueError("Invalid exchange ID")
+        
+        # Update the exchange with the player's response
+        exchange.player_response = player_response
+        
+        # Get the session and previous exchanges
+        session = self.db.query(FirstLoginSession).filter_by(id=exchange.session_id).first()
+        previous_exchanges = self.db.query(DialogueExchange).filter(
+            DialogueExchange.session_id == exchange.session_id,
+            DialogueExchange.sequence_number < exchange.sequence_number
+        ).all()
+        
+        # Use rule-based analysis for synchronous calls
         analysis = self._analyze_player_response_in_context(player_response, previous_exchanges)
         exchange.persuasiveness = analysis.get("persuasiveness", 0.5)
         exchange.confidence = analysis.get("confidence", 0.5)
@@ -540,6 +843,9 @@ class FirstLoginService:
             if extracted_name:
                 session.extracted_player_name = extracted_name
         
+        # Mark as using fallback since this is synchronous
+        exchange.fallback_to_rules = True
+        
         # Check if we've completed enough exchanges for a decision
         completed_exchanges = len(previous_exchanges) + 1
         
@@ -551,7 +857,8 @@ class FirstLoginService:
             "analysis": {
                 "persuasiveness": exchange.persuasiveness,
                 "confidence": exchange.confidence,
-                "consistency": exchange.consistency
+                "consistency": exchange.consistency,
+                "ai_used": False
             },
             "is_final": completed_exchanges >= 3  # After 3 exchanges, make a decision
         }

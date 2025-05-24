@@ -9,6 +9,7 @@ from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.models.first_login import ShipChoice
 from src.services.first_login_service import FirstLoginService
+from src.services.ai_dialogue_service import get_ai_dialogue_service, AIDialogueService
 
 router = APIRouter(
     prefix="/first-login",
@@ -58,10 +59,11 @@ class CompleteFirstLoginResponse(BaseModel):
 @router.get("/status", response_model=FirstLoginStatusResponse)
 async def get_first_login_status(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Check if the player needs to go through the first login experience"""
-    service = FirstLoginService(db)
+    service = FirstLoginService(db, ai_service)
     requires_first_login = service.should_show_first_login(player.id)
     
     response = {
@@ -89,10 +91,11 @@ async def get_first_login_status(
 @router.post("/session", response_model=FirstLoginSessionResponse)
 async def start_first_login_session(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Start or resume a first login session"""
-    service = FirstLoginService(db)
+    service = FirstLoginService(db, ai_service)
     
     # Ensure ship configurations are initialized
     service.initialize_ship_configs()
@@ -129,10 +132,11 @@ async def start_first_login_session(
 async def claim_ship(
     claim: ShipClaimRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Claim a ship and record the player's initial dialogue response"""
-    service = FirstLoginService(db)
+    service = FirstLoginService(db, ai_service)
     
     # Get the current session
     state = service.get_player_first_login_state(player.id)
@@ -159,7 +163,7 @@ async def claim_ship(
     )
     
     # Generate the next dialogue question
-    question_data = service.generate_guard_question(session.id)
+    question_data = await service.generate_guard_question(session.id)
     
     return {
         "session_id": str(session.id),
@@ -177,13 +181,14 @@ async def answer_dialogue(
     exchange_id: UUID,
     response: DialogueResponse,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Submit a dialogue response and get analysis and the next question (if any)"""
-    service = FirstLoginService(db)
+    service = FirstLoginService(db, ai_service)
     
     # Record the player's answer
-    result = service.record_player_answer(exchange_id, response.response)
+    result = await service.record_player_answer(exchange_id, response.response)
     
     # If not final, generate the next question
     next_question = None
@@ -192,7 +197,7 @@ async def answer_dialogue(
     if not result["is_final"]:
         # Get the current session
         state = service.get_player_first_login_state(player.id)
-        question_data = service.generate_guard_question(state.current_session_id)
+        question_data = await service.generate_guard_question(state.current_session_id)
         next_question = question_data["question"]
         next_exchange_id = str(question_data["exchange_id"])
     
@@ -209,10 +214,11 @@ async def answer_dialogue(
 @router.post("/complete", response_model=CompleteFirstLoginResponse)
 async def complete_first_login(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Complete the first login process and grant the player their ship and credits"""
-    service = FirstLoginService(db)
+    service = FirstLoginService(db, ai_service)
     
     # Get the current session
     state = service.get_player_first_login_state(player.id)
