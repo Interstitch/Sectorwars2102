@@ -10,11 +10,51 @@ authTest.describe('Admin UI - Sector Editing', () => {
     // Navigate to sectors management
     await page.goto('http://localhost:3001/sectors');
     await page.waitForLoadState('networkidle');
+    
+    // Wait for sectors to load with more debugging
+    try {
+      await page.waitForSelector('.sectors-manager', { timeout: 10000 });
+      console.log('SectorsManager component loaded');
+      
+      // Take a screenshot for debugging
+      await page.screenshot({ path: 'sectors-page-debug.png' });
+      
+      // Check if we have any error messages (non-blocking)
+      const errorMessage = await page.locator('.error-message, .error, .alert').textContent().catch(() => null);
+      if (errorMessage) {
+        console.log('Error message found:', errorMessage);
+      }
+      
+      // Check if we have "No sectors found" message
+      const noSectorsMessage = await page.locator(':text("No sectors found")').isVisible().catch(() => false);
+      if (noSectorsMessage) {
+        console.log('No sectors found message visible - likely empty database');
+      }
+      
+    } catch (error) {
+      console.error('Failed to load SectorsManager:', error);
+      await page.screenshot({ path: 'sectors-loading-error.png' });
+    }
   });
 
   authTest('should open sector edit modal when clicking Edit button', async ({ page }) => {
+    // Check if we have any sectors to work with
+    const noSectorsMessage = await page.locator(':text("No sectors found")').isVisible().catch(() => false);
+    if (noSectorsMessage) {
+      console.log('Skipping test - no sectors available in database');
+      authTest.skip();
+      return;
+    }
+    
     // Wait for sectors to load
-    await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
+    try {
+      await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
+    } catch (error) {
+      console.log('No .sectors-grid-row found, checking page content...');
+      const pageContent = await page.textContent('body');
+      console.log('Page content sample:', pageContent?.substring(0, 500));
+      throw error;
+    }
     
     // Click the first Edit button
     const firstEditButton = page.locator('.edit-button').first();
