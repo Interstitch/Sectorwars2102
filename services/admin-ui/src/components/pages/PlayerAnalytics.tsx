@@ -388,13 +388,13 @@ const PlayerAnalytics: React.FC = () => {
                 </div>
               </div>
               
-              <div className="card">
-                <div className="card-body p-0">
+              <div className="card" style={{ margin: 0, padding: 0 }}>
+                <div className="card-body" style={{ padding: 0 }}>
                   <div className="table-container">
                     <table className="table">
                       <thead>
                         <tr>
-                          <th style={{width: '40px'}}>
+                          <th style={{width: '24px'}}>
                             <input 
                               type="checkbox" 
                               checked={allPlayersSelected}

@@ -50,13 +50,15 @@
   color: var(--text-tertiary);
 }
 
-/* Table container improvements - reduce outer margins */
+/* Table container improvements - remove all outer margins */
 .table-container {
   background-color: var(--surface-primary);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  margin: 0; /* Remove default margins */
+  margin: 0 !important; /* Force remove all margins */
+  padding: 0; /* Remove any padding */
+  width: 100%;
 }
 
 .table {
@@ -76,8 +78,9 @@
 /* Fix checkbox column width and padding */
 .table th:first-child,
 .table td:first-child {
-  width: 40px;
-  padding: var(--space-3) var(--space-2); /* Reduce right padding */
+  width: 24px;
+  max-width: 24px;
+  padding: var(--space-2) var(--space-1); /* Minimal padding */
   text-align: center;
 }
 
@@ -156,4 +159,39 @@
 /* Reduce card body padding in this context */
 .section .card .card-body {
   padding: var(--space-4) !important;
+}
+
+/* Remove margins from the card containing the table */
+.section .card {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Optimize table column widths */
+.table th:nth-child(1) { width: 24px; min-width: 24px; } /* Checkbox */
+.table th:nth-child(2) { width: 20%; } /* Player */
+.table th:nth-child(3) { width: 8%; } /* Status */
+.table th:nth-child(4) { width: 12%; } /* Credits */
+.table th:nth-child(5) { width: 15%; } /* Assets */
+.table th:nth-child(6) { width: 10%; } /* Location */
+.table th:nth-child(7) { width: 10%; } /* Activity */
+.table th:nth-child(8) { width: 12%; } /* Last Login */
+.table th:nth-child(9) { width: 8%; } /* Turns */
+.table th:nth-child(10) { width: auto; } /* Actions */
+
+/* Ensure table cells respect the column widths */
+.table td:nth-child(1) { width: 24px; min-width: 24px; }
+.table td:nth-child(2) { width: 20%; }
+.table td:nth-child(3) { width: 8%; }
+.table td:nth-child(4) { width: 12%; }
+.table td:nth-child(5) { width: 15%; }
+.table td:nth-child(6) { width: 10%; }
+.table td:nth-child(7) { width: 10%; }
+.table td:nth-child(8) { width: 12%; white-space: nowrap; } /* Last Login - prevent wrapping */
+.table td:nth-child(9) { width: 8%; }
+.table td:nth-child(10) { width: auto; }
+
+/* Remove outer container margins */
+.card-body .table-container {
+  margin: 0 !important;
 }
