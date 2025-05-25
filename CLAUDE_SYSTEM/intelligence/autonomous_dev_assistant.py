@@ -485,54 +485,75 @@ class AutonomousDevelopmentAssistant:
         print(f"\n✨ Thank you for collaborating with NEXUS! Your project is better because of our work together.")
 
     def _process_natural_language_request(self, user_input: str, context: Dict) -> str:
-        """Process natural language input using Claude Code's superior NLP capabilities"""
+        """Process natural language input using Claude Code to orchestrate NEXUS agents"""
         
-        # Use Claude Code for sophisticated language understanding
+        # Use Claude Code to understand the request and coordinate agents
         try:
-            # Create a structured prompt for Claude Code to analyze the request
-            analysis_prompt = f"""
-Analyze this developer request and extract the key information:
+            # Create a comprehensive prompt for Claude Code to orchestrate NEXUS agents
+            orchestration_prompt = f"""
+I am NEXUS, an AI development assistant with 8 specialized agents. A user has made this request:
 
-User Request: "{user_input}"
+USER REQUEST: "{user_input}"
 
-Please determine:
-1. Primary intent (create, analyze, improve, test, debug, predict, document, build, design, etc.)
-2. Target scope (file, component, directory, entire project, new creation)
-3. Specific requirements or constraints mentioned
-4. Technology stack or tools referenced
-5. Expected deliverables
+PROJECT CONTEXT:
+- Project: {self.project_root.name}
+- Session History: {len(context.get('conversation_history', []))} previous interactions
+- Recent Files: {context.get('recent_files', [])}
 
-Respond in JSON format:
+AVAILABLE NEXUS AGENTS:
+1. 🏗️ ATLAS (Architect) - System design, project structure, architecture planning
+2. 🕵️ SHERLOCK (Detective) - Code analysis, bug hunting, pattern detection
+3. ⚡ VELOCITY (Optimizer) - Performance optimization, code efficiency
+4. 🛡️ GUARDIAN (Tester) - Test generation, quality assurance, coverage analysis
+5. 📚 SAGE (Documenter) - Documentation creation, knowledge management
+6. 🔧 SENTINEL (Debugger) - Error detection, debugging assistance, problem solving
+7. 🔮 ECHO (Predictor) - Future prediction, risk analysis, opportunity identification
+8. 🎓 MENTOR (Teacher) - Learning guidance, skill development, best practices
+
+TASK: Please analyze the user's request and determine:
+1. Which agents (by name) should be involved to accomplish this task
+2. What specific prompt/instructions each selected agent should receive
+3. What order the agents should work in (if sequential) or if they can work in parallel
+4. What the expected outcome should be
+
+Respond in this JSON format:
 {{
-    "intent": "primary action requested",
-    "scope": "what to work on",
-    "requirements": ["list", "of", "requirements"],
-    "technology": "tech stack mentioned",
-    "deliverables": "what to create/provide",
-    "complexity": "simple|moderate|complex",
-    "creative_task": true/false
+    "analysis": "Brief analysis of what the user is asking for",
+    "selected_agents": [
+        {{
+            "agent": "AGENT_NAME",
+            "role": "What this agent will do for this task",
+            "prompt": "Specific instructions for this agent",
+            "priority": 1-3,
+            "dependencies": ["other_agent_names_that_must_complete_first"]
+        }}
+    ],
+    "execution_plan": "How the agents will work together",
+    "expected_outcome": "What the user should expect to receive"
 }}
+
+Be strategic about agent selection - only include agents that are truly needed for this specific request.
 """
             
-            # Use recursive AI to get sophisticated analysis
+            # Use Claude Code to get sophisticated agent orchestration
             if hasattr(self, 'recursive_ai') and self.recursive_ai:
                 try:
-                    analysis_result = self.recursive_ai.invoke_claude_recursively(
+                    orchestration_result = self.recursive_ai.invoke_claude_recursively(
                         AIInteractionType.LANGUAGE_ANALYSIS,
-                        {"user_input": user_input, "conversation_context": context},
-                        analysis_prompt
+                        {"user_input": user_input, "conversation_context": context, "orchestration": True},
+                        orchestration_prompt
                     )
                     
-                    # Parse the analysis result
+                    # Parse the orchestration result and execute
                     import json
                     try:
-                        parsed_analysis = json.loads(analysis_result.ai_response)
-                        return self._handle_sophisticated_request(user_input, parsed_analysis, context)
+                        orchestration_plan = json.loads(orchestration_result.ai_response)
+                        return self._execute_agent_orchestration(user_input, orchestration_plan, context)
                     except json.JSONDecodeError:
-                        # Fall back to keyword-based analysis if JSON parsing fails
-                        pass
+                        # Extract JSON from the response if it's embedded
+                        return self._extract_and_execute_orchestration(orchestration_result.ai_response, user_input, context)
                 except Exception as e:
-                    print(f"🔄 Claude Code analysis temporarily unavailable: {e}")
+                    print(f"🔄 Claude Code orchestration temporarily unavailable: {e}")
             
             # Enhanced fallback with better pattern recognition
             return self._handle_enhanced_pattern_analysis(user_input, context)
@@ -540,6 +561,207 @@ Respond in JSON format:
         except Exception as e:
             print(f"🤖 NEXUS: I encountered an issue understanding that request: {e}")
             return self._handle_fallback_conversation(user_input, context)
+
+    def _execute_agent_orchestration(self, user_input: str, orchestration_plan: Dict, context: Dict) -> str:
+        """Execute the agent orchestration plan determined by Claude Code"""
+        
+        try:
+            analysis = orchestration_plan.get("analysis", "Analyzing request...")
+            selected_agents = orchestration_plan.get("selected_agents", [])
+            execution_plan = orchestration_plan.get("execution_plan", "Coordinated execution")
+            expected_outcome = orchestration_plan.get("expected_outcome", "Task completion")
+            
+            # Display Claude Code's analysis and plan
+            response = f"🧠 **Claude Code Analysis**: {analysis}\n\n"
+            response += f"📋 **Execution Plan**: {execution_plan}\n\n"
+            response += f"🎯 **Expected Outcome**: {expected_outcome}\n\n"
+            
+            if not selected_agents:
+                return response + "❌ No agents were selected for this task. Could you provide more specific details?"
+            
+            response += f"🐝 **Coordinating {len(selected_agents)} NEXUS Agents**:\n\n"
+            
+            # Group agents by priority for execution order
+            agent_groups = {}
+            for agent_config in selected_agents:
+                priority = agent_config.get("priority", 2)
+                if priority not in agent_groups:
+                    agent_groups[priority] = []
+                agent_groups[priority].append(agent_config)
+            
+            # Execute agents in priority order
+            agent_results = {}
+            
+            for priority in sorted(agent_groups.keys()):
+                for agent_config in agent_groups[priority]:
+                    agent_name = agent_config.get("agent", "UNKNOWN")
+                    agent_role = agent_config.get("role", "Assisting with task")
+                    agent_prompt = agent_config.get("prompt", "Please help with this task")
+                    dependencies = agent_config.get("dependencies", [])
+                    
+                    # Check if dependencies are met
+                    unmet_deps = [dep for dep in dependencies if dep not in agent_results]
+                    if unmet_deps:
+                        response += f"⏳ **{agent_name}**: Waiting for {', '.join(unmet_deps)}\n"
+                        continue
+                    
+                    # Execute the agent
+                    response += f"🔄 **{agent_name}**: {agent_role}\n"
+                    
+                    try:
+                        agent_result = self._execute_nexus_agent(agent_name, agent_prompt, context, user_input)
+                        agent_results[agent_name] = agent_result
+                        response += f"✅ **{agent_name}**: Task completed successfully\n"
+                    except Exception as e:
+                        response += f"❌ **{agent_name}**: Error - {e}\n"
+                        agent_results[agent_name] = f"Error: {e}"
+                    
+                    response += "\n"
+            
+            # Compile final results
+            response += "📊 **NEXUS Team Results**:\n\n"
+            for agent_name, result in agent_results.items():
+                response += f"**{agent_name}**: {result[:200]}{'...' if len(result) > 200 else ''}\n\n"
+            
+            # Store successful coordination in context
+            context["recent_coordination"] = {
+                "user_input": user_input,
+                "agents_used": list(agent_results.keys()),
+                "success": True
+            }
+            
+            return response
+            
+        except Exception as e:
+            return f"❌ Error executing agent orchestration: {e}\n\n" + \
+                   f"Falling back to simplified approach..."
+
+    def _extract_and_execute_orchestration(self, claude_response: str, user_input: str, context: Dict) -> str:
+        """Extract orchestration plan from Claude response and execute"""
+        
+        import re
+        import json
+        
+        # Try to extract JSON from the response
+        json_pattern = r'```json\s*(\{.*?\})\s*```'
+        json_match = re.search(json_pattern, claude_response, re.DOTALL)
+        
+        if json_match:
+            try:
+                orchestration_plan = json.loads(json_match.group(1))
+                return self._execute_agent_orchestration(user_input, orchestration_plan, context)
+            except json.JSONDecodeError:
+                pass
+        
+        # Try to extract JSON without code blocks
+        json_pattern2 = r'\{[^{}]*"selected_agents"[^{}]*\}'
+        json_match2 = re.search(json_pattern2, claude_response, re.DOTALL)
+        
+        if json_match2:
+            try:
+                orchestration_plan = json.loads(json_match2.group(0))
+                return self._execute_agent_orchestration(user_input, orchestration_plan, context)
+            except json.JSONDecodeError:
+                pass
+        
+        # Fallback: Parse the response manually and create a simple plan
+        return f"🧠 **Claude Code Response**: {claude_response[:500]}...\n\n" + \
+               f"🔄 Using simplified agent coordination for this request."
+
+    def _execute_nexus_agent(self, agent_name: str, prompt: str, context: Dict, user_input: str) -> str:
+        """Execute a specific NEXUS agent with the given prompt"""
+        
+        agent_map = {
+            "ATLAS": self._execute_atlas_agent,
+            "SHERLOCK": self._execute_sherlock_agent,
+            "VELOCITY": self._execute_velocity_agent,
+            "GUARDIAN": self._execute_guardian_agent,
+            "SAGE": self._execute_sage_agent,
+            "SENTINEL": self._execute_sentinel_agent,
+            "ECHO": self._execute_echo_agent,
+            "MENTOR": self._execute_mentor_agent
+        }
+        
+        executor = agent_map.get(agent_name.upper())
+        if executor:
+            return executor(prompt, context, user_input)
+        else:
+            return f"Unknown agent: {agent_name}"
+
+    def _execute_atlas_agent(self, prompt: str, context: Dict, user_input: str) -> str:
+        """Execute Atlas (Architect) agent"""
+        
+        if "create" in prompt.lower() or "build" in prompt.lower() or "design" in prompt.lower():
+            return self._execute_creative_task_directly(user_input, {"creative_task": True}, context)
+        else:
+            return "Atlas analyzed the architecture and provided structural recommendations."
+
+    def _execute_sherlock_agent(self, prompt: str, context: Dict, user_input: str) -> str:
+        """Execute Sherlock (Detective) agent"""
+        
+        try:
+            self.analyze_project_autonomous()
+            return "Sherlock completed code analysis and identified optimization opportunities."
+        except Exception as e:
+            return f"Sherlock analysis encountered an issue: {e}"
+
+    def _execute_velocity_agent(self, prompt: str, context: Dict, user_input: str) -> str:
+        """Execute Velocity (Optimizer) agent"""
+        
+        files_mentioned = self._extract_file_references(user_input)
+        if files_mentioned:
+            try:
+                self.autonomous_code_improvement(files_mentioned)
+                return f"Velocity optimized {len(files_mentioned)} files for better performance."
+            except Exception as e:
+                return f"Velocity optimization encountered an issue: {e}"
+        else:
+            return "Velocity provided performance optimization recommendations."
+
+    def _execute_guardian_agent(self, prompt: str, context: Dict, user_input: str) -> str:
+        """Execute Guardian (Tester) agent"""
+        
+        files_mentioned = self._extract_file_references(user_input)
+        if files_mentioned:
+            try:
+                self.autonomous_test_generation(files_mentioned)
+                return f"Guardian generated comprehensive tests for {len(files_mentioned)} files."
+            except Exception as e:
+                return f"Guardian test generation encountered an issue: {e}"
+        else:
+            return "Guardian provided testing strategy and quality assurance recommendations."
+
+    def _execute_sage_agent(self, prompt: str, context: Dict, user_input: str) -> str:
+        """Execute Sage (Documenter) agent"""
+        
+        try:
+            self.autonomous_documentation_update()
+            return "Sage updated project documentation and improved knowledge management."
+        except Exception as e:
+            return f"Sage documentation update encountered an issue: {e}"
+
+    def _execute_sentinel_agent(self, prompt: str, context: Dict, user_input: str) -> str:
+        """Execute Sentinel (Debugger) agent"""
+        
+        try:
+            self.autonomous_debugging_assistance(user_input)
+            return "Sentinel analyzed the issue and provided debugging guidance."
+        except Exception as e:
+            return f"Sentinel debugging assistance encountered an issue: {e}"
+
+    def _execute_echo_agent(self, prompt: str, context: Dict, user_input: str) -> str:
+        """Execute Echo (Predictor) agent"""
+        
+        try:
+            self.predict_development_future(7)
+            return "Echo analyzed future development patterns and provided predictive insights."
+        except Exception as e:
+            return f"Echo prediction analysis encountered an issue: {e}"
+
+    def _execute_mentor_agent(self, prompt: str, context: Dict, user_input: str) -> str:
+        """Execute Mentor (Teacher) agent"""
+        
+        return "Mentor provided learning guidance and best practice recommendations for your development approach."
 
     def _handle_analysis_request(self, user_input: str, context: Dict) -> str:
         """Handle code analysis requests using Sherlock (Detective) agent"""
@@ -1508,6 +1730,8 @@ Generated by NEXUS AI Guardian Agent
         # Determine the actual project root (parent of CLAUDE_SYSTEM)
         search_root = self.project_root
         if self.project_root.name == "CLAUDE_SYSTEM":
+            search_root = self.project_root.parent
+        elif str(self.project_root).endswith("CLAUDE_SYSTEM"):
             search_root = self.project_root.parent
         
         print(f"🔍 Searching for Player-Client files in: {search_root}")

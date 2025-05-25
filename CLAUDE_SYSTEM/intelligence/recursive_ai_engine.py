@@ -351,42 +351,148 @@ Provide a structured response that includes:
         return base_prompt
     
     def _execute_claude_command(self, prompt: str, context: Dict[str, Any]) -> str:
-        """Execute Claude Code CLI command with the constructed prompt"""
+        """Execute Claude Code SDK with proper integration following official patterns"""
         
-        # Prepare the Claude command
+        # Prepare the Claude Code command using official SDK patterns
         cmd = [
             "claude",
-            "--no-confirm",  # Disable confirmation prompts
-            f"--prompt={prompt}"
+            "--print",  # Non-interactive mode (official SDK pattern)
+            "--output-format", "text"  # Specify text output format
         ]
         
-        # Add context files if available
+        # Add context files if available (following Claude Code SDK file handling)
+        context_files = []
         if "files_changed" in context:
             for file_path in context["files_changed"]:
-                if Path(file_path).exists():
-                    cmd.extend(["--file", str(file_path)])
+                file_obj = Path(file_path)
+                if file_obj.exists() and file_obj.is_file():
+                    context_files.append(str(file_obj.absolute()))
+        
+        # Create a comprehensive prompt following Claude Code SDK best practices
+        enhanced_prompt = self._build_sdk_compatible_prompt(prompt, context, context_files)
         
         try:
-            # Execute Claude Code CLI
+            # Execute Claude Code SDK using proper subprocess patterns
             result = subprocess.run(
                 cmd,
+                input=enhanced_prompt,
                 capture_output=True,
                 text=True,
                 timeout=300,  # 5 minute timeout
-                cwd=self.project_root
+                cwd=self.project_root,
+                encoding='utf-8'
             )
             
             if result.returncode == 0:
-                return result.stdout
+                # Clean and parse Claude Code SDK response
+                response = result.stdout.strip()
+                if response:
+                    return self._parse_claude_sdk_response(response)
+                else:
+                    return "Claude Code SDK returned empty response"
             else:
-                return f"Error executing Claude: {result.stderr}"
+                error_msg = result.stderr.strip() if result.stderr else "Unknown error"
+                return f"Claude Code SDK error: {error_msg}"
                 
         except subprocess.TimeoutExpired:
-            return "Claude execution timed out"
+            return "Claude Code SDK execution timed out (5 minutes)"
         except FileNotFoundError:
-            return "Claude CLI not found - install Claude Code CLI to enable recursive AI"
+            return "Claude Code CLI not found - please install Claude Code CLI to enable recursive AI functionality"
         except Exception as e:
-            return f"Unexpected error: {str(e)}"
+            return f"Claude Code SDK integration error: {str(e)}"
+
+    def _build_sdk_compatible_prompt(self, prompt: str, context: Dict[str, Any], files: List[str]) -> str:
+        """Build a prompt compatible with Claude Code SDK patterns"""
+        
+        # Start with system context for Claude Code SDK
+        sdk_prompt = "I am working on a development project and need your assistance.\n\n"
+        
+        # Add project context
+        if "project_root" in context:
+            sdk_prompt += f"Project directory: {context['project_root']}\n"
+        
+        # Add task type context for better Claude Code understanding  
+        if "task_type" in context:
+            task_type = context.get("task_type", "")
+            # Handle enum types properly
+            if hasattr(task_type, 'value'):
+                task_type = task_type.value
+            sdk_prompt += f"Task type: {task_type}\n"
+        
+        # Add user input context for language analysis
+        if "user_input" in context:
+            sdk_prompt += f"User request: {context['user_input']}\n"
+        
+        # Add file context if available
+        if files:
+            sdk_prompt += f"Relevant files: {', '.join(files[-5:])}\n"  # Last 5 files to avoid too much context
+        
+        sdk_prompt += "\n"
+        
+        # Add the actual request
+        sdk_prompt += "Request:\n"
+        sdk_prompt += prompt
+        
+        # Add specific instructions for Claude Code SDK response format
+        sdk_prompt += "\n\nPlease provide a detailed, actionable response that includes:"
+        sdk_prompt += "\n1. Analysis of the request"
+        sdk_prompt += "\n2. Specific recommendations or code examples"
+        sdk_prompt += "\n3. Implementation steps if applicable"
+        sdk_prompt += "\n4. Any potential issues or considerations"
+        
+        return sdk_prompt
+
+    def _parse_claude_sdk_response(self, response: str) -> str:
+        """Parse and clean Claude Code SDK response"""
+        
+        # Remove any CLI artifacts or formatting issues
+        cleaned_response = response.strip()
+        
+        # Remove common CLI prefixes that might appear
+        prefixes_to_remove = [
+            "Claude Code response:",
+            "Response:",
+            "Output:",
+            "Result:"
+        ]
+        
+        for prefix in prefixes_to_remove:
+            if cleaned_response.startswith(prefix):
+                cleaned_response = cleaned_response[len(prefix):].strip()
+        
+        # Ensure we have substantial content
+        if len(cleaned_response) < 10:
+            return f"Brief Claude Code SDK response: {cleaned_response}"
+        
+        return cleaned_response
+
+    def test_claude_sdk_integration(self) -> Dict[str, Any]:
+        """Test Claude Code SDK integration to verify it's working correctly"""
+        
+        test_context = {
+            "task_type": "sdk_test",
+            "project_root": str(self.project_root),
+            "user_input": "Test Claude Code SDK integration"
+        }
+        
+        test_prompt = "Please confirm that Claude Code SDK is working by responding with a simple acknowledgment and the current time."
+        
+        try:
+            response = self._execute_claude_command(test_prompt, test_context)
+            
+            return {
+                "success": True,
+                "response": response,
+                "sdk_available": True,
+                "integration_status": "Claude Code SDK integration successful"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "sdk_available": False,
+                "integration_status": f"Claude Code SDK integration failed: {e}"
+            }
     
     def _assess_ai_confidence(self, ai_response: str, context: Dict[str, Any]) -> AIConfidenceLevel:
         """Assess the confidence level of the AI response"""

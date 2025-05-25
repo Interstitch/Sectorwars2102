@@ -41,7 +41,7 @@ const PlayerAnalytics: React.FC = () => {
     },
     sortBy: 'credits',
     sortOrder: 'desc',
-    pageSize: 25,
+    pageSize: 20,
     realTimeUpdates: false,
     selectedPlayers: [],
     showBulkOperations: false,
@@ -570,38 +570,94 @@ const PlayerAnalytics: React.FC = () => {
                     </table>
                   </div>
                   
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="pagination">
-                      <button 
-                        onClick={() => handlePageChange(state.currentPage - 1)}
-                        disabled={state.currentPage === 1}
-                        className="btn btn-sm btn-outline"
-                      >
-                        ← Previous
-                      </button>
-                      
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm">Page {state.currentPage} of {totalPages}</span>
-                        <select 
-                          value={state.pageSize} 
-                          onChange={(e) => setState(prev => ({ ...prev, pageSize: parseInt(e.target.value), currentPage: 1 }))}
-                          className="form-select form-select-sm"
-                        >
-                          <option value="10">10 per page</option>
-                          <option value="25">25 per page</option>
-                          <option value="50">50 per page</option>
-                          <option value="100">100 per page</option>
-                        </select>
+                  {/* Enhanced Pagination */}
+                  {state.totalCount > 0 && (
+                    <div className="pagination" style={{ 
+                      backgroundColor: 'var(--surface-primary)', 
+                      padding: 'var(--space-4)', 
+                      borderTop: '1px solid var(--border-light)' 
+                    }}>
+                      <div className={`flex items-center gap-4 w-full ${totalPages > 1 ? 'justify-between' : 'justify-center'}`}>
+                        {/* Page Navigation */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handlePageChange(state.currentPage - 1)}
+                              disabled={state.currentPage === 1}
+                              className="btn btn-sm btn-outline"
+                            >
+                              ← Previous
+                            </button>
+                            
+                            {/* Page Numbers */}
+                            <div className="flex items-center gap-1">
+                              {(() => {
+                                const pages = [];
+                                const startPage = Math.max(1, state.currentPage - 2);
+                                const endPage = Math.min(totalPages, state.currentPage + 2);
+                                
+                                if (startPage > 1) {
+                                  pages.push(
+                                    <button key={1} onClick={() => handlePageChange(1)} className="btn btn-xs btn-outline">1</button>
+                                  );
+                                  if (startPage > 2) {
+                                    pages.push(<span key="start-ellipsis" className="text-sm text-muted px-2">...</span>);
+                                  }
+                                }
+                                
+                                for (let i = startPage; i <= endPage; i++) {
+                                  pages.push(
+                                    <button 
+                                      key={i} 
+                                      onClick={() => handlePageChange(i)}
+                                      className={`btn btn-xs ${i === state.currentPage ? 'btn-primary' : 'btn-outline'}`}
+                                    >
+                                      {i}
+                                    </button>
+                                  );
+                                }
+                                
+                                if (endPage < totalPages) {
+                                  if (endPage < totalPages - 1) {
+                                    pages.push(<span key="end-ellipsis" className="text-sm text-muted px-2">...</span>);
+                                  }
+                                  pages.push(
+                                    <button key={totalPages} onClick={() => handlePageChange(totalPages)} className="btn btn-xs btn-outline">{totalPages}</button>
+                                  );
+                                }
+                                
+                                return pages;
+                              })()}
+                            </div>
+                            
+                            <button 
+                              onClick={() => handlePageChange(state.currentPage + 1)}
+                              disabled={state.currentPage === totalPages}
+                              className="btn btn-sm btn-outline"
+                            >
+                              Next →
+                            </button>
+                          </div>
+                        )}
+                        
+                        {/* Page Info and Size Selector */}
+                        <div className="flex items-center gap-4">
+                          <span className="text-sm text-muted">
+                            Showing {((state.currentPage - 1) * state.pageSize) + 1}-{Math.min(state.currentPage * state.pageSize, state.totalCount)} of {state.totalCount.toLocaleString()}
+                          </span>
+                          <select 
+                            value={state.pageSize} 
+                            onChange={(e) => setState(prev => ({ ...prev, pageSize: parseInt(e.target.value), currentPage: 1 }))}
+                            className="form-select form-select-sm"
+                          >
+                            <option value="10">10 per page</option>
+                            <option value="20">20 per page</option>
+                            <option value="25">25 per page</option>
+                            <option value="50">50 per page</option>
+                            <option value="100">100 per page</option>
+                          </select>
+                        </div>
                       </div>
-                      
-                      <button 
-                        onClick={() => handlePageChange(state.currentPage + 1)}
-                        disabled={state.currentPage === totalPages}
-                        className="btn btn-sm btn-outline"
-                      >
-                        Next →
-                      </button>
                     </div>
                   )}
                 </div>

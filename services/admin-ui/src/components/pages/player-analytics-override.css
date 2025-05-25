@@ -104,13 +104,67 @@
   padding: var(--space-4) var(--space-3); /* Reduce horizontal padding */
 }
 
-/* Pagination styling */
+/* Enhanced Pagination styling */
 .pagination {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: var(--space-4);
-  padding: var(--space-4) 0;
+  padding: var(--space-4);
+  background-color: var(--surface-primary);
+  border-top: 1px solid var(--border-light);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* Pagination buttons */
+.pagination .btn {
+  margin: 0;
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination .btn-xs {
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: var(--font-size-xs);
+}
+
+/* Page info text */
+.pagination .text-muted {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+/* Form select in pagination */
+.pagination .form-select {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  border-radius: var(--radius-base);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+/* Responsive pagination */
+@media (max-width: 768px) {
+  .pagination {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  
+  .pagination > div {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .pagination .text-muted {
+    text-align: center;
+  }
 }
 
 /* Badge styling for dark theme */
