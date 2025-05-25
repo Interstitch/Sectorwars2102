@@ -11,58 +11,35 @@ authTest.describe('Admin UI - Sector Editing', () => {
     await page.goto('http://localhost:3001/sectors');
     await page.waitForLoadState('networkidle');
     
-    // Wait for sectors to load with more debugging
-    try {
-      await page.waitForSelector('.sectors-manager', { timeout: 10000 });
-      console.log('SectorsManager component loaded');
-      
-      // Take a screenshot for debugging
-      await page.screenshot({ path: 'sectors-page-debug.png' });
-      
-      // Check if we have any error messages (non-blocking)
-      const errorMessage = await page.locator('.error-message, .error, .alert').textContent().catch(() => null);
-      if (errorMessage) {
-        console.log('Error message found:', errorMessage);
-      }
-      
-      // Check if we have "No sectors found" message
-      const noSectorsMessage = await page.locator(':text("No sectors found")').isVisible().catch(() => false);
-      if (noSectorsMessage) {
-        console.log('No sectors found message visible - likely empty database');
-      }
-      
-    } catch (error) {
-      console.error('Failed to load SectorsManager:', error);
-      await page.screenshot({ path: 'sectors-loading-error.png' });
-    }
+    // Simple wait for the sectors manager to load
+    await page.waitForSelector('.sectors-manager', { timeout: 15000 });
+    console.log('SectorsManager component loaded');
   });
 
-  authTest('should open sector edit modal when clicking Edit button', async ({ page }) => {
-    // Check if we have any sectors to work with
-    const noSectorsMessage = await page.locator(':text("No sectors found")').isVisible().catch(() => false);
-    if (noSectorsMessage) {
-      console.log('Skipping test - no sectors available in database');
-      authTest.skip();
-      return;
-    }
+  authTest('should open sector edit modal when clicking sector row', async ({ page }) => {
+    // Based on code analysis: entire sector row is clickable, not just Edit button
     
-    // Wait for sectors to load
     try {
-      await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
+      // Wait for sector content to appear
+      await page.waitForSelector('text=Sector', { timeout: 15000 });
+      console.log('Sector content found');
+      
+      // The entire sector row is clickable according to SectorsManager code
+      // Look for the first sector row and click it
+      const firstSectorRow = page.locator('text=Sector').first();
+      await firstSectorRow.click();
+      console.log('Clicked on first sector row');
+      
+      // Verify modal opens
+      await expect(page.locator('.sector-edit-modal')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('.modal-header h2')).toContainText('Edit Sector:');
+      
     } catch (error) {
-      console.log('No .sectors-grid-row found, checking page content...');
-      const pageContent = await page.textContent('body');
-      console.log('Page content sample:', pageContent?.substring(0, 500));
+      console.log('Error in test:', error);
+      console.log('Taking final screenshot for debugging...');
+      await page.screenshot({ path: 'test-failure-debug.png' });
       throw error;
     }
-    
-    // Click the first Edit button
-    const firstEditButton = page.locator('.edit-button').first();
-    await firstEditButton.click();
-    
-    // Verify modal opens
-    await expect(page.locator('.sector-edit-modal')).toBeVisible();
-    await expect(page.locator('.modal-header h2')).toContainText('Edit Sector:');
   });
 
   authTest('should display tabbed interface with all tabs', async ({ page }) => {
