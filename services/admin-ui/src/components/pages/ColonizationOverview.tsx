@@ -381,26 +381,31 @@ const ColonizationOverview: React.FC = () => {
                   <option value="uninhabited">Uninhabited</option>
                 </select>
               </div>
+              
+              {/* Action Buttons moved to same line */}
+              <div className="filter-group action-buttons-inline">
+                <label>&nbsp;</label>
+                <div className="action-controls-inline">
+                  <button 
+                    onClick={() => alert('Planet creation feature coming soon!')}
+                    className="primary-btn create-planet-btn"
+                  >
+                    <span className="btn-icon">🌍</span>
+                    Create Planet
+                  </button>
+                  <button 
+                    onClick={fetchPlanets} 
+                    className="secondary-btn refresh-btn"
+                    disabled={loading}
+                  >
+                    <span className="btn-icon">{loading ? '⏳' : '🔄'}</span>
+                    {loading ? 'Loading...' : 'Refresh'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           
-          <div className="action-controls">
-            <button 
-              onClick={() => alert('Planet creation feature coming soon!')}
-              className="primary-btn create-planet-btn"
-            >
-              <span className="btn-icon">🌍</span>
-              Create Planet
-            </button>
-            <button 
-              onClick={fetchPlanets} 
-              className="secondary-btn refresh-btn"
-              disabled={loading}
-            >
-              <span className="btn-icon">{loading ? '⏳' : '🔄'}</span>
-              {loading ? 'Loading...' : 'Refresh'}
-            </button>
-          </div>
         </div>
 
         {/* Planets Table */}
@@ -502,13 +507,15 @@ const ColonizationOverview: React.FC = () => {
           <button 
             onClick={() => setPage(page - 1)} 
             disabled={page === 1}
+            className="pagination-btn"
           >
             Previous
           </button>
-          <span>Page {page} of {totalPages} ({totalCount} planets)</span>
+          <span className="pagination-info">Page {page} of {totalPages} ({totalCount} planets)</span>
           <button 
             onClick={() => setPage(page + 1)} 
             disabled={page === totalPages}
+            className="pagination-btn"
           >
             Next
           </button>
