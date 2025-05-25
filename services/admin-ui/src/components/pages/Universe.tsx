@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAdmin, SectorData } from '../../contexts/AdminContext';
 import * as d3 from 'd3';
-import './universe.css';
 
 const Universe: React.FC = () => {
   const { 
@@ -496,9 +495,9 @@ const Universe: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="universe-page">
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
+      <div className="page-container">
+        <div className="loading-state">
+          <div className="spinner"></div>
           <p>Loading universe data...</p>
         </div>
       </div>
@@ -507,144 +506,179 @@ const Universe: React.FC = () => {
 
   if (error) {
     return (
-      <div className="universe-page">
-        <div className="error-container">
+      <div className="page-container">
+        <div className="alert alert-error">
           <h2>Error Loading Universe</h2>
           <p>{error}</p>
-          <button onClick={() => loadGalaxyInfo()}>Retry</button>
+          <button className="btn btn-primary" onClick={() => loadGalaxyInfo()}>Retry</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="universe-page">
-      <div className="universe-header">
-        <h1>Universe Administration</h1>
-        {!galaxyState && (
-          <button 
-            className="btn btn-primary"
-            onClick={() => setShowGenerateForm(true)}
-          >
-            Generate New Galaxy
-          </button>
-        )}
-      </div>
-
-      {!galaxyState ? (
-        <div className="no-galaxy">
-          <h2>No Galaxy Found</h2>
-          <p>Generate a new galaxy to begin universe administration.</p>
-        </div>
-      ) : (
-        <>
-          <div className="universe-tabs">
-            <button 
-              className={`tab ${activeTab === 'overview' ? 'active' : ''}`}
-              onClick={() => setActiveTab('overview')}
-            >
-              Overview
-            </button>
-            <button 
-              className={`tab ${activeTab === 'visualization' ? 'active' : ''}`}
-              onClick={() => setActiveTab('visualization')}
-            >
-              Galaxy Map
-            </button>
-            <button 
-              className={`tab ${activeTab === 'management' ? 'active' : ''}`}
-              onClick={() => setActiveTab('management')}
-            >
-              Management
-            </button>
+    <div className="page-container">
+      <div className="page-header">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="page-title">Universe Administration</h1>
+            <p className="page-subtitle">Manage galaxy generation, sectors, and universe structure</p>
           </div>
+          {!galaxyState && (
+            <button 
+              className="btn btn-primary"
+              onClick={() => setShowGenerateForm(true)}
+            >
+              Generate New Galaxy
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="page-content">
 
-          <div className="universe-content">
-            {activeTab === 'overview' && (
-              <div className="overview-tab">
-                <div className="galaxy-info">
-                  <h2>{galaxyState.name}</h2>
-                  <p className="galaxy-age">Age: {galaxyState.state.age_in_days} days</p>
-                </div>
+        {!galaxyState ? (
+          <div className="empty-state">
+            <h2>No Galaxy Found</h2>
+            <p>Generate a new galaxy to begin universe administration.</p>
+          </div>
+        ) : (
+          <>
+            <div className="tabs">
+              <button 
+                className={`tab ${activeTab === 'overview' ? 'tab-active' : ''}`}
+                onClick={() => setActiveTab('overview')}
+              >
+                Overview
+              </button>
+              <button 
+                className={`tab ${activeTab === 'visualization' ? 'tab-active' : ''}`}
+                onClick={() => setActiveTab('visualization')}
+              >
+                Galaxy Map
+              </button>
+              <button 
+                className={`tab ${activeTab === 'management' ? 'tab-active' : ''}`}
+                onClick={() => setActiveTab('management')}
+              >
+                Management
+              </button>
+            </div>
 
-                <div className="stats-grid">
-                  <div className="stat-card">
-                    <h3>Sectors</h3>
-                    <div className="stat-value">{galaxyState.statistics.total_sectors}</div>
-                    <div className="stat-detail">
-                      {galaxyState.statistics.discovered_sectors} discovered
-                      ({galaxyState.state.exploration_percentage.toFixed(1)}%)
+            <div className="tab-content">
+              {activeTab === 'overview' && (
+                <div className="space-y-6">
+                  <section className="section">
+                    <div className="section-header">
+                      <h2 className="section-title">{galaxyState.name}</h2>
+                      <p className="section-subtitle">Age: {galaxyState.state.age_in_days} days</p>
                     </div>
-                  </div>
+                  </section>
 
-                  <div className="stat-card">
-                    <h3>Regions</h3>
-                    <div className="stat-value">{regions.length}</div>
-                    <div className="stat-detail">
-                      Federation: {galaxyState.region_distribution.federation}%<br/>
-                      Border: {galaxyState.region_distribution.border}%<br/>
-                      Frontier: {galaxyState.region_distribution.frontier}%
-                    </div>
-                  </div>
-
-                  <div className="stat-card">
-                    <h3>Infrastructure</h3>
-                    <div className="stat-value">
-                      {galaxyState.statistics.port_count + galaxyState.statistics.planet_count}
-                    </div>
-                    <div className="stat-detail">
-                      Ports: {galaxyState.statistics.port_count}<br/>
-                      Planets: {galaxyState.statistics.planet_count}<br/>
-                      Warp Tunnels: {galaxyState.statistics.warp_tunnel_count}
-                    </div>
-                  </div>
-
-                  <div className="stat-card">
-                    <h3>Activity</h3>
-                    <div className="stat-value">{galaxyState.statistics.player_count}</div>
-                    <div className="stat-detail">
-                      Active Players<br/>
-                      Teams: {galaxyState.statistics.team_count}
-                    </div>
-                  </div>
-
-                  <div className="stat-card">
-                    <h3>Economy</h3>
-                    <div className="stat-value">{galaxyState.state.economic_health}%</div>
-                    <div className="stat-detail">
-                      Economic Health<br/>
-                      Health Score: {galaxyState.state.economic_health.toFixed(1)}
-                    </div>
-                  </div>
-
-                  <div className="stat-card">
-                    <h3>Settings</h3>
-                    <div className="stat-detail">
-                      Age: {galaxyState.state.age_in_days} days<br/>
-                      Exploration: {galaxyState.state.exploration_percentage.toFixed(1)}%
-                    </div>
-                  </div>
-                </div>
-
-                <div className="faction-influence">
-                  <h3>Faction Influence</h3>
-                  <div className="faction-bars">
-                    {Object.entries(galaxyState.region_distribution).map(([region, count]) => (
-                      <div key={region} className="faction-bar">
-                        <div className="faction-name">{region.replace(/_/g, ' ').toUpperCase()}</div>
-                        <div className="faction-bar-container">
-                          <div 
-                            className="faction-bar-fill" 
-                            style={{ width: `${(count / (galaxyState.region_distribution.federation + galaxyState.region_distribution.border + galaxyState.region_distribution.frontier)) * 100}%` }}
-                          />
-                          <span className="faction-percentage">{count}</span>
+                  <section className="section">
+                    <h3 className="section-title mb-4">Galaxy Statistics</h3>
+                    <div className="grid grid-auto-fit gap-6">
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">🌌</span>
+                          <h4 className="dashboard-stat-title">Sectors</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{galaxyState.statistics.total_sectors}</div>
+                        <div className="dashboard-stat-detail">
+                          {galaxyState.statistics.discovered_sectors} discovered
+                          ({galaxyState.state.exploration_percentage.toFixed(1)}%)
                         </div>
                       </div>
-                    ))}
-                  </div>
+
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">🗺️</span>
+                          <h4 className="dashboard-stat-title">Regions</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{regions.length}</div>
+                        <div className="dashboard-stat-detail">
+                          Federation: {galaxyState.region_distribution.federation}%<br/>
+                          Border: {galaxyState.region_distribution.border}%<br/>
+                          Frontier: {galaxyState.region_distribution.frontier}%
+                        </div>
+                      </div>
+
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">🏗️</span>
+                          <h4 className="dashboard-stat-title">Infrastructure</h4>
+                        </div>
+                        <div className="dashboard-stat-value">
+                          {galaxyState.statistics.port_count + galaxyState.statistics.planet_count}
+                        </div>
+                        <div className="dashboard-stat-detail">
+                          Ports: {galaxyState.statistics.port_count}<br/>
+                          Planets: {galaxyState.statistics.planet_count}<br/>
+                          Warp Tunnels: {galaxyState.statistics.warp_tunnel_count}
+                        </div>
+                      </div>
+
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">👥</span>
+                          <h4 className="dashboard-stat-title">Activity</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{galaxyState.statistics.player_count}</div>
+                        <div className="dashboard-stat-detail">
+                          Active Players<br/>
+                          Teams: {galaxyState.statistics.team_count}
+                        </div>
+                      </div>
+
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">💰</span>
+                          <h4 className="dashboard-stat-title">Economy</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{galaxyState.state.economic_health}%</div>
+                        <div className="dashboard-stat-detail">
+                          Economic Health<br/>
+                          Health Score: {galaxyState.state.economic_health.toFixed(1)}
+                        </div>
+                      </div>
+
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">⚙️</span>
+                          <h4 className="dashboard-stat-title">Settings</h4>
+                        </div>
+                        <div className="dashboard-stat-detail">
+                          Age: {galaxyState.state.age_in_days} days<br/>
+                          Exploration: {galaxyState.state.exploration_percentage.toFixed(1)}%
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="section">
+                    <h3 className="section-title mb-4">Faction Influence</h3>
+                    <div className="card">
+                      <div className="card-body">
+                        <div className="space-y-4">
+                          {Object.entries(galaxyState.region_distribution).map(([region, count]) => (
+                            <div key={region} className="flex justify-between items-center">
+                              <div className="font-medium text-primary">{region.replace(/_/g, ' ').toUpperCase()}</div>
+                              <div className="flex items-center gap-4 flex-1 max-w-md">
+                                <div className="flex-1 bg-surface-secondary rounded-full h-2">
+                                  <div 
+                                    className="bg-primary h-2 rounded-full transition-all duration-300" 
+                                    style={{ width: `${(count / (galaxyState.region_distribution.federation + galaxyState.region_distribution.border + galaxyState.region_distribution.frontier)) * 100}%` }}
+                                  />
+                                </div>
+                                <span className="text-sm font-semibold text-muted min-w-8">{count}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
                 </div>
-              </div>
-            )}
+              )}
 
             {activeTab === 'visualization' && (
               <div className="visualization-tab">
@@ -828,11 +862,11 @@ const Universe: React.FC = () => {
               </div>
             )}
           </div>
-        </>
-      )}
+          </>
+        )}
 
-      {/* Generate Galaxy Modal */}
-      {showGenerateForm && (
+        {/* Generate Galaxy Modal */}
+        {showGenerateForm && (
         <div className="modal-overlay" onClick={() => setShowGenerateForm(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h2>Generate New Galaxy</h2>
@@ -1073,7 +1107,8 @@ const Universe: React.FC = () => {
             </form>
           </div>
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
