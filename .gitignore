@@ -58,8 +58,14 @@ test-results/
 **/playwright-report/
 */test-results/
 **/test-results/
-# Ensure no test screenshots end up in the root
-*.png
+
+# Prevent accidental screenshots in root directory
+/*.png
+/*.jpg
+/*.jpeg
+/test-*.png
+/screenshot-*.png
+/debug-*.png
 
 # Logs
 *.log

@@ -63,6 +63,9 @@ export default defineConfig({
     },
   },
   
+  // Output directory for screenshots and other test artifacts
+  outputDir: './screenshots',
+  
   // Configure projects for different environments
   projects: [
     {

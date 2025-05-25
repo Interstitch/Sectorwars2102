@@ -458,6 +458,10 @@ npx playwright test -c e2e_tests/playwright.config.ts        # All E2E tests
 npx playwright test --project=player-tests                   # Player Client E2E
 npx playwright test --project=admin-tests                    # Admin UI E2E
 npx playwright test --ui                                     # Interactive mode
+
+# NOTE: Screenshots and test artifacts are automatically stored in:
+# /e2e_tests/screenshots/ (configured via outputDir in playwright.config.ts)
+# Test reports are stored in: /e2e_tests/playwright-reports/
 ```
 
 ### Linting & Type Checking
@@ -502,6 +506,9 @@ docker-compose exec gameserver poetry run pytest
 # E2E tests (HOST SYSTEM)
 npx playwright test -c e2e_tests/playwright.config.ts
 npx playwright test --reporter=html  # Generate test coverage
+
+# NOTE: Screenshots automatically stored in /e2e_tests/screenshots/
+# Test reports stored in /e2e_tests/playwright-reports/
 ```
 
 #### PHASE 6: REVIEW & REFLECTION (🔴 MANDATORY GIT WORKFLOW)
@@ -583,7 +590,7 @@ The project is split into three main services:
 ```bash
 # Development (HOST)
 ./dev-scripts/start-unified.sh            # Start all services
-npx playwright test                        # Run E2E tests
+npx playwright test                        # Run E2E tests (screenshots → /e2e_tests/screenshots/)
 git add -A && git commit -m "your message"  # 🔴 COMMIT YOUR WORK!
 
 # Quality System (HOST)
