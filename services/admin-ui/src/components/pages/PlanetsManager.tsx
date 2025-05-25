@@ -12,13 +12,18 @@ interface Planet {
   population: number;
   max_population: number;
   defense_level: number;
-  resource_production: number;
+  resource_production?: number;
   owner_id?: string;
   owner_name?: string;
   created_at: string;
-  is_habitable: boolean;
-  atmosphere: string;
-  gravity: number;
+  is_habitable?: boolean;
+  atmosphere?: string;
+  gravity?: number;
+  // Enhanced fields from comprehensive API
+  habitability_score?: number;
+  resource_richness?: number;
+  genesis_created?: boolean;
+  colonized_at?: string;
 }
 
 const PlanetsManager: React.FC = () => {
@@ -33,7 +38,14 @@ const PlanetsManager: React.FC = () => {
   const fetchPlanets = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/v1/admin/planets');
+      const response = await api.get('/api/v1/admin/planets/comprehensive', {
+        params: {
+          page: currentPage,
+          limit: itemsPerPage,
+          filter_type: filterType !== 'all' ? filterType : undefined,
+          filter_colonized: filterType === 'colonized' ? true : filterType === 'uncolonized' ? false : undefined
+        }
+      });
       setPlanets(response.data.planets || []);
       setError(null);
     } catch (err: any) {
@@ -45,7 +57,7 @@ const PlanetsManager: React.FC = () => {
 
   useEffect(() => {
     fetchPlanets();
-  }, []);
+  }, [currentPage, filterType]);
 
   // Filter and search logic
   const filteredPlanets = planets.filter(planet => {
@@ -130,9 +142,11 @@ const PlanetsManager: React.FC = () => {
               <th>Sector</th>
               <th>Type</th>
               <th>Population</th>
+              <th>Habitability</th>
+              <th>Resources</th>
               <th>Defense</th>
               <th>Owner</th>
-              <th>Habitable</th>
+              <th>Genesis</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -152,14 +166,24 @@ const PlanetsManager: React.FC = () => {
                   {planet.population.toLocaleString()} / {planet.max_population.toLocaleString()}
                 </td>
                 <td>
+                  <span className={`habitability-score score-${Math.floor((planet.habitability_score || 0) / 20)}`}>
+                    {planet.habitability_score || 'N/A'}%
+                  </span>
+                </td>
+                <td>
+                  <span className={`resource-richness richness-${Math.floor((planet.resource_richness || 0) * 2)}`}>
+                    {planet.resource_richness ? `${planet.resource_richness.toFixed(1)}x` : 'N/A'}
+                  </span>
+                </td>
+                <td>
                   <span className={`defense-level level-${Math.floor(planet.defense_level / 20)}`}>
                     {planet.defense_level}
                   </span>
                 </td>
                 <td>{planet.owner_name || 'Uncolonized'}</td>
                 <td>
-                  <span className={`status ${planet.is_habitable ? 'habitable' : 'uninhabitable'}`}>
-                    {planet.is_habitable ? '✓ Yes' : '✗ No'}
+                  <span className={`status ${planet.genesis_created ? 'genesis' : 'natural'}`}>
+                    {planet.genesis_created ? '🧬 Genesis' : '🌍 Natural'}
                   </span>
                 </td>
                 <td>
