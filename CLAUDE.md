@@ -352,6 +352,7 @@ command -v docker >/dev/null 2>&1 || echo "⚠️  docker not found"
 - E2E test debugging with screenshot generation and DOM inspection
 - Authentication fixture patterns for shared test accounts
 - Container-based frontend development command patterns
+- Unified AI interface with intelligent routing between quick responses and full orchestration
 
 **Self-Healing Git Hooks Implemented:**
 - Enhanced pre-commit hook with AI context reminders and Phase 0 execution

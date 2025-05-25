@@ -21,30 +21,43 @@ python nexus-chat.py
 
 ## Usage
 
-Once started, NEXUS Chat provides a simple interface:
+NEXUS Chat provides a simple chat interface that calls Claude Code for each message:
 
+```bash
+# Example: Pipe a question to NEXUS Chat
+echo "Hello, what is 2+2?" | python nexus-chat.py
+
+# Example: Interactive session
+python nexus-chat.py
+```
+
+**Interactive Session Example:**
 ```
 🌟 NEXUS Chat - Real-time Claude Code Interface
 ==================================================
-🚀 Initializing Claude Code in background...
+🚀 Initializing Claude Code...
 ✅ Claude Code ready for instant responses!
 
 💬 Chat started! Type your questions below.
    Commands: 'exit', 'quit', 'help'
    Tip: Claude Code is already running in background for instant responses!
 
+🤖 You: Hello, what is 2+2?
+🧠 NEXUS: 4
+────────────────────────────────────────
+
 🤖 You: what files are in the services directory?
-🧠 NEXUS: Looking at the services directory, I can see three main subdirectories:
+🧠 NEXUS: I can see three main services in your project:
 
-1. **admin-ui** - The admin interface for game administration
-2. **gameserver** - The core game logic and API server  
-3. **player-client** - The web interface for players
+1. **gameserver/** - FastAPI backend with SQLAlchemy
+2. **player-client/** - React frontend for players  
+3. **admin-ui/** - React admin interface
 
-Each service is containerized and can be run independently via Docker Compose.
+All services are containerized with Docker Compose.
+────────────────────────────────────────
 
-🤖 You: help me fix the linting errors in player-client
-🧠 NEXUS: I'll check for linting errors in the player-client service...
-[Streams response in real-time as Claude Code processes the request]
+🤖 You: exit
+👋 Goodbye! Thanks for using NEXUS Chat!
 ```
 
 ## Commands
@@ -55,28 +68,28 @@ Each service is containerized and can be run independently via Docker Compose.
 
 ## How It Works
 
-1. **Background Initialization**: When started, NEXUS Chat immediately launches Claude Code CLI in a background thread
-2. **Message Queue**: User messages are queued and sent to the Claude Code process
-3. **Real-time Streaming**: Responses are captured and streamed back to the user as they're generated
-4. **Intelligent Completion**: Uses heuristics to detect when Claude Code has finished responding
+1. **Initialization**: NEXUS Chat tests Claude Code CLI availability on startup
+2. **Per-Message Calls**: Each user message triggers a new Claude Code process call
+3. **JSON Streaming**: Uses `--print --output-format stream-json` for structured responses
+4. **Real-time Display**: Parses JSON stream and displays content as it arrives
 
 ## Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   User Input    │───▶│   NEXUS Chat     │───▶│   Claude Code   │
-│                 │    │                  │    │   CLI Process   │
-│   Terminal      │◀───│   Real-time      │◀───│   Background    │
-│   Interface     │    │   Streaming      │    │   Thread        │
+│                 │    │                  │    │   CLI --print   │
+│   Terminal      │◀───│   JSON Parser    │◀───│   JSON Stream   │
+│   Interface     │    │   & Display      │    │   Response      │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
 ## Technical Details
 
-- **Process Management**: Uses `subprocess.Popen` with line-buffered I/O for real-time communication
-- **Threading**: Background thread manages Claude Code process while main thread handles user interaction
-- **Queue-based Communication**: Thread-safe queues for message passing between UI and Claude Code
-- **Graceful Shutdown**: Proper signal handling and process cleanup
+- **Claude Code Integration**: Uses `claude --print --output-format stream-json --verbose` for non-interactive calls
+- **JSON Streaming**: Parses real-time JSON responses for clean text extraction
+- **Process Management**: Each message creates a new subprocess for isolation
+- **Error Handling**: Captures both stdout and stderr for comprehensive error reporting
 
 ## Requirements
 

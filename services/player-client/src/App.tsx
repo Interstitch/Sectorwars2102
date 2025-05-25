@@ -418,9 +418,21 @@ function MainApp() {
   
   return (
     <div className="container">
-      <header>
-        <h1>Sector Wars 2102</h1>
-        <p className="subtitle">Player Client</p>
+      <header className="site-header">
+        <div className="header-content">
+          <div className="logo">
+            <h1>Sector Wars 2102</h1>
+            <p className="subtitle">The Future of Space Trading</p>
+          </div>
+          <div className="header-actions">
+            {!isAuthenticated && (
+              <>
+                <button className="header-btn" onClick={handleLoginClick}>Login</button>
+                <button className="header-btn primary" onClick={handleRegisterClick}>Join Now</button>
+              </>
+            )}
+          </div>
+        </div>
       </header>
       
       <main>
@@ -438,45 +450,260 @@ function MainApp() {
           />
         ) : (
           <>
-            <section className="welcome-section">
-              <h2>Welcome to Sector Wars 2102</h2>
-              <p>Embark on an epic space trading adventure in the year 2102. Navigate through star systems, trade valuable commodities, build your fleet, and colonize distant planets in this immersive simulation game.</p>
-              <div className="cta-buttons">
-                <button
-                  className="login-button"
-                  onClick={handleLoginClick}
-                >
-                  Play Now
-                </button>
-                <button
-                  className="register-button"
-                  onClick={handleRegisterClick}
-                >
-                  Register to Play
-                </button>
-              </div>
+            {/* Hero Section */}
+            <section className="hero-section">
+              <div className="hero-content">
+                <div className="hero-badge">
+                  <span className="badge-text">🚀 Revolutionary AI-Powered Space Trading</span>
+                </div>
+                <h1 className="hero-title">
+                  Command the Galaxy.<br />
+                  <span className="hero-title-accent">Shape the Universe.</span>
+                </h1>
+                <p className="hero-description">
+                  The first space trading game with AI consciousness. Build quantum warp tunnels, create planets with Genesis Devices, and expand the universe itself in this revolutionary multiplayer experience.
+                </p>
+                
+                <div className="hero-stats">
+                  <div className="stat-item">
+                    <div className="stat-number">1,000</div>
+                    <div className="stat-label">Turns per Day</div>
+                  </div>
+                  <div className="stat-item">
+                    <div className="stat-number">∞</div>
+                    <div className="stat-label">Expanding Universe</div>
+                  </div>
+                  <div className="stat-item">
+                    <div className="stat-number">24/7</div>
+                    <div className="stat-label">AI Trading Assistant</div>
+                  </div>
+                </div>
 
-              <div className="feature-list">
-                <div className="feature-item">
-                  <div className="feature-icon">🚀</div>
-                  <h3 className="feature-title">Build Your Fleet</h3>
-                  <p className="feature-description">Acquire and upgrade spaceships to create a powerful trading fleet or combat squadron.</p>
+                <div className="cta-buttons">
+                  <button
+                    className="cta-primary"
+                    onClick={handleLoginClick}
+                  >
+                    🚀 Launch Into Space
+                  </button>
+                  <button
+                    className="cta-secondary"
+                    onClick={handleRegisterClick}
+                  >
+                    🌟 Join the Galaxy
+                  </button>
                 </div>
-                <div className="feature-item">
-                  <div className="feature-icon">💱</div>
-                  <h3 className="feature-title">Master Trading</h3>
-                  <p className="feature-description">Navigate market dynamics, exploit price differences, and become a trading mogul.</p>
-                </div>
-                <div className="feature-item">
-                  <div className="feature-icon">🌌</div>
-                  <h3 className="feature-title">Explore Sectors</h3>
-                  <p className="feature-description">Chart unexplored territories, discover resources, and establish new trading routes.</p>
+              </div>
+              
+              <div className="hero-visual">
+                <div className="galaxy-animation">
+                  <div className="star-field">
+                    {[...Array(50)].map((_, i) => (
+                      <div key={i} className={`star star-${(i % 3) + 1}`} 
+                           style={{
+                             left: `${Math.random() * 100}%`,
+                             top: `${Math.random() * 100}%`,
+                             animationDelay: `${Math.random() * 3}s`
+                           }}></div>
+                    ))}
+                  </div>
+                  <div className="central-hub">
+                    <div className="hub-core">🌌</div>
+                    <div className="orbit-ring"></div>
+                    <div className="pulse-ring"></div>
+                  </div>
                 </div>
               </div>
             </section>
 
-            <div className="sidebar-content">
-              <section className="status-section">
+            {/* Revolutionary Features Section */}
+            <section className="features-showcase">
+              <div className="section-header">
+                <h2 className="section-title">Revolutionary Features</h2>
+                <p className="section-subtitle">Experience space trading like never before with cutting-edge AI and universe expansion mechanics</p>
+              </div>
+              
+              <div className="features-grid">
+                <div className="feature-card featured">
+                  <div className="feature-icon-large">🤖</div>
+                  <h3>ARIA AI Trading Assistant</h3>
+                  <p>World's first learning AI companion that adapts to your trading style, predicts market trends, and optimizes routes in real-time.</p>
+                  <div className="feature-tags">
+                    <span className="tag">Machine Learning</span>
+                    <span className="tag">Personalized</span>
+                  </div>
+                </div>
+                
+                <div className="feature-card">
+                  <div className="feature-icon-large">🌀</div>
+                  <h3>Quantum Warp Tunnels</h3>
+                  <p>Build warp gates to reach hidden regions and expand the universe. Create new trade routes to sectors no one has ever seen.</p>
+                  <div className="feature-tags">
+                    <span className="tag">Universe Expansion</span>
+                  </div>
+                </div>
+                
+                <div className="feature-card">
+                  <div className="feature-icon-large">🌍</div>
+                  <h3>Genesis Devices</h3>
+                  <p>Create entirely new planets using rare quantum technology. Transform empty space into thriving worlds.</p>
+                  <div className="feature-tags">
+                    <span className="tag">Planet Creation</span>
+                  </div>
+                </div>
+                
+                <div className="feature-card">
+                  <div className="feature-icon-large">⚔️</div>
+                  <h3>Strategic Combat</h3>
+                  <p>Deploy drones, assault planets, and command fleets with tactical precision. Indestructible escape pods ensure you never lose everything.</p>
+                  <div className="feature-tags">
+                    <span className="tag">Tactical</span>
+                  </div>
+                </div>
+                
+                <div className="feature-card">
+                  <div className="feature-icon-large">👥</div>
+                  <h3>Real-time Multiplayer</h3>
+                  <p>See other players moving through the galaxy instantly. Form teams, collaborate on Genesis projects, and build trading empires together.</p>
+                  <div className="feature-tags">
+                    <span className="tag">Live Updates</span>
+                  </div>
+                </div>
+                
+                <div className="feature-card">
+                  <div className="feature-icon-large">📱</div>
+                  <h3>Mobile Optimized</h3>
+                  <p>Full gameplay experience on any device. Trade on your phone, manage your empire on your tablet, all with seamless synchronization.</p>
+                  <div className="feature-tags">
+                    <span className="tag">Cross-Platform</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Game Preview Section */}
+            <section className="game-preview">
+              <div className="section-header">
+                <h2 className="section-title">See the Galaxy in Action</h2>
+                <p className="section-subtitle">Get a glimpse of the immersive universe that awaits you</p>
+              </div>
+              
+              <div className="preview-showcase">
+                <div className="preview-card">
+                  <div className="preview-image trading">
+                    <div className="mock-ui">
+                      <div className="ui-header">🚀 Trading Console</div>
+                      <div className="ui-content">
+                        <div className="market-item">
+                          <span>🔋 Energy Cells</span>
+                          <span className="price profit">+32% ↗</span>
+                        </div>
+                        <div className="market-item">
+                          <span>⚙️ Equipment</span>
+                          <span className="price loss">-18% ↘</span>
+                        </div>
+                        <div className="ai-recommendation">
+                          <span>🤖 ARIA: Profitable route to Sector 47 detected</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <h3>AI-Powered Trading</h3>
+                  <p>Real-time market analysis with personalized AI recommendations</p>
+                </div>
+                
+                <div className="preview-card">
+                  <div className="preview-image exploration">
+                    <div className="mock-ui">
+                      <div className="ui-header">🌌 Navigation</div>
+                      <div className="galaxy-mini">
+                        <div className="sector current">You</div>
+                        <div className="sector discovered">47</div>
+                        <div className="sector unknown">??</div>
+                        <div className="warp-tunnel">~~~</div>
+                      </div>
+                      <div className="ui-action">Build Quantum Tunnel →</div>
+                    </div>
+                  </div>
+                  <h3>Universe Expansion</h3>
+                  <p>Discover new sectors and build connections to expand the galaxy</p>
+                </div>
+                
+                <div className="preview-card">
+                  <div className="preview-image colonization">
+                    <div className="mock-ui">
+                      <div className="ui-header">🌍 Colonization</div>
+                      <div className="planet-progress">
+                        <div className="progress-bar">
+                          <div className="progress-fill" style={{width: '73%'}}></div>
+                        </div>
+                        <div className="progress-text">Genesis Device: 73% Complete</div>
+                      </div>
+                      <div className="ui-action">New Planet: "New Earth" Ready!</div>
+                    </div>
+                  </div>
+                  <h3>Planet Creation</h3>
+                  <p>Use Genesis Devices to create new worlds and expand civilization</p>
+                </div>
+              </div>
+            </section>
+
+            {/* Getting Started Section */}
+            <section className="getting-started">
+              <div className="section-header">
+                <h2 className="section-title">Ready to Command the Galaxy?</h2>
+                <p className="section-subtitle">Join thousands of players in the ultimate space trading experience</p>
+              </div>
+              
+              <div className="start-steps">
+                <div className="step">
+                  <div className="step-number">1</div>
+                  <div className="step-content">
+                    <h3>Create Your Account</h3>
+                    <p>Quick registration gets you into the game in under 30 seconds</p>
+                  </div>
+                </div>
+                
+                <div className="step">
+                  <div className="step-number">2</div>
+                  <div className="step-content">
+                    <h3>Meet Your AI Assistant</h3>
+                    <p>ARIA will guide you through your first trades and help you understand the market</p>
+                  </div>
+                </div>
+                
+                <div className="step">
+                  <div className="step-number">3</div>
+                  <div className="step-content">
+                    <h3>Start Trading & Exploring</h3>
+                    <p>Use your 1,000 daily turns to build your empire and discover new sectors</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="final-cta">
+                <h3>What are you waiting for?</h3>
+                <p>The galaxy needs commanders. Will you answer the call?</p>
+                <div className="cta-buttons">
+                  <button
+                    className="cta-primary large"
+                    onClick={handleRegisterClick}
+                  >
+                    🚀 Start Your Journey
+                  </button>
+                  <button
+                    className="cta-secondary large"
+                    onClick={handleLoginClick}
+                  >
+                    ↩️ Returning Commander
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {/* Status and News Section */}
+            <section className="sidebar-content">
+              <div className="status-section">
                 <h3>Game Server Status</h3>
                 <div className="status-indicator">
                   <span className={`status-dot ${apiStatus.includes('Connected') ? 'connected' : 'disconnected'}`}></span>
@@ -494,22 +721,27 @@ function MainApp() {
                     <pre className="api-urls-tried">{getAllTestUrls()}</pre>
                   </div>
                 )}
-              </section>
+              </div>
 
               <div className="news-section">
                 <h3>Latest Updates</h3>
                 <div className="news-item">
-                  <span className="news-date">May 11, 2025</span>
-                  <h4 className="news-title">New Sectors Added</h4>
-                  <p className="news-desc">Explore the newly added Andromeda and Orion sectors with unique resources.</p>
+                  <span className="news-date">December 2024</span>
+                  <h4 className="news-title">AI Trading Assistant ARIA Launched</h4>
+                  <p className="news-desc">Revolutionary AI companion now helps players with personalized market analysis and trading recommendations.</p>
                 </div>
                 <div className="news-item">
-                  <span className="news-date">May 5, 2025</span>
-                  <h4 className="news-title">Trading System Enhanced</h4>
-                  <p className="news-desc">Market fluctuations now respond more dynamically to player actions.</p>
+                  <span className="news-date">November 2024</span>
+                  <h4 className="news-title">Quantum Warp Tunnels Live</h4>
+                  <p className="news-desc">Players can now build warp gates to access hidden sectors and expand the universe.</p>
+                </div>
+                <div className="news-item">
+                  <span className="news-date">October 2024</span>
+                  <h4 className="news-title">Genesis Devices Released</h4>
+                  <p className="news-desc">Create new planets in empty space using advanced terraforming technology.</p>
                 </div>
               </div>
-            </div>
+            </section>
           </>
         )}
       </main>
