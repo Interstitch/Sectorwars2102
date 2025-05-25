@@ -197,41 +197,16 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   
   // Load admin stats
   const loadAdminStats = async () => {
-    console.log('loadAdminStats: Checking user state:', user);
-    console.log('loadAdminStats: User is_admin:', user?.is_admin);
-    console.log('loadAdminStats: Token available:', !!token);
+    if (!user || !user.is_admin) return;
     
-    if (!user || !user.is_admin) {
-      console.log('loadAdminStats: No admin user, returning');
-      return;
-    }
-    
-    console.log('loadAdminStats: Starting admin stats load...');
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log('loadAdminStats: Making API request...');
-      console.log('loadAdminStats: Using token:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
       const response = await api.get<AdminStats>('/api/v1/admin/stats');
-      console.log('loadAdminStats: Response status:', response.status);
-      console.log('loadAdminStats: Response headers:', response.headers);
-      console.log('loadAdminStats: Response data type:', typeof response.data);
-      console.log('loadAdminStats: Response data:', JSON.stringify(response.data, null, 2));
-      
-      if (response.data && typeof response.data === 'object') {
-        console.log('loadAdminStats: Setting admin stats with valid data');
-        setAdminStats(response.data);
-      } else {
-        console.error('loadAdminStats: Invalid response data format');
-        setAdminStats(null);
-      }
+      setAdminStats(response.data);
     } catch (error) {
       console.error('Error loading admin stats:', error);
-      if (error.response) {
-        console.error('Error response status:', error.response.status);
-        console.error('Error response data:', error.response.data);
-      }
       setError('Failed to load admin statistics');
       setAdminStats(null);
     } finally {
@@ -264,8 +239,6 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       } else if (response.data && 'id' in response.data) {
         // Galaxy data returned directly
         const galaxyData = response.data as GalaxyState;
-        console.log('loadGalaxyInfo: Galaxy found, setting state:', galaxyData.name);
-        console.log('loadGalaxyInfo: Galaxy statistics:', galaxyData.statistics);
         setGalaxyState(galaxyData);
       } else {
         // Unexpected format
@@ -576,17 +549,11 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   
   // Load initial data when user logs in
   useEffect(() => {
-    console.log('AdminContext useEffect: user changed', user);
     if (user && user.is_admin) {
-      console.log('AdminContext: User is admin, loading data...');
       loadAdminStats();
       loadGalaxyInfo();
       loadUsers();
       loadPlayers();
-    } else if (user && !user.is_admin) {
-      console.log('AdminContext: User is NOT admin, not loading data');
-    } else {
-      console.log('AdminContext: No user authenticated');
     }
   }, [user]);
   

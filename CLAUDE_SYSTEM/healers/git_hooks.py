@@ -1,0 +1,256 @@
+#!/usr/bin/env python3
+"""
+Git Hooks Healer - CLAUDE System Component
+==========================================
+
+This healer ensures proper git hooks are installed for the CLAUDE.md system.
+The hooks provide automated quality checks and pattern learning.
+
+Features:
+- Installs pre-commit hook for quality checks
+- Installs post-commit hook for pattern learning
+- Creates backup of existing hooks
+- Validates hook permissions and functionality
+"""
+
+import os
+import stat
+from pathlib import Path
+from typing import Dict, List, Any
+
+
+class GitHooksHealer:
+    """Manages git hooks installation and maintenance"""
+    
+    def __init__(self, project_root: Path):
+        self.project_root = Path(project_root)
+        self.git_dir = self.project_root / ".git"
+        self.hooks_dir = self.git_dir / "hooks"
+        self.system_version = "3.0.1"
+        
+    def diagnose(self) -> Dict[str, Any]:
+        """Diagnose git hooks status"""
+        issues = []
+        recommendations = []
+        
+        # Check if this is a git repository
+        if not self.git_dir.exists():
+            issues.append("Not a git repository")
+            return {
+                "issues": issues,
+                "recommendations": ["Initialize git repository"],
+                "severity": "high"
+            }
+        
+        # Check if hooks directory exists
+        if not self.hooks_dir.exists():
+            issues.append("Git hooks directory does not exist")
+            recommendations.append("Create .git/hooks directory")
+        
+        # Check pre-commit hook
+        pre_commit_hook = self.hooks_dir / "pre-commit"
+        if not pre_commit_hook.exists():
+            issues.append("Pre-commit hook not installed")
+            recommendations.append("Install pre-commit hook")
+        elif not self._is_claude_hook(pre_commit_hook):
+            issues.append("Pre-commit hook exists but is not CLAUDE-managed")
+            recommendations.append("Update pre-commit hook to CLAUDE version")
+        elif not self._is_current_version(pre_commit_hook):
+            issues.append("Pre-commit hook is outdated")
+            recommendations.append("Update pre-commit hook to current version")
+        
+        # Check post-commit hook
+        post_commit_hook = self.hooks_dir / "post-commit"
+        if not post_commit_hook.exists():
+            issues.append("Post-commit hook not installed")
+            recommendations.append("Install post-commit hook")
+        elif not self._is_claude_hook(post_commit_hook):
+            issues.append("Post-commit hook exists but is not CLAUDE-managed")
+            recommendations.append("Update post-commit hook to CLAUDE version")
+        elif not self._is_current_version(post_commit_hook):
+            issues.append("Post-commit hook is outdated")
+            recommendations.append("Update post-commit hook to current version")
+        
+        # Check hook permissions
+        for hook_name in ["pre-commit", "post-commit"]:
+            hook_path = self.hooks_dir / hook_name
+            if hook_path.exists() and not self._is_executable(hook_path):
+                issues.append(f"{hook_name} hook is not executable")
+                recommendations.append(f"Make {hook_name} hook executable")
+        
+        return {
+            "issues": issues,
+            "recommendations": recommendations,
+            "severity": "medium" if issues else "none"
+        }
+    
+    def heal(self) -> Dict[str, Any]:
+        """Install or update git hooks"""
+        actions_taken = []
+        errors = []
+        
+        try:
+            # Ensure hooks directory exists
+            if not self.hooks_dir.exists():
+                self.hooks_dir.mkdir(parents=True, exist_ok=True)
+                actions_taken.append("Created git hooks directory")
+            
+            # Install/update pre-commit hook
+            pre_commit_result = self._install_pre_commit_hook()
+            if pre_commit_result["success"]:
+                actions_taken.append(pre_commit_result["message"])
+            else:
+                errors.append(pre_commit_result["message"])
+            
+            # Install/update post-commit hook
+            post_commit_result = self._install_post_commit_hook()
+            if post_commit_result["success"]:
+                actions_taken.append(post_commit_result["message"])
+            else:
+                errors.append(post_commit_result["message"])
+            
+        except Exception as e:
+            errors.append(f"Error during git hooks installation: {str(e)}")
+        
+        return {
+            "actions_taken": actions_taken,
+            "errors": errors,
+            "success": len(errors) == 0
+        }
+    
+    def _is_claude_hook(self, hook_path: Path) -> bool:
+        """Check if hook is managed by CLAUDE system"""
+        if not hook_path.exists():
+            return False
+        
+        content = hook_path.read_text()
+        return "Auto-generated by CLAUDE.md system" in content
+    
+    def _is_current_version(self, hook_path: Path) -> bool:
+        """Check if hook is current version"""
+        if not hook_path.exists():
+            return False
+        
+        content = hook_path.read_text()
+        return f"v{self.system_version}" in content
+    
+    def _is_executable(self, file_path: Path) -> bool:
+        """Check if file is executable"""
+        return file_path.exists() and os.access(file_path, os.X_OK)
+    
+    def _make_executable(self, file_path: Path):
+        """Make file executable"""
+        current_mode = file_path.stat().st_mode
+        file_path.chmod(current_mode | stat.S_IEXEC)
+    
+    def _backup_existing_hook(self, hook_path: Path):
+        """Create backup of existing hook"""
+        if hook_path.exists() and not self._is_claude_hook(hook_path):
+            backup_path = hook_path.with_suffix(f"{hook_path.suffix}.backup")
+            hook_path.rename(backup_path)
+            return f"Backed up existing hook to {backup_path.name}"
+        return None
+    
+    def _install_pre_commit_hook(self) -> Dict[str, Any]:
+        """Install pre-commit hook"""
+        hook_path = self.hooks_dir / "pre-commit"
+        
+        try:
+            # Backup existing hook if needed
+            backup_msg = self._backup_existing_hook(hook_path)
+            
+            # Write new hook
+            hook_content = f'''#!/bin/bash
+# Auto-generated by CLAUDE.md system v{self.system_version}
+
+echo "🔍 Running CLAUDE.md pre-commit checks..."
+
+# Quick health check
+if [ -f "CLAUDE_SYSTEM/claude-system.py" ]; then
+    python CLAUDE_SYSTEM/claude-system.py --quick
+else
+    echo "⚠️  CLAUDE_SYSTEM/claude-system.py not found"
+fi
+
+exit 0
+'''
+            
+            hook_path.write_text(hook_content)
+            self._make_executable(hook_path)
+            
+            message = "Installed pre-commit hook"
+            if backup_msg:
+                message += f" ({backup_msg})"
+            
+            return {"success": True, "message": message}
+            
+        except Exception as e:
+            return {"success": False, "message": f"Failed to install pre-commit hook: {str(e)}"}
+    
+    def _install_post_commit_hook(self) -> Dict[str, Any]:
+        """Install post-commit hook"""
+        hook_path = self.hooks_dir / "post-commit"
+        
+        try:
+            # Backup existing hook if needed
+            backup_msg = self._backup_existing_hook(hook_path)
+            
+            # Ensure .claude/memory directory exists
+            memory_dir = self.project_root / ".claude" / "memory"
+            memory_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Write new hook
+            hook_content = f'''#!/bin/bash
+# Auto-generated by CLAUDE.md system v{self.system_version}
+
+echo "📚 CLAUDE.md learning from commit..."
+
+# Extract patterns
+commit_msg=$(git log -1 --pretty=%B)
+echo "$(date): $commit_msg" >> .claude/memory/commits.log
+
+# Run pattern learning
+if [ -f "CLAUDE_SYSTEM/claude-system.py" ]; then
+    python CLAUDE_SYSTEM/claude-system.py --learn
+fi
+'''
+            
+            hook_path.write_text(hook_content)
+            self._make_executable(hook_path)
+            
+            message = "Installed post-commit hook"
+            if backup_msg:
+                message += f" ({backup_msg})"
+            
+            return {"success": True, "message": message}
+            
+        except Exception as e:
+            return {"success": False, "message": f"Failed to install post-commit hook: {str(e)}"}
+
+
+def main():
+    """CLI interface for git hooks healer"""
+    import argparse
+    import json
+    
+    parser = argparse.ArgumentParser(description="Git Hooks Healer")
+    parser.add_argument("--project-root", default=".", help="Project root directory")
+    parser.add_argument("--diagnose", action="store_true", help="Diagnose git hooks status")
+    parser.add_argument("--heal", action="store_true", help="Install/update git hooks")
+    
+    args = parser.parse_args()
+    
+    healer = GitHooksHealer(Path(args.project_root))
+    
+    if args.diagnose:
+        result = healer.diagnose()
+        print(json.dumps(result, indent=2))
+    elif args.heal:
+        result = healer.heal()
+        print(json.dumps(result, indent=2))
+    else:
+        print("Use --diagnose to check status or --heal to install/update hooks")
+
+
+if __name__ == "__main__":
+    main()

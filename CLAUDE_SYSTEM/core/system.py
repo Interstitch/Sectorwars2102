@@ -23,7 +23,7 @@ from analyzers import (
 
 # Import healers
 from healers import (
-    project_structure, missing_files, documentation as doc_healer
+    project_structure, missing_files, documentation as doc_healer, git_hooks
 )
 
 # Import utilities

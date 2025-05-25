@@ -111,6 +111,9 @@ async def get_admin_stats(
 ):
     """Get statistics for admin dashboard"""
     try:
+        # Ensure we have a clean transaction state
+        db.rollback()
+        
         # Get real data from database
         total_users = db.query(User).count()
         active_players = db.query(Player).count()
@@ -128,9 +131,18 @@ async def get_admin_stats(
         # For active sessions, we'll count players with recent activity (last 24 hours)
         from datetime import datetime, timedelta
         cutoff_time = datetime.utcnow() - timedelta(hours=24)
-        player_sessions = db.query(Player).filter(
-            Player.last_game_login >= cutoff_time
-        ).count() if db.query(Player).filter(Player.last_game_login.isnot(None)).count() > 0 else 0
+        
+        # Simplify the session query to avoid complex logic that might fail
+        try:
+            player_sessions = db.query(Player).filter(
+                Player.last_game_login >= cutoff_time
+            ).count()
+        except:
+            # If session query fails, just return 0
+            player_sessions = 0
+        
+        # Ensure we commit the read transactions
+        db.commit()
         
         return {
             "totalUsers": total_users,
@@ -143,16 +155,42 @@ async def get_admin_stats(
         
     except Exception as e:
         logger.error(f"Error getting admin stats: {e}")
-        # Fallback to basic stats if there's an error
-        total_users = db.query(User).count()
-        active_players = db.query(Player).count()
+        # Ensure transaction is rolled back
+        db.rollback()
+        
+        # Try to get basic stats with individual error handling
+        try:
+            total_users = db.query(User).count()
+        except:
+            total_users = 0
+            
+        try:
+            active_players = db.query(Player).count()
+        except:
+            active_players = 0
+            
+        try:
+            total_sectors = db.query(Sector).count()
+        except:
+            total_sectors = 0
+            
+        try:
+            total_planets = db.query(Planet).count()
+        except:
+            total_planets = 0
+            
+        try:
+            from src.models.ship import Ship
+            total_ships = db.query(Ship).count()
+        except:
+            total_ships = 0
         
         return {
             "totalUsers": total_users,
             "activePlayers": active_players,
-            "totalSectors": 0,
-            "totalPlanets": 0,
-            "totalShips": 0,
+            "totalSectors": total_sectors,
+            "totalPlanets": total_planets,
+            "totalShips": total_ships,
             "playerSessions": 0
         }
 
