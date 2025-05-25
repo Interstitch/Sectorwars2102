@@ -1478,6 +1478,27 @@ async def get_ports(
         db=db
     )
 
+@router.get("/sectors", response_model=Dict[str, Any])
+async def get_sectors(
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=1, le=500),
+    filter_type: Optional[str] = None,
+    filter_region: Optional[str] = None,
+    filter_discovered: Optional[bool] = None,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Simple sectors endpoint that redirects to comprehensive endpoint"""
+    return await get_sectors_comprehensive(
+        page=page,
+        limit=limit,
+        filter_type=filter_type,
+        filter_region=filter_region,
+        filter_discovered=filter_discovered,
+        current_admin=current_admin,
+        db=db
+    )
+
 @router.get("/warp-tunnels", response_model=Dict[str, Any])
 async def get_warp_tunnels(
     page: int = Query(1, ge=1),

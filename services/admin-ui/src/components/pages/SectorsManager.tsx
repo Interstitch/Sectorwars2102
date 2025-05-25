@@ -4,20 +4,21 @@ import './sectors-manager.css';
 
 interface Sector {
   id: string;
+  sector_id: number;
   name: string;
-  coordinates: {
-    x: number;
-    y: number;
-    z: number;
-  };
+  type: string;
   cluster_id: string;
-  region_id: string;
-  resources: string[];
+  region_name: string;
+  x_coord: number;
+  y_coord: number;
+  z_coord: number;
+  hazard_level: number;
+  is_discovered: boolean;
   has_port: boolean;
   has_planet: boolean;
-  discovered: boolean;
-  connections: string[];
   has_warp_tunnel: boolean;
+  player_count: number;
+  controlling_faction: string | null;
 }
 
 const SectorsManager: React.FC = () => {
@@ -69,23 +70,22 @@ const SectorsManager: React.FC = () => {
       setSectorLoading(true);
       
       try {
-        // This would be replaced with an actual API call
-        // For now, we'll simulate the response with mock data
-        const response = await fetch('/api/v1/admin/sectors', {
-          method: 'POST',
+        // Build query parameters for GET request
+        const params = new URLSearchParams();
+        if (selectedRegion) params.set('filter_region', selectedRegion);
+        if (selectedCluster) params.set('filter_cluster', selectedCluster);
+        if (filterHasPort !== null) params.set('filter_has_port', filterHasPort.toString());
+        if (filterHasPlanet !== null) params.set('filter_has_planet', filterHasPlanet.toString());
+        if (filterDiscovered !== null) params.set('filter_discovered', filterDiscovered.toString());
+        if (searchQuery.trim()) params.set('search', searchQuery.trim());
+        params.set('page', currentPage.toString());
+        params.set('limit', itemsPerPage.toString());
+
+        const response = await fetch(`/api/v1/admin/sectors?${params.toString()}`, {
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            region_id: selectedRegion || undefined,
-            cluster_id: selectedCluster || undefined,
-            has_port: filterHasPort,
-            has_planet: filterHasPlanet,
-            discovered: filterDiscovered,
-            search: searchQuery.trim() || undefined,
-            page: currentPage,
-            limit: itemsPerPage
-          })
         });
         
         const data = await response.json();
@@ -354,7 +354,8 @@ const SectorsManager: React.FC = () => {
                       </div>
                       
                       {sectors.map(sector => {
-                        const regionName = regions.find(r => r.id === sector.region_id)?.name || 'Unknown';
+                        // Use region_name directly from backend
+                        const regionName = sector.region_name || 'Unknown';
                         const clusterName = clusters.find(c => c.id === sector.cluster_id)?.name || 'Unknown';
                         
                         return (
@@ -365,10 +366,10 @@ const SectorsManager: React.FC = () => {
                           >
                             <div className="grid-cell">
                               <div className="sector-name">{sector.name}</div>
-                              <div className="sector-id">ID: {sector.id.substring(0, 8)}...</div>
+                              <div className="sector-id">ID: {sector.sector_id}</div>
                             </div>
                             <div className="grid-cell coordinates">
-                              {sector.coordinates.x}, {sector.coordinates.y}, {sector.coordinates.z}
+                              {sector.x_coord}, {sector.y_coord}, {sector.z_coord}
                             </div>
                             <div className="grid-cell">{regionName}</div>
                             <div className="grid-cell">{clusterName}</div>
@@ -377,7 +378,7 @@ const SectorsManager: React.FC = () => {
                                 {sector.has_port && <span className="feature-tag port-tag">Port</span>}
                                 {sector.has_planet && <span className="feature-tag planet-tag">Planet</span>}
                                 {sector.has_warp_tunnel && <span className="feature-tag warp-tag">Warp</span>}
-                                {sector.discovered ? (
+                                {sector.is_discovered ? (
                                   <span className="feature-tag discovered-tag">Discovered</span>
                                 ) : (
                                   <span className="feature-tag undiscovered-tag">Undiscovered</span>
