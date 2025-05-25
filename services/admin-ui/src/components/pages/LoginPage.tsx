@@ -10,17 +10,19 @@ const LoginPage: React.FC = () => {
   };
   
   return (
-    <div className="login-page">
-      <div className="login-container">
-        <div className="login-header">
-          <h1>Sector Wars 2102</h1>
-          <p className="subtitle">Admin Portal</p>
+    <div className="min-h-screen bg-surface-primary flex items-center justify-center p-4">
+      <div className="card max-w-md w-full">
+        <div className="card-header text-center">
+          <h1 className="text-2xl font-bold text-primary mb-2">Sector Wars 2102</h1>
+          <p className="text-muted">Admin Portal</p>
         </div>
         
-        <LoginForm onLoginSuccess={handleLoginSuccess} />
+        <div className="card-body">
+          <LoginForm onLoginSuccess={handleLoginSuccess} />
+        </div>
         
-        <div className="login-footer">
-          <p>Sector Wars 2102 - Admin UI v0.1.0</p>
+        <div className="card-footer text-center">
+          <p className="text-sm text-muted">Sector Wars 2102 - Admin UI v0.1.0</p>
         </div>
       </div>
     </div>

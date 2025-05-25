@@ -124,17 +124,18 @@ Redirecting to dashboard...`);
   // No environment check needed - OAuth works properly
   
   return (
-    <div className="login-form-container">
-      <form className="login-form" onSubmit={handleSubmit}>
-        <h2>Admin Login</h2>
+    <div>
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <h2 className="text-lg font-semibold text-center mb-4">Admin Login</h2>
         
-        {error && <div className="error-message">{error}</div>}
+        {error && <div className="alert alert-error">{error}</div>}
         
         <div className="form-group">
-          <label htmlFor="username">Username</label>
+          <label htmlFor="username" className="form-label">Username</label>
           <input
             type="text"
             id="username"
+            className="form-input"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             disabled={isSubmitting}
@@ -143,10 +144,11 @@ Redirecting to dashboard...`);
         </div>
         
         <div className="form-group">
-          <label htmlFor="password">Password</label>
+          <label htmlFor="password" className="form-label">Password</label>
           <input
             type="password"
             id="password"
+            className="form-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={isSubmitting}
@@ -154,10 +156,10 @@ Redirecting to dashboard...`);
           />
         </div>
         
-        <div className="button-group">
+        <div className="flex gap-2">
           <button 
             type="submit" 
-            className="login-button" 
+            className="btn btn-primary flex-1" 
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Logging in...' : 'Login'}
@@ -165,7 +167,7 @@ Redirecting to dashboard...`);
           
           <button 
             type="button"
-            className="direct-login-button"
+            className="btn btn-secondary"
             onClick={testDirectLogin}
             disabled={isSubmitting}
           >
@@ -173,47 +175,12 @@ Redirecting to dashboard...`);
           </button>
         </div>
         
-        {debug && <div className="debug-info">{debug}</div>}
+        {debug && (
+          <div className="alert alert-info">
+            <pre className="text-xs font-mono whitespace-pre-wrap">{debug}</pre>
+          </div>
+        )}
       </form>
-      
-      <style>{`
-        .button-group {
-          display: flex;
-          gap: 10px;
-          margin-bottom: 15px;
-        }
-        
-        .direct-login-button {
-          background-color: #606060;
-          color: white;
-          border: none;
-          padding: 10px 15px;
-          border-radius: 4px;
-          cursor: pointer;
-        }
-        
-        .notice-message {
-          margin-bottom: 20px;
-          padding: 10px;
-          background-color: #fff8e6;
-          border: 1px solid #f5c400;
-          border-radius: 4px;
-          color: #5a4500;
-          font-size: 14px;
-          line-height: 1.5;
-        }
-        
-        .debug-info {
-          margin-top: 20px;
-          padding: 10px;
-          background-color: #f5f5f5;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-family: monospace;
-          white-space: pre-wrap;
-          font-size: 12px;
-        }
-      `}</style>
     </div>
   );
 };
