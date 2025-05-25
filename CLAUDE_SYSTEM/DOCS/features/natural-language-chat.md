@@ -1,8 +1,8 @@
-# 🚀 REVOLUTIONARY NATURAL LANGUAGE CHAT INTERFACE
+# Natural Language Chat Interface
 
-## The Transformation: From Commands to Conversation
+🚀 **REVOLUTIONARY TRANSFORMATION: From Commands to Conversation**
 
-NEXUS has been **revolutionized** from a command-driven interface to a **Claude Code-like natural language chat system** that understands developer intent through conversation.
+NEXUS has been revolutionized from a command-driven interface to a **Claude Code-like natural language chat system** that understands developer intent through conversation.
 
 ## 🌟 What's Revolutionary About This?
 
@@ -29,14 +29,14 @@ You: I'm getting a TypeError in the API routes
 
 When you chat with NEXUS, these specialized agents coordinate automatically:
 
-- 🕵️ **Sherlock** (Detective) - Code analysis and pattern detection
-- ⚡ **Velocity** (Optimizer) - Performance improvements and optimization
-- 🛡️ **Guardian** (Tester) - Test generation and coverage analysis
-- 🔧 **Sentinel** (Debugger) - Error detection and debugging assistance
-- 🔮 **Echo** (Predictor) - Future prediction and risk analysis
-- 📚 **Sage** (Documenter) - Documentation generation and updates
-- 🏗️ **Atlas** (Architect) - System design and structure planning
-- 🎓 **Mentor** (Teacher) - Knowledge sharing and learning facilitation
+- 🏗️ **Architect** - System design and structure planning
+- 🔍 **Debugger** - Code analysis and pattern detection
+- ⚡ **Optimizer** - Performance improvements and optimization
+- 🛡️ **Tester** - Test generation and coverage analysis
+- 📚 **Documenter** - Documentation generation and updates
+- 🔒 **Security** - Security analysis and vulnerability assessment
+- 🎨 **UX Advocate** - User experience and interface design
+- 🎓 **Mentor** - Knowledge sharing and learning facilitation
 
 ## 🎯 How to Use the Natural Language Interface
 
@@ -128,12 +128,12 @@ NEXUS remembers your conversation and builds context:
 ### Intelligent Intent Recognition
 Natural language patterns automatically trigger the right agents:
 
-- **"analyze", "review", "check"** → Sherlock (Detective)
-- **"improve", "optimize", "enhance"** → Velocity (Optimizer)  
-- **"test", "coverage", "unit test"** → Guardian (Tester)
-- **"debug", "error", "broken"** → Sentinel (Debugger)
-- **"predict", "future", "might"** → Echo (Predictor)
-- **"document", "docs", "README"** → Sage (Documenter)
+- **"analyze", "review", "check"** → Debugger
+- **"improve", "optimize", "enhance"** → Optimizer  
+- **"test", "coverage", "unit test"** → Tester
+- **"debug", "error", "broken"** → Debugger
+- **"predict", "future", "might"** → Analyst
+- **"document", "docs", "README"** → Documenter
 
 ## 🎭 NEXUS Personality
 
