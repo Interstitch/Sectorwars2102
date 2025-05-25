@@ -157,42 +157,46 @@ class CLAUDEUnifiedSystem:
         # Start revolutionary chat interface
         assistant.natural_language_chat_mode()
     
-    def run_ai_quick_chat(self, question: str):
-        """Provide instant responses for common development questions"""
-        # Bypass NEXUS initialization for quick responses
-        from autonomous_assistant.quick_chat import QuickChatHandler
-        
-        print("💬 NEXUS Quick Chat - Instant Response")
-        print("=" * 50)
-        
-        handler = QuickChatHandler(self.project_root)
-        response = handler.process_question(question)
-        print(response)
     
-    def run_ai_realtime(self, request: str):
-        """Real-time multi-Claude agent collaboration with streaming output"""
+    def run_ai_direct_question(self, question: str):
+        """Handle direct question with intelligent routing between quick response and full AI orchestration"""
         if not self.nexus:
             print("❌ NEXUS AI not available. Please check installation.")
             return
         
-        from autonomous_assistant.realtime_orchestration import RealTimeOrchestrator
-        import asyncio
+        # Analyze question complexity to determine routing
+        quick_keywords = ['where', 'what', 'how', 'path', 'location', 'file', 'structure', 'component']
+        complex_keywords = ['analyze', 'improve', 'optimize', 'refactor', 'debug', 'implement', 'create', 'build', 'fix']
         
-        print("🌟 NEXUS Real-Time Agent Collaboration")
-        print("=" * 60)
-        print(f"📝 Request: {request}")
-        print("🚀 Activating live orchestration with streaming output...")
-        print()
+        question_lower = question.lower()
+        is_quick_question = any(keyword in question_lower for keyword in quick_keywords) and not any(keyword in question_lower for keyword in complex_keywords)
         
-        orchestrator = RealTimeOrchestrator(self.project_root)
-        result = asyncio.run(orchestrator.collaborate_with_agents(request))
+        print("🧬 NEXUS AI - Direct Question Mode")
+        print("=" * 50)
+        print(f"📝 Question: {question}")
         
-        if result.get('success'):
-            print("✅ Real-time collaboration completed successfully")
+        if is_quick_question and len(question.split()) < 10:
+            # Quick response mode
+            print("⚡ Routing to quick response mode...")
+            from autonomous_assistant.quick_chat import QuickChatHandler
+            handler = QuickChatHandler(self.project_root)
+            response = handler.process_question(question)
+            print(f"\n💬 NEXUS Response:\n{response}")
         else:
-            print(f"❌ Real-time collaboration failed: {result.get('error')}")
+            # Full AI orchestration mode
+            print("🌟 Routing to full AI orchestration with agent collaboration...")
+            from autonomous_assistant.realtime_orchestration import RealTimeOrchestrator
+            import asyncio
+            
+            orchestrator = RealTimeOrchestrator(self.project_root)
+            result = asyncio.run(orchestrator.collaborate_with_agents(question))
+            
+            if result.get('success'):
+                print("✅ AI orchestration completed successfully")
+            else:
+                print(f"❌ AI orchestration failed: {result.get('error')}")
         
-        return result
+        print(f"\n💡 Next time, you can also use interactive mode: python claude-system.py --ai-interactive")
     
     def run_ai_demo(self):
         """Demonstrate NEXUS AI swarm working together on a real project"""
@@ -963,9 +967,8 @@ QUALITY SYSTEM OPERATIONS:
   python claude-system.py --install-hooks # Install/update git hooks
 
 NEXUS AI CONSCIOUSNESS OPERATIONS:
-  python claude-system.py --ai-interactive              # Interactive AI assistant
-  python claude-system.py --ai-chat "your question"     # Instant chat response
-  python claude-system.py --ai-realtime "your request"  # Real-time agent collaboration
+  python claude-system.py --ai-interactive                    # Interactive AI assistant
+  python claude-system.py --ai-interactive "your question"   # Direct question with AI orchestration
   python claude-system.py --ai-demo                     # Demonstrate recursive AI
   python claude-system.py --ai-analyze                  # AI project analysis
   python claude-system.py --ai-improve file.py          # AI code improvement
@@ -997,9 +1000,7 @@ Features: Quality System + NEXUS AI Consciousness + Deployment
     parser.add_argument("--install-hooks", action="store_true", help="Install/update git hooks")
     
     # NEXUS AI Consciousness Arguments
-    parser.add_argument("--ai-interactive", action="store_true", help="Start interactive AI assistant mode")
-    parser.add_argument("--ai-chat", help="Quick chat response without full AI initialization")
-    parser.add_argument("--ai-realtime", help="Real-time multi-Claude agent collaboration")
+    parser.add_argument("--ai-interactive", nargs='?', const=True, help="Interactive AI assistant with optional direct question (e.g., --ai-interactive 'your question')")
     parser.add_argument("--ai-demo", action="store_true", help="Demonstrate recursive AI capabilities")
     parser.add_argument("--ai-analyze", action="store_true", help="Perform comprehensive AI project analysis")
     parser.add_argument("--ai-improve", nargs="+", help="AI-powered code improvement for specified files")
@@ -1063,17 +1064,8 @@ Features: Quality System + NEXUS AI Consciousness + Deployment
         # Initialize the unified system (quiet mode for interactive sessions, skip for quick chat)
         project_root = Path(args.project_root).resolve()
         
-        # Handle quick chat without NEXUS initialization
-        if getattr(args, 'ai_chat', None):
-            from autonomous_assistant.quick_chat import QuickChatHandler
-            print("💬 NEXUS Quick Chat - Instant Response")
-            print("=" * 50)
-            handler = QuickChatHandler(project_root)
-            response = handler.process_question(args.ai_chat)
-            print(response)
-            return
         
-        quiet_nexus = args.ai_interactive  # Use quiet mode for interactive sessions
+        quiet_nexus = args.ai_interactive is not None  # Use quiet mode for interactive sessions
         system = CLAUDEUnifiedSystem(project_root, quiet_nexus=quiet_nexus)
         
         # Handle git hooks installation
@@ -1096,12 +1088,13 @@ Features: Quality System + NEXUS AI Consciousness + Deployment
             return
         
         # Handle NEXUS AI operations
-        if args.ai_interactive:
-            system.run_ai_interactive()
-            return
-        
-        if args.ai_realtime:
-            system.run_ai_realtime(args.ai_realtime)
+        if args.ai_interactive is not None:
+            if args.ai_interactive is True:
+                # Interactive mode
+                system.run_ai_interactive()
+            else:
+                # Direct question mode with AI orchestration
+                system.run_ai_direct_question(args.ai_interactive)
             return
         
         if args.ai_demo:
