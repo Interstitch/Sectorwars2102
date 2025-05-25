@@ -340,7 +340,7 @@
   border-radius: 3px;
 }
 
-/* Status icons for ultra-compact display */
+/* Status icons with intuitive visual symbols */
 .status-icon {
   width: 16px;
   height: 16px;
@@ -348,50 +348,72 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 8px;
   font-weight: bold;
   color: white;
   text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+  position: relative;
 }
 
+/* Port: Square dock symbol */
 .icon-port {
   background-color: #3b82f6;
+  border: 2px solid #1e40af;
 }
 
 .icon-port::after {
-  content: "P";
+  content: "■";
+  font-size: 10px;
 }
 
+/* Planet: Circle with dot in center */
 .icon-planet {
   background-color: #22c55e;
+  border-radius: 50%;
+  border: 2px solid #16a34a;
 }
 
 .icon-planet::after {
-  content: "P";
+  content: "●";
+  font-size: 6px;
+  color: #16a34a;
 }
 
+/* Warp Tunnel: Diamond shape with gradient */
 .icon-warp {
-  background-color: #8b5cf6;
+  background: linear-gradient(45deg, #8b5cf6, #a78bfa);
+  transform: rotate(45deg);
+  border: 1px solid #7c3aed;
 }
 
 .icon-warp::after {
-  content: "T";
+  content: "◆";
+  transform: rotate(-45deg);
+  font-size: 8px;
 }
 
+/* Discovered: Green circle with checkmark */
 .icon-discovered {
   background-color: #059669;
+  border-radius: 50%;
+  border: 2px solid #047857;
 }
 
 .icon-discovered::after {
   content: "✓";
+  font-size: 9px;
 }
 
+/* Undiscovered: Gray circle with question */
 .icon-undiscovered {
   background-color: #6b7280;
+  border-radius: 50%;
+  border: 2px solid #4b5563;
 }
 
 .icon-undiscovered::after {
   content: "?";
+  font-size: 9px;
 }
 
 .sector-features {
