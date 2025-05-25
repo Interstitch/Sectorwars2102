@@ -38,7 +38,10 @@ class MarketPredictionEngine:
     Advanced market prediction engine using Prophet for time series forecasting
     """
     
-    def __init__(self, model_storage_path: str = "/app/data/ml_models"):
+    def __init__(self, model_storage_path: str = None):
+        if model_storage_path is None:
+            # Use environment variable if set, otherwise default to container path
+            model_storage_path = os.environ.get("MODEL_STORAGE_PATH", "/app/data/ml_models")
         self.model_storage_path = Path(model_storage_path)
         self.model_storage_path.mkdir(parents=True, exist_ok=True)
         self.models: Dict[str, Prophet] = {}

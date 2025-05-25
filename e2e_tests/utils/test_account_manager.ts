@@ -111,7 +111,19 @@ function executeSql(sql: string): string {
       return 'MOCK SQL EXECUTION';
     }
     
-    const command = `PGPASSWORD='${password}' psql "postgresql://${username}@${host}/${database}?sslmode=require" -c "${sql}"`;
+    // Extract endpoint from Neon host for SNI support
+    let connectionString = `postgresql://${username}@${host}/${database}?sslmode=require`;
+    
+    // Add endpoint parameter for Neon connections (SNI support)
+    if (host.includes('neon.tech')) {
+      const endpointMatch = host.match(/^(ep-[^-]+-[^-]+)/);
+      if (endpointMatch) {
+        const endpoint = endpointMatch[1];
+        connectionString += `&options=endpoint%3D${endpoint}`;
+      }
+    }
+    
+    const command = `PGPASSWORD='${password}' psql "${connectionString}" -c "${sql}"`;
     return execSync(command).toString();
   } catch (error: any) {
     console.error('Failed to execute SQL:', error.message);

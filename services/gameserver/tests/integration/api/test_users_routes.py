@@ -1,4 +1,5 @@
 # Tests for user-related API routes
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 import uuid

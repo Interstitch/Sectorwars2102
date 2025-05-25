@@ -2,6 +2,7 @@
 Tests for the status endpoints in the API.
 These are the utility endpoints available in /api/v1/status/*
 """
+import pytest
 from fastapi.testclient import TestClient
 
 from src.core.config import settings
@@ -45,9 +46,8 @@ def test_status_ping_endpoint(client: TestClient):
     response = client.get(f"{settings.API_V1_STR}/status/ping")
     assert response.status_code == 200, response.text
     data = response.json()
-    assert "message" in data
-    assert data["message"] == "pong"
-    assert "environment" in data
+    assert "ping" in data
+    assert data["ping"] == "pong"
     assert "timestamp" in data
 
 

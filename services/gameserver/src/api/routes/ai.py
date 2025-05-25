@@ -28,8 +28,15 @@ from src.services.ai_trading_service import AITradingService, TradingRecommendat
 router = APIRouter(prefix="/ai", tags=["AI Trading Intelligence"])
 logger = logging.getLogger(__name__)
 
-# Initialize AI service
-ai_service = AITradingService()
+# Initialize AI service lazily to prevent import-time issues during testing
+ai_service = None
+
+def get_ai_service():
+    """Get AI service instance (lazy initialization)"""
+    global ai_service
+    if ai_service is None:
+        ai_service = AITradingService()
+    return ai_service
 
 
 # Pydantic models for request/response
@@ -119,7 +126,7 @@ async def get_trading_recommendations(
     """
     try:
         # Get fresh recommendations from AI service
-        recommendations = await ai_service.get_trading_recommendations(
+        recommendations = await get_ai_service().get_trading_recommendations(
             db, str(current_player.id), limit
         )
         
@@ -243,7 +250,7 @@ async def submit_recommendation_feedback(
         await db.commit()
         
         # Update player profile based on feedback
-        await ai_service.update_player_profile(
+        await get_ai_service().update_player_profile(
             db, str(current_player.id), {
                 'recommendation_feedback': {
                     'accepted': feedback.accepted,
@@ -277,7 +284,7 @@ async def get_market_analysis(
     Get AI-powered market analysis for a specific commodity
     """
     try:
-        analysis = await ai_service.analyze_market_trends(db, commodity_id, sector_id)
+        analysis = await get_ai_service().analyze_market_trends(db, commodity_id, sector_id)
         
         return MarketAnalysisResponse(
             commodity_id=analysis.commodity_id,
@@ -309,7 +316,7 @@ async def optimize_trading_route(
     Get AI-optimized trading route recommendations
     """
     try:
-        optimal_route = await ai_service.optimize_trade_route(
+        optimal_route = await get_ai_service().optimize_trade_route(
             db,
             str(current_player.id),
             request.start_sector,
@@ -434,7 +441,7 @@ async def update_trading_data(
     Update player profile with new trade data for AI learning
     """
     try:
-        success = await ai_service.update_player_profile(
+        success = await get_ai_service().update_player_profile(
             db, str(current_player.id), trade_data.dict()
         )
         

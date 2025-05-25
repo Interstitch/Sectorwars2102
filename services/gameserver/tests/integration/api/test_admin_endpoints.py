@@ -13,27 +13,9 @@ from src.models.user import User
 class TestAdminEndpoints:
     """Test all admin API endpoints with proper authentication."""
     
-    @pytest.fixture
-    def client(self):
-        """Create test client."""
-        return TestClient(app)
-    
-    @pytest.fixture
-    def admin_token(self, client):
-        """Get admin authentication token."""
-        response = client.post("/api/v1/auth/login", 
-                             data={"username": "admin", "password": "admin"})
-        assert response.status_code == 200
-        return response.json()["access_token"]
-    
-    @pytest.fixture
-    def auth_headers(self, admin_token):
-        """Create authorization headers."""
-        return {"Authorization": f"Bearer {admin_token}"}
-    
-    def test_admin_users_endpoint(self, client, auth_headers):
+    def test_admin_users_endpoint(self, client, admin_auth_headers):
         """Test /api/v1/admin/users endpoint."""
-        response = client.get("/api/v1/admin/users", headers=auth_headers)
+        response = client.get("/api/v1/admin/users", headers=admin_auth_headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -47,18 +29,18 @@ class TestAdminEndpoints:
             for field in required_fields:
                 assert field in user
     
-    def test_admin_players_endpoint(self, client, auth_headers):
+    def test_admin_players_endpoint(self, client, admin_auth_headers):
         """Test /api/v1/admin/players endpoint."""
-        response = client.get("/api/v1/admin/players", headers=auth_headers)
+        response = client.get("/api/v1/admin/players", headers=admin_auth_headers)
         
         assert response.status_code == 200
         data = response.json()
         assert "players" in data
         assert isinstance(data["players"], list)
     
-    def test_admin_stats_endpoint(self, client, auth_headers):
+    def test_admin_stats_endpoint(self, client, admin_auth_headers):
         """Test /api/v1/admin/stats endpoint."""
-        response = client.get("/api/v1/admin/stats", headers=auth_headers)
+        response = client.get("/api/v1/admin/stats", headers=admin_auth_headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -69,9 +51,9 @@ class TestAdminEndpoints:
             assert stat in data
             assert isinstance(data[stat], int)
     
-    def test_admin_sectors_endpoint(self, client, auth_headers):
+    def test_admin_sectors_endpoint(self, client, admin_auth_headers):
         """Test /api/v1/admin/sectors endpoint - the one we fixed."""
-        response = client.get("/api/v1/admin/sectors", headers=auth_headers)
+        response = client.get("/api/v1/admin/sectors", headers=admin_auth_headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -92,9 +74,9 @@ class TestAdminEndpoints:
             for field in required_fields:
                 assert field in sector, f"Missing field: {field}"
     
-    def test_admin_sectors_enhanced_endpoint(self, client, auth_headers):
+    def test_admin_sectors_enhanced_endpoint(self, client, admin_auth_headers):
         """Test /api/v1/admin/sectors/enhanced endpoint."""
-        response = client.get("/api/v1/admin/sectors/enhanced", headers=auth_headers)
+        response = client.get("/api/v1/admin/sectors/enhanced", headers=admin_auth_headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -103,7 +85,7 @@ class TestAdminEndpoints:
         
         # Test with query parameters
         response = client.get("/api/v1/admin/sectors/enhanced?include_contents=true", 
-                            headers=auth_headers)
+                            headers=admin_auth_headers)
         assert response.status_code == 200
     
     def test_admin_authentication_required(self, client):
@@ -126,29 +108,29 @@ class TestAdminEndpoints:
         # For now, we'll just verify the auth dependency exists
         pass
     
-    def test_admin_sectors_pagination(self, client, auth_headers):
+    def test_admin_sectors_pagination(self, client, admin_auth_headers):
         """Test sectors endpoint pagination."""
         # Test with limit and offset
         response = client.get("/api/v1/admin/sectors?limit=5&offset=0", 
-                            headers=auth_headers)
+                            headers=admin_auth_headers)
         assert response.status_code == 200
         
         data = response.json()
         assert len(data["sectors"]) <= 5
     
-    def test_admin_sectors_filtering(self, client, auth_headers):
+    def test_admin_sectors_filtering(self, client, admin_auth_headers):
         """Test sectors endpoint filtering capabilities."""
         # Test filtering by region/cluster if available
         response = client.get("/api/v1/admin/sectors/enhanced?include_contents=false", 
-                            headers=auth_headers)
+                            headers=admin_auth_headers)
         assert response.status_code == 200
     
-    def test_model_attribute_access_safety(self, client, auth_headers):
+    def test_model_attribute_access_safety(self, client, admin_auth_headers):
         """
         Test that our model attribute fixes prevent AttributeError.
         This specifically tests the fixes we made for has_port, has_planet, etc.
         """
-        response = client.get("/api/v1/admin/sectors", headers=auth_headers)
+        response = client.get("/api/v1/admin/sectors", headers=admin_auth_headers)
         assert response.status_code == 200
         
         # If we get here without 500 error, our attribute access fixes worked
@@ -163,13 +145,13 @@ class TestAdminEndpoints:
             assert isinstance(sector["has_planet"], bool)
             assert isinstance(sector["has_warp_tunnel"], bool)
     
-    def test_enum_value_access_safety(self, client, auth_headers):
+    def test_enum_value_access_safety(self, client, admin_auth_headers):
         """
         Test that enum value access doesn't cause errors.
         This tests our fixes for special_type and port_class enum access.
         """
         response = client.get("/api/v1/admin/sectors/enhanced?include_contents=true", 
-                            headers=auth_headers)
+                            headers=admin_auth_headers)
         assert response.status_code == 200
         
         data = response.json()

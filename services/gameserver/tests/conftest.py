@@ -40,6 +40,12 @@ env_file_path = os.path.join(workspace_root, ".env")
 # Also look for a .env file in the gameserver directory for test-specific settings
 gameserver_env_test_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env.test"))
 
+# First check if environment variables are already available (from docker-compose)
+docker_database_url = os.environ.get('DATABASE_URL')
+if docker_database_url:
+    print(f"📁 Using DATABASE_URL from docker-compose: {docker_database_url[:50]}...")
+    main_db_url = docker_database_url
+
 # First try to load non-DB settings from .env.test
 for env_var in ["JWT_SECRET", "ADMIN_USERNAME", "ADMIN_PASSWORD"]:
     test_value = get_env_var_from_file(env_var, file_path=gameserver_env_test_path)
@@ -51,20 +57,40 @@ main_db_url = get_env_var_from_file("DATABASE_URL", file_path=env_file_path)
 test_db_url = get_env_var_from_file("DATABASE_TEST_URL", file_path=env_file_path)
 
 # Since neondb_test database doesn't exist, use the main database for tests
+# Get DATABASE_URL from environment (provided by docker-compose)
 if not main_db_url:
-    main_db_url = "postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
+    main_db_url = os.environ.get('DATABASE_URL')
+    if not main_db_url:
+        raise RuntimeError("DATABASE_URL environment variable not found")
     
 # Use the main database URL for tests since neondb_test doesn't exist
 test_db_url = main_db_url
 
+# Add endpoint parameter for Neon database when running from host system
+# The container sets TESTING_FROM_HOST=false, host system defaults to true (not set or any other value)
+testing_from_host = os.environ.get("TESTING_FROM_HOST", "true")  # Default to host system
+if (testing_from_host != "false" and 
+    "neon.tech" in main_db_url and "options=endpoint" not in main_db_url):
+    import re
+    match = re.search(r'@(ep-[^-]+-[^-]+-[^-]+)', main_db_url)
+    if match:
+        endpoint_id = match.group(1)
+        if "?" in main_db_url:
+            main_db_url += f"&options=endpoint%3D{endpoint_id}"
+            test_db_url += f"&options=endpoint%3D{endpoint_id}"
+        else:
+            main_db_url += f"?options=endpoint%3D{endpoint_id}"
+            test_db_url += f"?options=endpoint%3D{endpoint_id}"
+
 os.environ["DATABASE_URL"] = main_db_url
 os.environ["DATABASE_TEST_URL"] = test_db_url
 print(f"[conftest.py] Using database URLs for tests:")
-print(f"[conftest.py] DATABASE_URL: {main_db_url}")
-print(f"[conftest.py] DATABASE_TEST_URL: {test_db_url}")
+print(f"[conftest.py] DATABASE_URL: {main_db_url[:60]}...")
+print(f"[conftest.py] DATABASE_TEST_URL: {test_db_url[:60]}...")
 
 import pytest
 from fastapi import FastAPI
+import httpx
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -163,15 +189,13 @@ def db(app_fixture: FastAPI) -> Session:
         db_session.rollback()
         db_session.close()
         
-        # Drop and recreate tables to ensure a clean slate
-        # This is faster than trying to carefully clean up test data
-        Base.metadata.drop_all(bind=engine)
-        Base.metadata.create_all(bind=engine)
+        # Skip table recreation for now to avoid circular dependency issues
+        # Base.metadata.drop_all(bind=engine)
+        # Base.metadata.create_all(bind=engine)
 
 @pytest.fixture(scope="function")
 def client(app_fixture: FastAPI, db: Session) -> TestClient:
-    with TestClient(app_fixture) as test_client:
-        yield test_client
+    return TestClient(app_fixture)
 
 @pytest.fixture(scope="function")
 def admin_auth_headers(client: TestClient) -> dict[str, str]:
