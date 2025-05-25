@@ -17,162 +17,116 @@ from typing import Optional, Generator
 import json
 
 class ClaudeCodeProcess:
-    """Manages the background Claude Code process for instant responses"""
+    """Manages Claude Code CLI calls for instant responses"""
     
     def __init__(self):
-        self.process: Optional[subprocess.Popen] = None
-        self.input_queue = queue.Queue()
-        self.output_queue = queue.Queue()
-        self.is_ready = threading.Event()
         self.is_running = False
-        self.background_thread: Optional[threading.Thread] = None
+        self.last_call_time = 0
         
     def start_background_process(self):
-        """Start Claude Code in background thread for instant availability"""
-        print("🚀 Initializing Claude Code in background...")
-        self.background_thread = threading.Thread(target=self._run_claude_code, daemon=True)
-        self.background_thread.start()
-        
-        # Wait for initialization with timeout
-        if self.is_ready.wait(timeout=30):
-            print("✅ Claude Code ready for instant responses!")
-        else:
-            print("⚠️  Claude Code initialization taking longer than expected...")
-    
-    def _run_claude_code(self):
-        """Run Claude Code process in interactive mode"""
+        """Initialize Claude Code - test that it's available"""
+        print("🚀 Initializing Claude Code...")
         try:
-            # Start Claude Code CLI - it's already interactive by default
-            cmd = ["claude"]
-            
-            self.process = subprocess.Popen(
-                cmd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                bufsize=1,  # Line buffered for real-time streaming
-                universal_newlines=True,
-                cwd=os.getcwd()  # Use current working directory
+            # Test Claude Code CLI availability
+            result = subprocess.run(
+                ["claude", "--version"], 
+                capture_output=True, 
+                text=True, 
+                timeout=10
             )
-            
-            self.is_running = True
-            
-            # Wait a moment for Claude to initialize
-            time.sleep(2)
-            self.is_ready.set()  # Signal that Claude Code is ready
-            
-            # Start output reader thread
-            output_thread = threading.Thread(target=self._read_output, daemon=True)
-            output_thread.start()
-            
-            # Process input queue
-            while self.is_running and self.process and self.process.poll() is None:
-                try:
-                    message = self.input_queue.get(timeout=1)
-                    if message is None:  # Shutdown signal
-                        break
-                    
-                    # Send message to Claude Code
-                    self.process.stdin.write(message + "\n")
-                    self.process.stdin.flush()
-                    
-                except queue.Empty:
-                    continue
-                except Exception as e:
-                    print(f"❌ Error sending to Claude Code: {e}")
-                    break
-                    
+            if result.returncode == 0:
+                self.is_running = True
+                print("✅ Claude Code ready for instant responses!")
+            else:
+                print(f"❌ Claude Code CLI error: {result.stderr}")
+                self.is_running = False
         except Exception as e:
-            print(f"❌ Failed to start Claude Code: {e}")
-            self.is_ready.set()  # Unblock waiting
-        finally:
+            print(f"❌ Failed to initialize Claude Code: {e}")
             self.is_running = False
     
-    def _read_output(self):
-        """Read output from Claude Code and queue it for streaming"""
-        if not self.process:
+    def send_message_and_get_response(self, message: str) -> Generator[str, None, None]:
+        """Send message to Claude Code and stream response"""
+        if not self.is_running:
+            yield "❌ Claude Code is not running"
             return
             
         try:
-            while self.is_running and self.process.poll() is None:
-                line = self.process.stdout.readline()
-                if line:
-                    self.output_queue.put(line.rstrip())
-                elif self.process.poll() is not None:
+            # Call Claude Code with --print flag for non-interactive output
+            process = subprocess.Popen(
+                ["claude", "--print", "--output-format", "stream-json", "--verbose", message],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                universal_newlines=True,
+                cwd=os.getcwd()
+            )
+            
+            # Stream output in real-time
+            while True:
+                line = process.stdout.readline()
+                if not line:
                     break
+                
+                # Clean up the line and yield if it has content
+                clean_line = line.rstrip()
+                if clean_line:
+                    # Try to parse JSON streaming format
+                    try:
+                        import json
+                        data = json.loads(clean_line)
+                        
+                        # Handle different message types
+                        if data.get('type') == 'assistant' and 'message' in data:
+                            # Extract content from assistant message
+                            message_data = data['message']
+                            if 'content' in message_data:
+                                for content_item in message_data['content']:
+                                    if content_item.get('type') == 'text':
+                                        yield content_item.get('text', '')
+                        elif data.get('type') == 'system':
+                            # Skip system messages (initialization)
+                            continue
+                        elif data.get('type') == 'result':
+                            # Skip result summary messages
+                            continue
+                        else:
+                            # For any other format, try to extract text
+                            if 'content' in data:
+                                yield str(data['content'])
+                            elif 'text' in data:
+                                yield str(data['text'])
+                                
+                    except json.JSONDecodeError:
+                        # If not JSON, yield as is (might be plain text)
+                        yield clean_line
+            
+            # Check for any errors
+            stderr_output = process.stderr.read()
+            if stderr_output:
+                yield f"⚠️ Claude Code stderr: {stderr_output.strip()}"
+            
+            # Wait for process to complete
+            process.wait()
+            
         except Exception as e:
-            print(f"❌ Error reading Claude Code output: {e}")
+            yield f"❌ Error calling Claude Code: {e}"
     
     def send_message(self, message: str):
-        """Send message to Claude Code"""
-        if self.is_running:
-            self.input_queue.put(message)
-        else:
-            print("❌ Claude Code is not running")
+        """Legacy method for compatibility"""
+        # This is now handled in send_message_and_get_response
+        pass
     
     def get_response_stream(self) -> Generator[str, None, None]:
-        """Stream responses from Claude Code in real-time"""
-        response_lines = []
-        start_time = time.time()
-        empty_count = 0
-        
-        while True:
-            try:
-                # Wait for output with timeout
-                line = self.output_queue.get(timeout=0.5)
-                response_lines.append(line)
-                empty_count = 0  # Reset empty counter
-                
-                # Skip empty lines but still yield content
-                if line.strip():
-                    yield line
-                
-                # Check if response seems complete (improved heuristics)
-                if len(response_lines) > 0:
-                    # Look for Claude Code prompt patterns or completion indicators
-                    if any(pattern in line.lower() for pattern in [
-                        "human:", "user:", "assistant:", 
-                        "would you like", "anything else",
-                        "let me know", "i can help"
-                    ]):
-                        # Wait a bit more for any trailing content
-                        time.sleep(0.5)
-                        # Check if there's more content
-                        try:
-                            extra_line = self.output_queue.get_nowait()
-                            if extra_line.strip():
-                                yield extra_line
-                                continue
-                        except queue.Empty:
-                            pass
-                        break
-                        
-            except queue.Empty:
-                empty_count += 1
-                # If we've been waiting too long without output, assume complete
-                if len(response_lines) > 0 and empty_count > 4:  # 2 seconds of no output
-                    break
-                # If we've waited very long with no response at all, timeout
-                if time.time() - start_time > 30:
-                    break
-                continue
+        """Legacy method for compatibility"""
+        # This is now handled in send_message_and_get_response
+        yield "⚠️ Using legacy response stream method"
     
     def shutdown(self):
-        """Gracefully shutdown Claude Code process"""
-        print("\n🔄 Shutting down Claude Code...")
+        """Gracefully shutdown"""
+        print("\n🔄 Shutting down NEXUS Chat...")
         self.is_running = False
-        
-        if self.process:
-            try:
-                self.input_queue.put(None)  # Shutdown signal
-                self.process.stdin.close()
-                self.process.terminate()
-                self.process.wait(timeout=5)
-            except:
-                self.process.kill()
-                
-        print("✅ Claude Code shutdown complete")
+        print("✅ Shutdown complete")
 
 class NexusChat:
     """Main chat interface for NEXUS real-time Claude Code interaction"""
@@ -239,15 +193,12 @@ class NexusChat:
             print("❌ Claude Code is not running. Please restart NEXUS Chat.")
             return
             
-        # Send message to Claude Code
-        self.claude_process.send_message(message)
-        
-        # Stream response in real-time
+        # Send message to Claude Code and stream response
         response_received = False
         response_lines = []
         
         try:
-            for response_line in self.claude_process.get_response_stream():
+            for response_line in self.claude_process.send_message_and_get_response(message):
                 if response_line.strip():
                     print(response_line, flush=True)
                     response_lines.append(response_line)
