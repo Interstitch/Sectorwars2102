@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../utils/auth';
 import PageHeader from '../ui/PageHeader';
+import PlanetDetailModal from '../universe/PlanetDetailModal';
 import './pages.css';
 
 interface Planet {
@@ -34,6 +35,9 @@ const PlanetsManager: React.FC = () => {
   const [filterType, setFilterType] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
+  const [selectedPlanet, setSelectedPlanet] = useState<Planet | null>(null);
+  const [modalMode, setModalMode] = useState<'view' | 'edit'>('view');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchPlanets = async () => {
     try {
@@ -58,6 +62,42 @@ const PlanetsManager: React.FC = () => {
   useEffect(() => {
     fetchPlanets();
   }, [currentPage, filterType]);
+
+  const handleViewPlanet = (planet: Planet) => {
+    setSelectedPlanet(planet);
+    setModalMode('view');
+    setIsModalOpen(true);
+  };
+
+  const handleEditPlanet = (planet: Planet) => {
+    setSelectedPlanet(planet);
+    setModalMode('edit');
+    setIsModalOpen(true);
+  };
+
+  const handleDeletePlanet = async (planet: Planet) => {
+    if (!confirm(`Are you sure you want to delete planet "${planet.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/api/v1/admin/planets/${planet.id}`);
+      setPlanets(planets.filter(p => p.id !== planet.id));
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to delete planet');
+    }
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedPlanet(null);
+  };
+
+  const handlePlanetSave = (updatedPlanet: Planet) => {
+    setPlanets(planets.map(p => p.id === updatedPlanet.id ? updatedPlanet : p));
+    setIsModalOpen(false);
+    setSelectedPlanet(null);
+  };
 
   // Filter and search logic
   const filteredPlanets = planets.filter(planet => {
@@ -188,9 +228,27 @@ const PlanetsManager: React.FC = () => {
                 </td>
                 <td>
                   <div className="action-buttons">
-                    <button className="view-btn" title="View Details">👁️</button>
-                    <button className="edit-btn" title="Edit Planet">✏️</button>
-                    <button className="delete-btn" title="Delete Planet">🗑️</button>
+                    <button 
+                      className="view-btn" 
+                      title="View Details"
+                      onClick={() => handleViewPlanet(planet)}
+                    >
+                      👁️
+                    </button>
+                    <button 
+                      className="edit-btn" 
+                      title="Edit Planet"
+                      onClick={() => handleEditPlanet(planet)}
+                    >
+                      ✏️
+                    </button>
+                    <button 
+                      className="delete-btn" 
+                      title="Delete Planet"
+                      onClick={() => handleDeletePlanet(planet)}
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -223,6 +281,15 @@ const PlanetsManager: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* Planet Detail Modal */}
+      <PlanetDetailModal
+        planet={selectedPlanet}
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onSave={handlePlanetSave}
+        mode={modalMode}
+      />
     </div>
   );
 };

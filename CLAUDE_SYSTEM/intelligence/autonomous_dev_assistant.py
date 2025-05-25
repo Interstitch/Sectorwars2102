@@ -33,11 +33,11 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 import argparse
 
-from .recursive_ai_engine import RecursiveAIEngine, AIInteractionType, AIConfidenceLevel
-from .ai_consciousness import AIDevelopmentConsciousness, AIThoughtType, ConsciousnessLevel
-from .intelligence_integration import NEXUSIntelligenceOrchestrator
-from .multi_claude_orchestrator import MultiClaudeOrchestrator, ClaudeWorkflowType, ClaudeTask
-from .realtime_multi_claude_orchestrator import RealTimeMultiClaudeOrchestrator, RealTimeOutputHandler
+from recursive_ai_engine import RecursiveAIEngine, AIInteractionType, AIConfidenceLevel
+from ai_consciousness import AIDevelopmentConsciousness, AIThoughtType, ConsciousnessLevel
+from intelligence_integration import NEXUSIntelligenceOrchestrator
+from multi_claude_orchestrator import MultiClaudeOrchestrator, ClaudeWorkflowType, ClaudeTask
+from realtime_multi_claude_orchestrator import RealTimeMultiClaudeOrchestrator, RealTimeOutputHandler
 
 
 class AutonomousDevelopmentAssistant:
@@ -2769,7 +2769,7 @@ Built by NEXUS AI - Atlas (Architecture) & Sage (Documentation) collaboration
         
         # Simulate real-time messages
         import time
-        from .realtime_multi_claude_orchestrator import MessageType, RealTimeMessage
+        from realtime_multi_claude_orchestrator import MessageType, RealTimeMessage
         
         messages = [
             (MessageType.ORCHESTRATOR, "orchestrator", "🎯 Analyzing request complexity...", {"phase": "analysis"}),

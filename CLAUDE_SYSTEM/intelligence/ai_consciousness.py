@@ -32,8 +32,8 @@ from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
 
-from .recursive_ai_engine import RecursiveAIEngine, AIInteractionType, AIConfidenceLevel
-from .development_intelligence import DevelopmentIntelligence, DecisionType
+from recursive_ai_engine import RecursiveAIEngine, AIInteractionType, AIConfidenceLevel
+from development_intelligence import DevelopmentIntelligence, DecisionType
 
 
 class ConsciousnessLevel(Enum):

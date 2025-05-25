@@ -32,8 +32,8 @@ from dataclasses import dataclass
 from enum import Enum
 import concurrent.futures
 
-from .multi_claude_orchestrator import MultiClaudeOrchestrator, ClaudeTask, ClaudeInstance, ScratchpadType
-from .nexus_swarm import NEXUSAgent
+from multi_claude_orchestrator import MultiClaudeOrchestrator, ClaudeTask, ClaudeInstance, ScratchpadType
+from nexus_swarm import NEXUSAgent
 
 
 class AgentStatus(Enum):

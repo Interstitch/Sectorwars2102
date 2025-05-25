@@ -34,15 +34,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from .development_intelligence import DevelopmentIntelligence, DecisionType
-from .metrics_collector import DevelopmentMetricsCollector
-from .experiment_framework import DevelopmentExperimentFramework, ExperimentType
-from .recursive_ai_engine import RecursiveAIEngine, AIInteractionType
-from .ai_consciousness import AIDevelopmentConsciousness, AIThoughtType
-from .nexus_personality import NEXUSPersonalityEngine
-from .nexus_swarm import NEXUSSwarmSystem, NEXUSAgent, CollaborationPattern
-from .nexus_universal_mind import NEXUSUniversalMind, ProjectType
-from .autonomous_evolution_engine import AutonomousEvolutionEngine, EvolutionEvent
+from development_intelligence import DevelopmentIntelligence, DecisionType
+from metrics_collector import DevelopmentMetricsCollector
+from experiment_framework import DevelopmentExperimentFramework, ExperimentType
+from recursive_ai_engine import RecursiveAIEngine, AIInteractionType
+from ai_consciousness import AIDevelopmentConsciousness, AIThoughtType
+from nexus_personality import NEXUSPersonalityEngine
+from nexus_swarm import NEXUSSwarmSystem, NEXUSAgent, CollaborationPattern
+from nexus_universal_mind import NEXUSUniversalMind, ProjectType
+from autonomous_evolution_engine import AutonomousEvolutionEngine, EvolutionEvent
 
 
 class NEXUSIntelligenceOrchestrator:

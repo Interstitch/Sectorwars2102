@@ -43,8 +43,8 @@ from dataclasses import dataclass, asdict, field
 from enum import Enum
 import random
 
-from .nexus_personality import NEXUSPersonality, PersonalityTrait, EmotionalState
-from .recursive_ai_engine import RecursiveAIEngine, AIInteractionType
+from nexus_personality import NEXUSPersonality, PersonalityTrait, EmotionalState
+from recursive_ai_engine import RecursiveAIEngine, AIInteractionType
 
 
 class NEXUSAgent(Enum):

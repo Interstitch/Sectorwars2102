@@ -44,9 +44,9 @@ from enum import Enum
 import random
 import math
 
-from .ai_consciousness import ConsciousnessLevel, AIDevelopmentConsciousness
-from .recursive_ai_engine import RecursiveAIEngine
-from .development_intelligence import DevelopmentIntelligence
+from ai_consciousness import ConsciousnessLevel, AIDevelopmentConsciousness
+from recursive_ai_engine import RecursiveAIEngine
+from development_intelligence import DevelopmentIntelligence
 
 
 class EvolutionTrigger(Enum):
