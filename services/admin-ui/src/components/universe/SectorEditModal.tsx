@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/auth';
 import './sector-edit-modal.css';
 
@@ -65,6 +66,10 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showPlanetForm, setShowPlanetForm] = useState(false);
   const [showPortForm, setShowPortForm] = useState(false);
+  const [planetDetails, setPlanetDetails] = useState<any>(null);
+  const [portDetails, setPortDetails] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const navigate = useNavigate();
   const [planetFormData, setPlanetFormData] = useState({
     name: '',
     type: 'TERRAN',
@@ -112,8 +117,33 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
       });
       setHasUnsavedChanges(false);
       setError(null);
+      
+      // Fetch detailed planet and port information
+      fetchSectorDetails();
     }
   }, [sector]);
+
+  const fetchSectorDetails = async () => {
+    if (!sector) return;
+    
+    setLoadingDetails(true);
+    try {
+      // Fetch planet details
+      const planetResponse = await api.get(`/api/v1/admin/sectors/${sector.id}/planet`);
+      setPlanetDetails(planetResponse.data);
+      
+      // Fetch port details
+      const portResponse = await api.get(`/api/v1/admin/sectors/${sector.id}/port`);
+      setPortDetails(portResponse.data);
+    } catch (err) {
+      console.error('Error fetching sector details:', err);
+      // Set empty details if fetch fails
+      setPlanetDetails({ has_planet: false, planet: null });
+      setPortDetails({ has_port: false, port: null });
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -256,6 +286,16 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
     }
   };
 
+  const handleNavigateToPlanet = (planetId: string) => {
+    navigate(`/universe/planets?planetId=${planetId}`);
+    onClose(); // Close the modal when navigating
+  };
+
+  const handleNavigateToPort = (portId: string) => {
+    navigate(`/universe/ports?portId=${portId}`);
+    onClose(); // Close the modal when navigating
+  };
+
   const renderBasicTab = () => (
     <div className="tab-content">
       <div className="form-group">
@@ -330,39 +370,115 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
         <h4>Sector Contents</h4>
         
         <div className="content-toggles">
+          {/* Planet Section */}
           <div className="content-item">
-            <div className="content-status">
-              <span className="content-label">Planet:</span>
-              <span className={`status-indicator ${sector?.has_planet ? 'present' : 'absent'}`}>
-                {sector?.has_planet ? 'Present' : 'None'}
-              </span>
-            </div>
-            {!sector?.has_planet && (
-              <button 
-                type="button"
-                className="create-content-button"
-                onClick={() => handleCreatePlanet()}
+            {loadingDetails ? (
+              <div className="content-loading">Loading planet details...</div>
+            ) : planetDetails?.has_planet ? (
+              <div 
+                className="content-details-box clickable"
+                onClick={() => handleNavigateToPlanet(planetDetails.planet.id)}
               >
-                Create Planet
-              </button>
+                <div className="content-header">
+                  <span className="content-label">Planet:</span>
+                  <span className="content-name">{planetDetails.planet.name}</span>
+                </div>
+                <div className="content-info">
+                  <div className="info-row">
+                    <span className="info-label">Type:</span>
+                    <span className="info-value">{planetDetails.planet.type}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">Size:</span>
+                    <span className="info-value">{planetDetails.planet.size}/10</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">Population:</span>
+                    <span className="info-value">{planetDetails.planet.population.toLocaleString()}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">Habitability:</span>
+                    <span className="info-value">{planetDetails.planet.habitability_score}%</span>
+                  </div>
+                  {planetDetails.planet.owner_name && (
+                    <div className="info-row">
+                      <span className="info-label">Owner:</span>
+                      <span className="info-value">{planetDetails.planet.owner_name}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="click-hint">Click to edit planet</div>
+              </div>
+            ) : (
+              <div className="content-absent">
+                <div className="content-status">
+                  <span className="content-label">Planet:</span>
+                  <span className="status-indicator absent">None</span>
+                </div>
+                <button 
+                  type="button"
+                  className="create-content-button"
+                  onClick={() => handleCreatePlanet()}
+                >
+                  Create Planet
+                </button>
+              </div>
             )}
           </div>
 
+          {/* Port Section */}
           <div className="content-item">
-            <div className="content-status">
-              <span className="content-label">Port:</span>
-              <span className={`status-indicator ${sector?.has_port ? 'present' : 'absent'}`}>
-                {sector?.has_port ? 'Present' : 'None'}
-              </span>
-            </div>
-            {!sector?.has_port && (
-              <button 
-                type="button"
-                className="create-content-button"
-                onClick={() => handleCreatePort()}
+            {loadingDetails ? (
+              <div className="content-loading">Loading port details...</div>
+            ) : portDetails?.has_port ? (
+              <div 
+                className="content-details-box clickable"
+                onClick={() => handleNavigateToPort(portDetails.port.id)}
               >
-                Create Port
-              </button>
+                <div className="content-header">
+                  <span className="content-label">Port:</span>
+                  <span className="content-name">{portDetails.port.name}</span>
+                </div>
+                <div className="content-info">
+                  <div className="info-row">
+                    <span className="info-label">Class:</span>
+                    <span className="info-value">Class {portDetails.port.port_class}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">Type:</span>
+                    <span className="info-value">{portDetails.port.type}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">Size:</span>
+                    <span className="info-value">{portDetails.port.size}/10</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">Trade Volume:</span>
+                    <span className="info-value">{portDetails.port.trade_volume}</span>
+                  </div>
+                  {portDetails.port.faction_affiliation && (
+                    <div className="info-row">
+                      <span className="info-label">Faction:</span>
+                      <span className="info-value">{portDetails.port.faction_affiliation}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="click-hint">Click to edit port</div>
+              </div>
+            ) : (
+              <div className="content-absent">
+                <div className="content-status">
+                  <span className="content-label">Port:</span>
+                  <span className="status-indicator absent">None</span>
+                </div>
+                <button 
+                  type="button"
+                  className="create-content-button"
+                  onClick={() => handleCreatePort()}
+                >
+                  Create Port
+                </button>
+              </div>
             )}
           </div>
         </div>

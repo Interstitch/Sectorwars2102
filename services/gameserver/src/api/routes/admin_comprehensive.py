@@ -1765,6 +1765,117 @@ async def create_port_in_sector(
         logger.error(f"Error creating port in sector {sector_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create port: {str(e)}")
 
+@router.get("/sectors/{sector_id}/planet", response_model=Dict[str, Any])
+async def get_sector_planet(
+    sector_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get detailed planet information for a specific sector"""
+    try:
+        # Find the sector
+        if len(sector_id) > 10:  # UUID length check
+            sector = db.query(Sector).filter(Sector.id == uuid.UUID(sector_id)).first()
+        else:
+            sector = db.query(Sector).filter(Sector.sector_id == int(sector_id)).first()
+        
+        if not sector:
+            raise HTTPException(status_code=404, detail="Sector not found")
+        
+        # Find the planet in this sector
+        planet = db.query(Planet).filter(Planet.sector_uuid == sector.id).first()
+        
+        if not planet:
+            return {"has_planet": False, "planet": None}
+        
+        # Get owner information if planet is owned
+        owner_name = None
+        if planet.owner_id:
+            owner = db.query(Player).join(User).filter(Player.id == planet.owner_id).first()
+            if owner:
+                owner_name = owner.user.username
+        
+        return {
+            "has_planet": True,
+            "planet": {
+                "id": str(planet.id),
+                "name": planet.name,
+                "type": planet.type.value,
+                "status": planet.status.value,
+                "size": planet.size,
+                "position": planet.position,
+                "gravity": planet.gravity,
+                "temperature": planet.temperature,
+                "water_coverage": planet.water_coverage,
+                "habitability_score": planet.habitability_score,
+                "radiation_level": planet.radiation_level,
+                "resource_richness": planet.resource_richness,
+                "population": planet.population,
+                "max_population": planet.max_population,
+                "defense_level": planet.defense_level,
+                "owner_id": str(planet.owner_id) if planet.owner_id else None,
+                "owner_name": owner_name,
+                "colonized_at": planet.colonized_at.isoformat() if planet.colonized_at else None,
+                "created_at": planet.created_at.isoformat()
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting planet for sector {sector_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get sector planet: {str(e)}")
+
+@router.get("/sectors/{sector_id}/port", response_model=Dict[str, Any])
+async def get_sector_port(
+    sector_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get detailed port information for a specific sector"""
+    try:
+        # Find the sector
+        if len(sector_id) > 10:  # UUID length check
+            sector = db.query(Sector).filter(Sector.id == uuid.UUID(sector_id)).first()
+        else:
+            sector = db.query(Sector).filter(Sector.sector_id == int(sector_id)).first()
+        
+        if not sector:
+            raise HTTPException(status_code=404, detail="Sector not found")
+        
+        # Find the port in this sector
+        port = db.query(Port).filter(Port.sector_uuid == sector.id).first()
+        
+        if not port:
+            return {"has_port": False, "port": None}
+        
+        # Get owner information if port is owned
+        owner_name = None
+        if port.owner_id:
+            owner = db.query(Player).join(User).filter(Player.id == port.owner_id).first()
+            if owner:
+                owner_name = owner.user.username
+        
+        return {
+            "has_port": True,
+            "port": {
+                "id": str(port.id),
+                "name": port.name,
+                "port_class": port.port_class.value,
+                "type": port.type.value,
+                "status": port.status.value,
+                "size": port.size,
+                "faction_affiliation": port.faction_affiliation,
+                "trade_volume": port.trade_volume,
+                "market_volatility": port.market_volatility,
+                "owner_id": str(port.owner_id) if port.owner_id else None,
+                "owner_name": owner_name,
+                "created_at": port.created_at.isoformat()
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting port for sector {sector_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get sector port: {str(e)}")
+
 @router.get("/warp-tunnels", response_model=Dict[str, Any])
 async def get_warp_tunnels(
     page: int = Query(1, ge=1),
