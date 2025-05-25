@@ -20,13 +20,23 @@ const AdminDashboard: React.FC = () => {
     error
   } = useAdmin();
   
+  // Debug logging for adminStats
+  console.log('🎯 AdminDashboard: adminStats value:', adminStats);
+  console.log('🎯 AdminDashboard: adminStats type:', typeof adminStats);
+  
   useEffect(() => {
-    // Reload data on component mount
-    loadAdminStats();
-    loadGalaxyInfo();
-    loadUsers();
-    loadPlayers();
-  }, []);
+    // Only load data if user is authenticated and is admin
+    console.log('🎯 AdminDashboard useEffect: user:', user?.username, 'is_admin:', user?.is_admin);
+    if (user && user.is_admin) {
+      console.log('🎯 AdminDashboard: Loading data...');
+      loadAdminStats();
+      loadGalaxyInfo();
+      loadUsers();
+      loadPlayers();
+    } else {
+      console.log('🎯 AdminDashboard: Not loading data - user not ready or not admin');
+    }
+  }, [user, loadAdminStats, loadGalaxyInfo, loadUsers, loadPlayers]);
   
   // Load regions when galaxy info is loaded
   useEffect(() => {
@@ -60,27 +70,31 @@ const AdminDashboard: React.FC = () => {
                 <h3>System Statistics</h3>
                 <div className="stats-grid">
                   <div className="stat-card">
-                    <div className="stat-value">{adminStats?.totalUsers || 0}</div>
+                    <div className="stat-value">{adminStats?.totalUsers ?? 'Loading...'}</div>
                     <div className="stat-label">Total Users</div>
+                    <small>Debug: {JSON.stringify(adminStats?.totalUsers)}</small>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-value">{adminStats?.activePlayers || 0}</div>
+                    <div className="stat-value">{adminStats?.activePlayers ?? 'Loading...'}</div>
                     <div className="stat-label">Active Players</div>
+                    <small>Debug: {JSON.stringify(adminStats?.activePlayers)}</small>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-value">{galaxyState?.statistics?.total_sectors || 0}</div>
+                    <div className="stat-value">{galaxyState?.statistics?.total_sectors ?? 'Loading...'}</div>
                     <div className="stat-label">Total Sectors</div>
+                    <small>Debug: {JSON.stringify(galaxyState?.statistics?.total_sectors)}</small>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-value">{galaxyState?.statistics?.planet_count || 0}</div>
+                    <div className="stat-value">{galaxyState?.statistics?.planet_count ?? 'Loading...'}</div>
                     <div className="stat-label">Planets</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-value">{adminStats?.totalShips || 0}</div>
+                    <div className="stat-value">{adminStats?.totalShips ?? 'Loading...'}</div>
                     <div className="stat-label">Ships</div>
+                    <small>Debug: {JSON.stringify(adminStats?.totalShips)}</small>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-value">{adminStats?.playerSessions || 0}</div>
+                    <div className="stat-value">{adminStats?.playerSessions ?? 'Loading...'}</div>
                     <div className="stat-label">Active Sessions</div>
                   </div>
                 </div>

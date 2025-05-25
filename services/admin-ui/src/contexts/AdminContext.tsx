@@ -197,16 +197,27 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   
   // Load admin stats
   const loadAdminStats = async () => {
-    if (!user || !user.is_admin) return;
+    console.log('🔍 loadAdminStats called');
+    console.log('🔍 User:', user?.username, 'is_admin:', user?.is_admin);
+    console.log('🔍 Token available:', !!token);
     
+    if (!user || !user.is_admin) {
+      console.log('🔍 loadAdminStats: User check failed, not loading');
+      return;
+    }
+    
+    console.log('🔍 loadAdminStats: Starting API call...');
     setIsLoading(true);
     setError(null);
     
     try {
       const response = await api.get<AdminStats>('/api/v1/admin/stats');
+      console.log('🔍 loadAdminStats: API Response status:', response.status);
+      console.log('🔍 loadAdminStats: API Response data:', response.data);
+      console.log('🔍 loadAdminStats: Setting adminStats to:', response.data);
       setAdminStats(response.data);
     } catch (error) {
-      console.error('Error loading admin stats:', error);
+      console.error('🔍 Error loading admin stats:', error);
       setError('Failed to load admin statistics');
       setAdminStats(null);
     } finally {
