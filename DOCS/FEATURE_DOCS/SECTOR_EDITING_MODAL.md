@@ -29,9 +29,11 @@ The Sector Editing Modal allows administrators to modify all sector parameters d
 - **Description**: Optional text area for sector description
 - **Coordinates**: X, Y, Z coordinate inputs with validation
 - **Sector Contents**: Planet and port management:
-  - **Planet Status**: Visual indicator showing if sector has a planet
+  - **Planet Details**: Comprehensive information display including name, type, size, population, habitability score, and owner
+  - **Planet Navigation**: Click planet box to navigate to planet CRUD edit page
   - **Planet Creation**: "Create Planet" button when no planet exists
-  - **Port Status**: Visual indicator showing if sector has a port
+  - **Port Details**: Comprehensive information display including name, class, type, size, trade volume, and faction affiliation
+  - **Port Navigation**: Click port box to navigate to port CRUD edit page  
   - **Port Creation**: "Create Port" button when no port exists
 
 #### 2. Physical Properties
@@ -55,7 +57,9 @@ The Sector Editing Modal allows administrators to modify all sector parameters d
 - **Error Handling**: Clear error messages with actionable guidance
 - **Clickable Rows**: Entire sector row is clickable to open edit modal
 - **Content Creation**: Inline planet and port creation forms
-- **Visual Status Indicators**: Clear present/absent status for sector contents
+- **Detailed Content Display**: Comprehensive planet and port information with key metrics
+- **Navigation Integration**: Click planet/port details to jump to dedicated CRUD edit pages
+- **Loading States**: Smooth loading indicators while fetching detailed information
 
 ## Technical Implementation
 
@@ -74,6 +78,16 @@ POST /api/v1/admin/sectors/{sector_id}/planet
 #### Port Creation Endpoint
 ```
 POST /api/v1/admin/sectors/{sector_id}/port
+```
+
+#### Planet Details Endpoint
+```
+GET /api/v1/admin/sectors/{sector_id}/planet
+```
+
+#### Port Details Endpoint
+```
+GET /api/v1/admin/sectors/{sector_id}/port
 ```
 
 #### Sector Update Request Body
@@ -150,6 +164,45 @@ POST /api/v1/admin/sectors/{sector_id}/port
   "sector_id": "sector-uuid",
   "sector_number": 1234
 }
+
+// Planet Details Response
+{
+  "has_planet": true,
+  "planet": {
+    "id": "planet-uuid",
+    "name": "Verdant Prime",
+    "type": "TERRAN",
+    "status": "COLONIZED",
+    "size": 7,
+    "position": 3,
+    "gravity": 1.2,
+    "temperature": 15.0,
+    "water_coverage": 65.0,
+    "habitability_score": 85,
+    "population": 25000,
+    "max_population": 100000,
+    "defense_level": 3,
+    "owner_name": "PlayerName",
+    "colonized_at": "2024-01-15T10:30:00Z"
+  }
+}
+
+// Port Details Response
+{
+  "has_port": true,
+  "port": {
+    "id": "port-uuid",
+    "name": "Trading Hub Alpha",
+    "port_class": 6,
+    "type": "TRADING",
+    "status": "OPERATIONAL",
+    "size": 8,
+    "faction_affiliation": "Federation",
+    "trade_volume": 500,
+    "market_volatility": 30,
+    "owner_name": "PlayerName"
+  }
+}
 ```
 
 #### Validation Rules
@@ -203,7 +256,9 @@ services/admin-ui/src/components/universe/
    - Set controlling faction for roleplay purposes
    - Assign team control for gameplay mechanics
 5. **Sector Contents**:
-   - View current planet/port status with visual indicators
+   - View detailed planet information including type, size, population, habitability, and owner
+   - View detailed port information including class, type, size, trade volume, and faction
+   - Click planet/port boxes to navigate to their dedicated CRUD edit pages
    - Create planets when none exist (12 planet types available)
    - Create ports when none exist (12 port classes, 10 port types)
    - Each sector can have only one planet and one port maximum
