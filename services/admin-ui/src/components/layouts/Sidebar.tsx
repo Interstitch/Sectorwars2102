@@ -4,7 +4,6 @@ import LogoutButton from '../auth/LogoutButton';
 import GameServerStatus from '../ui/GameServerStatus';
 import AIHealthStatus from '../ui/AIHealthStatus';
 import DatabaseHealthStatus from '../ui/DatabaseHealthStatus';
-import './layouts.css';
 
 const Sidebar: React.FC = () => {
   return (
@@ -19,7 +18,7 @@ const Sidebar: React.FC = () => {
           <li className="nav-item">
             <NavLink 
               to="/dashboard" 
-              className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+              className={({ isActive }) => isActive ? 'nav-link nav-link-active' : 'nav-link'}
             >
               <span className="nav-icon">📊</span>
               <span className="nav-text">Dashboard</span>

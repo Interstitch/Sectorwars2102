@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Sidebar from './Sidebar';
-import './layouts.css';
 
 const AppLayout: React.FC = () => {
   const { isLoading, isAuthenticated } = useAuth();
@@ -72,7 +71,7 @@ const AppLayout: React.FC = () => {
       return (
         <div className="app-container">
           <main className="main-content">
-            <div className="loading-error">
+            <div className="alert alert-error">
               <h2>Authentication Timeout</h2>
               <p>We couldn't authenticate you automatically. Please log in again.</p>
               <Navigate to="/login" replace />
@@ -83,8 +82,8 @@ const AppLayout: React.FC = () => {
     }
     
     return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
+      <div className="loading-state">
+        <div className="spinner"></div>
         <p>Loading authentication...</p>
       </div>
     );
