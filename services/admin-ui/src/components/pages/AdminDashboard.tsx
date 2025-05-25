@@ -23,6 +23,29 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     // Reload data on component mount
     console.log('AdminDashboard: Loading data on mount...');
+    
+    // Direct API test to bypass AdminContext
+    const testDirectAPI = async () => {
+      try {
+        console.log('DIRECT API TEST: Making request to /api/v1/admin/stats');
+        const response = await fetch('/api/v1/admin/stats', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('DIRECT API TEST: Response status:', response.status);
+        console.log('DIRECT API TEST: Response ok:', response.ok);
+        
+        const data = await response.json();
+        console.log('DIRECT API TEST: Response data:', data);
+      } catch (error) {
+        console.error('DIRECT API TEST: Error:', error);
+      }
+    };
+    
+    testDirectAPI();
+    
     loadAdminStats();
     loadGalaxyInfo();
     loadUsers();
