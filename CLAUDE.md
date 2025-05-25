@@ -598,6 +598,7 @@ python CLAUDE_SYSTEM/claude-system.py --quick   # Quick health check (Phase 0)
 python CLAUDE_SYSTEM/claude-system.py --analyze # Full analysis (Phase 1, 6)
 python CLAUDE_SYSTEM/claude-system.py --heal    # Auto-fix issues (Phase 6)
 python CLAUDE_SYSTEM/claude-system.py --report  # Generate metrics (Phase 6)
+python CLAUDE_SYSTEM/claude-system.py --install-hooks  # Install/update git hooks
 
 # Container Operations (IN CONTAINERS)
 docker-compose exec player-client npm run lint      # Code style check

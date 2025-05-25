@@ -43,6 +43,7 @@ Examples:
   python claude-system.py --heal          # Self-healing mode
   python claude-system.py --learn         # Pattern learning mode
   python claude-system.py --report        # Generate reports only
+  python claude-system.py --install-hooks # Install/update git hooks
   python claude-system.py --version       # Show version info
 
 Version: {SYSTEM_VERSION}
@@ -58,6 +59,7 @@ Release: {RELEASE_DATE}
     parser.add_argument("--report", action="store_true", help="Generate reports only")
     parser.add_argument("--version", action="store_true", help="Show version information")
     parser.add_argument("--force-init", action="store_true", help="Force re-initialization")
+    parser.add_argument("--install-hooks", action="store_true", help="Install/update git hooks")
     parser.add_argument("--project-root", default="..", help="Project root directory (default: parent of CLAUDE_SYSTEM)")
     parser.add_argument("--test", metavar="COMMAND", help="Run specific test command and integrate results (e.g., 'npm test')")
     
@@ -68,6 +70,25 @@ Release: {RELEASE_DATE}
             print(f"CLAUDE.md Modular Quality System v{SYSTEM_VERSION}")
             print(f"Release Date: {RELEASE_DATE}")
             print("Modular self-improving development platform")
+            return
+        
+        if args.install_hooks:
+            from healers.git_hooks import GitHooksHealer
+            project_root = Path(args.project_root).resolve()
+            healer = GitHooksHealer(project_root)
+            
+            print(f"🔧 Installing git hooks for project: {project_root.name}")
+            result = healer.heal()
+            
+            if result["success"]:
+                print("✅ Git hooks installed successfully:")
+                for action in result["actions_taken"]:
+                    print(f"   • {action}")
+            else:
+                print("❌ Git hooks installation failed:")
+                for error in result["errors"]:
+                    print(f"   • {error}")
+                sys.exit(1)
             return
         
         # Import the main system class (only when needed)

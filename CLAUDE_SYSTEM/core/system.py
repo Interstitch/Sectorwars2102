@@ -66,7 +66,8 @@ class CLAUDEQualitySystem:
         self.healers = {
             'project_structure': project_structure.ProjectStructureHealer(project_root),
             'missing_files': missing_files.MissingFilesHealer(project_root),
-            'documentation': doc_healer.DocumentationHealer(project_root)
+            'documentation': doc_healer.DocumentationHealer(project_root),
+            'git_hooks': git_hooks.GitHooksHealer(project_root)
         }
         
         # Store results
@@ -192,6 +193,9 @@ class CLAUDEQualitySystem:
         # Create essential files
         self._create_essential_files()
         
+        # Install git hooks
+        self._install_git_hooks()
+        
         print("    ✓ Project initialization completed")
     
     def _setup_claude_md(self, force_init: bool = False) -> None:
@@ -263,6 +267,19 @@ build/
 """
             gitignore_path.write_text(gitignore_content)
             print("    ✓ Created .gitignore")
+    
+    def _install_git_hooks(self) -> None:
+        """Install git hooks for CLAUDE system"""
+        if self._check_git_repository():
+            git_hooks_healer = self.healers.get('git_hooks')
+            if git_hooks_healer:
+                result = git_hooks_healer.heal()
+                if result["success"]:
+                    print("    ✓ Installed git hooks")
+                else:
+                    print("    ⚠️  Failed to install git hooks")
+        else:
+            print("    ⚠️  Not a git repository - skipping git hooks installation")
     
     def _run_deep_analysis(self) -> None:
         """Run comprehensive analysis using all analyzers"""
