@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAdmin } from '../../contexts/AdminContext';
+import { api } from '../../utils/auth';
 import './sectors-manager.css';
 
 interface Sector {
@@ -70,25 +71,21 @@ const SectorsManager: React.FC = () => {
       setSectorLoading(true);
       
       try {
-        // Build query parameters for GET request
-        const params = new URLSearchParams();
-        if (selectedRegion) params.set('filter_region', selectedRegion);
-        if (selectedCluster) params.set('filter_cluster', selectedCluster);
-        if (filterHasPort !== null) params.set('filter_has_port', filterHasPort.toString());
-        if (filterHasPlanet !== null) params.set('filter_has_planet', filterHasPlanet.toString());
-        if (filterDiscovered !== null) params.set('filter_discovered', filterDiscovered.toString());
-        if (searchQuery.trim()) params.set('search', searchQuery.trim());
-        params.set('page', currentPage.toString());
-        params.set('limit', itemsPerPage.toString());
-
-        const response = await fetch(`/api/v1/admin/sectors?${params.toString()}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+        // Use authenticated API with query parameters
+        const response = await api.get('/api/v1/admin/sectors', {
+          params: {
+            filter_region: selectedRegion || undefined,
+            filter_cluster: selectedCluster || undefined,
+            filter_has_port: filterHasPort !== null ? filterHasPort : undefined,
+            filter_has_planet: filterHasPlanet !== null ? filterHasPlanet : undefined,
+            filter_discovered: filterDiscovered !== null ? filterDiscovered : undefined,
+            search: searchQuery.trim() || undefined,
+            page: currentPage,
+            limit: itemsPerPage
+          }
         });
         
-        const data = await response.json();
+        const data = response.data as { sectors: Sector[]; total_count?: number; };
         setSectors(data.sectors || []);
       } catch (error) {
         console.error('Error fetching sectors:', error);
