@@ -1781,13 +1781,14 @@ async def create_port_in_sector(
         logger.error(f"Error creating port in sector {sector_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create port: {str(e)}")
 
-@router.get("/sectors/{sector_id}/planet", response_model=Dict[str, Any])
+@router.get("/sectors/{sector_id}/planet")
 async def get_sector_planet(
     sector_id: str,
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Get detailed planet information for a specific sector"""
+    logger.info(f"Getting planet for sector {sector_id}")
     try:
         # Find the sector - try UUID first, fallback to integer sector_id
         sector = None
@@ -1807,7 +1808,9 @@ async def get_sector_planet(
             raise HTTPException(status_code=404, detail="Sector not found")
         
         # Find the planet in this sector
+        logger.info(f"Looking for planet in sector with id: {sector.id}")
         planet = db.query(Planet).filter(Planet.sector_uuid == sector.id).first()
+        logger.info(f"Found planet: {planet}")
         
         if not planet:
             return {"has_planet": False, "planet": None}
@@ -1824,8 +1827,8 @@ async def get_sector_planet(
             "planet": {
                 "id": str(planet.id),
                 "name": planet.name,
-                "type": planet.type.value,
-                "status": planet.status.value,
+                "type": planet.type.value if planet.type else None,
+                "status": planet.status.value if planet.status else None,
                 "size": planet.size,
                 "position": planet.position,
                 "gravity": planet.gravity,
@@ -1844,11 +1847,16 @@ async def get_sector_planet(
             }
         }
         
+    except ValueError as ve:
+        logger.error(f"Validation error getting planet for sector {sector_id}: {ve}")
+        raise HTTPException(status_code=422, detail=f"Validation error: {str(ve)}")
     except Exception as e:
         logger.error(f"Error getting planet for sector {sector_id}: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Failed to get sector planet: {str(e)}")
 
-@router.get("/sectors/{sector_id}/port", response_model=Dict[str, Any])
+@router.get("/sectors/{sector_id}/port")
 async def get_sector_port(
     sector_id: str,
     current_admin: User = Depends(get_current_admin),
@@ -1904,8 +1912,13 @@ async def get_sector_port(
             }
         }
         
+    except ValueError as ve:
+        logger.error(f"Validation error getting port for sector {sector_id}: {ve}")
+        raise HTTPException(status_code=422, detail=f"Validation error: {str(ve)}")
     except Exception as e:
         logger.error(f"Error getting port for sector {sector_id}: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Failed to get sector port: {str(e)}")
 
 @router.get("/warp-tunnels", response_model=Dict[str, Any])
