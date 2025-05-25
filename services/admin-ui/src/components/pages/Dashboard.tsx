@@ -325,83 +325,78 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <span className="stat-icon">🌌</span>
-                <h4>Universe</h4>
+            <div className="dashboard-stat-card">
+              <div className="dashboard-stat-header">
+                <span className="dashboard-stat-icon">🌌</span>
+                <h4 className="dashboard-stat-title">Universe</h4>
               </div>
-              <div className="stat-card-content">
-                <Link to="/universe/sectors" className="primary-stat clickable-stat">
-                  <span className="stat-number">{dashboardData.universe_stats.total_sectors.toLocaleString()}</span>
-                  <span className="stat-label">Sectors →</span>
+              <Link to="/universe/sectors" className="block text-center mb-4 hover:opacity-80 transition-opacity">
+                <div className="dashboard-stat-value">
+                  {dashboardData.universe_stats.total_sectors.toLocaleString()}
+                </div>
+                <div className="text-xs text-tertiary">Sectors →</div>
+              </Link>
+              <div className="grid grid-cols-3 gap-2">
+                <Link to="/universe/planets" className="text-center hover:opacity-80 transition-opacity">
+                  <div className="text-lg font-semibold text-secondary">{dashboardData.universe_stats.total_planets}</div>
+                  <div className="text-xs text-tertiary">Planets →</div>
                 </Link>
-                <div className="secondary-stats">
-                  <Link to="/universe/planets" className="secondary-stat clickable-stat">
-                    <span className="secondary-number">{dashboardData.universe_stats.total_planets}</span>
-                    <span className="secondary-label">Planets →</span>
-                  </Link>
-                  <Link to="/universe/ports" className="secondary-stat clickable-stat">
-                    <span className="secondary-number">{dashboardData.universe_stats.total_ports}</span>
-                    <span className="secondary-label">Ports →</span>
-                  </Link>
-                  <Link to="/universe/warptunnels" className="secondary-stat clickable-stat">
-                    <span className="secondary-number">{dashboardData.universe_stats.total_warp_tunnels || 0}</span>
-                    <span className="secondary-label">Warp Tunnels →</span>
-                  </Link>
+                <Link to="/universe/ports" className="text-center hover:opacity-80 transition-opacity">
+                  <div className="text-lg font-semibold text-secondary">{dashboardData.universe_stats.total_ports}</div>
+                  <div className="text-xs text-tertiary">Ports →</div>
+                </Link>
+                <Link to="/universe/warptunnels" className="text-center hover:opacity-80 transition-opacity">
+                  <div className="text-lg font-semibold text-secondary">{dashboardData.universe_stats.total_warp_tunnels || 0}</div>
+                  <div className="text-xs text-tertiary">Warp Tunnels →</div>
+                </Link>
+              </div>
+            </div>
+
+            <div className="dashboard-stat-card">
+              <div className="dashboard-stat-header">
+                <span className="dashboard-stat-icon">🚀</span>
+                <h4 className="dashboard-stat-title">Fleet</h4>
+              </div>
+              <div className="dashboard-stat-value">
+                {dashboardData.universe_stats.total_ships.toLocaleString()}
+              </div>
+              <div className="flex justify-between">
+                <div className="text-center">
+                  <div className="text-xl font-semibold text-secondary">{Math.floor(dashboardData.universe_stats.total_ships * 0.7)}</div>
+                  <div className="text-xs text-tertiary">Active</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl font-semibold text-secondary">{Math.floor(dashboardData.universe_stats.total_ships * 0.3)}</div>
+                  <div className="text-xs text-tertiary">Docked</div>
                 </div>
               </div>
             </div>
 
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <span className="stat-icon">🚀</span>
-                <h4>Fleet</h4>
+            <div className="dashboard-stat-card">
+              <div className="dashboard-stat-header">
+                <span className="dashboard-stat-icon">📈</span>
+                <h4 className="dashboard-stat-title">Growth</h4>
               </div>
-              <div className="stat-card-content">
-                <div className="primary-stat">
-                  <span className="stat-number">{dashboardData.universe_stats.total_ships.toLocaleString()}</span>
-                  <span className="stat-label">Total Ships</span>
-                </div>
-                <div className="secondary-stats">
-                  <div className="secondary-stat">
-                    <span className="secondary-number">{Math.floor(dashboardData.universe_stats.total_ships * 0.7)}</span>
-                    <span className="secondary-label">Active</span>
-                  </div>
-                  <div className="secondary-stat">
-                    <span className="secondary-number">{Math.floor(dashboardData.universe_stats.total_ships * 0.3)}</span>
-                    <span className="secondary-label">Docked</span>
-                  </div>
-                </div>
+              <div className="dashboard-stat-value">
+                {dashboardData.player_stats.new_this_week}
               </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <span className="stat-icon">📈</span>
-                <h4>Growth</h4>
-              </div>
-              <div className="stat-card-content">
-                <div className="primary-stat">
-                  <span className="stat-number">{dashboardData.player_stats.new_this_week}</span>
-                  <span className="stat-label">New This Week</span>
+              <div className="text-xs text-tertiary mb-4">New This Week</div>
+              <div className="flex justify-between">
+                <div className="text-center">
+                  <div className="text-xl font-semibold text-secondary">
+                    {dashboardData.player_stats.total_players > 0 
+                      ? Math.round((dashboardData.player_stats.active_sessions / dashboardData.player_stats.total_players) * 100)
+                      : 0}%
+                  </div>
+                  <div className="text-xs text-tertiary">Active Rate</div>
                 </div>
-                <div className="secondary-stats">
-                  <div className="secondary-stat">
-                    <span className="secondary-number">
-                      {dashboardData.player_stats.total_players > 0 
-                        ? Math.round((dashboardData.player_stats.active_sessions / dashboardData.player_stats.total_players) * 100)
-                        : 0}%
-                    </span>
-                    <span className="secondary-label">Active Rate</span>
+                <div className="text-center">
+                  <div className="text-xl font-semibold text-secondary">
+                    +{dashboardData.player_stats.total_players > 0 
+                      ? Math.round((dashboardData.player_stats.new_this_week / dashboardData.player_stats.total_players) * 100)
+                      : 0}%
                   </div>
-                  <div className="secondary-stat">
-                    <span className="secondary-number">
-                      +{dashboardData.player_stats.total_players > 0 
-                        ? Math.round((dashboardData.player_stats.new_this_week / dashboardData.player_stats.total_players) * 100)
-                        : 0}%
-                    </span>
-                    <span className="secondary-label">Weekly Growth</span>
-                  </div>
+                  <div className="text-xs text-tertiary">Weekly Growth</div>
                 </div>
               </div>
             </div>
@@ -409,38 +404,59 @@ const Dashboard: React.FC = () => {
         </section>
 
         {/* Quick Access Section */}
-        <section className="admin-cards-section">
-          <h3>Quick Access</h3>
-          <div className="admin-cards-grid">
-            <Link to="/users" className="admin-card">
-              <div className="card-icon">👥</div>
-              <div className="card-content">
-                <h4>Users</h4>
-                <p>Manage player accounts and permissions</p>
+        <section className="section">
+          <div className="section-header">
+            <div>
+              <h3 className="section-title">Quick Access</h3>
+              <p className="section-subtitle">Commonly used administrative functions</p>
+            </div>
+          </div>
+          <div className="grid grid-auto-fit gap-6">
+            <Link to="/users" className="card card-interactive">
+              <div className="card-body">
+                <div className="flex items-center gap-4">
+                  <div className="text-3xl">👥</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-primary mb-1">Users</h4>
+                    <p className="text-sm text-tertiary">Manage player accounts and permissions</p>
+                  </div>
+                </div>
               </div>
             </Link>
             
-            <Link to="/universe" className="admin-card">
-              <div className="card-icon">🌌</div>
-              <div className="card-content">
-                <h4>Universe</h4>
-                <p>Generate and manage the game universe</p>
+            <Link to="/universe" className="card card-interactive">
+              <div className="card-body">
+                <div className="flex items-center gap-4">
+                  <div className="text-3xl">🌌</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-primary mb-1">Universe</h4>
+                    <p className="text-sm text-tertiary">Generate and manage the game universe</p>
+                  </div>
+                </div>
               </div>
             </Link>
             
-            <Link to="/sectors" className="admin-card">
-              <div className="card-icon">🔳</div>
-              <div className="card-content">
-                <h4>Sectors</h4>
-                <p>Configure sectors, planets and stations</p>
+            <Link to="/sectors" className="card card-interactive">
+              <div className="card-body">
+                <div className="flex items-center gap-4">
+                  <div className="text-3xl">🔳</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-primary mb-1">Sectors</h4>
+                    <p className="text-sm text-tertiary">Configure sectors, planets and stations</p>
+                  </div>
+                </div>
               </div>
             </Link>
             
-            <Link to="/analytics" className="admin-card">
-              <div className="card-icon">📊</div>
-              <div className="card-content">
-                <h4>Analytics</h4>
-                <p>View detailed reports and metrics</p>
+            <Link to="/analytics" className="card card-interactive">
+              <div className="card-body">
+                <div className="flex items-center gap-4">
+                  <div className="text-3xl">📊</div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-primary mb-1">Analytics</h4>
+                    <p className="text-sm text-tertiary">View detailed reports and metrics</p>
+                  </div>
+                </div>
               </div>
             </Link>
           </div>

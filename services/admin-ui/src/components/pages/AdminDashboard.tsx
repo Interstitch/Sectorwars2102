@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
-import './admin-dashboard.css';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -38,86 +37,112 @@ const AdminDashboard: React.FC = () => {
   }, [galaxyState]);
   
   return (
-    <div className="admin-dashboard">
-        <div className="dashboard-header">
-          <h2>Universe Administration</h2>
-          <div className="welcome-message">Welcome, {user?.username}</div>
+    <div className="page-container">
+        <div className="page-header">
+          <h1 className="page-title">Universe Administration</h1>
+          <p className="page-subtitle">Welcome, {user?.username}</p>
         </div>
         
         {error && (
-          <div className="error-message">
+          <div className="alert alert-error">
             {error}
           </div>
         )}
         
         {isLoading ? (
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p>Loading dashboard data...</p>
+          <div className="flex flex-col items-center justify-center p-8">
+            <div className="loading-spinner mb-4"></div>
+            <p className="text-secondary">Loading dashboard data...</p>
           </div>
         ) : (
-          <div className="dashboard-content">
-            <div className="dashboard-grid">
-              <section className="stats-panel">
-                <h3>System Statistics</h3>
-                <div className="stats-grid">
-                  <div className="stat-card">
-                    <div className="stat-value">{adminStats?.totalUsers ?? '...'}</div>
-                    <div className="stat-label">Total Users</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value">{adminStats?.activePlayers ?? '...'}</div>
-                    <div className="stat-label">Active Players</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value">{galaxyState?.statistics?.total_sectors ?? '...'}</div>
-                    <div className="stat-label">Total Sectors</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value">{galaxyState?.statistics?.planet_count ?? '...'}</div>
-                    <div className="stat-label">Planets</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value">{adminStats?.totalShips ?? '...'}</div>
-                    <div className="stat-label">Ships</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value">{adminStats?.playerSessions ?? '...'}</div>
-                    <div className="stat-label">Active Sessions</div>
-                  </div>
+          <div className="page-content">
+            <section className="section">
+              <div className="section-header">
+                <div>
+                  <h3 className="section-title">System Statistics</h3>
+                  <p className="section-subtitle">Overview of system resources and activity</p>
                 </div>
-              </section>
+              </div>
+              <div className="grid grid-auto-fit gap-6">
+                <div className="dashboard-stat-card">
+                  <div className="dashboard-stat-header">
+                    <span className="dashboard-stat-icon">👥</span>
+                    <h4 className="dashboard-stat-title">Users</h4>
+                  </div>
+                  <div className="dashboard-stat-value">{adminStats?.totalUsers ?? '...'}</div>
+                </div>
+                <div className="dashboard-stat-card">
+                  <div className="dashboard-stat-header">
+                    <span className="dashboard-stat-icon">🎮</span>
+                    <h4 className="dashboard-stat-title">Active Players</h4>
+                  </div>
+                  <div className="dashboard-stat-value">{adminStats?.activePlayers ?? '...'}</div>
+                </div>
+                <div className="dashboard-stat-card">
+                  <div className="dashboard-stat-header">
+                    <span className="dashboard-stat-icon">🌌</span>
+                    <h4 className="dashboard-stat-title">Sectors</h4>
+                  </div>
+                  <div className="dashboard-stat-value">{galaxyState?.statistics?.total_sectors ?? '...'}</div>
+                </div>
+                <div className="dashboard-stat-card">
+                  <div className="dashboard-stat-header">
+                    <span className="dashboard-stat-icon">🪐</span>
+                    <h4 className="dashboard-stat-title">Planets</h4>
+                  </div>
+                  <div className="dashboard-stat-value">{galaxyState?.statistics?.planet_count ?? '...'}</div>
+                </div>
+                <div className="dashboard-stat-card">
+                  <div className="dashboard-stat-header">
+                    <span className="dashboard-stat-icon">🚀</span>
+                    <h4 className="dashboard-stat-title">Ships</h4>
+                  </div>
+                  <div className="dashboard-stat-value">{adminStats?.totalShips ?? '...'}</div>
+                </div>
+                <div className="dashboard-stat-card">
+                  <div className="dashboard-stat-header">
+                    <span className="dashboard-stat-icon">🟢</span>
+                    <h4 className="dashboard-stat-title">Sessions</h4>
+                  </div>
+                  <div className="dashboard-stat-value">{adminStats?.playerSessions ?? '...'}</div>
+                </div>
+              </div>
+            </section>
               
-              <section className="galaxy-panel">
-                <h3>Galaxy Overview</h3>
-                {galaxyState ? (
-                  <div className="galaxy-info">
-                    <div className="galaxy-header">
-                      <h4>{galaxyState.name}</h4>
-                      <div className="galaxy-age">
-                        Age: {galaxyState.state.age_in_days} days
+            <section className="section">
+              <div className="section-header">
+                <div>
+                  <h3 className="section-title">Galaxy Overview</h3>
+                  <p className="section-subtitle">Current galaxy state and statistics</p>
+                </div>
+              </div>
+              {galaxyState ? (
+                <div className="card">
+                  <div className="card-header">
+                    <h4 className="card-title">{galaxyState.name}</h4>
+                    <p className="card-subtitle">
+                      Age: {galaxyState.state.age_in_days} days
+                    </p>
+                  </div>
+                  <div className="card-body">
+                    <div className="grid grid-cols-3 gap-6 mb-6">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-primary">{galaxyState.statistics.total_sectors}</div>
+                        <div className="text-sm text-tertiary">Total Sectors</div>
                       </div>
-                    </div>
-                    
-                    <div className="galaxy-stats">
-                      <div className="galaxy-stat">
-                        <span className="stat-name">Sectors:</span>
-                        <span className="stat-data">{galaxyState.statistics.total_sectors}</span>
-                      </div>
-                      <div className="galaxy-stat">
-                        <span className="stat-name">Discovered:</span>
-                        <span className="stat-data">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-primary">
                           {galaxyState.statistics.discovered_sectors} 
-                          ({Math.round(galaxyState.state.exploration_percentage)}%)
-                        </span>
+                        </div>
+                        <div className="text-sm text-tertiary">
+                          Discovered ({Math.round(galaxyState.state.exploration_percentage)}%)
+                        </div>
                       </div>
-                      <div className="galaxy-stat">
-                        <span className="stat-name">Economic Health:</span>
-                        <span className="stat-data">
-                          <span className={`econ-indicator level-${Math.min(Math.ceil(galaxyState.state.economic_health / 20), 5)}`}>
-                            {galaxyState.state.economic_health}/100
-                          </span>
-                        </span>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-primary">
+                          {galaxyState.state.economic_health}/100
+                        </div>
+                        <div className="text-sm text-tertiary">Economic Health</div>
                       </div>
                     </div>
                     

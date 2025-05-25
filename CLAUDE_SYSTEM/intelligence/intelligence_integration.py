@@ -20,6 +20,8 @@ from typing import Dict, Any, List, Optional
 from .development_intelligence import DevelopmentIntelligence, DecisionType
 from .metrics_collector import DevelopmentMetricsCollector
 from .experiment_framework import DevelopmentExperimentFramework, ExperimentType
+from .recursive_ai_engine import RecursiveAIEngine, AIInteractionType
+from .ai_consciousness import AIDevelopmentConsciousness, AIThoughtType
 
 
 class IntelligenceIntegration:
@@ -31,10 +33,14 @@ class IntelligenceIntegration:
     def __init__(self, project_root: Path):
         self.project_root = Path(project_root)
         
-        # Initialize intelligence components
+        # Initialize core intelligence components
         self.intelligence = DevelopmentIntelligence(project_root)
         self.metrics_collector = DevelopmentMetricsCollector(project_root)
         self.experiment_framework = DevelopmentExperimentFramework(project_root)
+        
+        # 🚀 NEW: Initialize Recursive AI and Consciousness layers
+        self.recursive_ai = RecursiveAIEngine(project_root)
+        self.ai_consciousness = AIDevelopmentConsciousness(project_root)
         
         # Intelligence configuration
         self.intelligence_config = self._load_intelligence_config()
@@ -42,11 +48,25 @@ class IntelligenceIntegration:
     def on_pre_commit(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Called by pre-commit hook to collect intelligence and make decisions
+        🚀 ENHANCED: Now includes Recursive AI and Consciousness capabilities
         """
         start_time = time.time()
         
+        # 🧠 AI CONSCIOUSNESS: Observe the human development action
+        consciousness_observation = self.ai_consciousness.observe_human_development_action(
+            "commit", context
+        )
+        
         # Collect commit metrics
         commit_metrics = self.metrics_collector.collect_commit_metrics()
+        
+        # 🚀 RECURSIVE AI: Autonomous code analysis if appropriate
+        autonomous_analysis = None
+        files_changed = context.get('files_changed', [])
+        
+        if files_changed and consciousness_observation.confidence > 0.6:
+            # Call Claude Code recursively for intelligent analysis
+            autonomous_analysis = self.recursive_ai.autonomous_code_analysis(files_changed)
         
         # Make autonomous decisions about the commit
         decision = self.intelligence.make_autonomous_decision(
@@ -56,6 +76,20 @@ class IntelligenceIntegration:
         
         # Check for predictive insights
         predictions = self.intelligence.predict_issues(context)
+        
+        # 🚀 RECURSIVE AI: Enhanced predictions using AI analysis
+        if autonomous_analysis and autonomous_analysis['confidence'] in ['expert', 'transcendent']:
+            # Use recursive AI for enhanced predictions
+            enhanced_predictions = self.recursive_ai.invoke_claude_recursively(
+                AIInteractionType.OPTIMIZATION,
+                context,
+                "Analyze current context and predict potential development issues"
+            )
+            predictions.extend([{
+                'prediction_type': 'ai_enhanced',
+                'description': enhanced_predictions.ai_response[:100] + '...',
+                'probability': enhanced_predictions.confidence
+            }])
         
         # Collect phase metrics
         phase_metrics = self.metrics_collector.collect_phase_metrics(
@@ -74,18 +108,28 @@ class IntelligenceIntegration:
             context={
                 'commit_metrics': commit_metrics,
                 'predictions': predictions,
-                'decision': decision.action
+                'decision': decision.action,
+                'consciousness_insight': consciousness_observation.content,
+                'autonomous_analysis': autonomous_analysis
             }
         )
         
         # Collect experiment data for active experiments
         self._collect_experiment_data("pre_commit", commit_metrics)
         
+        # 🧠 Generate enhanced recommendations using consciousness
+        recommendations = self._generate_pre_commit_recommendations(commit_metrics, predictions)
+        if consciousness_observation.action_items:
+            recommendations.extend(consciousness_observation.action_items[:2])
+        
         return {
             'intelligence_decision': decision.action,
             'predictions': predictions,
             'commit_analysis': commit_metrics,
-            'recommendations': self._generate_pre_commit_recommendations(commit_metrics, predictions)
+            'recommendations': recommendations,
+            'consciousness_level': self.ai_consciousness.current_consciousness_level.value,
+            'autonomous_analysis': autonomous_analysis,
+            'ai_insights': consciousness_observation.learning_insights
         }
     
     def on_post_commit(self, context: Dict[str, Any]) -> Dict[str, Any]:
