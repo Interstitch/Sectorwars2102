@@ -28,6 +28,11 @@ The Sector Editing Modal allows administrators to modify all sector parameters d
   - FORBIDDEN, WORMHOLE
 - **Description**: Optional text area for sector description
 - **Coordinates**: X, Y, Z coordinate inputs with validation
+- **Sector Contents**: Planet and port management:
+  - **Planet Status**: Visual indicator showing if sector has a planet
+  - **Planet Creation**: "Create Planet" button when no planet exists
+  - **Port Status**: Visual indicator showing if sector has a port
+  - **Port Creation**: "Create Port" button when no port exists
 
 #### 2. Physical Properties
 - **Radiation Level**: Slider (0.0 - 10.0) with real-time value display
@@ -48,17 +53,30 @@ The Sector Editing Modal allows administrators to modify all sector parameters d
 - **Keyboard Navigation**: Full keyboard accessibility
 - **Loading States**: Visual feedback during save operations
 - **Error Handling**: Clear error messages with actionable guidance
+- **Clickable Rows**: Entire sector row is clickable to open edit modal
+- **Content Creation**: Inline planet and port creation forms
+- **Visual Status Indicators**: Clear present/absent status for sector contents
 
 ## Technical Implementation
 
 ### Backend API
 
-#### Endpoint
+#### Sector Update Endpoint
 ```
 PUT /api/v1/admin/sectors/{sector_id}
 ```
 
-#### Request Body
+#### Planet Creation Endpoint
+```
+POST /api/v1/admin/sectors/{sector_id}/planet
+```
+
+#### Port Creation Endpoint
+```
+POST /api/v1/admin/sectors/{sector_id}/port
+```
+
+#### Sector Update Request Body
 ```json
 {
   "name": "Updated Sector Name",
@@ -77,13 +95,60 @@ PUT /api/v1/admin/sectors/{sector_id}
 }
 ```
 
-#### Response
+#### Planet Creation Request Body
 ```json
+{
+  "name": "New Planet",
+  "type": "TERRAN",
+  "size": 7,
+  "position": 3,
+  "gravity": 1.2,
+  "temperature": 15.0,
+  "water_coverage": 65.0,
+  "habitability_score": 85,
+  "resource_richness": 1.5
+}
+```
+
+#### Port Creation Request Body
+```json
+{
+  "name": "Trading Hub Alpha",
+  "port_class": 6,
+  "type": "TRADING",
+  "size": 8,
+  "faction_affiliation": "Federation",
+  "trade_volume": 500,
+  "market_volatility": 30
+}
+```
+
+#### Responses
+```json
+// Sector Update Response
 {
   "message": "Sector updated successfully",
   "sector_id": "sector-uuid",
   "sector_number": 1234,
   "name": "Updated Sector Name"
+}
+
+// Planet Creation Response
+{
+  "message": "Planet created successfully",
+  "planet_id": "planet-uuid",
+  "planet_name": "New Planet",
+  "sector_id": "sector-uuid",
+  "sector_number": 1234
+}
+
+// Port Creation Response
+{
+  "message": "Port created successfully",
+  "port_id": "port-uuid",
+  "port_name": "Trading Hub Alpha",
+  "sector_id": "sector-uuid",
+  "sector_number": 1234
 }
 ```
 
@@ -119,8 +184,10 @@ services/admin-ui/src/components/universe/
 #### Opening the Modal
 1. Navigate to Admin UI → Sectors Management
 2. Find the sector you want to edit in the list
-3. Click the "Edit" button for that sector
+3. Click anywhere on the sector row (entire row is clickable)
 4. The modal opens with current sector data pre-filled
+
+**Note**: The "Edit" button is still present for clarity but the entire row functions as an edit trigger.
 
 #### Editing Sector Properties
 1. **Basic Information**: 
@@ -135,6 +202,11 @@ services/admin-ui/src/components/universe/
 4. **Control Settings**:
    - Set controlling faction for roleplay purposes
    - Assign team control for gameplay mechanics
+5. **Sector Contents**:
+   - View current planet/port status with visual indicators
+   - Create planets when none exist (12 planet types available)
+   - Create ports when none exist (12 port classes, 10 port types)
+   - Each sector can have only one planet and one port maximum
 
 #### Saving Changes
 1. Make desired changes across any tabs
