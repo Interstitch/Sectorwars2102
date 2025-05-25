@@ -37,7 +37,7 @@ def main():
         epilog=f"""
 Examples:
   python claude-system.py                 # Full system run
-  python claude-system.py --quick         # Quick health check (5-15 seconds)
+  python claude-system.py --quick         # Phase 0: Quick health check (5-15 seconds)
   python claude-system.py --analyze       # Deep analysis (30-120 seconds)
   python claude-system.py --init          # Initialize project structure
   python claude-system.py --heal          # Self-healing mode
@@ -53,7 +53,7 @@ Release: {RELEASE_DATE}
     
     parser.add_argument("--init", action="store_true", help="Initialize project structure")
     parser.add_argument("--analyze", action="store_true", help="Run comprehensive analysis")
-    parser.add_argument("--quick", action="store_true", help="Quick health check")
+    parser.add_argument("--quick", action="store_true", help="Phase 0: Quick health check (part of 6-phase CLAUDE.md system)")
     parser.add_argument("--heal", action="store_true", help="Self-healing mode")
     parser.add_argument("--learn", action="store_true", help="Pattern learning mode")
     parser.add_argument("--report", action="store_true", help="Generate reports only")
