@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../ui/PageHeader';
 import { api } from '../../utils/auth';
+import ColonyDetailModal from '../universe/ColonyDetailModal';
 import './colonization-overview.css';
 
 interface Planet {
@@ -79,10 +80,10 @@ const ColonizationOverview: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
   const limit = 50;
   
-  // Forms
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'view' | 'edit' | 'colonize'>('view');
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [showEditForm, setShowEditForm] = useState(false);
-  const [showDetailView, setShowDetailView] = useState(false);
   const [formData, setFormData] = useState<PlanetFormData>({
     name: '',
     sector_id: 1,
@@ -204,30 +205,35 @@ const ColonizationOverview: React.FC = () => {
     }
   };
 
-  const handleColonizePlanet = async (planetId: string, playerId: string) => {
-    try {
-      await api.post(`/api/v1/admin/planets/${planetId}/colonize`, {
-        player_id: playerId
-      });
-      fetchPlanets();
-    } catch (error) {
-      console.error('Error colonizing planet:', error);
-      alert('Failed to colonize planet');
-    }
+  const handleViewColony = (planet: Planet) => {
+    setSelectedPlanet(planet);
+    setModalMode('view');
+    setIsModalOpen(true);
   };
 
-  const handleDecolonizePlanet = async (planetId: string) => {
-    if (!confirm('Are you sure you want to remove the colony from this planet?')) {
-      return;
-    }
-    
-    try {
-      await api.post(`/api/v1/admin/planets/${planetId}/decolonize`);
-      fetchPlanets();
-    } catch (error) {
-      console.error('Error decolonizing planet:', error);
-      alert('Failed to decolonize planet');
-    }
+  const handleEditColony = (planet: Planet) => {
+    setSelectedPlanet(planet);
+    setModalMode('edit');
+    setIsModalOpen(true);
+  };
+
+  const handleColonizePlanet = (planet: Planet) => {
+    setSelectedPlanet(planet);
+    setModalMode('colonize');
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedPlanet(null);
+  };
+
+  const handleColonySave = (updatedColony: Planet) => {
+    setPlanets(planets.map(p => p.id === updatedColony.id ? updatedColony : p));
+    setIsModalOpen(false);
+    setSelectedPlanet(null);
+    // Refetch to get updated stats
+    fetchPlanets();
   };
 
   const resetForm = () => {
@@ -245,27 +251,6 @@ const ColonizationOverview: React.FC = () => {
     });
   };
 
-  const openEditForm = (planet: Planet) => {
-    setSelectedPlanet(planet);
-    setFormData({
-      name: planet.name,
-      sector_id: planet.sector_id,
-      planet_type: planet.planet_type,
-      owner_id: planet.owner_id || '',
-      population: planet.population,
-      max_population: planet.max_population,
-      habitability_score: planet.habitability_score,
-      resource_richness: planet.resource_richness,
-      defense_level: planet.defense_level,
-      genesis_created: planet.genesis_created
-    });
-    setShowEditForm(true);
-  };
-
-  const openDetailView = (planet: Planet) => {
-    setSelectedPlanet(planet);
-    setShowDetailView(true);
-  };
 
   const filteredPlanets = planets.filter(planet => {
     const matchesSearch = planet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -419,7 +404,7 @@ const ColonizationOverview: React.FC = () => {
                 <tr key={planet.id} className={planet.genesis_created ? 'genesis-planet' : ''}>
                   <td 
                     className="planet-name"
-                    onClick={() => openDetailView(planet)}
+                    onClick={() => handleViewColony(planet)}
                     style={{ cursor: 'pointer' }}
                   >
                     {planet.name}
@@ -456,39 +441,26 @@ const ColonizationOverview: React.FC = () => {
                   <td>
                     <div className="action-buttons">
                       <button 
-                        onClick={() => openDetailView(planet)}
+                        onClick={() => handleViewColony(planet)}
                         className="action-btn view"
                         title="View Details"
                       >
                         👁️
                       </button>
                       <button 
-                        onClick={() => openEditForm(planet)}
+                        onClick={() => handleEditColony(planet)}
                         className="action-btn edit"
-                        title="Edit Planet"
+                        title="Edit Colony"
                       >
                         ✏️
                       </button>
-                      {planet.owner_id ? (
-                        <button 
-                          onClick={() => handleDecolonizePlanet(planet.id)}
-                          className="action-btn decolonize"
-                          title="Remove Colony"
-                        >
-                          🏚️
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={() => {
-                            const playerId = prompt('Enter Player ID to colonize this planet:');
-                            if (playerId) handleColonizePlanet(planet.id, playerId);
-                          }}
-                          className="action-btn colonize"
-                          title="Colonize Planet"
-                        >
-                          🏠
-                        </button>
-                      )}
+                      <button 
+                        onClick={() => handleColonizePlanet(planet)}
+                        className="action-btn colonize"
+                        title={planet.owner_id ? "Reassign Colony" : "Establish Colony"}
+                      >
+                        {planet.owner_id ? '🔄' : '🏠'}
+                      </button>
                       <button 
                         onClick={() => handleDeletePlanet(planet.id)}
                         className="action-btn delete"
@@ -629,163 +601,14 @@ const ColonizationOverview: React.FC = () => {
         </div>
       )}
       
-      {/* Edit Planet Modal */}
-      {showEditForm && selectedPlanet && (
-        <div className="modal-overlay" onClick={() => setShowEditForm(false)}>
-          <div className="modal large" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Edit Planet: {selectedPlanet.name}</h3>
-              <button onClick={() => setShowEditForm(false)} className="close-btn">×</button>
-            </div>
-            <div className="modal-content">
-              <form onSubmit={handleUpdatePlanet}>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Planet Name:</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Current Population:</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.population}
-                      onChange={(e) => setFormData({...formData, population: parseInt(e.target.value)})}
-                    />
-                  </div>
-                </div>
-                
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Max Population:</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.max_population}
-                      onChange={(e) => setFormData({...formData, max_population: parseInt(e.target.value)})}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Defense Level:</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.defense_level}
-                      onChange={(e) => setFormData({...formData, defense_level: parseInt(e.target.value)})}
-                    />
-                  </div>
-                </div>
-                
-                <div className="form-group">
-                  <label>Owner:</label>
-                  <select
-                    value={formData.owner_id}
-                    onChange={(e) => setFormData({...formData, owner_id: e.target.value})}
-                  >
-                    <option value="">No Owner (Uninhabited)</option>
-                    {players.map(player => (
-                      <option key={player.id} value={player.id}>{player.username}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="form-actions">
-                  <button type="button" onClick={() => setShowEditForm(false)}>Cancel</button>
-                  <button type="submit">Update Planet</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Planet Detail View */}
-      {showDetailView && selectedPlanet && (
-        <div className="modal-overlay" onClick={() => setShowDetailView(false)}>
-          <div className="modal large" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Planet Details: {selectedPlanet.name}</h3>
-              <button onClick={() => setShowDetailView(false)} className="close-btn">×</button>
-            </div>
-            <div className="modal-content">
-              <div className="planet-details">
-                <div className="detail-section">
-                  <h4>Basic Information</h4>
-                  <div className="detail-grid">
-                    <div className="detail-item">
-                      <span className="label">Name:</span>
-                      <span className="value">{selectedPlanet.name}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="label">Type:</span>
-                      <span className="value">{selectedPlanet.planet_type.replace('_', ' ')}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="label">Sector:</span>
-                      <span className="value">{selectedPlanet.sector_id}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="label">Genesis Created:</span>
-                      <span className="value">{selectedPlanet.genesis_created ? 'Yes' : 'No'}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="detail-section">
-                  <h4>Colonization Status</h4>
-                  <div className="detail-grid">
-                    <div className="detail-item">
-                      <span className="label">Owner:</span>
-                      <span className="value">{selectedPlanet.owner_name || 'Uninhabited'}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="label">Population:</span>
-                      <span className="value">
-                        {selectedPlanet.population.toLocaleString()} / {selectedPlanet.max_population.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="label">Colonized:</span>
-                      <span className="value">
-                        {selectedPlanet.colonized_at 
-                          ? new Date(selectedPlanet.colonized_at).toLocaleDateString()
-                          : 'Never'
-                        }
-                      </span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="label">Defense Level:</span>
-                      <span className="value">{selectedPlanet.defense_level}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="detail-section">
-                  <h4>Planetary Characteristics</h4>
-                  <div className="detail-grid">
-                    <div className="detail-item">
-                      <span className="label">Habitability:</span>
-                      <span className="value">{selectedPlanet.habitability_score}%</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="label">Resource Richness:</span>
-                      <span className="value">{selectedPlanet.resource_richness}x</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Colony Detail Modal */}
+      <ColonyDetailModal
+        colony={selectedPlanet}
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onSave={handleColonySave}
+        mode={modalMode}
+      />
     </div>
   );
 };
