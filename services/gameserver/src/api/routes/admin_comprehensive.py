@@ -1633,11 +1633,19 @@ async def create_planet_in_sector(
 ):
     """Create a planet in the specified sector"""
     try:
-        # Find the sector
-        if len(sector_id) > 10:  # UUID length check
-            sector = db.query(Sector).filter(Sector.id == uuid.UUID(sector_id)).first()
-        else:
-            sector = db.query(Sector).filter(Sector.sector_id == int(sector_id)).first()
+        # Find the sector - try UUID first, fallback to integer sector_id
+        sector = None
+        try:
+            # Try as UUID first (UUIDs are 36 characters with hyphens)
+            sector_uuid = uuid.UUID(sector_id)
+            sector = db.query(Sector).filter(Sector.id == sector_uuid).first()
+        except ValueError:
+            # If UUID parsing fails, try as integer sector_id
+            try:
+                sector_int = int(sector_id)
+                sector = db.query(Sector).filter(Sector.sector_id == sector_int).first()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid sector ID format")
         
         if not sector:
             raise HTTPException(status_code=404, detail="Sector not found")
@@ -1704,11 +1712,19 @@ async def create_port_in_sector(
 ):
     """Create a port in the specified sector"""
     try:
-        # Find the sector
-        if len(sector_id) > 10:  # UUID length check
-            sector = db.query(Sector).filter(Sector.id == uuid.UUID(sector_id)).first()
-        else:
-            sector = db.query(Sector).filter(Sector.sector_id == int(sector_id)).first()
+        # Find the sector - try UUID first, fallback to integer sector_id
+        sector = None
+        try:
+            # Try as UUID first (UUIDs are 36 characters with hyphens)
+            sector_uuid = uuid.UUID(sector_id)
+            sector = db.query(Sector).filter(Sector.id == sector_uuid).first()
+        except ValueError:
+            # If UUID parsing fails, try as integer sector_id
+            try:
+                sector_int = int(sector_id)
+                sector = db.query(Sector).filter(Sector.sector_id == sector_int).first()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid sector ID format")
         
         if not sector:
             raise HTTPException(status_code=404, detail="Sector not found")
@@ -1773,11 +1789,19 @@ async def get_sector_planet(
 ):
     """Get detailed planet information for a specific sector"""
     try:
-        # Find the sector
-        if len(sector_id) > 10:  # UUID length check
-            sector = db.query(Sector).filter(Sector.id == uuid.UUID(sector_id)).first()
-        else:
-            sector = db.query(Sector).filter(Sector.sector_id == int(sector_id)).first()
+        # Find the sector - try UUID first, fallback to integer sector_id
+        sector = None
+        try:
+            # Try as UUID first (UUIDs are 36 characters with hyphens)
+            sector_uuid = uuid.UUID(sector_id)
+            sector = db.query(Sector).filter(Sector.id == sector_uuid).first()
+        except ValueError:
+            # If UUID parsing fails, try as integer sector_id
+            try:
+                sector_int = int(sector_id)
+                sector = db.query(Sector).filter(Sector.sector_id == sector_int).first()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid sector ID format")
         
         if not sector:
             raise HTTPException(status_code=404, detail="Sector not found")
@@ -1832,11 +1856,19 @@ async def get_sector_port(
 ):
     """Get detailed port information for a specific sector"""
     try:
-        # Find the sector
-        if len(sector_id) > 10:  # UUID length check
-            sector = db.query(Sector).filter(Sector.id == uuid.UUID(sector_id)).first()
-        else:
-            sector = db.query(Sector).filter(Sector.sector_id == int(sector_id)).first()
+        # Find the sector - try UUID first, fallback to integer sector_id
+        sector = None
+        try:
+            # Try as UUID first (UUIDs are 36 characters with hyphens)
+            sector_uuid = uuid.UUID(sector_id)
+            sector = db.query(Sector).filter(Sector.id == sector_uuid).first()
+        except ValueError:
+            # If UUID parsing fails, try as integer sector_id
+            try:
+                sector_int = int(sector_id)
+                sector = db.query(Sector).filter(Sector.sector_id == sector_int).first()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid sector ID format")
         
         if not sector:
             raise HTTPException(status_code=404, detail="Sector not found")
