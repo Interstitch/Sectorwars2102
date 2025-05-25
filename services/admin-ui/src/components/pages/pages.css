@@ -244,7 +244,7 @@
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--title-color, #111);
+  color: #111 !important;
 }
 
 .refresh-info {

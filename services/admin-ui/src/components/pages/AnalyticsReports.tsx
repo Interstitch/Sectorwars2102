@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../ui/PageHeader';
+import { api } from '../../utils/auth';
 import './analytics-reports.css';
 
 interface AnalyticsDashboard {
@@ -118,26 +119,8 @@ const AnalyticsReports: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch(
-        `/api/v1/admin/analytics/real-time`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch analytics: ${response.statusText}`);
-      }
-
-      const realTimeData = await response.json();
+      const response = await api.get('/api/v1/admin/analytics/real-time');
+      const realTimeData = response.data;
       
       // Transform real-time data to match expected dashboard format
       const transformedData = {

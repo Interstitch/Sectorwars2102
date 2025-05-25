@@ -19,6 +19,7 @@ import ColonizationOverview from './components/pages/ColonizationOverview';
 import TeamManagement from './components/pages/TeamManagement';
 import EventManagement from './components/pages/EventManagement';
 import AnalyticsReports from './components/pages/AnalyticsReports';
+import SectorsManager from './components/pages/SectorsManager';
 
 // Components
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -129,6 +130,15 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <AnalyticsReports />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="sectors"
+                element={
+                  <ProtectedRoute>
+                    <SectorsManager />
                   </ProtectedRoute>
                 }
               />
