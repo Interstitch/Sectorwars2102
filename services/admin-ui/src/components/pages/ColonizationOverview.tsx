@@ -290,94 +290,201 @@ const ColonizationOverview: React.FC = () => {
         </div>
       )}
       
-      {/* Colonization Statistics */}
+      {/* Enhanced Colonization Statistics */}
       {stats && (
         <div className="stats-overview">
-          <div className="stat-card">
-            <h3>{stats.total_planets}</h3>
-            <p>Total Planets</p>
+          <div className="stat-card total">
+            <div className="stat-icon">🌍</div>
+            <div className="stat-content">
+              <h3>{stats.total_planets}</h3>
+              <p>Total Planets</p>
+              <div className="stat-subtitle">In Galaxy</div>
+            </div>
           </div>
-          <div className="stat-card">
-            <h3>{stats.colonized_planets}</h3>
-            <p>Colonized</p>
+          
+          <div className="stat-card colonized">
+            <div className="stat-icon">🏠</div>
+            <div className="stat-content">
+              <h3>{stats.colonized_planets}</h3>
+              <p>Colonized</p>
+              <div className="stat-progress">
+                <div 
+                  className="progress-bar colonized"
+                  style={{ width: `${(stats.colonized_planets / stats.total_planets) * 100}%` }}
+                ></div>
+              </div>
+              <div className="stat-subtitle">
+                {((stats.colonized_planets / stats.total_planets) * 100).toFixed(1)}% of total
+              </div>
+            </div>
           </div>
-          <div className="stat-card">
-            <h3>{stats.uninhabited_planets}</h3>
-            <p>Uninhabited</p>
+          
+          <div className="stat-card uninhabited">
+            <div className="stat-icon">🌌</div>
+            <div className="stat-content">
+              <h3>{stats.uninhabited_planets}</h3>
+              <p>Uninhabited</p>
+              <div className="stat-progress">
+                <div 
+                  className="progress-bar uninhabited"
+                  style={{ width: `${(stats.uninhabited_planets / stats.total_planets) * 100}%` }}
+                ></div>
+              </div>
+              <div className="stat-subtitle">Available for colonization</div>
+            </div>
           </div>
-          <div className="stat-card">
-            <h3>{(stats.total_population / 1000000).toFixed(1)}M</h3>
-            <p>Total Population</p>
+          
+          <div className="stat-card population">
+            <div className="stat-icon">👥</div>
+            <div className="stat-content">
+              <h3>{(stats.total_population / 1000000).toFixed(1)}M</h3>
+              <p>Total Population</p>
+              <div className="stat-subtitle">
+                {(stats.total_population / stats.colonized_planets).toFixed(0)} avg per colony
+              </div>
+            </div>
           </div>
-          <div className="stat-card">
-            <h3>{stats.average_habitability.toFixed(1)}%</h3>
-            <p>Avg Habitability</p>
+          
+          <div className="stat-card habitability">
+            <div className="stat-icon">🌱</div>
+            <div className="stat-content">
+              <h3>{stats.average_habitability.toFixed(1)}%</h3>
+              <p>Avg Habitability</p>
+              <div className="stat-progress">
+                <div 
+                  className={`progress-bar habitability level-${Math.floor(stats.average_habitability / 20)}`}
+                  style={{ width: `${stats.average_habitability}%` }}
+                ></div>
+              </div>
+              <div className="stat-subtitle">
+                {stats.average_habitability >= 70 ? 'Excellent' : 
+                 stats.average_habitability >= 50 ? 'Good' : 
+                 stats.average_habitability >= 30 ? 'Fair' : 'Poor'} conditions
+              </div>
+            </div>
           </div>
-          <div className="stat-card">
-            <h3>{stats.genesis_planets}</h3>
-            <p>Genesis Planets</p>
+          
+          <div className="stat-card genesis">
+            <div className="stat-icon">🧬</div>
+            <div className="stat-content">
+              <h3>{stats.genesis_planets}</h3>
+              <p>Genesis Planets</p>
+              <div className="stat-progress">
+                <div 
+                  className="progress-bar genesis"
+                  style={{ width: `${(stats.genesis_planets / stats.total_planets) * 100}%` }}
+                ></div>
+              </div>
+              <div className="stat-subtitle">
+                {((stats.genesis_planets / stats.total_planets) * 100).toFixed(1)}% artificially created
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       <div className="planet-content">
-        {/* Planet Controls */}
+        {/* Enhanced Planet Controls */}
         <div className="planet-controls">
+          <div className="controls-header">
+            <h3>Colony Management</h3>
+            <div className="results-summary">
+              {filteredPlanets.length} of {planets.length} colonies shown
+            </div>
+          </div>
+          
           <div className="search-and-filters">
             <div className="search-bar">
-              <input
-                type="text"
-                placeholder="Search planets by name or owner..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+              <div className="search-input-container">
+                <span className="search-icon">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search colonies by name or owner..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="search-input"
+                />
+                {searchTerm && (
+                  <button 
+                    className="clear-search"
+                    onClick={() => setSearchTerm('')}
+                    title="Clear search"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             </div>
             
             <div className="filter-controls">
-              <select 
-                value={typeFilter} 
-                onChange={(e) => setTypeFilter(e.target.value)}
-              >
-                <option value="all">All Types</option>
-                {PLANET_TYPES.map(type => (
-                  <option key={type} value={type}>{type.replace('_', ' ')}</option>
-                ))}
-              </select>
+              <div className="filter-group">
+                <label>Planet Type</label>
+                <select 
+                  value={typeFilter} 
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Types</option>
+                  {PLANET_TYPES.map(type => (
+                    <option key={type} value={type}>
+                      {type.replace('_', ' ')}
+                    </option>
+                  ))}
+                </select>
+              </div>
               
-              <input
-                type="text"
-                placeholder="Filter by owner..."
-                value={ownerFilter}
-                onChange={(e) => setOwnerFilter(e.target.value)}
-              />
+              <div className="filter-group">
+                <label>Owner</label>
+                <input
+                  type="text"
+                  placeholder="Filter by owner..."
+                  value={ownerFilter}
+                  onChange={(e) => setOwnerFilter(e.target.value)}
+                  className="filter-input"
+                />
+              </div>
               
-              <input
-                type="number"
-                placeholder="Filter by sector..."
-                value={sectorFilter}
-                onChange={(e) => setSectorFilter(e.target.value)}
-              />
+              <div className="filter-group">
+                <label>Sector</label>
+                <input
+                  type="number"
+                  placeholder="Sector #..."
+                  value={sectorFilter}
+                  onChange={(e) => setSectorFilter(e.target.value)}
+                  className="filter-input"
+                />
+              </div>
               
-              <select 
-                value={statusFilter} 
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="all">All Status</option>
-                <option value="colonized">Colonized</option>
-                <option value="uninhabited">Uninhabited</option>
-              </select>
+              <div className="filter-group">
+                <label>Status</label>
+                <select 
+                  value={statusFilter} 
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Status</option>
+                  <option value="colonized">Colonized</option>
+                  <option value="uninhabited">Uninhabited</option>
+                </select>
+              </div>
             </div>
           </div>
           
           <div className="action-controls">
             <button 
               onClick={() => setShowCreateForm(true)}
-              className="create-planet-btn"
+              className="primary-btn create-planet-btn"
             >
-              + Create Planet
+              <span className="btn-icon">🌍</span>
+              Create Planet
             </button>
-            <button onClick={fetchPlanets} className="refresh-btn">
-              🔄 Refresh
+            <button 
+              onClick={fetchPlanets} 
+              className="secondary-btn refresh-btn"
+              disabled={loading}
+            >
+              <span className="btn-icon">{loading ? '⏳' : '🔄'}</span>
+              {loading ? 'Loading...' : 'Refresh'}
             </button>
           </div>
         </div>
