@@ -98,9 +98,27 @@ class PortManagementResponse(BaseModel):
     docking_fee: int
     owner_id: Optional[str]
     owner_name: Optional[str]
-    created_at: str
-    is_operational: bool
-    commodities: List[str]
+
+class SectorUpdateRequest(BaseModel):
+    name: Optional[str] = Field(None, max_length=100)
+    type: Optional[str] = None  # Will validate against SectorType enum
+    description: Optional[str] = None
+    x_coord: Optional[int] = None
+    y_coord: Optional[int] = None
+    z_coord: Optional[int] = None
+    radiation_level: Optional[float] = Field(None, ge=0.0)
+    hazard_level: Optional[int] = Field(None, ge=0, le=10)
+    resource_regeneration: Optional[float] = Field(None, ge=0.0)
+    is_discovered: Optional[bool] = None
+    discovered_by_id: Optional[str] = None
+    resources: Optional[Dict[str, Any]] = None
+    defenses: Optional[Dict[str, Any]] = None
+    controlling_faction: Optional[str] = None
+    controlling_team_id: Optional[str] = None
+    special_features: Optional[List[str]] = None
+    active_events: Optional[List[Dict[str, Any]]] = None
+    nav_hazards: Optional[Dict[str, Any]] = None
+    nav_beacons: Optional[List[Dict[str, Any]]] = None
 
 class PlanetManagementResponse(BaseModel):
     id: str
@@ -1516,6 +1534,75 @@ async def get_sectors(
         current_admin=current_admin,
         db=db
     )
+
+@router.put("/sectors/{sector_id}", response_model=Dict[str, Any])
+async def update_sector(
+    sector_id: str,
+    sector_data: SectorUpdateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Update a sector's properties"""
+    try:
+        # Convert sector_id to UUID if it looks like a UUID, otherwise treat as sector_id number
+        if len(sector_id) > 10:  # UUID length check
+            sector = db.query(Sector).filter(Sector.id == uuid.UUID(sector_id)).first()
+        else:
+            sector = db.query(Sector).filter(Sector.sector_id == int(sector_id)).first()
+        
+        if not sector:
+            raise HTTPException(status_code=404, detail="Sector not found")
+        
+        # Import SectorType enum for validation
+        from src.models.sector import SectorType
+        
+        # Update basic fields
+        update_data = sector_data.dict(exclude_unset=True)
+        
+        for field, value in update_data.items():
+            if field == "type" and value:
+                # Validate and convert sector type
+                try:
+                    sector_type = SectorType(value)
+                    setattr(sector, field, sector_type)
+                except ValueError:
+                    raise HTTPException(status_code=400, detail=f"Invalid sector type: {value}")
+            elif field == "discovered_by_id" and value:
+                # Validate player exists
+                player = db.query(Player).filter(Player.id == uuid.UUID(value)).first()
+                if not player:
+                    raise HTTPException(status_code=400, detail="Invalid discovered_by_id: player not found")
+                setattr(sector, field, uuid.UUID(value))
+            elif field == "controlling_team_id" and value:
+                # Validate team exists
+                team = db.query(Team).filter(Team.id == uuid.UUID(value)).first()
+                if not team:
+                    raise HTTPException(status_code=400, detail="Invalid controlling_team_id: team not found")
+                setattr(sector, field, uuid.UUID(value))
+            elif hasattr(sector, field):
+                setattr(sector, field, value)
+        
+        # Update last_updated timestamp
+        sector.last_updated = datetime.now(timezone.utc)
+        
+        db.commit()
+        db.refresh(sector)
+        
+        logger.info(f"Admin {current_admin.username} updated sector {sector.name} (ID: {sector.sector_id})")
+        
+        return {
+            "message": "Sector updated successfully",
+            "sector_id": str(sector.id),
+            "sector_number": sector.sector_id,
+            "name": sector.name
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating sector {sector_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update sector: {str(e)}")
 
 @router.get("/warp-tunnels", response_model=Dict[str, Any])
 async def get_warp_tunnels(
