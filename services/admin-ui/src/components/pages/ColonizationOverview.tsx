@@ -4,19 +4,19 @@ import { api } from '../../utils/auth';
 import ColonyDetailModal from '../universe/ColonyDetailModal';
 import './colonization-overview.css';
 
-interface Planet {
+interface Colony {
   id: string;
   name: string;
   sector_id: number;
   planet_type: string;
-  owner_id: string | null;
-  owner_name: string | null;
+  owner_id?: string;
+  owner_name?: string;
   population: number;
   max_population: number;
   habitability_score: number;
   resource_richness: number;
   defense_level: number;
-  colonized_at: string | null;
+  colonized_at?: string;
   genesis_created: boolean;
 }
 
@@ -33,10 +33,6 @@ interface PlanetFormData {
   genesis_created: boolean;
 }
 
-interface Player {
-  id: string;
-  username: string;
-}
 
 interface ColonizationStats {
   total_planets: number;
@@ -60,10 +56,9 @@ const PLANET_TYPES = [
 ];
 
 const ColonizationOverview: React.FC = () => {
-  const [planets, setPlanets] = useState<Planet[]>([]);
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [planets, setPlanets] = useState<Colony[]>([]);
   const [stats, setStats] = useState<ColonizationStats | null>(null);
-  const [selectedPlanet, setSelectedPlanet] = useState<Planet | null>(null);
+  const [selectedPlanet, setSelectedPlanet] = useState<Colony | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -119,11 +114,11 @@ const ColonizationOverview: React.FC = () => {
       
       // Calculate stats
       if (data.planets && data.planets.length > 0) {
-        const colonizedCount = data.planets.filter((p: Planet) => p.owner_id !== null).length;
+        const colonizedCount = data.planets.filter((p: Colony) => p.owner_id !== undefined).length;
         const uninhabitedCount = data.planets.length - colonizedCount;
-        const totalPop = data.planets.reduce((sum: number, p: Planet) => sum + p.population, 0);
-        const avgHabitability = data.planets.reduce((sum: number, p: Planet) => sum + p.habitability_score, 0) / data.planets.length;
-        const genesisCount = data.planets.filter((p: Planet) => p.genesis_created).length;
+        const totalPop = data.planets.reduce((sum: number, p: Colony) => sum + p.population, 0);
+        const avgHabitability = data.planets.reduce((sum: number, p: Colony) => sum + p.habitability_score, 0) / data.planets.length;
+        const genesisCount = data.planets.filter((p: Colony) => p.genesis_created).length;
         
         setStats({
           total_planets: data.planets.length,
@@ -145,23 +140,10 @@ const ColonizationOverview: React.FC = () => {
     }
   }, [page, typeFilter, ownerFilter]);
 
-  const fetchPlayers = useCallback(async () => {
-    try {
-      const response = await api.get('/api/v1/admin/players/comprehensive?limit=1000');
-      const data = response.data as any;
-      setPlayers(data.players || []);
-    } catch (error) {
-      console.error('Error fetching players:', error);
-    }
-  }, []);
 
   useEffect(() => {
     fetchPlanets();
   }, [fetchPlanets]);
-
-  useEffect(() => {
-    fetchPlayers();
-  }, [fetchPlayers]);
 
   const handleCreatePlanet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,20 +158,6 @@ const ColonizationOverview: React.FC = () => {
     }
   };
 
-  const handleUpdatePlanet = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPlanet) return;
-    
-    try {
-      await api.put(`/api/v1/admin/planets/${selectedPlanet.id}`, formData);
-      setShowEditForm(false);
-      setSelectedPlanet(null);
-      fetchPlanets();
-    } catch (error) {
-      console.error('Error updating planet:', error);
-      alert('Failed to update planet');
-    }
-  };
 
   const handleDeletePlanet = async (planetId: string) => {
     if (!confirm('Are you sure you want to delete this planet? This action cannot be undone.')) {
@@ -205,19 +173,19 @@ const ColonizationOverview: React.FC = () => {
     }
   };
 
-  const handleViewColony = (planet: Planet) => {
+  const handleViewColony = (planet: Colony) => {
     setSelectedPlanet(planet);
     setModalMode('view');
     setIsModalOpen(true);
   };
 
-  const handleEditColony = (planet: Planet) => {
+  const handleEditColony = (planet: Colony) => {
     setSelectedPlanet(planet);
     setModalMode('edit');
     setIsModalOpen(true);
   };
 
-  const handleColonizePlanet = (planet: Planet) => {
+  const handleColonizePlanet = (planet: Colony) => {
     setSelectedPlanet(planet);
     setModalMode('colonize');
     setIsModalOpen(true);
@@ -228,7 +196,7 @@ const ColonizationOverview: React.FC = () => {
     setSelectedPlanet(null);
   };
 
-  const handleColonySave = (updatedColony: Planet) => {
+  const handleColonySave = (updatedColony: Colony) => {
     setPlanets(planets.map(p => p.id === updatedColony.id ? updatedColony : p));
     setIsModalOpen(false);
     setSelectedPlanet(null);
@@ -256,8 +224,8 @@ const ColonizationOverview: React.FC = () => {
     const matchesSearch = planet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (planet.owner_name && planet.owner_name.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'colonized' && planet.owner_id !== null) ||
-                         (statusFilter === 'uninhabited' && planet.owner_id === null);
+                         (statusFilter === 'colonized' && planet.owner_id !== undefined) ||
+                         (statusFilter === 'uninhabited' && planet.owner_id === undefined);
     const matchesSector = !sectorFilter || planet.sector_id.toString().includes(sectorFilter);
     
     return matchesSearch && matchesStatus && matchesSector;
