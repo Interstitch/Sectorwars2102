@@ -1,8 +1,7 @@
 import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
-import './pages.css';
-import '../users/users.css';
+import PageHeader from '../ui/PageHeader';
 
 // Types
 interface User {
@@ -213,130 +212,152 @@ const UsersManager: React.FC = () => {
   };
   
   return (
-    <div className="users-manager-container">
-      <header className="users-header">
-        <h2>User Management</h2>
-        <button 
-          className="create-user-button"
-          onClick={() => setShowCreateModal(true)}
-        >
-          Create User
-        </button>
-      </header>
+    <div className="page-container">
+      <PageHeader 
+        title="User Management" 
+        subtitle="Manage user accounts, permissions, and access controls"
+      />
       
-      {error && (
-        <div className="error-message">
-          <p>{error}</p>
-          <button onClick={() => setError(null)}>Dismiss</button>
-        </div>
-      )}
-      
-      {loading ? (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading users...</p>
-        </div>
-      ) : (
-        <div className="users-grid-container">
-          <div className="users-grid">
-            <div className="users-grid-header">
-              <div className="grid-cell">Username</div>
-              <div className="grid-cell">Email</div>
-              <div className="grid-cell">Status</div>
-              <div className="grid-cell">Created</div>
-              <div className="grid-cell">Last Login</div>
-              <div className="grid-cell">Actions</div>
-            </div>
-            
-            {users.map((user: User) => (
-              <div key={user.id} className="users-grid-row">
-                <div className="grid-cell">{user.username}</div>
-                <div className="grid-cell">{user.email || 'N/A'}</div>
-                <div className="grid-cell">
-                  <span className={`user-status ${getUserStatusClass(user)}`}>
-                    {!user.is_active ? 'Inactive' : user.is_admin ? 'Admin' : 'Active'}
-                  </span>
-                </div>
-                <div className="grid-cell">{formatDate(user.created_at)}</div>
-                <div className="grid-cell">{formatDate(user.last_login)}</div>
-                <div className="grid-cell grid-actions">
-                  {/* Prevent actions on current user and on protected admin account */}
-                  {user.username === 'admin' ? (
-                    <span className="current-user-label">Protected Account</span>
-                  ) : currentUser && user.id !== currentUser.id ? (
-                    <>
-                      <button 
-                        className="action-button edit-button"
-                        onClick={() => handleEditClick(user)}
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        className="action-button delete-button"
-                        onClick={() => handleDeleteClick(user)}
-                      >
-                        Delete
-                      </button>
-                      {user.is_admin && (
-                        <button 
-                          className="action-button password-button"
-                          onClick={() => handleResetPassword(user.id)}
-                        >
-                          Reset Password
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <span className="current-user-label">Current User</span>
-                  )}
-                </div>
-              </div>
-            ))}
+      <div className="page-content">
+        <div className="flex justify-between items-center mb-6">
+          <div className="text-muted">
+            {users.length} total users
           </div>
+          <button 
+            className="btn btn-primary"
+            onClick={() => setShowCreateModal(true)}
+          >
+            Create User
+          </button>
         </div>
-      )}
       
-      {/* Create User Modal */}
-      {showCreateModal && (
-        <div className="modal-overlay">
-          <div className="modal-container">
-            <h3>Create New User</h3>
-            <form onSubmit={handleCreateUser}>
-              <div className="form-field">
-                <label htmlFor="username">Username</label>
-                <input
-                  id="username"
-                  type="text"
-                  value={newUsername}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setNewUsername(e.target.value)}
-                  required
-                  minLength={3}
-                  maxLength={50}
-                />
+        {error && (
+          <div className="alert alert-error mb-6">
+            <p>{error}</p>
+            <button className="btn btn-sm btn-outline" onClick={() => setError(null)}>Dismiss</button>
+          </div>
+        )}
+        
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="loading-spinner mr-3"></div>
+            <p className="text-muted">Loading users...</p>
+          </div>
+        ) : (
+          <div className="card">
+            <div className="table-container">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Last Login</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user: User) => (
+                    <tr key={user.id}>
+                      <td className="font-medium">{user.username}</td>
+                      <td className="text-muted">{user.email || 'N/A'}</td>
+                      <td>
+                        <span className={`badge ${!user.is_active ? 'badge-error' : user.is_admin ? 'badge-warning' : 'badge-success'}`}>
+                          {!user.is_active ? 'Inactive' : user.is_admin ? 'Admin' : 'Active'}
+                        </span>
+                      </td>
+                      <td className="text-muted">{formatDate(user.created_at)}</td>
+                      <td className="text-muted">{formatDate(user.last_login)}</td>
+                      <td>
+                        <div className="flex gap-2">
+                          {/* Prevent actions on current user and on protected admin account */}
+                          {user.username === 'admin' ? (
+                            <span className="badge badge-info">Protected Account</span>
+                          ) : currentUser && user.id !== currentUser.id ? (
+                            <>
+                              <button 
+                                className="btn btn-sm btn-outline"
+                                onClick={() => handleEditClick(user)}
+                              >
+                                Edit
+                              </button>
+                              <button 
+                                className="btn btn-sm btn-outline btn-error"
+                                onClick={() => handleDeleteClick(user)}
+                              >
+                                Delete
+                              </button>
+                              {user.is_admin && (
+                                <button 
+                                  className="btn btn-sm btn-outline btn-warning"
+                                  onClick={() => handleResetPassword(user.id)}
+                                >
+                                  Reset Password
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <span className="badge badge-info">Current User</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      
+        {/* Create User Modal */}
+        {showCreateModal && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <div className="modal-header">
+                <h3 className="modal-title">Create New User</h3>
+                <button className="modal-close" onClick={() => setShowCreateModal(false)}>×</button>
               </div>
-              
-              <div className="form-field">
-                <label htmlFor="email">Email</label>
-                <input
-                  id="email"
-                  type="email"
-                  value={newEmail}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setNewEmail(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <div className="form-field">
-                <label htmlFor="password">Password</label>
-                <input
-                  id="password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
-                  required
-                  minLength={8}
-                />
-              </div>
+              <div className="modal-body">
+                <form onSubmit={handleCreateUser} className="space-y-4">
+                  <div className="form-group">
+                    <label htmlFor="username" className="form-label">Username</label>
+                    <input
+                      id="username"
+                      type="text"
+                      className="form-input"
+                      value={newUsername}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setNewUsername(e.target.value)}
+                      required
+                      minLength={3}
+                      maxLength={50}
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="email" className="form-label">Email</label>
+                    <input
+                      id="email"
+                      type="email"
+                      className="form-input"
+                      value={newEmail}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setNewEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="password" className="form-label">Password</label>
+                    <input
+                      id="password"
+                      type="password"
+                      className="form-input"
+                      value={newPassword}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
+                      required
+                      minLength={8}
+                    />
+                  </div>
               
               <div className="form-field checkbox-field">
                 <label>
@@ -456,6 +477,7 @@ const UsersManager: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
