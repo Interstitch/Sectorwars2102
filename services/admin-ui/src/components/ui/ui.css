@@ -508,6 +508,193 @@ input:checked + .slider:before {
   white-space: nowrap;
 }
 
+/* Database Health Status Component */
+.database-health-status {
+  background-color: var(--card-bg, white);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.database-health-status.loading {
+  opacity: 0.8;
+}
+
+.database-health-status.error {
+  border-color: var(--danger-border, #ffcdd2);
+  background-color: var(--danger-bg, #ffebee);
+}
+
+.database-health-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.database-health-header.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.database-health-header.clickable:hover {
+  background-color: var(--secondary-bg, #f5f5f5);
+  margin: -0.25rem;
+  padding: 0.25rem;
+  border-radius: 4px;
+}
+
+.database-health-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-color, #333);
+}
+
+.database-health-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.connection-indicator {
+  font-weight: 600;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.database-detail {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.connection-info {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background-color: var(--secondary-bg, #f8f9fa);
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e0e0e0);
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  color: var(--subtitle-color, #666);
+  font-weight: 500;
+}
+
+.info-value {
+  font-weight: 600;
+  color: var(--text-color, #333);
+  font-family: monospace;
+}
+
+.pool-status-section,
+.database-stats-section {
+  margin-bottom: 0.75rem;
+}
+
+.section-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-color, #333);
+  margin: 0 0 0.5rem 0;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  padding-bottom: 0.25rem;
+}
+
+.pool-metrics,
+.db-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pool-metric,
+.db-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--secondary-bg, #f8f9fa);
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #e0e0e0);
+}
+
+.metric-label,
+.stat-label {
+  color: var(--subtitle-color, #666);
+  font-weight: 500;
+}
+
+.metric-value,
+.stat-value {
+  font-weight: 600;
+  color: var(--text-color, #333);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.metric-percentage {
+  font-size: 0.65rem;
+  color: var(--subtitle-color, #666);
+  font-weight: normal;
+}
+
+.stat-detail {
+  font-size: 0.65rem;
+  color: var(--subtitle-color, #666);
+  font-weight: normal;
+}
+
+.error-section {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background-color: var(--danger-bg, #ffebee);
+  border-radius: 6px;
+  border: 1px solid var(--danger-border, #ffcdd2);
+}
+
+.error-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: 0.7rem;
+}
+
+.error-label {
+  color: var(--danger-color, #e53935);
+  font-weight: 500;
+  margin-right: 0.5rem;
+}
+
+.error-text {
+  color: var(--danger-color, #e53935);
+  font-size: 0.65rem;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   :root {
