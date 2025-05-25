@@ -287,8 +287,9 @@ class ScratchpadManager:
         Parse scratchpad markdown content to extract JSON data
         """
         try:
-            # Look for JSON blocks in the markdown
+            # Look for the "Raw Data" JSON block first (full message structure)
             lines = content.split('\n')
+            json_blocks = []
             json_lines = []
             in_json_block = False
             
@@ -297,13 +298,27 @@ class ScratchpadManager:
                     in_json_block = True
                     continue
                 elif line.strip() == '```' and in_json_block:
-                    break
+                    if json_lines:
+                        json_blocks.append('\n'.join(json_lines))
+                        json_lines = []
+                    in_json_block = False
                 elif in_json_block:
                     json_lines.append(line)
             
-            if json_lines:
-                json_text = '\n'.join(json_lines)
-                return json.loads(json_text)
+            # Try to find the full message structure (Raw Data block)
+            # This should be the second JSON block
+            if len(json_blocks) >= 2:
+                try:
+                    return json.loads(json_blocks[1])  # Raw Data block
+                except json.JSONDecodeError:
+                    pass
+            
+            # Fallback to first JSON block (content only)
+            if len(json_blocks) >= 1:
+                try:
+                    return json.loads(json_blocks[0])
+                except json.JSONDecodeError:
+                    pass
             
             return None
             
