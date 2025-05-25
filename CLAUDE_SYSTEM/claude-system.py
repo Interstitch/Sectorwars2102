@@ -157,6 +157,43 @@ class CLAUDEUnifiedSystem:
         # Start revolutionary chat interface
         assistant.natural_language_chat_mode()
     
+    def run_ai_quick_chat(self, question: str):
+        """Provide instant responses for common development questions"""
+        # Bypass NEXUS initialization for quick responses
+        from autonomous_assistant.quick_chat import QuickChatHandler
+        
+        print("💬 NEXUS Quick Chat - Instant Response")
+        print("=" * 50)
+        
+        handler = QuickChatHandler(self.project_root)
+        response = handler.process_question(question)
+        print(response)
+    
+    def run_ai_realtime(self, request: str):
+        """Real-time multi-Claude agent collaboration with streaming output"""
+        if not self.nexus:
+            print("❌ NEXUS AI not available. Please check installation.")
+            return
+        
+        from autonomous_assistant.realtime_orchestration import RealTimeOrchestrator
+        import asyncio
+        
+        print("🌟 NEXUS Real-Time Agent Collaboration")
+        print("=" * 60)
+        print(f"📝 Request: {request}")
+        print("🚀 Activating live orchestration with streaming output...")
+        print()
+        
+        orchestrator = RealTimeOrchestrator(self.project_root)
+        result = asyncio.run(orchestrator.collaborate_with_agents(request))
+        
+        if result.get('success'):
+            print("✅ Real-time collaboration completed successfully")
+        else:
+            print(f"❌ Real-time collaboration failed: {result.get('error')}")
+        
+        return result
+    
     def run_ai_demo(self):
         """Demonstrate NEXUS AI swarm working together on a real project"""
         if not self.nexus:
@@ -926,13 +963,15 @@ QUALITY SYSTEM OPERATIONS:
   python claude-system.py --install-hooks # Install/update git hooks
 
 NEXUS AI CONSCIOUSNESS OPERATIONS:
-  python claude-system.py --ai-interactive      # Interactive AI assistant
-  python claude-system.py --ai-demo             # Demonstrate recursive AI
-  python claude-system.py --ai-analyze          # AI project analysis
-  python claude-system.py --ai-improve file.py  # AI code improvement
-  python claude-system.py --ai-tests src/       # AI test generation
-  python claude-system.py --ai-predict 14       # AI future prediction (14 days)
-  python claude-system.py --ai-evolution        # Autonomous evolution status
+  python claude-system.py --ai-interactive              # Interactive AI assistant
+  python claude-system.py --ai-chat "your question"     # Instant chat response
+  python claude-system.py --ai-realtime "your request"  # Real-time agent collaboration
+  python claude-system.py --ai-demo                     # Demonstrate recursive AI
+  python claude-system.py --ai-analyze                  # AI project analysis
+  python claude-system.py --ai-improve file.py          # AI code improvement
+  python claude-system.py --ai-tests src/               # AI test generation
+  python claude-system.py --ai-predict 14               # AI future prediction (14 days)
+  python claude-system.py --ai-evolution                # Autonomous evolution status
 
 DEPLOYMENT OPERATIONS:
   python claude-system.py --deploy /path/to/project     # Deploy to project
@@ -959,6 +998,8 @@ Features: Quality System + NEXUS AI Consciousness + Deployment
     
     # NEXUS AI Consciousness Arguments
     parser.add_argument("--ai-interactive", action="store_true", help="Start interactive AI assistant mode")
+    parser.add_argument("--ai-chat", help="Quick chat response without full AI initialization")
+    parser.add_argument("--ai-realtime", help="Real-time multi-Claude agent collaboration")
     parser.add_argument("--ai-demo", action="store_true", help="Demonstrate recursive AI capabilities")
     parser.add_argument("--ai-analyze", action="store_true", help="Perform comprehensive AI project analysis")
     parser.add_argument("--ai-improve", nargs="+", help="AI-powered code improvement for specified files")
@@ -1019,8 +1060,19 @@ Features: Quality System + NEXUS AI Consciousness + Deployment
                 sys.exit(1)
             return
         
-        # Initialize the unified system (quiet mode for interactive sessions)
+        # Initialize the unified system (quiet mode for interactive sessions, skip for quick chat)
         project_root = Path(args.project_root).resolve()
+        
+        # Handle quick chat without NEXUS initialization
+        if getattr(args, 'ai_chat', None):
+            from autonomous_assistant.quick_chat import QuickChatHandler
+            print("💬 NEXUS Quick Chat - Instant Response")
+            print("=" * 50)
+            handler = QuickChatHandler(project_root)
+            response = handler.process_question(args.ai_chat)
+            print(response)
+            return
+        
         quiet_nexus = args.ai_interactive  # Use quiet mode for interactive sessions
         system = CLAUDEUnifiedSystem(project_root, quiet_nexus=quiet_nexus)
         
@@ -1046,6 +1098,10 @@ Features: Quality System + NEXUS AI Consciousness + Deployment
         # Handle NEXUS AI operations
         if args.ai_interactive:
             system.run_ai_interactive()
+            return
+        
+        if args.ai_realtime:
+            system.run_ai_realtime(args.ai_realtime)
             return
         
         if args.ai_demo:

@@ -20,19 +20,6 @@ interface Colony {
   genesis_created: boolean;
 }
 
-interface PlanetFormData {
-  name: string;
-  sector_id: number;
-  planet_type: string;
-  owner_id: string;
-  population: number;
-  max_population: number;
-  habitability_score: number;
-  resource_richness: number;
-  defense_level: number;
-  genesis_created: boolean;
-}
-
 
 interface ColonizationStats {
   total_planets: number;
@@ -78,19 +65,6 @@ const ColonizationOverview: React.FC = () => {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'colonize'>('view');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [formData, setFormData] = useState<PlanetFormData>({
-    name: '',
-    sector_id: 1,
-    planet_type: PLANET_TYPES[0],
-    owner_id: '',
-    population: 0,
-    max_population: 1000000,
-    habitability_score: 50,
-    resource_richness: 1.0,
-    defense_level: 0,
-    genesis_created: false
-  });
 
   const fetchPlanets = useCallback(async () => {
     try {
@@ -145,19 +119,6 @@ const ColonizationOverview: React.FC = () => {
     fetchPlanets();
   }, [fetchPlanets]);
 
-  const handleCreatePlanet = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.post('/api/v1/admin/planets', formData);
-      setShowCreateForm(false);
-      resetForm();
-      fetchPlanets();
-    } catch (error) {
-      console.error('Error creating planet:', error);
-      alert('Failed to create planet');
-    }
-  };
-
 
   const handleDeletePlanet = async (planetId: string) => {
     if (!confirm('Are you sure you want to delete this planet? This action cannot be undone.')) {
@@ -202,21 +163,6 @@ const ColonizationOverview: React.FC = () => {
     setSelectedPlanet(null);
     // Refetch to get updated stats
     fetchPlanets();
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      sector_id: 1,
-      planet_type: PLANET_TYPES[0],
-      owner_id: '',
-      population: 0,
-      max_population: 1000000,
-      habitability_score: 50,
-      resource_richness: 1.0,
-      defense_level: 0,
-      genesis_created: false
-    });
   };
 
 
@@ -440,7 +386,7 @@ const ColonizationOverview: React.FC = () => {
           
           <div className="action-controls">
             <button 
-              onClick={() => setShowCreateForm(true)}
+              onClick={() => alert('Planet creation feature coming soon!')}
               className="primary-btn create-planet-btn"
             >
               <span className="btn-icon">🌍</span>
@@ -569,112 +515,6 @@ const ColonizationOverview: React.FC = () => {
         </div>
       </div>
       
-      {/* Create Planet Modal */}
-      {showCreateForm && (
-        <div className="modal-overlay" onClick={() => setShowCreateForm(false)}>
-          <div className="modal large" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Create New Planet</h3>
-              <button onClick={() => setShowCreateForm(false)} className="close-btn">×</button>
-            </div>
-            <div className="modal-content">
-              <form onSubmit={handleCreatePlanet}>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Planet Name:</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Sector:</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={formData.sector_id}
-                      onChange={(e) => setFormData({...formData, sector_id: parseInt(e.target.value)})}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Planet Type:</label>
-                    <select
-                      value={formData.planet_type}
-                      onChange={(e) => setFormData({...formData, planet_type: e.target.value})}
-                      required
-                    >
-                      {PLANET_TYPES.map(type => (
-                        <option key={type} value={type}>{type.replace('_', ' ')}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Habitability Score (0-100):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={formData.habitability_score}
-                      onChange={(e) => setFormData({...formData, habitability_score: parseInt(e.target.value)})}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Max Population:</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.max_population}
-                      onChange={(e) => setFormData({...formData, max_population: parseInt(e.target.value)})}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Resource Richness:</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="10"
-                      step="0.1"
-                      value={formData.resource_richness}
-                      onChange={(e) => setFormData({...formData, resource_richness: parseFloat(e.target.value)})}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="form-group">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={formData.genesis_created}
-                      onChange={(e) => setFormData({...formData, genesis_created: e.target.checked})}
-                    />
-                    Created by Genesis Device
-                  </label>
-                </div>
-                
-                <div className="form-actions">
-                  <button type="button" onClick={() => setShowCreateForm(false)}>Cancel</button>
-                  <button type="submit">Create Planet</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
       
       {/* Colony Detail Modal */}
       <ColonyDetailModal
