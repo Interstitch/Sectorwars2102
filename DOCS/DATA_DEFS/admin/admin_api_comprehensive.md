@@ -7,11 +7,14 @@ This document defines all API endpoints needed for the comprehensive Admin UI fu
 ## API Architecture
 
 ### Base URL
-- Development: `https://localhost:8000/api/admin`
-- Production: `https://api.sectorwars2102.com/api/admin`
+- Development: `http://localhost:8080/api/v1/admin`
+- Production: `https://api.sectorwars2102.com/api/v1/admin`
 
 ### Authentication
 All endpoints require JWT authentication with admin role verification.
+
+### Recent Updates (2025-05-25)
+- **NEW**: PUT `/sectors/{sector_id}` - Comprehensive sector editing endpoint
 
 ```typescript
 headers: {
@@ -407,6 +410,44 @@ Response: {
 ## 5. Universe Management APIs
 
 ### 5.1 Sector Management
+
+```typescript
+// Update sector properties (NEW - 2025-05-25)
+PUT /api/admin/sectors/{sector_id}
+Body: {
+  name?: string,                    // Sector name (max 100 chars)
+  type?: SectorType,               // STANDARD, NEBULA, ASTEROID_FIELD, etc.
+  description?: string,            // Optional description
+  x_coord?: number,                // X coordinate
+  y_coord?: number,                // Y coordinate  
+  z_coord?: number,                // Z coordinate
+  radiation_level?: number,        // 0.0-10.0 radiation level
+  hazard_level?: number,           // 0-10 hazard rating
+  resource_regeneration?: number,  // 0.0+ regeneration multiplier
+  is_discovered?: boolean,         // Discovery status
+  discovered_by_id?: string,       // Player UUID who discovered
+  controlling_faction?: string,    // Controlling faction name
+  controlling_team_id?: string,    // Controlling team UUID
+  resources?: object,              // Resource configuration
+  defenses?: object,               // Defense configuration
+  special_features?: string[],     // Special feature array
+  active_events?: object[],        // Active events array
+  nav_hazards?: object,            // Navigation hazards
+  nav_beacons?: object[]           // Navigation beacons
+}
+
+Response: {
+  message: string,
+  sector_id: string,
+  sector_number: number,
+  name: string
+}
+
+Errors:
+  - 400: Invalid input data or validation errors
+  - 404: Sector not found
+  - 500: Server error
+```
 
 ```typescript
 // Modify sector connections
