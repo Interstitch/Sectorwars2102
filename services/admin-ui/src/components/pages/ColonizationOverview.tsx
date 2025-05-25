@@ -282,7 +282,7 @@ const ColonizationOverview: React.FC = () => {
     return (
       <div className="colonization-overview">
         <PageHeader 
-          title="Planet Management" 
+          title="Colonies" 
           subtitle="Manage planetary colonization across the galaxy"
         />
         <div className="loading-spinner">Loading planetary data...</div>
@@ -293,7 +293,7 @@ const ColonizationOverview: React.FC = () => {
   return (
     <div className="colonization-overview">
       <PageHeader 
-        title="Planet Management" 
+        title="Colonies" 
         subtitle="Manage planetary colonization across the galaxy"
       />
       
