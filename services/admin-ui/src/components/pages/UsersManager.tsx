@@ -256,12 +256,6 @@ const UsersManager: React.FC = () => {
     }).format(date);
   };
   
-  // Determine user status class
-  const getUserStatusClass = (user: User) => {
-    if (!user.is_active) return 'status-inactive';
-    if (user.is_admin) return 'status-admin';
-    return 'status-active';
-  };
   
   return (
     <div className="page-container">
