@@ -304,4 +304,4 @@ fi
 
 ## Version
 
-Current version: 3.0.1
+Current version: 3.1.0
