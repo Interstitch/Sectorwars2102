@@ -362,11 +362,11 @@ const SectorsManager: React.FC = () => {
                             </div>
                             
                             <div className="sector-status-icons">
-                              {sector.has_port && <div className="status-icon icon-port" title="Port"></div>}
-                              {sector.has_planet && <div className="status-icon icon-planet" title="Planet"></div>}
-                              {sector.has_warp_tunnel && <div className="status-icon icon-warp" title="Warp Tunnel"></div>}
-                              <div className={`status-icon ${sector.is_discovered ? 'icon-discovered' : 'icon-undiscovered'}`} 
-                                   title={sector.is_discovered ? 'Discovered' : 'Undiscovered'}></div>
+                              {sector.has_port && <div className="status-badge badge-port" title="Trading Port"></div>}
+                              {sector.has_planet && <div className="status-badge badge-planet" title="Habitable Planet"></div>}
+                              {sector.has_warp_tunnel && <div className="status-badge badge-warp" title="Warp Tunnel"></div>}
+                              <div className={`status-badge ${sector.is_discovered ? 'badge-discovered' : 'badge-undiscovered'}`} 
+                                   title={sector.is_discovered ? 'Sector Mapped' : 'Sector Unknown'}></div>
                             </div>
                             
                             <div className="sector-location">

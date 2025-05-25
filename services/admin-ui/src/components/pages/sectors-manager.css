@@ -303,9 +303,10 @@
 .sector-status-icons {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  min-width: 80px;
+  gap: 0.3rem;
+  min-width: 200px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .sector-location {
@@ -340,80 +341,72 @@
   border-radius: 3px;
 }
 
-/* Status icons with intuitive visual symbols */
-.status-icon {
-  width: 16px;
-  height: 16px;
-  border-radius: 2px;
-  display: flex;
+/* Compact text badges using horizontal space efficiently */
+.status-badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  font-size: 8px;
-  font-weight: bold;
-  color: white;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.5);
-  position: relative;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  border: 1px solid transparent;
 }
 
-/* Port: Square dock symbol */
-.icon-port {
-  background-color: #3b82f6;
-  border: 2px solid #1e40af;
+/* Port: Trading/Docking facility */
+.badge-port {
+  background-color: #1e40af;
+  color: #bfdbfe;
+  border-color: #3b82f6;
 }
 
-.icon-port::after {
-  content: "■";
-  font-size: 10px;
+.badge-port::after {
+  content: "PORT";
 }
 
-/* Planet: Circle with dot in center */
-.icon-planet {
-  background-color: #22c55e;
-  border-radius: 50%;
-  border: 2px solid #16a34a;
+/* Planet: Habitable world */
+.badge-planet {
+  background-color: #166534;
+  color: #bbf7d0;
+  border-color: #22c55e;
 }
 
-.icon-planet::after {
-  content: "●";
-  font-size: 6px;
-  color: #16a34a;
+.badge-planet::after {
+  content: "WORLD";
 }
 
-/* Warp Tunnel: Diamond shape with gradient */
-.icon-warp {
-  background: linear-gradient(45deg, #8b5cf6, #a78bfa);
-  transform: rotate(45deg);
-  border: 1px solid #7c3aed;
+/* Warp Tunnel: Transportation portal */
+.badge-warp {
+  background-color: #581c87;
+  color: #e9d5ff;
+  border-color: #8b5cf6;
 }
 
-.icon-warp::after {
-  content: "◆";
-  transform: rotate(-45deg);
-  font-size: 8px;
+.badge-warp::after {
+  content: "WARP";
 }
 
-/* Discovered: Green circle with checkmark */
-.icon-discovered {
-  background-color: #059669;
-  border-radius: 50%;
-  border: 2px solid #047857;
+/* Discovery status badges */
+.badge-discovered {
+  background-color: #064e3b;
+  color: #a7f3d0;
+  border-color: #059669;
 }
 
-.icon-discovered::after {
-  content: "✓";
-  font-size: 9px;
+.badge-discovered::after {
+  content: "MAPPED";
 }
 
-/* Undiscovered: Gray circle with question */
-.icon-undiscovered {
-  background-color: #6b7280;
-  border-radius: 50%;
-  border: 2px solid #4b5563;
+.badge-undiscovered {
+  background-color: #374151;
+  color: #d1d5db;
+  border-color: #6b7280;
 }
 
-.icon-undiscovered::after {
-  content: "?";
-  font-size: 9px;
+.badge-undiscovered::after {
+  content: "UNKNOWN";
 }
 
 .sector-features {
@@ -698,10 +691,13 @@
     font-size: 0.7rem;
   }
   
-  .status-icon {
-    width: 14px;
-    height: 14px;
-    font-size: 9px;
+  .sector-status-icons {
+    min-width: 160px;
+  }
+  
+  .status-badge {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.3rem;
   }
   
   .view-button, .edit-button {
