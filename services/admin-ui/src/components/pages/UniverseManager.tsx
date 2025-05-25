@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAdmin } from '../../contexts/AdminContext';
 import './universe-manager.css';
 
@@ -453,38 +454,38 @@ const UniverseManager: React.FC = () => {
       {galaxyState ? (
         <div className="galaxy-stats">
           <div className="stats-grid">
-            <div className="stat-card">
+            <Link to="/universe/sectors" className="stat-card clickable-stat-card">
               <div className="stat-icon">🔲</div>
               <h3>Total Sectors</h3>
               <div className="stat-value">{galaxyState.statistics.total_sectors}</div>
               <div className="stat-detail">
                 {galaxyState.statistics.discovered_sectors} discovered
               </div>
-            </div>
-            <div className="stat-card">
+            </Link>
+            <Link to="/universe/ports" className="stat-card clickable-stat-card">
               <div className="stat-icon">🏪</div>
               <h3>Ports</h3>
               <div className="stat-value">{galaxyState.statistics.port_count}</div>
               <div className="stat-detail">
                 {Math.round(galaxyState.statistics.port_count / galaxyState.statistics.total_sectors * 100)}% of sectors
               </div>
-            </div>
-            <div className="stat-card">
+            </Link>
+            <Link to="/universe/planets" className="stat-card clickable-stat-card">
               <div className="stat-icon">🌍</div>
               <h3>Planets</h3>
               <div className="stat-value">{galaxyState.statistics.planet_count}</div>
               <div className="stat-detail">
                 {Math.round(galaxyState.statistics.planet_count / galaxyState.statistics.total_sectors * 100)}% of sectors
               </div>
-            </div>
-            <div className="stat-card">
+            </Link>
+            <Link to="/universe/warptunnels" className="stat-card clickable-stat-card">
               <div className="stat-icon">🌀</div>
               <h3>Warp Tunnels</h3>
               <div className="stat-value">{galaxyState.statistics.warp_tunnel_count}</div>
               <div className="stat-detail">
                 Connecting sectors
               </div>
-            </div>
+            </Link>
           </div>
 
           <div className="region-distribution">

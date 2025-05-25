@@ -421,6 +421,33 @@ h2, h3, h4 {
   color: #64748b;
 }
 
+/* Clickable stat card styles */
+.clickable-stat-card {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+
+.clickable-stat-card:hover {
+  text-decoration: none;
+  color: inherit;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  border-color: rgba(59, 130, 246, 0.6);
+}
+
+.clickable-stat-card:hover .stat-value {
+  color: #93c5fd;
+}
+
+.clickable-stat-card:hover .stat-icon {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
 /* Region Distribution */
 .region-distribution {
   background: rgba(30, 41, 59, 0.6);
