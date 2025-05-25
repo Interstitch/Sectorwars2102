@@ -424,13 +424,13 @@ const SectorsManager: React.FC = () => {
                       <div className="detail-item">
                         <span className="detail-label">Coordinates:</span>
                         <span className="detail-value">
-                          {selectedSector.coordinates.x}, {selectedSector.coordinates.y}, {selectedSector.coordinates.z}
+                          {selectedSector.x_coord}, {selectedSector.y_coord}, {selectedSector.z_coord}
                         </span>
                       </div>
                       <div className="detail-item">
                         <span className="detail-label">Region:</span>
                         <span className="detail-value">
-                          {regions.find(r => r.id === selectedSector.region_id)?.name || 'Unknown'}
+                          {selectedSector.region_name || 'Unknown'}
                         </span>
                       </div>
                       <div className="detail-item">
@@ -457,36 +457,24 @@ const SectorsManager: React.FC = () => {
                       </div>
                       <div className="detail-item">
                         <span className="detail-label">Discovered:</span>
-                        <span className="detail-value">{selectedSector.discovered ? 'Yes' : 'No'}</span>
+                        <span className="detail-value">{selectedSector.is_discovered ? 'Yes' : 'No'}</span>
                       </div>
                     </div>
                     
                     <div className="detail-section">
-                      <h5>Resources</h5>
-                      {selectedSector.resources.length === 0 ? (
-                        <p>No resources available in this sector.</p>
-                      ) : (
-                        <ul className="resources-list">
-                          {selectedSector.resources.map((resource, index) => (
-                            <li key={index} className="resource-item">{resource}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                    
-                    <div className="detail-section">
-                      <h5>Connected Sectors</h5>
-                      {selectedSector.connections.length === 0 ? (
-                        <p>No connections to other sectors.</p>
-                      ) : (
-                        <ul className="connections-list">
-                          {selectedSector.connections.map((connection, index) => (
-                            <li key={index} className="connection-item">
-                              <span className="connection-id">{connection}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                      <h5>Additional Information</h5>
+                      <div className="detail-item">
+                        <span className="detail-label">Hazard Level:</span>
+                        <span className="detail-value">{selectedSector.hazard_level}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Player Count:</span>
+                        <span className="detail-value">{selectedSector.player_count}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Controlling Faction:</span>
+                        <span className="detail-value">{selectedSector.controlling_faction || 'None'}</span>
+                      </div>
                     </div>
                     
                     <div className="detail-actions">

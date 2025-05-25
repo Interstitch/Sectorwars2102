@@ -89,15 +89,18 @@ class SectorManagementResponse(BaseModel):
 class PortManagementResponse(BaseModel):
     id: str
     name: str
-    sector_id: int
+    sector_id: str  # Changed to string to match frontend
+    sector_name: Optional[str]
     port_class: str
-    type: str
+    trade_volume: int
+    max_capacity: int
+    security_level: int
+    docking_fee: int
     owner_id: Optional[str]
     owner_name: Optional[str]
-    faction_affiliation: Optional[str]
-    defense_level: int
-    tax_rate: float
+    created_at: str
     is_operational: bool
+    commodities: List[str]
 
 class PlanetManagementResponse(BaseModel):
     id: str
@@ -727,26 +730,41 @@ async def get_ports_comprehensive(
                 if owner:
                     owner_name = owner.user.username
             
-            # Extract defense information from JSONB defenses field
-            defenses = port.defenses or {}
-            defense_level = defenses.get("defense_drones", 0) + defenses.get("patrol_ships", 0)
+            # Get sector name
+            sector_name = None
+            if port.sector:
+                sector_name = port.sector.name
             
-            # Extract tax rate from service prices or use default
+            # Extract information from JSONB fields with defaults
+            defenses = port.defenses or {}
             service_prices = port.service_prices or {}
-            tax_rate = service_prices.get("tax_rate", 5.0)
+            inventory = port.inventory or {}
+            facilities = port.facilities or {}
+            
+            # Calculate values for frontend display
+            trade_volume = inventory.get("total_volume", 0)
+            max_capacity = facilities.get("storage_capacity", 10000)
+            security_level = defenses.get("defense_drones", 0) + defenses.get("patrol_ships", 0)
+            docking_fee = service_prices.get("docking_fee", 100)
+            
+            # Extract commodities from inventory
+            commodities = list(inventory.get("commodities", {}).keys()) if inventory.get("commodities") else []
             
             ports_data.append(PortManagementResponse(
                 id=str(port.id),
                 name=port.name,
-                sector_id=port.sector_id,
+                sector_id=str(port.sector_id),
+                sector_name=sector_name,
                 port_class=port.port_class.value,
-                type=port.type.value,
+                trade_volume=trade_volume,
+                max_capacity=max_capacity,
+                security_level=security_level,
+                docking_fee=docking_fee,
                 owner_id=str(port.owner_id) if port.owner_id else None,
                 owner_name=owner_name,
-                faction_affiliation=port.faction_affiliation,
-                defense_level=defense_level,
-                tax_rate=tax_rate,
-                is_operational=port.status.value == "OPERATIONAL"
+                created_at=port.created_at.isoformat() if port.created_at else "",
+                is_operational=port.status.value == "OPERATIONAL",
+                commodities=commodities
             ))
         
         return {
