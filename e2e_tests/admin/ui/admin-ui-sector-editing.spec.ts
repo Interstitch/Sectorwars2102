@@ -1,18 +1,18 @@
-import { test, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test as authTest } from '../../fixtures/auth.fixtures';
 import { loginAsAdmin } from '../../utils/auth.utils';
-import { AdminCredentials } from '../../fixtures/auth.fixtures';
 
-test.describe('Admin UI - Sector Editing', () => {
-  test.beforeEach(async ({ page }) => {
+authTest.describe('Admin UI - Sector Editing', () => {
+  authTest.beforeEach(async ({ page, adminCredentials }) => {
     // Log in as admin
-    await loginAsAdmin(page, AdminCredentials);
+    await loginAsAdmin(page, adminCredentials);
     
     // Navigate to sectors management
     await page.goto('http://localhost:3001/sectors');
     await page.waitForLoadState('networkidle');
   });
 
-  test('should open sector edit modal when clicking Edit button', async ({ page }) => {
+  authTest('should open sector edit modal when clicking Edit button', async ({ page }) => {
     // Wait for sectors to load
     await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
     
@@ -25,7 +25,7 @@ test.describe('Admin UI - Sector Editing', () => {
     await expect(page.locator('.modal-header h2')).toContainText('Edit Sector:');
   });
 
-  test('should display tabbed interface with all tabs', async ({ page }) => {
+  authTest('should display tabbed interface with all tabs', async ({ page }) => {
     // Open edit modal
     await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
     await page.locator('.edit-button').first().click();
@@ -39,7 +39,7 @@ test.describe('Admin UI - Sector Editing', () => {
     await expect(page.locator('.tab-button').filter({ hasText: 'Control' })).toBeVisible();
   });
 
-  test('should allow editing basic sector information', async ({ page }) => {
+  authTest('should allow editing basic sector information', async ({ page }) => {
     // Open edit modal
     await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
     await page.locator('.edit-button').first().click();
@@ -61,7 +61,7 @@ test.describe('Admin UI - Sector Editing', () => {
     await expect(page.locator('.save-button')).toBeEnabled();
   });
 
-  test('should switch between tabs correctly', async ({ page }) => {
+  authTest('should switch between tabs correctly', async ({ page }) => {
     // Open edit modal
     await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
     await page.locator('.edit-button').first().click();
@@ -82,7 +82,7 @@ test.describe('Admin UI - Sector Editing', () => {
     await expect(page.locator('#controlling-faction')).toBeVisible();
   });
 
-  test('should handle physical properties sliders', async ({ page }) => {
+  authTest('should handle physical properties sliders', async ({ page }) => {
     // Open edit modal
     await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
     await page.locator('.edit-button').first().click();
@@ -108,7 +108,7 @@ test.describe('Admin UI - Sector Editing', () => {
     await expect(page.locator('.save-button')).toBeEnabled();
   });
 
-  test('should handle coordinate editing', async ({ page }) => {
+  authTest('should handle coordinate editing', async ({ page }) => {
     // Open edit modal
     await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
     await page.locator('.edit-button').first().click();
@@ -124,7 +124,7 @@ test.describe('Admin UI - Sector Editing', () => {
     await expect(page.locator('.save-button')).toBeEnabled();
   });
 
-  test('should show unsaved changes warning when closing', async ({ page }) => {
+  authTest('should show unsaved changes warning when closing', async ({ page }) => {
     // Open edit modal
     await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
     await page.locator('.edit-button').first().click();
@@ -144,7 +144,7 @@ test.describe('Admin UI - Sector Editing', () => {
     });
   });
 
-  test('should close modal without warning when no changes made', async ({ page }) => {
+  authTest('should close modal without warning when no changes made', async ({ page }) => {
     // Open edit modal
     await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
     await page.locator('.edit-button').first().click();
@@ -158,7 +158,7 @@ test.describe('Admin UI - Sector Editing', () => {
     await expect(page.locator('.sector-edit-modal')).not.toBeVisible();
   });
 
-  test('should handle discovery settings', async ({ page }) => {
+  authTest('should handle discovery settings', async ({ page }) => {
     // Open edit modal
     await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
     await page.locator('.edit-button').first().click();
@@ -179,7 +179,7 @@ test.describe('Admin UI - Sector Editing', () => {
     await expect(page.locator('.save-button')).toBeEnabled();
   });
 
-  test('should handle control settings', async ({ page }) => {
+  authTest('should handle control settings', async ({ page }) => {
     // Open edit modal
     await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
     await page.locator('.edit-button').first().click();
@@ -199,7 +199,7 @@ test.describe('Admin UI - Sector Editing', () => {
     await expect(page.locator('.save-button')).toBeEnabled();
   });
 
-  test('should handle form validation errors', async ({ page }) => {
+  authTest('should handle form validation errors', async ({ page }) => {
     // Open edit modal
     await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
     await page.locator('.edit-button').first().click();
@@ -216,7 +216,7 @@ test.describe('Admin UI - Sector Editing', () => {
     await expect(page.locator('.error-message')).toBeVisible();
   });
 
-  test('should disable Save button when no changes made', async ({ page }) => {
+  authTest('should disable Save button when no changes made', async ({ page }) => {
     // Open edit modal
     await page.waitForSelector('.sectors-grid-row', { timeout: 10000 });
     await page.locator('.edit-button').first().click();
