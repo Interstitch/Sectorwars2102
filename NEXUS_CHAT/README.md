@@ -521,6 +521,152 @@ NEXT_STEPS: [What the next agent should do with this]
         return "\n".join(prompt_parts)
 ```
 
+#### **5. Bidirectional Communication Tracking**
+```python
+class CommunicationHistory:
+    """
+    Tracks bidirectional communication between orchestrator and agents
+    
+    Features:
+    - Message direction tracking (orchestrator→agent, agent→orchestrator)
+    - Conversation threading and context preservation
+    - Response time monitoring
+    - Communication pattern analysis
+    """
+    
+    def __init__(self, agent_id: str):
+        self.agent_id = agent_id
+        self.messages: List[CommunicationMessage] = []
+        self.last_direction: Optional[str] = None  # "to_agent" or "from_agent"
+        self.last_message_time: Optional[datetime] = None
+        self.conversation_state: str = "idle"  # "idle", "waiting_response", "processing"
+    
+    def add_message(self, direction: str, content: str, message_type: str = "task"):
+        """Record a message in the communication history"""
+        message = CommunicationMessage(
+            timestamp=datetime.utcnow(),
+            direction=direction,  # "to_agent" or "from_agent"
+            content=content,
+            message_type=message_type,
+            message_id=f"msg_{uuid4()}"
+        )
+        
+        self.messages.append(message)
+        self.last_direction = direction
+        self.last_message_time = message.timestamp
+        
+        # Update conversation state
+        if direction == "to_agent":
+            self.conversation_state = "waiting_response"
+        elif direction == "from_agent":
+            self.conversation_state = "processing"
+    
+    def get_last_exchange(self) -> Dict[str, CommunicationMessage]:
+        """Get the most recent orchestrator→agent and agent→orchestrator messages"""
+        last_to_agent = None
+        last_from_agent = None
+        
+        for message in reversed(self.messages):
+            if message.direction == "to_agent" and not last_to_agent:
+                last_to_agent = message
+            elif message.direction == "from_agent" and not last_from_agent:
+                last_from_agent = message
+            
+            if last_to_agent and last_from_agent:
+                break
+        
+        return {
+            "last_to_agent": last_to_agent,
+            "last_from_agent": last_from_agent
+        }
+    
+    def is_waiting_for_response(self) -> bool:
+        """Check if orchestrator is waiting for agent response"""
+        return (self.last_direction == "to_agent" and 
+                self.conversation_state == "waiting_response")
+    
+    def get_response_time(self) -> Optional[float]:
+        """Calculate response time for last exchange"""
+        exchange = self.get_last_exchange()
+        
+        if exchange["last_to_agent"] and exchange["last_from_agent"]:
+            if exchange["last_from_agent"].timestamp > exchange["last_to_agent"].timestamp:
+                delta = exchange["last_from_agent"].timestamp - exchange["last_to_agent"].timestamp
+                return delta.total_seconds()
+        
+        return None
+
+class CommunicationTracker:
+    """
+    Manages communication tracking for all agents
+    
+    Features:
+    - Cross-agent communication analysis
+    - Performance metrics tracking
+    - Communication bottleneck detection
+    - Real-time status monitoring
+    """
+    
+    def __init__(self):
+        self.agent_histories: Dict[str, CommunicationHistory] = {}
+    
+    def initialize_agent(self, agent_id: str):
+        """Initialize communication tracking for an agent"""
+        self.agent_histories[agent_id] = CommunicationHistory(agent_id)
+    
+    def record_orchestrator_to_agent(self, agent_id: str, content: str, message_type: str = "task"):
+        """Record message from orchestrator to agent"""
+        if agent_id not in self.agent_histories:
+            self.initialize_agent(agent_id)
+        
+        self.agent_histories[agent_id].add_message("to_agent", content, message_type)
+        
+        print(f"📤 NEXUS → {agent_id}: {message_type}")
+    
+    def record_agent_to_orchestrator(self, agent_id: str, content: str, message_type: str = "response"):
+        """Record message from agent to orchestrator"""
+        if agent_id not in self.agent_histories:
+            self.initialize_agent(agent_id)
+        
+        self.agent_histories[agent_id].add_message("from_agent", content, message_type)
+        
+        response_time = self.agent_histories[agent_id].get_response_time()
+        response_info = f" ({response_time:.1f}s)" if response_time else ""
+        
+        print(f"📥 {agent_id} → NEXUS: {message_type}{response_info}")
+    
+    def get_communication_status(self) -> Dict[str, dict]:
+        """Get current communication status for all agents"""
+        status = {}
+        
+        for agent_id, history in self.agent_histories.items():
+            status[agent_id] = {
+                "last_direction": history.last_direction,
+                "conversation_state": history.conversation_state,
+                "waiting_for_response": history.is_waiting_for_response(),
+                "last_message_time": history.last_message_time.isoformat() if history.last_message_time else None,
+                "message_count": len(history.messages),
+                "avg_response_time": self._calculate_avg_response_time(history)
+            }
+        
+        return status
+    
+    def _calculate_avg_response_time(self, history: CommunicationHistory) -> Optional[float]:
+        """Calculate average response time for an agent"""
+        response_times = []
+        
+        for i in range(len(history.messages) - 1):
+            current = history.messages[i]
+            next_msg = history.messages[i + 1]
+            
+            if (current.direction == "to_agent" and 
+                next_msg.direction == "from_agent"):
+                delta = next_msg.timestamp - current.timestamp
+                response_times.append(delta.total_seconds())
+        
+        return sum(response_times) / len(response_times) if response_times else None
+```
+
 ### JSON Message Schema
 All communication follows a standardized JSON protocol ensuring type safety and reliability:
 
@@ -927,13 +1073,79 @@ sequenceDiagram
 **1.1 Environment Setup**
 ```bash
 # Python 3.9+ with asyncio support
-pip install openai>=1.0.0 pydantic>=2.0.0 websockets>=11.0.0
+pip install openai>=1.0.0 pydantic>=2.0.0 websockets>=11.0.0 python-dotenv>=1.0.0
 
 # Claude Code CLI installation 
 # (Follow Anthropic's official installation guide)
 
 # Message queue (Redis for production, in-memory for development)
 pip install redis>=4.0.0
+
+# Environment configuration
+cp .env.example .env
+# Edit .env to include:
+# OPENAI_API_KEY=your_openai_api_key_here
+```
+
+**1.1.1 Environment Configuration**
+```python
+# config/environment.py
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+class EnvironmentManager:
+    """
+    Manages environment variables and configuration loading
+    
+    Features:
+    - Automatic .env file detection and loading
+    - OpenAI API key validation
+    - Workspace path resolution
+    - Configuration validation
+    """
+    
+    def __init__(self, workspace_path: str = None):
+        self.workspace_path = Path(workspace_path or os.getcwd())
+        self.env_file = self.workspace_path / ".env"
+        self.load_environment()
+    
+    def load_environment(self):
+        """Load environment variables from workspace .env file"""
+        if self.env_file.exists():
+            load_dotenv(self.env_file)
+            print(f"✅ Loaded environment from: {self.env_file}")
+        else:
+            print(f"⚠️  No .env file found at: {self.env_file}")
+            print("Please create .env file with OPENAI_API_KEY")
+    
+    def get_openai_api_key(self) -> str:
+        """Get and validate OpenAI API key from environment"""
+        api_key = os.getenv('OPENAI_API_KEY')
+        
+        if not api_key:
+            raise EnvironmentError(
+                "OPENAI_API_KEY not found in environment. "
+                f"Please add it to {self.env_file}"
+            )
+        
+        if not api_key.startswith('sk-'):
+            raise EnvironmentError(
+                "Invalid OPENAI_API_KEY format. Should start with 'sk-'"
+            )
+        
+        return api_key
+    
+    def get_workspace_config(self) -> dict:
+        """Get complete workspace configuration"""
+        return {
+            'workspace_path': str(self.workspace_path),
+            'env_file': str(self.env_file),
+            'openai_api_key': self.get_openai_api_key(),
+            'scratchpad_path': str(self.workspace_path / 'scratchpads'),
+            'sessions_path': str(self.workspace_path / 'sessions'),
+            'logs_path': str(self.workspace_path / 'logs')
+        }
 ```
 
 **1.2 Core Orchestrator Implementation**
@@ -954,20 +1166,44 @@ class NexusOrchestrator:
     - Session lifecycle management
     """
     
-    def __init__(self, config: OrchestratorConfig):
-        self.openai_client = AsyncOpenAI(api_key=config.openai_api_key)
+    def __init__(self, config: OrchestratorConfig, workspace_path: str = None):
+        # Initialize environment manager and load configuration
+        self.env_manager = EnvironmentManager(workspace_path)
+        workspace_config = self.env_manager.get_workspace_config()
+        
+        # Initialize OpenAI client with API key from .env
+        self.openai_client = AsyncOpenAI(api_key=workspace_config['openai_api_key'])
+        
+        # Core components
         self.agents: Dict[str, ClaudeCodeAgent] = {}
         self.task_queue = AsyncPriorityQueue()
         self.message_bus = MessageBus()
         self.health_monitor = HealthMonitor()
         self.session_manager = SessionManager()
+        self.scratchpad_manager = ScratchpadManager(workspace_config['scratchpad_path'])
+        self.feedback_loop = OrchestrationFeedbackLoop(self.openai_client)
+        
+        # Session and communication tracking
         self.active_sessions: Dict[str, str] = {}  # agent_id -> session_id
+        self.communication_tracker = CommunicationTracker()
+        
+        # Workspace configuration
+        self.workspace_config = workspace_config
+        
+        print(f"🧠 NEXUS Orchestrator initialized")
+        print(f"📁 Workspace: {workspace_config['workspace_path']}")
+        print(f"🔑 OpenAI API Key: {'sk-***' + workspace_config['openai_api_key'][-4:]}")
+        print(f"📝 Scratchpads: {workspace_config['scratchpad_path']}")
+        print(f"🔄 Sessions: {workspace_config['sessions_path']}")
     
     async def start_orchestration(self):
         """Initialize all agents and begin coordination"""
-        # Initialize agents with session recovery
+        # Initialize agents with session recovery and communication tracking
         for agent_config in self.config.agents:
             agent = ClaudeCodeAgent(agent_config)
+            
+            # Initialize communication tracking for this agent
+            self.communication_tracker.initialize_agent(agent.config.agent_id)
             
             # Attempt to recover existing sessions
             if await agent.resume_session():
@@ -1085,8 +1321,18 @@ class NexusOrchestrator:
                 )
             )
             
+            # Record outbound communication
+            self.communication_tracker.record_orchestrator_to_agent(
+                agent.config.agent_id, enhanced_prompt, "task_execution"
+            )
+            
             # Send enhanced prompt to agent
             response = await agent.send_message(enhanced_prompt)
+            
+            # Record inbound communication
+            self.communication_tracker.record_agent_to_orchestrator(
+                agent.config.agent_id, response, "task_completion"
+            )
             
             # Extract and store agent's scratchpad output
             await self._process_agent_scratchpad_output(agent.config.agent_id, response, write_channel)
@@ -1672,12 +1918,13 @@ pip install -r requirements.txt
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env with your OpenAI API key
+# Edit .env with your OpenAI API key:
+# OPENAI_API_KEY=sk-your-api-key-here
 
 # 3. Install Claude Code CLI (required for agents)
 # Follow Anthropic's official installation guide
 
-# 4. Start the system
+# 4. Start the system (automatically loads WORKSPACE/.env)
 python -m nexus.orchestrator start
 
 # 5. Test with simple task (system handles session management automatically)
@@ -1685,8 +1932,30 @@ curl -X POST http://localhost:8080/api/tasks \
   -H "Content-Type: application/json" \
   -d '{"request": "Create a simple hello world function"}'
 
-# 6. Monitor agent sessions in real-time
+# 6. Monitor agent sessions and communication in real-time
 curl http://localhost:8080/api/sessions
+curl http://localhost:8080/api/communication
+```
+
+**Example .env file:**
+```bash
+# .env
+# NEXUS Multi-Agent Orchestrator Configuration
+
+# OpenAI API Key (required for orchestrator)
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Optional: Custom workspace paths
+# SCRATCHPAD_PATH=./scratchpads
+# SESSIONS_PATH=./sessions
+# LOGS_PATH=./logs
+
+# Optional: Redis configuration (for production)
+# REDIS_URL=redis://localhost:6379
+
+# Optional: Performance tuning
+# MAX_CONCURRENT_TASKS=10
+# AGENT_TIMEOUT_SECONDS=300
 ```
 
 ### **Session Management Testing**
@@ -1984,6 +2253,89 @@ Response:
   ],
   "rationale": "Implementation is solid but missing comprehensive input validation for security",
   "overall_assessment": "High quality work with minor security improvements needed"
+}
+```
+
+**GET /api/communication** - Monitor Bidirectional Communication
+```http
+GET /api/communication HTTP/1.1
+
+Response:
+{
+  "communication_status": {
+    "aria_coordinator": {
+      "last_direction": "from_agent",
+      "conversation_state": "processing",
+      "waiting_for_response": false,
+      "last_message_time": "2025-05-25T19:45:30Z",
+      "message_count": 12,
+      "avg_response_time": 45.2
+    },
+    "code_developer": {
+      "last_direction": "to_agent", 
+      "conversation_state": "waiting_response",
+      "waiting_for_response": true,
+      "last_message_time": "2025-05-25T19:46:15Z",
+      "message_count": 8,
+      "avg_response_time": 62.8
+    },
+    "alpha_test_creator": {
+      "last_direction": "from_agent",
+      "conversation_state": "idle",
+      "waiting_for_response": false,
+      "last_message_time": "2025-05-25T19:30:00Z",
+      "message_count": 4,
+      "avg_response_time": 38.5
+    },
+    "beta_test_validator": {
+      "last_direction": "from_agent",
+      "conversation_state": "idle", 
+      "waiting_for_response": false,
+      "last_message_time": "2025-05-25T19:35:12Z",
+      "message_count": 6,
+      "avg_response_time": 51.3
+    }
+  },
+  "system_metrics": {
+    "total_messages": 30,
+    "avg_system_response_time": 49.45,
+    "active_conversations": 1,
+    "idle_agents": 3
+  }
+}
+```
+
+**GET /api/communication/{agent_id}** - Detailed Agent Communication History
+```http
+GET /api/communication/aria_coordinator HTTP/1.1
+
+Response:
+{
+  "agent_id": "aria_coordinator",
+  "conversation_history": [
+    {
+      "message_id": "msg_abc123",
+      "timestamp": "2025-05-25T19:00:00Z",
+      "direction": "to_agent",
+      "message_type": "task_execution",
+      "content_preview": "Analyze authentication requirements for enterprise application..."
+    },
+    {
+      "message_id": "msg_def456", 
+      "timestamp": "2025-05-25T19:00:45Z",
+      "direction": "from_agent",
+      "message_type": "task_completion",
+      "content_preview": "Analysis complete. Comprehensive security requirements documented...",
+      "response_time_seconds": 45.2
+    }
+  ],
+  "communication_patterns": {
+    "avg_response_time": 45.2,
+    "fastest_response": 23.1,
+    "slowest_response": 67.8,
+    "total_exchanges": 6,
+    "current_state": "processing"
+  }
 }
 ```
 
