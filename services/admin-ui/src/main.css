@@ -1,11 +1,46 @@
-/* Main CSS Import File */
+/**
+ * SECTORWARS ADMIN UI - MAIN STYLESHEET
+ * ====================================
+ * 
+ * This is the main entry point for all CSS styles.
+ * It imports the centralized design system and component libraries.
+ * 
+ * Last Updated: 2025-05-25
+ * Version: 2.0.0 - Centralized Design System
+ */
 
-/* First import the base app styles */
-@import './App.css';
+/* ============================
+   DESIGN SYSTEM FOUNDATION
+   ============================ */
 
-/* Then import all component styles */
-@import './components/ui/ui.css';
-@import './components/layouts/layouts.css';
+/* Core design system with tokens, variables, and base styles */
+@import './styles/design-system.css';
+
+/* Reusable component library */
+@import './styles/components.css';
+
+/* Layout system and utilities */
+@import './styles/layouts.css';
+
+/* ============================
+   LEGACY COMPONENT IMPORTS
+   (TO BE PHASED OUT)
+   ============================ */
+
+/* Keep only essential component styles during transition */
 @import './components/auth/auth.css';
-@import './components/users/users.css';
-@import './components/pages/pages.css';
+
+/* ============================
+   PAGE-SPECIFIC STYLES
+   (TEMPORARY - TO BE REFACTORED)
+   ============================ */
+
+/* These will be gradually replaced with design system classes */
+/* @import './components/pages/pages.css'; /* Commented out - using design system */
+
+/* ============================
+   COMPONENT OVERRIDES
+   ============================ */
+
+/* Any necessary overrides for third-party components */
+/* Keep this section minimal */

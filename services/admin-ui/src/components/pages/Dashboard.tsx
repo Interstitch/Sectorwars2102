@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import './pages.css';
 
 // Components
 import PageHeader from '../ui/PageHeader';
@@ -192,16 +191,21 @@ const Dashboard: React.FC = () => {
     <div className="page-container">
       <PageHeader title="Dashboard" subtitle="Game Galaxy Overview" />
 
-      <div className="dashboard-content">
+      <div className="page-content">
         {/* System Health Overview */}
-        <section className="system-health-section">
+        <section className="section">
           <div className="section-header">
-            <h3>System Health</h3>
-            <div className="refresh-info">
-              Last updated: {lastRefresh.toLocaleTimeString()}
+            <div>
+              <h3 className="section-title">System Health</h3>
+              <p className="section-subtitle">Real-time status of all system components</p>
+            </div>
+            <div className="section-actions">
+              <span className="text-sm text-tertiary">
+                Last updated: {lastRefresh.toLocaleTimeString()}
+              </span>
               <button 
                 onClick={fetchDashboardData} 
-                className="refresh-btn"
+                className="btn btn-secondary btn-sm"
                 disabled={isLoading}
                 title="Refresh dashboard data"
               >
@@ -209,74 +213,83 @@ const Dashboard: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="health-cards-grid">
-            <div className="health-card">
-              <div className="health-card-header">
-                <span className="health-icon">🗄️</span>
-                <h4>Database</h4>
-                <span 
-                  className="health-status-icon"
-                  style={{ color: getStatusColor(dashboardData.system_health.database.status) }}
-                >
-                  {getStatusIcon(dashboardData.system_health.database.status)}
-                </span>
-              </div>
-              <div className="health-card-metrics">
-                <div className="metric">
-                  <span className="metric-label">Status:</span>
-                  <span className="metric-value">{dashboardData.system_health.database.status}</span>
-                </div>
-                <div className="metric">
-                  <span className="metric-label">Response:</span>
-                  <span className="metric-value">{dashboardData.system_health.database.response_time.toFixed(0)}ms</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="health-card">
-              <div className="health-card-header">
-                <span className="health-icon">🤖</span>
-                <h4>AI Services</h4>
-                <span 
-                  className="health-status-icon"
-                  style={{ color: getStatusColor(dashboardData.system_health.ai.status) }}
-                >
-                  {getStatusIcon(dashboardData.system_health.ai.status)}
-                </span>
-              </div>
-              <div className="health-card-metrics">
-                <div className="metric">
-                  <span className="metric-label">Healthy:</span>
-                  <span className="metric-value">
-                    {dashboardData.system_health.ai.healthy}/{dashboardData.system_health.ai.total}
+          <div className="grid grid-auto-fit gap-6">
+            <div className="card">
+              <div className="card-body">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🗄️</span>
+                    <h4 className="font-semibold text-primary">Database</h4>
+                  </div>
+                  <span 
+                    className="status-dot"
+                    style={{ backgroundColor: getStatusColor(dashboardData.system_health.database.status) }}
+                  >
                   </span>
                 </div>
-                <div className="metric">
-                  <span className="metric-label">Status:</span>
-                  <span className="metric-value">{dashboardData.system_health.ai.status}</span>
+                <div className="flex flex-col gap-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-tertiary">Status:</span>
+                    <span className="text-sm font-medium text-secondary">{dashboardData.system_health.database.status}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-tertiary">Response:</span>
+                    <span className="text-sm font-medium text-secondary">{dashboardData.system_health.database.response_time.toFixed(0)}ms</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="health-card">
-              <div className="health-card-header">
-                <span className="health-icon">🖥️</span>
-                <h4>Game Server</h4>
-                <span 
-                  className="health-status-icon"
-                  style={{ color: getStatusColor(dashboardData.system_health.gameserver.status) }}
-                >
-                  {getStatusIcon(dashboardData.system_health.gameserver.status)}
-                </span>
-              </div>
-              <div className="health-card-metrics">
-                <div className="metric">
-                  <span className="metric-label">Status:</span>
-                  <span className="metric-value">{dashboardData.system_health.gameserver.status}</span>
+            <div className="card">
+              <div className="card-body">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🤖</span>
+                    <h4 className="font-semibold text-primary">AI Services</h4>
+                  </div>
+                  <span 
+                    className="status-dot"
+                    style={{ backgroundColor: getStatusColor(dashboardData.system_health.ai.status) }}
+                  >
+                  </span>
                 </div>
-                <div className="metric">
-                  <span className="metric-label">API:</span>
-                  <span className="metric-value">Operational</span>
+                <div className="flex flex-col gap-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-tertiary">Healthy:</span>
+                    <span className="text-sm font-medium text-secondary">
+                      {dashboardData.system_health.ai.healthy}/{dashboardData.system_health.ai.total}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-tertiary">Status:</span>
+                    <span className="text-sm font-medium text-secondary">{dashboardData.system_health.ai.status}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-body">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🖥️</span>
+                    <h4 className="font-semibold text-primary">Game Server</h4>
+                  </div>
+                  <span 
+                    className="status-dot"
+                    style={{ backgroundColor: getStatusColor(dashboardData.system_health.gameserver.status) }}
+                  >
+                  </span>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-tertiary">Status:</span>
+                    <span className="text-sm font-medium text-secondary">{dashboardData.system_health.gameserver.status}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-tertiary">API:</span>
+                    <span className="text-sm font-medium text-secondary">Operational</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -284,28 +297,30 @@ const Dashboard: React.FC = () => {
         </section>
 
         {/* Statistics Overview */}
-        <section className="stats-overview-section">
-          <h3>Galaxy Statistics</h3>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-card-header">
-                <span className="stat-icon">👥</span>
-                <h4>Players</h4>
+        <section className="section">
+          <div className="section-header">
+            <div>
+              <h3 className="section-title">Galaxy Statistics</h3>
+              <p className="section-subtitle">Real-time metrics from across the game universe</p>
+            </div>
+          </div>
+          <div className="grid grid-auto-fit gap-6">
+            <div className="dashboard-stat-card">
+              <div className="dashboard-stat-header">
+                <span className="dashboard-stat-icon">👥</span>
+                <h4 className="dashboard-stat-title">Players</h4>
               </div>
-              <div className="stat-card-content">
-                <div className="primary-stat">
-                  <span className="stat-number">{dashboardData.player_stats.total_players.toLocaleString()}</span>
-                  <span className="stat-label">Total Players</span>
+              <div className="dashboard-stat-value">
+                {dashboardData.player_stats.total_players.toLocaleString()}
+              </div>
+              <div className="flex justify-between">
+                <div className="text-center">
+                  <div className="text-xl font-semibold text-secondary">{dashboardData.player_stats.active_sessions}</div>
+                  <div className="text-xs text-tertiary">Online</div>
                 </div>
-                <div className="secondary-stats">
-                  <div className="secondary-stat">
-                    <span className="secondary-number">{dashboardData.player_stats.active_sessions}</span>
-                    <span className="secondary-label">Online</span>
-                  </div>
-                  <div className="secondary-stat">
-                    <span className="secondary-number">{dashboardData.player_stats.new_today}</span>
-                    <span className="secondary-label">New Today</span>
-                  </div>
+                <div className="text-center">
+                  <div className="text-xl font-semibold text-secondary">{dashboardData.player_stats.new_today}</div>
+                  <div className="text-xs text-tertiary">New Today</div>
                 </div>
               </div>
             </div>
