@@ -312,3 +312,105 @@ async def anthropic_health():
         result["error"] = error
     
     return result
+
+# Database Health Check Endpoint
+@router.get("/database")
+@router.get("/database/")
+async def database_health():
+    """
+    Check PostgreSQL database health status.
+    This endpoint does not require authentication.
+    """
+    import time
+    from sqlalchemy import text, inspect
+    from src.core.database import engine
+    from src.core.config import settings
+    from urllib.parse import urlparse
+    
+    start_time = time.time()
+    
+    # Parse database URL for metadata
+    db_url = settings.get_db_url()
+    parsed = urlparse(db_url)
+    
+    connected = False
+    pool_status = {}
+    database_info = {}
+    error = None
+    
+    try:
+        # Test database connection and gather metrics
+        with engine.connect() as connection:
+            connected = True
+            
+            # Get pool status
+            pool = engine.pool
+            pool_status = {
+                "size": pool.size(),
+                "checked_out": pool.checkedout(),
+                "overflow": pool.overflow(),
+                "total_connections": pool.checkedout() + pool.checkedin()
+            }
+            
+            # Get database statistics
+            # Database size in MB
+            size_result = connection.execute(text(
+                "SELECT pg_size_pretty(pg_database_size(current_database())) as size, "
+                "pg_database_size(current_database()) / (1024 * 1024) as size_mb"
+            )).fetchone()
+            
+            # Table count
+            table_result = connection.execute(text(
+                "SELECT COUNT(*) as table_count FROM information_schema.tables "
+                "WHERE table_schema = 'public'"
+            )).fetchone()
+            
+            # Active connections
+            connections_result = connection.execute(text(
+                "SELECT COUNT(*) as active_connections FROM pg_stat_activity "
+                "WHERE state = 'active'"
+            )).fetchone()
+            
+            database_info = {
+                "size_mb": round(float(size_result.size_mb), 2),
+                "size_pretty": size_result.size,
+                "table_count": table_result.table_count,
+                "active_connections": connections_result.active_connections
+            }
+            
+    except Exception as e:
+        error = str(e)
+        connected = False
+        # Set default values for failed connection
+        pool_status = {
+            "size": 0,
+            "checked_out": 0,
+            "overflow": 0,
+            "total_connections": 0
+        }
+        database_info = {
+            "size_mb": 0,
+            "size_pretty": "Unknown",
+            "table_count": 0,
+            "active_connections": 0
+        }
+    
+    response_time = (time.time() - start_time) * 1000
+    status = "healthy" if connected else "unavailable"
+    
+    result = {
+        "provider": "postgresql",
+        "status": status,
+        "host": parsed.hostname or "unknown",
+        "database": parsed.path[1:] if parsed.path else "unknown",  # Remove leading '/'
+        "connected": connected,
+        "response_time": round(response_time, 2),
+        "pool_status": pool_status,
+        "database_info": database_info,
+        "last_check": datetime.datetime.now().isoformat()
+    }
+    
+    if error:
+        result["error"] = error
+    
+    return result
