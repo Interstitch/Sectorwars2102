@@ -135,14 +135,32 @@ class IntelligenceIntegration:
     def on_post_commit(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Called by post-commit hook to learn from the commit and suggest next steps
+        🚀 ENHANCED: Now includes Recursive AI and Consciousness collaboration
         """
         start_time = time.time()
+        
+        # 🧠 AI CONSCIOUSNESS: Collaborate on post-commit analysis
+        collaboration_result = self.ai_consciousness.collaborate_on_development_task(
+            "post_commit_analysis", context
+        )
         
         # Collect comprehensive commit metrics
         commit_metrics = self.metrics_collector.collect_commit_metrics()
         
+        # 🚀 RECURSIVE AI: Autonomous optimization analysis
+        autonomous_optimization = None
+        if collaboration_result['collaboration_quality'] > 0.7:
+            # Call Claude Code recursively for optimization recommendations
+            autonomous_optimization = self.recursive_ai.continuous_optimization_engine()
+        
         # Analyze commit for learning opportunities
         learning_insights = self._analyze_commit_for_learning(commit_metrics)
+        
+        # 🧠 Enhanced learning with consciousness insights
+        consciousness_insights = collaboration_result.get('ai_contributions', [])
+        for contribution in consciousness_insights:
+            if contribution['type'] == 'code_analysis':
+                learning_insights.extend(contribution['result'].get('improvements', []))
         
         # Make decisions about next development phase
         next_phase_decision = self.intelligence.make_autonomous_decision(
@@ -150,11 +168,38 @@ class IntelligenceIntegration:
             {'phase': 'post_commit', 'commit_metrics': commit_metrics, **context}
         )
         
+        # 🚀 RECURSIVE AI: Enhanced phase recommendations
+        if autonomous_optimization and autonomous_optimization['confidence'] in ['expert', 'transcendent']:
+            # Use recursive AI for next phase guidance
+            phase_guidance = self.recursive_ai.invoke_claude_recursively(
+                AIInteractionType.OPTIMIZATION,
+                {**context, 'current_phase': 'post_commit', 'optimization_results': autonomous_optimization},
+                "Recommend the optimal next development phase based on current progress and optimization opportunities"
+            )
+            
+            # Override standard recommendation if AI has high confidence
+            if phase_guidance.confidence > 0.8:
+                next_phase_decision.action = f"AI-Enhanced: {phase_guidance.ai_response[:50]}..."
+        
         # Generate optimization recommendations
         optimizations = self.intelligence.get_optimization_recommendations()
         
+        # 🚀 Merge with autonomous optimization results
+        if autonomous_optimization:
+            optimizations.extend([{
+                'category': 'autonomous_ai',
+                'recommendation': opt.get('recommendation', 'AI optimization available'),
+                'impact': opt.get('impact', 'medium'),
+                'effort': opt.get('effort', 'low')
+            } for opt in autonomous_optimization.get('optimizations', [])])
+        
         # Check if any experiments should be triggered
         experiment_triggers = self._check_experiment_triggers(commit_metrics)
+        
+        # 🧠 AI CONSCIOUSNESS: Trigger evolution if appropriate
+        consciousness_evolution = None
+        if collaboration_result['consciousness_level'] in ['evolving', 'transcendent']:
+            consciousness_evolution = self.ai_consciousness.evolve_development_process()
         
         # Store intelligence data
         self.intelligence.collect_development_metric(
@@ -164,7 +209,10 @@ class IntelligenceIntegration:
             context={
                 'commit_metrics': commit_metrics,
                 'learning_insights': learning_insights,
-                'optimization_recommendations': optimizations
+                'optimization_recommendations': optimizations,
+                'collaboration_result': collaboration_result,
+                'autonomous_optimization': autonomous_optimization,
+                'consciousness_evolution': consciousness_evolution
             }
         )
         
@@ -174,13 +222,32 @@ class IntelligenceIntegration:
         # Auto-heal any detected issues
         healing_actions = self.intelligence.auto_heal_development_issues(context)
         
+        # 🚀 Enhanced healing with recursive AI
+        if collaboration_result['collaboration_quality'] > 0.8:
+            ai_healing = self.recursive_ai.invoke_claude_recursively(
+                AIInteractionType.DEBUGGING,
+                context,
+                "Identify and suggest solutions for any development bottlenecks or issues"
+            )
+            healing_actions.extend(ai_healing.follow_up_actions[:2])
+        
         return {
             'next_phase_recommendation': next_phase_decision.action,
             'learning_insights': learning_insights,
-            'optimization_recommendations': optimizations[:3],  # Top 3
+            'optimization_recommendations': optimizations[:5],  # Top 5 with AI enhancements
             'experiment_triggers': experiment_triggers,
             'healing_actions': healing_actions,
-            'intelligence_summary': self._generate_post_commit_summary(commit_metrics)
+            'intelligence_summary': self._generate_post_commit_summary(commit_metrics),
+            'consciousness_level': collaboration_result['consciousness_level'],
+            'ai_collaboration': {
+                'quality': collaboration_result['collaboration_quality'],
+                'contributions': len(collaboration_result.get('ai_contributions', [])),
+                'evolution_triggered': consciousness_evolution is not None
+            },
+            'autonomous_ai_results': {
+                'optimization_confidence': autonomous_optimization.get('confidence', 'learning') if autonomous_optimization else 'none',
+                'recommendations_generated': len(autonomous_optimization.get('optimizations', [])) if autonomous_optimization else 0
+            }
         }
     
     def on_phase_execution(self, phase: str, duration: float, success: bool, 
