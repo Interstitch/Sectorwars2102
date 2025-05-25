@@ -74,9 +74,23 @@ async def get_all_players(
     """Get all player accounts for admin panel"""
     players = db.query(Player).all()
     
-    # Map to response model
-    player_list = [
-        {
+    # Map to response model with real counts
+    player_list = []
+    for player in players:
+        # Get real ship count for this player
+        try:
+            from src.models.ship import Ship
+            ships_count = db.query(Ship).filter(Ship.owner_id == player.id).count()
+        except Exception:
+            ships_count = 0
+            
+        # Get real planet count for this player
+        try:
+            planets_count = db.query(Planet).filter(Planet.owner_id == player.id).count()
+        except Exception:
+            planets_count = 0
+        
+        player_list.append({
             "id": str(player.id),
             "user_id": str(player.user_id),
             "username": player.user.username,
@@ -84,11 +98,9 @@ async def get_all_players(
             "turns": player.turns,
             "last_game_login": player.last_game_login.isoformat() if player.last_game_login else None,
             "current_sector_id": player.current_sector_id,
-            "ships_count": 0,  # TODO: Implement ship count
-            "planets_count": 0  # TODO: Implement planet count
-        }
-        for player in players
-    ]
+            "ships_count": ships_count,
+            "planets_count": planets_count
+        })
     
     return {"players": player_list}
 
@@ -98,18 +110,51 @@ async def get_admin_stats(
     db: Session = Depends(get_db)
 ):
     """Get statistics for admin dashboard"""
-    total_users = db.query(User).count()
-    active_players = db.query(Player).count()
-    
-    # For now, return mock data for other stats
-    return {
-        "totalUsers": total_users,
-        "activePlayers": active_players,
-        "totalSectors": 0,  # Mock data
-        "totalPlanets": 0,  # Mock data
-        "totalShips": 0,    # Mock data
-        "playerSessions": 0 # Mock data
-    }
+    try:
+        # Get real data from database
+        total_users = db.query(User).count()
+        active_players = db.query(Player).count()
+        
+        # Get sector count
+        total_sectors = db.query(Sector).count()
+        
+        # Get planet count
+        total_planets = db.query(Planet).count()
+        
+        # Get ship count
+        from src.models.ship import Ship
+        total_ships = db.query(Ship).count()
+        
+        # For active sessions, we'll count players with recent activity (last 24 hours)
+        from datetime import datetime, timedelta
+        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        player_sessions = db.query(Player).filter(
+            Player.last_game_login >= cutoff_time
+        ).count() if db.query(Player).filter(Player.last_game_login.isnot(None)).count() > 0 else 0
+        
+        return {
+            "totalUsers": total_users,
+            "activePlayers": active_players,
+            "totalSectors": total_sectors,
+            "totalPlanets": total_planets,
+            "totalShips": total_ships,
+            "playerSessions": player_sessions
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting admin stats: {e}")
+        # Fallback to basic stats if there's an error
+        total_users = db.query(User).count()
+        active_players = db.query(Player).count()
+        
+        return {
+            "totalUsers": total_users,
+            "activePlayers": active_players,
+            "totalSectors": 0,
+            "totalPlanets": 0,
+            "totalShips": 0,
+            "playerSessions": 0
+        }
 
 @router.get("/galaxy")
 async def get_galaxy_info(
