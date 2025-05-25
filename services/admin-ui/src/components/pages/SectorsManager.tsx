@@ -380,7 +380,10 @@ const SectorsManager: React.FC = () => {
                           <div 
                             key={sector.id} 
                             className={`sectors-grid-row ${selectedSector?.id === sector.id ? 'selected' : ''}`}
-                            onClick={() => handleSectorSelect(sector)}
+                            onClick={() => {
+                              handleSectorSelect(sector);
+                              handleEditSector(sector);
+                            }}
                           >
                             <div className="sector-identity">
                               <div className="sector-name">{sector.name}</div>
@@ -407,7 +410,7 @@ const SectorsManager: React.FC = () => {
                                 className="edit-button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleEditSector(sector);
+                                  // Edit button is now redundant since row is clickable, but kept for clarity
                                 }}
                               >
                                 Edit

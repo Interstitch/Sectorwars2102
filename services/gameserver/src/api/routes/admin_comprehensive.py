@@ -120,6 +120,26 @@ class SectorUpdateRequest(BaseModel):
     nav_hazards: Optional[Dict[str, Any]] = None
     nav_beacons: Optional[List[Dict[str, Any]]] = None
 
+class PlanetCreateRequest(BaseModel):
+    name: str = Field(..., max_length=100)
+    type: str  # PlanetType enum
+    size: Optional[int] = Field(5, ge=1, le=10)
+    position: Optional[int] = Field(3, ge=1, le=10)
+    gravity: Optional[float] = Field(1.0, ge=0.1, le=10.0)
+    temperature: Optional[float] = Field(0.0, ge=-100.0, le=1000.0)
+    water_coverage: Optional[float] = Field(0.0, ge=0.0, le=100.0)
+    habitability_score: Optional[int] = Field(50, ge=0, le=100)
+    resource_richness: Optional[float] = Field(1.0, ge=0.0, le=3.0)
+
+class PortCreateRequest(BaseModel):
+    name: str = Field(..., max_length=100)
+    port_class: int = Field(..., ge=0, le=11)  # PortClass enum values
+    type: str  # PortType enum
+    size: Optional[int] = Field(5, ge=1, le=10)
+    faction_affiliation: Optional[str] = None
+    trade_volume: Optional[int] = Field(100, ge=0)
+    market_volatility: Optional[int] = Field(50, ge=0, le=100)
+
 class PlanetManagementResponse(BaseModel):
     id: str
     name: str
@@ -1603,6 +1623,147 @@ async def update_sector(
         db.rollback()
         logger.error(f"Error updating sector {sector_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to update sector: {str(e)}")
+
+@router.post("/sectors/{sector_id}/planet", response_model=Dict[str, Any])
+async def create_planet_in_sector(
+    sector_id: str,
+    planet_data: PlanetCreateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Create a planet in the specified sector"""
+    try:
+        # Find the sector
+        if len(sector_id) > 10:  # UUID length check
+            sector = db.query(Sector).filter(Sector.id == uuid.UUID(sector_id)).first()
+        else:
+            sector = db.query(Sector).filter(Sector.sector_id == int(sector_id)).first()
+        
+        if not sector:
+            raise HTTPException(status_code=404, detail="Sector not found")
+        
+        # Check if sector already has a planet
+        existing_planet = db.query(Planet).filter(
+            Planet.sector_uuid == sector.id
+        ).first()
+        
+        if existing_planet:
+            raise HTTPException(status_code=400, detail="Sector already has a planet")
+        
+        # Import and validate planet type
+        from src.models.planet import Planet, PlanetType, PlanetStatus
+        
+        try:
+            planet_type = PlanetType(planet_data.type)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid planet type: {planet_data.type}")
+        
+        # Create new planet
+        new_planet = Planet(
+            name=planet_data.name,
+            sector_id=sector.sector_id,
+            sector_uuid=sector.id,
+            type=planet_type,
+            status=PlanetStatus.UNINHABITABLE,
+            size=planet_data.size,
+            position=planet_data.position,
+            gravity=planet_data.gravity,
+            temperature=planet_data.temperature,
+            water_coverage=planet_data.water_coverage,
+            habitability_score=planet_data.habitability_score,
+            resource_richness=planet_data.resource_richness
+        )
+        
+        db.add(new_planet)
+        db.commit()
+        db.refresh(new_planet)
+        
+        logger.info(f"Admin {current_admin.username} created planet {new_planet.name} in sector {sector.sector_id}")
+        
+        return {
+            "message": "Planet created successfully",
+            "planet_id": str(new_planet.id),
+            "planet_name": new_planet.name,
+            "sector_id": str(sector.id),
+            "sector_number": sector.sector_id
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating planet in sector {sector_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create planet: {str(e)}")
+
+@router.post("/sectors/{sector_id}/port", response_model=Dict[str, Any])
+async def create_port_in_sector(
+    sector_id: str,
+    port_data: PortCreateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Create a port in the specified sector"""
+    try:
+        # Find the sector
+        if len(sector_id) > 10:  # UUID length check
+            sector = db.query(Sector).filter(Sector.id == uuid.UUID(sector_id)).first()
+        else:
+            sector = db.query(Sector).filter(Sector.sector_id == int(sector_id)).first()
+        
+        if not sector:
+            raise HTTPException(status_code=404, detail="Sector not found")
+        
+        # Check if sector already has a port
+        existing_port = db.query(Port).filter(
+            Port.sector_uuid == sector.id
+        ).first()
+        
+        if existing_port:
+            raise HTTPException(status_code=400, detail="Sector already has a port")
+        
+        # Import and validate enums
+        from src.models.port import Port, PortClass, PortType, PortStatus
+        
+        try:
+            port_class = PortClass(port_data.port_class)
+            port_type = PortType(port_data.type)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid port class or type: {str(e)}")
+        
+        # Create new port
+        new_port = Port(
+            name=port_data.name,
+            sector_id=sector.sector_id,
+            sector_uuid=sector.id,
+            port_class=port_class,
+            type=port_type,
+            status=PortStatus.OPERATIONAL,
+            size=port_data.size,
+            faction_affiliation=port_data.faction_affiliation,
+            trade_volume=port_data.trade_volume,
+            market_volatility=port_data.market_volatility
+        )
+        
+        db.add(new_port)
+        db.commit()
+        db.refresh(new_port)
+        
+        logger.info(f"Admin {current_admin.username} created port {new_port.name} in sector {sector.sector_id}")
+        
+        return {
+            "message": "Port created successfully",
+            "port_id": str(new_port.id),
+            "port_name": new_port.name,
+            "sector_id": str(sector.id),
+            "sector_number": sector.sector_id
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating port in sector {sector_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create port: {str(e)}")
 
 @router.get("/warp-tunnels", response_model=Dict[str, Any])
 async def get_warp_tunnels(

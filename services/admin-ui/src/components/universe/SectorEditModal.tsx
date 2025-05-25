@@ -63,6 +63,28 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showPlanetForm, setShowPlanetForm] = useState(false);
+  const [showPortForm, setShowPortForm] = useState(false);
+  const [planetFormData, setPlanetFormData] = useState({
+    name: '',
+    type: 'TERRAN',
+    size: 5,
+    position: 3,
+    gravity: 1.0,
+    temperature: 20.0,
+    water_coverage: 30.0,
+    habitability_score: 50,
+    resource_richness: 1.0
+  });
+  const [portFormData, setPortFormData] = useState({
+    name: '',
+    port_class: 6,
+    type: 'TRADING',
+    size: 5,
+    faction_affiliation: '',
+    trade_volume: 100,
+    market_volatility: 50
+  });
 
   // Initialize form data when sector changes
   useEffect(() => {
@@ -156,6 +178,84 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
     }
   };
 
+  const handleCreatePlanet = () => {
+    setShowPlanetForm(true);
+  };
+
+  const handleCreatePort = () => {
+    setShowPortForm(true);
+  };
+
+  const handleSubmitPlanet = async () => {
+    if (!sector) return;
+    
+    setIsSaving(true);
+    setError(null);
+    
+    try {
+      const response = await api.post(`/api/v1/admin/sectors/${sector.id}/planet`, planetFormData);
+      
+      if (response.status === 200) {
+        // Update the sector object to reflect the new planet
+        const updatedSector = { ...sector, has_planet: true };
+        onSave(updatedSector);
+        setShowPlanetForm(false);
+        setError(null);
+        // Reset form
+        setPlanetFormData({
+          name: '',
+          type: 'TERRAN',
+          size: 5,
+          position: 3,
+          gravity: 1.0,
+          temperature: 20.0,
+          water_coverage: 30.0,
+          habitability_score: 50,
+          resource_richness: 1.0
+        });
+      }
+    } catch (err: any) {
+      console.error('Error creating planet:', err);
+      setError(err.response?.data?.detail || 'Failed to create planet');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSubmitPort = async () => {
+    if (!sector) return;
+    
+    setIsSaving(true);
+    setError(null);
+    
+    try {
+      const response = await api.post(`/api/v1/admin/sectors/${sector.id}/port`, portFormData);
+      
+      if (response.status === 200) {
+        // Update the sector object to reflect the new port
+        const updatedSector = { ...sector, has_port: true };
+        onSave(updatedSector);
+        setShowPortForm(false);
+        setError(null);
+        // Reset form
+        setPortFormData({
+          name: '',
+          port_class: 6,
+          type: 'TRADING',
+          size: 5,
+          faction_affiliation: '',
+          trade_volume: 100,
+          market_volatility: 50
+        });
+      }
+    } catch (err: any) {
+      console.error('Error creating port:', err);
+      setError(err.response?.data?.detail || 'Failed to create port');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const renderBasicTab = () => (
     <div className="tab-content">
       <div className="form-group">
@@ -225,6 +325,162 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
           </div>
         </div>
       </div>
+
+      <div className="sector-contents-group">
+        <h4>Sector Contents</h4>
+        
+        <div className="content-toggles">
+          <div className="content-item">
+            <div className="content-status">
+              <span className="content-label">Planet:</span>
+              <span className={`status-indicator ${sector?.has_planet ? 'present' : 'absent'}`}>
+                {sector?.has_planet ? 'Present' : 'None'}
+              </span>
+            </div>
+            {!sector?.has_planet && (
+              <button 
+                type="button"
+                className="create-content-button"
+                onClick={() => handleCreatePlanet()}
+              >
+                Create Planet
+              </button>
+            )}
+          </div>
+
+          <div className="content-item">
+            <div className="content-status">
+              <span className="content-label">Port:</span>
+              <span className={`status-indicator ${sector?.has_port ? 'present' : 'absent'}`}>
+                {sector?.has_port ? 'Present' : 'None'}
+              </span>
+            </div>
+            {!sector?.has_port && (
+              <button 
+                type="button"
+                className="create-content-button"
+                onClick={() => handleCreatePort()}
+              >
+                Create Port
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Planet Creation Form */}
+      {showPlanetForm && (
+        <div className="creation-form">
+          <h4>Create Planet</h4>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Planet Name</label>
+              <input
+                type="text"
+                value={planetFormData.name}
+                onChange={(e) => setPlanetFormData({...planetFormData, name: e.target.value})}
+                placeholder="Enter planet name..."
+              />
+            </div>
+            <div className="form-group">
+              <label>Planet Type</label>
+              <select
+                value={planetFormData.type}
+                onChange={(e) => setPlanetFormData({...planetFormData, type: e.target.value})}
+              >
+                <option value="TERRAN">Terran</option>
+                <option value="DESERT">Desert</option>
+                <option value="OCEANIC">Oceanic</option>
+                <option value="ICE">Ice</option>
+                <option value="VOLCANIC">Volcanic</option>
+                <option value="GAS_GIANT">Gas Giant</option>
+                <option value="BARREN">Barren</option>
+                <option value="JUNGLE">Jungle</option>
+                <option value="ARCTIC">Arctic</option>
+                <option value="TROPICAL">Tropical</option>
+                <option value="MOUNTAINOUS">Mountainous</option>
+                <option value="ARTIFICIAL">Artificial</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-actions">
+            <button type="button" onClick={() => setShowPlanetForm(false)}>Cancel</button>
+            <button 
+              type="button" 
+              onClick={handleSubmitPlanet}
+              disabled={!planetFormData.name || isSaving}
+            >
+              {isSaving ? 'Creating...' : 'Create Planet'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Port Creation Form */}
+      {showPortForm && (
+        <div className="creation-form">
+          <h4>Create Port</h4>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Port Name</label>
+              <input
+                type="text"
+                value={portFormData.name}
+                onChange={(e) => setPortFormData({...portFormData, name: e.target.value})}
+                placeholder="Enter port name..."
+              />
+            </div>
+            <div className="form-group">
+              <label>Port Class</label>
+              <select
+                value={portFormData.port_class}
+                onChange={(e) => setPortFormData({...portFormData, port_class: parseInt(e.target.value)})}
+              >
+                <option value={0}>Class 0 - Sol System</option>
+                <option value={1}>Class 1 - Mining Operation</option>
+                <option value={2}>Class 2 - Agricultural Center</option>
+                <option value={3}>Class 3 - Industrial Hub</option>
+                <option value={4}>Class 4 - Distribution Center</option>
+                <option value={5}>Class 5 - Collection Hub</option>
+                <option value={6}>Class 6 - Mixed Market</option>
+                <option value={7}>Class 7 - Resource Exchange</option>
+                <option value={8}>Class 8 - Black Hole</option>
+                <option value={9}>Class 9 - Nova</option>
+                <option value={10}>Class 10 - Luxury Market</option>
+                <option value={11}>Class 11 - Advanced Tech Hub</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Port Type</label>
+              <select
+                value={portFormData.type}
+                onChange={(e) => setPortFormData({...portFormData, type: e.target.value})}
+              >
+                <option value="TRADING">Trading</option>
+                <option value="MILITARY">Military</option>
+                <option value="INDUSTRIAL">Industrial</option>
+                <option value="MINING">Mining</option>
+                <option value="SCIENTIFIC">Scientific</option>
+                <option value="SHIPYARD">Shipyard</option>
+                <option value="OUTPOST">Outpost</option>
+                <option value="BLACK_MARKET">Black Market</option>
+                <option value="DIPLOMATIC">Diplomatic</option>
+                <option value="CORPORATE">Corporate</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-actions">
+            <button type="button" onClick={() => setShowPortForm(false)}>Cancel</button>
+            <button 
+              type="button" 
+              onClick={handleSubmitPort}
+              disabled={!portFormData.name || isSaving}
+            >
+              {isSaving ? 'Creating...' : 'Create Port'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 
