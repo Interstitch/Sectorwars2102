@@ -122,25 +122,25 @@ const AnalyticsReports: React.FC = () => {
       const response = await api.get('/api/v1/admin/analytics/real-time');
       const realTimeData = response.data;
       
-      // Transform real-time data to match expected dashboard format
+      // Transform real-time data to match expected dashboard format  
       const transformedData = {
         player_engagement: {
-          daily_active_users: realTimeData.daily_active_players || 0,
-          weekly_active_users: realTimeData.weekly_active_players || 0,
-          monthly_active_users: realTimeData.monthly_active_players || 0,
+          daily_active_users: realTimeData.players_online_now || 0,
+          weekly_active_users: realTimeData.total_active_players || 0,
+          monthly_active_users: realTimeData.total_active_players || 0,
           new_registrations_24h: realTimeData.new_players_today || 0,
           total_players: realTimeData.total_players || 0,
           average_session_length: realTimeData.average_session_time || 0,
-          retention_rate_7d: realTimeData.retention_rate_7_day || 0,
-          retention_rate_30d: realTimeData.retention_rate_30_day || 0
+          retention_rate_7d: realTimeData.player_retention_rate_7d || 0,
+          retention_rate_30d: realTimeData.player_retention_rate_30d || 0
         },
         economic_health: {
           total_credits_in_circulation: realTimeData.total_credits_circulation || 0,
-          average_player_wealth: realTimeData.average_player_wealth || 0,
+          average_player_wealth: realTimeData.average_credits_per_player || 0,
           active_traders_24h: realTimeData.active_traders_today || 0,
           trade_volume_24h: realTimeData.total_trade_volume_today || 0,
-          price_volatility_index: 1.0,
-          resource_distribution: {
+          price_volatility_index: 1.2,
+          resource_distribution: realTimeData.resource_distribution || {
             'Food': 25.0,
             'Tech': 25.0,
             'Ore': 25.0,

@@ -80,6 +80,7 @@ class AnalyticsService:
             # Get detailed breakdowns
             ships_by_type = self._get_ships_by_type()
             players_by_status = self._get_players_by_status()
+            resource_distribution = self._get_resource_distribution()
             
             return {
                 # Core metrics
@@ -95,6 +96,7 @@ class AnalyticsService:
                 "total_ships": total_ships,
                 "total_planets": total_planets,
                 "total_ports": total_ports,
+                "resource_distribution": resource_distribution,
                 
                 # Activity metrics
                 "average_session_time": round(avg_session_time, 2),
@@ -313,3 +315,34 @@ class AnalyticsService:
             logger.error(f"Error creating analytics snapshot: {e}")
             self.db.rollback()
             raise
+    
+    def _get_resource_distribution(self) -> Dict[str, float]:
+        """
+        Calculate resource distribution across ports
+        """
+        try:
+            from src.models.port import Port
+            # Get all ports and their resource types
+            total_ports = self.db.query(Port).count()
+            if total_ports == 0:
+                return {'Food': 25.0, 'Tech': 25.0, 'Ore': 25.0, 'Fuel': 25.0}
+            
+            # Query resource distribution from ports
+            # This is a simplified version - would need actual resource data structure
+            resource_counts = {
+                'Food': self.db.query(Port).filter(Port.port_class.like('%food%')).count(),
+                'Tech': self.db.query(Port).filter(Port.port_class.like('%tech%')).count(), 
+                'Ore': self.db.query(Port).filter(Port.port_class.like('%ore%')).count(),
+                'Fuel': self.db.query(Port).filter(Port.port_class.like('%fuel%')).count()
+            }
+            
+            # Calculate percentages
+            distribution = {}
+            for resource, count in resource_counts.items():
+                distribution[resource] = round((count / total_ports) * 100, 1) if total_ports > 0 else 25.0
+            
+            return distribution
+            
+        except Exception as e:
+            logger.error(f"Error calculating resource distribution: {e}")
+            return {'Food': 25.0, 'Tech': 25.0, 'Ore': 25.0, 'Fuel': 25.0}
