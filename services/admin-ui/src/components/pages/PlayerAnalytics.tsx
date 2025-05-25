@@ -6,7 +6,6 @@ import BulkOperationPanel from '../admin/BulkOperationPanel';
 import PlayerAssetManager from '../admin/PlayerAssetManager';
 import EmergencyOperationsPanel from '../admin/EmergencyOperationsPanel';
 import { api } from '../../utils/auth';
-import './player-analytics.css';
 import {
   PlayerModel,
   PlayerFilters,
