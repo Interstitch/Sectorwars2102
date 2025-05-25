@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../ui/PageHeader';
 import { api } from '../../utils/auth';
+import './team-management-override.css';
 
 interface Team {
   id: string;
@@ -257,56 +258,50 @@ const TeamManagement: React.FC = () => {
       <div className="page-content">
         {/* Team Statistics */}
         {teamStats && (
-          <section className="section">
+          <section className="section team-stats-condensed">
             <div className="section-header">
               <h3 className="section-title">📊 Team Statistics</h3>
-              <p className="section-subtitle">Overview of team activity and organization</p>
             </div>
             
-            <div className="grid grid-auto-fit gap-6">
-              <div className="dashboard-stat-card">
-                <div className="dashboard-stat-header">
-                  <span className="dashboard-stat-icon">🏢</span>
-                  <h4 className="dashboard-stat-title">Total Teams</h4>
+            <div className="stats-grid-condensed">
+              <div className="stat-card-condensed">
+                <div className="stat-icon">🏢</div>
+                <div className="stat-content">
+                  <div className="stat-value">{teamStats.total_teams}</div>
+                  <div className="stat-label">Total Teams</div>
                 </div>
-                <div className="dashboard-stat-value">{teamStats.total_teams}</div>
-                <div className="dashboard-stat-description">All teams in system</div>
               </div>
               
-              <div className="dashboard-stat-card stat-success">
-                <div className="dashboard-stat-header">
-                  <span className="dashboard-stat-icon">✅</span>
-                  <h4 className="dashboard-stat-title">Active Teams</h4>
+              <div className="stat-card-condensed stat-success">
+                <div className="stat-icon">✅</div>
+                <div className="stat-content">
+                  <div className="stat-value">{teamStats.active_teams}</div>
+                  <div className="stat-label">Active Teams</div>
                 </div>
-                <div className="dashboard-stat-value">{teamStats.active_teams}</div>
-                <div className="dashboard-stat-description">Currently active</div>
               </div>
               
-              <div className="dashboard-stat-card">
-                <div className="dashboard-stat-header">
-                  <span className="dashboard-stat-icon">👥</span>
-                  <h4 className="dashboard-stat-title">Total Members</h4>
+              <div className="stat-card-condensed">
+                <div className="stat-icon">👥</div>
+                <div className="stat-content">
+                  <div className="stat-value">{teamStats.total_members}</div>
+                  <div className="stat-label">Total Members</div>
                 </div>
-                <div className="dashboard-stat-value">{teamStats.total_members}</div>
-                <div className="dashboard-stat-description">Players in teams</div>
               </div>
               
-              <div className="dashboard-stat-card">
-                <div className="dashboard-stat-header">
-                  <span className="dashboard-stat-icon">📊</span>
-                  <h4 className="dashboard-stat-title">Average Size</h4>
+              <div className="stat-card-condensed">
+                <div className="stat-icon">📊</div>
+                <div className="stat-content">
+                  <div className="stat-value">{teamStats.average_team_size}</div>
+                  <div className="stat-label">Average Size</div>
                 </div>
-                <div className="dashboard-stat-value">{teamStats.average_team_size}</div>
-                <div className="dashboard-stat-description">Members per team</div>
               </div>
               
-              <div className="dashboard-stat-card">
-                <div className="dashboard-stat-header">
-                  <span className="dashboard-stat-icon">🏆</span>
-                  <h4 className="dashboard-stat-title">Largest Team</h4>
+              <div className="stat-card-condensed">
+                <div className="stat-icon">🏆</div>
+                <div className="stat-content">
+                  <div className="stat-value">{teamStats.largest_team_size}</div>
+                  <div className="stat-label">Largest Team</div>
                 </div>
-                <div className="dashboard-stat-value">{teamStats.largest_team_size}</div>
-                <div className="dashboard-stat-description">Max team size</div>
               </div>
             </div>
           </section>
@@ -319,35 +314,41 @@ const TeamManagement: React.FC = () => {
             <p className="section-subtitle">Search, filter, and manage all teams</p>
           </div>
           
-          <div className="card">
-            <div className="card-body">
-              {/* Filters */}
-              <div className="flex flex-wrap items-center gap-4 mb-6">
-                <div className="flex-1 min-w-64">
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Search teams by name or leader..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+          <div className="teams-filter-section">
+            {/* Team Search and Filters */}
+            <div className="team-search-filter">
+              <div className="basic-filters">
+                <div className="search-group">
+                  <div className="search-input-wrapper">
+                    <input
+                      type="text"
+                      placeholder="Search teams by name or leader..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="search-input"
+                      disabled={loading}
+                    />
+                    <div className="search-icon">🔍</div>
+                  </div>
                 </div>
-                
-                <select 
-                  value={statusFilter} 
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="form-select"
-                >
-                  <option value="all">All Teams</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-                
-                <div className="flex items-center gap-2">
+
+                <div className="filter-group">
+                  <select 
+                    value={statusFilter} 
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="filter-select"
+                    disabled={loading}
+                  >
+                    <option value="all">All Teams</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+
                   <select 
                     value={sortBy} 
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="form-select"
+                    className="filter-select"
+                    disabled={loading}
                   >
                     <option value="created_at">Created Date</option>
                     <option value="name">Team Name</option>
@@ -357,16 +358,24 @@ const TeamManagement: React.FC = () => {
                   
                   <button 
                     onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                    className="btn btn-outline btn-sm"
+                    className="sort-toggle"
+                    disabled={loading}
                   >
                     {sortOrder === 'asc' ? '↑' : '↓'}
                   </button>
                 </div>
-                
-                <button className="btn btn-primary">
-                  ➕ Create Team
-                </button>
+
+                <div className="filter-actions">
+                  <button className="create-team-btn" disabled={loading}>
+                    ➕ Create Team
+                  </button>
+                </div>
               </div>
+            </div>
+          </div>
+          
+          <div className="card">
+            <div className="card-body">
 
               {/* Teams Table */}
               <div className="table-container">
