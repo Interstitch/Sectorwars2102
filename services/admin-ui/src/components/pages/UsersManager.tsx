@@ -231,10 +231,10 @@ const UsersManager: React.FC = () => {
                           {!user.is_active ? 'Inactive' : user.is_admin ? 'Admin' : 'Active'}
                         </span>
                       </td>
-                      <td className="text-muted">{formatDate(user.created_at)}</td>
-                      <td className="text-muted">{formatDate(user.last_login)}</td>
+                      <td className="text-muted date-cell">{formatDate(user.created_at)}</td>
+                      <td className="text-muted date-cell">{formatDate(user.last_login)}</td>
                       <td>
-                        <div className="flex gap-2">
+                        <div className="action-buttons">
                           {/* Prevent actions on current user and on protected admin account */}
                           {user.username === 'admin' ? (
                             <span className="badge badge-info">Protected Account</span>
@@ -243,12 +243,14 @@ const UsersManager: React.FC = () => {
                               <button 
                                 className="btn btn-sm btn-outline"
                                 onClick={() => handleEditClick(user)}
+                                title="Edit User"
                               >
                                 Edit
                               </button>
                               <button 
                                 className="btn btn-sm btn-outline btn-error"
                                 onClick={() => handleDeleteClick(user)}
+                                title="Delete User"
                               >
                                 Delete
                               </button>
@@ -256,8 +258,9 @@ const UsersManager: React.FC = () => {
                                 <button 
                                   className="btn btn-sm btn-outline btn-warning"
                                   onClick={() => handleResetPassword(user.id)}
+                                  title="Reset Password"
                                 >
-                                  Reset Password
+                                  Reset
                                 </button>
                               )}
                             </>

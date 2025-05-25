@@ -478,6 +478,112 @@
   border-bottom: none;
 }
 
+/* Optimized table column widths */
+.table th:nth-child(1) { width: 15%; min-width: 120px; } /* Username */
+.table th:nth-child(2) { width: 20%; min-width: 150px; } /* Email */
+.table th:nth-child(3) { width: 10%; min-width: 80px; }  /* Status */
+.table th:nth-child(4) { width: 18%; min-width: 140px; } /* Created */
+.table th:nth-child(5) { width: 18%; min-width: 140px; } /* Last Login */
+.table th:nth-child(6) { width: 19%; min-width: 180px; } /* Actions */
+
+/* Date formatting improvements */
+.table .date-cell {
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+  line-height: 1.3;
+}
+
+/* Compact action buttons */
+.table .action-buttons {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.table .action-buttons .btn {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  min-width: auto;
+  white-space: nowrap;
+  border-radius: var(--radius-base);
+}
+
+/* Extra small buttons for table actions */
+.btn-xs {
+  padding: 2px var(--space-2);
+  font-size: 10px;
+  line-height: 1.2;
+  min-width: auto;
+}
+
+/* Responsive table design */
+@media (max-width: 1024px) {
+  /* iPad landscape and smaller */
+  .table th:nth-child(2) { display: none; } /* Hide Email column */
+  .table td:nth-child(2) { display: none; }
+  
+  .table th:nth-child(1) { width: 25%; } /* Username */
+  .table th:nth-child(3) { width: 15%; } /* Status */
+  .table th:nth-child(4) { width: 25%; } /* Created */
+  .table th:nth-child(5) { width: 25%; } /* Last Login */
+  .table th:nth-child(6) { width: 10%; } /* Actions */
+  
+  .table .action-buttons .btn {
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* iPad portrait and smaller */
+  .table th:nth-child(5) { display: none; } /* Hide Last Login column */
+  .table td:nth-child(5) { display: none; }
+  
+  .table th:nth-child(1) { width: 30%; } /* Username */
+  .table th:nth-child(3) { width: 20%; } /* Status */
+  .table th:nth-child(4) { width: 30%; } /* Created */
+  .table th:nth-child(6) { width: 20%; } /* Actions */
+  
+  .table .action-buttons .btn {
+    padding: 1px 4px;
+    font-size: 8px;
+    border-radius: 2px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Mobile phones */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .table {
+    min-width: 400px;
+  }
+  
+  .table th:nth-child(4) { display: none; } /* Hide Created column */
+  .table td:nth-child(4) { display: none; }
+  
+  .table th:nth-child(1) { width: 40%; } /* Username */
+  .table th:nth-child(3) { width: 25%; } /* Status */
+  .table th:nth-child(6) { width: 35%; } /* Actions */
+  
+  .table .action-buttons {
+    flex-direction: column;
+    gap: 1px;
+    align-items: stretch;
+  }
+  
+  .table .action-buttons .btn {
+    padding: 2px 4px;
+    font-size: 8px;
+    text-align: center;
+    min-height: 18px;
+  }
+}
+
 /* ============================
    NAVIGATION COMPONENTS
    ============================ */
