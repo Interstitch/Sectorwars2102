@@ -727,6 +727,14 @@ async def get_ports_comprehensive(
                 if owner:
                     owner_name = owner.user.username
             
+            # Extract defense information from JSONB defenses field
+            defenses = port.defenses or {}
+            defense_level = defenses.get("defense_drones", 0) + defenses.get("patrol_ships", 0)
+            
+            # Extract tax rate from service prices or use default
+            service_prices = port.service_prices or {}
+            tax_rate = service_prices.get("tax_rate", 5.0)
+            
             ports_data.append(PortManagementResponse(
                 id=str(port.id),
                 name=port.name,
@@ -736,8 +744,8 @@ async def get_ports_comprehensive(
                 owner_id=str(port.owner_id) if port.owner_id else None,
                 owner_name=owner_name,
                 faction_affiliation=port.faction_affiliation,
-                defense_level=port.defense_level,
-                tax_rate=port.tax_rate,
+                defense_level=defense_level,
+                tax_rate=tax_rate,
                 is_operational=port.status.value == "OPERATIONAL"
             ))
         
@@ -935,6 +943,9 @@ class WarpTunnelManagementResponse(BaseModel):
     stability: float
     is_bidirectional: bool
     turn_cost: int
+    energy_cost: int
+    travel_time: int  # Same as turn_cost for frontend compatibility
+    max_ship_size: str
     is_active: bool
     total_traversals: int
     created_at: datetime
@@ -985,6 +996,10 @@ async def get_warp_tunnels_comprehensive(
             tunnel_status_data = tunnel.tunnel_status or {}
             is_active = tunnel_status_data.get("is_active", True) and tunnel.status.value == "ACTIVE"
             
+            # Determine max ship size from access requirements or default
+            access_reqs = tunnel.access_requirements or {}
+            max_ship_size = access_reqs.get("max_ship_size", "LARGE")
+            
             tunnels_data.append(WarpTunnelManagementResponse(
                 id=str(tunnel.id),
                 name=tunnel.name,
@@ -995,6 +1010,9 @@ async def get_warp_tunnels_comprehensive(
                 stability=tunnel.stability,
                 is_bidirectional=tunnel.is_bidirectional,
                 turn_cost=tunnel.turn_cost,
+                energy_cost=tunnel.energy_cost,
+                travel_time=tunnel.turn_cost,  # Frontend expects travel_time, same as turn_cost
+                max_ship_size=max_ship_size,
                 is_active=is_active,
                 total_traversals=tunnel.total_traversals,
                 created_at=tunnel.created_at
