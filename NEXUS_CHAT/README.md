@@ -96,6 +96,216 @@ graph TB
 
 ---
 
+## 🔄 Session Management Best Practices
+
+### 🎯 Claude Code Session Lifecycle
+
+**NEXUS implements proper session management following Anthropic's best practices:**
+
+#### **1. Session Initialization Pattern**
+```bash
+# Start a session and capture the session ID
+$ claude -p "Initialize a new project" --output-format json | jq -r '.session_id' > session.txt
+
+# Continue with the same session
+$ claude -p --resume "$(cat session.txt)" "Add unit tests"
+```
+
+#### **2. Session Management Implementation**
+```python
+class SessionManager:
+    """
+    Centralized session management for all Claude Code agents
+    
+    Features:
+    - Session ID capture and persistence
+    - Session validation and recovery
+    - Session lifecycle monitoring
+    - Cross-agent session coordination
+    """
+    
+    def __init__(self):
+        self.sessions: Dict[str, SessionInfo] = {}
+        self.session_storage_path = "sessions/"
+        
+    async def create_session(self, agent_id: str, initial_prompt: str) -> str:
+        """Create new Claude Code session with proper ID capture"""
+        cmd = [
+            "claude", "-p", initial_prompt,
+            "--output-format", "json"
+        ]
+        
+        result = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await result.communicate()
+        
+        if result.returncode != 0:
+            raise SessionError(f"Failed to create session: {stderr.decode()}")
+        
+        response_data = json.loads(stdout.decode())
+        session_id = response_data.get('session_id')
+        
+        # Store session information
+        session_info = SessionInfo(
+            session_id=session_id,
+            agent_id=agent_id,
+            created_at=datetime.utcnow(),
+            last_activity=datetime.utcnow(),
+            status="active"
+        )
+        
+        self.sessions[session_id] = session_info
+        await self._persist_session(session_info)
+        
+        return session_id
+    
+    async def resume_session(self, session_id: str) -> bool:
+        """Resume existing session with validation"""
+        try:
+            # Test session validity with minimal probe
+            cmd = ["claude", "-p", "Status check", "--resume", session_id]
+            
+            result = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await result.communicate()
+            
+            if result.returncode == 0:
+                # Update session activity
+                if session_id in self.sessions:
+                    self.sessions[session_id].last_activity = datetime.utcnow()
+                    self.sessions[session_id].status = "active"
+                return True
+            else:
+                # Mark session as expired
+                if session_id in self.sessions:
+                    self.sessions[session_id].status = "expired"
+                return False
+                
+        except Exception as e:
+            logger.warning(f"Session resume failed for {session_id}: {e}")
+            return False
+    
+    async def send_to_session(self, session_id: str, message: str) -> str:
+        """Send message to existing session with --resume flag"""
+        if session_id not in self.sessions:
+            raise SessionError(f"Unknown session: {session_id}")
+        
+        cmd = [
+            "claude", "-p", message,
+            "--resume", session_id,
+            "--output-format", "json"
+        ]
+        
+        result = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await result.communicate()
+        
+        if result.returncode != 0:
+            raise SessionError(f"Message failed: {stderr.decode()}")
+        
+        response_data = json.loads(stdout.decode())
+        
+        # Update session activity
+        self.sessions[session_id].last_activity = datetime.utcnow()
+        
+        return response_data.get('content', '')
+    
+    async def cleanup_expired_sessions(self):
+        """Remove expired sessions and clean up storage"""
+        current_time = datetime.utcnow()
+        expired_sessions = []
+        
+        for session_id, session_info in self.sessions.items():
+            # Consider sessions expired after 24 hours of inactivity
+            if (current_time - session_info.last_activity).total_seconds() > 86400:
+                expired_sessions.append(session_id)
+        
+        for session_id in expired_sessions:
+            del self.sessions[session_id]
+            await self._remove_session_file(session_id)
+        
+        logger.info(f"Cleaned up {len(expired_sessions)} expired sessions")
+```
+
+#### **3. Session Recovery and Continuity**
+```python
+class SessionRecoveryManager:
+    """
+    Handles session recovery across system restarts
+    
+    Features:
+    - Persistent session storage
+    - System restart recovery
+    - Session health validation
+    - Graceful session migration
+    """
+    
+    async def recover_all_sessions(self) -> Dict[str, str]:
+        """Recover all agent sessions from persistent storage"""
+        recovered_sessions = {}
+        session_files = glob.glob("sessions/*.session")
+        
+        for session_file in session_files:
+            try:
+                with open(session_file, 'r') as f:
+                    session_data = json.load(f)
+                
+                session_id = session_data['session_id']
+                agent_id = session_data['agent_id']
+                
+                # Validate session is still active
+                if await self.session_manager.resume_session(session_id):
+                    recovered_sessions[agent_id] = session_id
+                    logger.info(f"Recovered session for {agent_id}: {session_id}")
+                else:
+                    logger.warning(f"Session expired for {agent_id}: {session_id}")
+                    os.remove(session_file)
+                    
+            except Exception as e:
+                logger.error(f"Failed to recover session from {session_file}: {e}")
+        
+        return recovered_sessions
+    
+    async def create_session_checkpoint(self, agent_id: str, session_id: str):
+        """Create persistent checkpoint for session recovery"""
+        checkpoint_data = {
+            'agent_id': agent_id,
+            'session_id': session_id,
+            'created_at': datetime.utcnow().isoformat(),
+            'last_checkpoint': datetime.utcnow().isoformat()
+        }
+        
+        os.makedirs('sessions', exist_ok=True)
+        checkpoint_file = f"sessions/{agent_id}.session"
+        
+        with open(checkpoint_file, 'w') as f:
+            json.dump(checkpoint_data, f, indent=2)
+```
+
+#### **4. Session Best Practices Summary**
+
+✅ **Always capture session IDs** using `--output-format json`  
+✅ **Use --resume flag** for session continuity  
+✅ **Implement session validation** with periodic health checks  
+✅ **Persist session IDs** to files for recovery  
+✅ **Handle session expiration** gracefully with automatic restart  
+✅ **Monitor session activity** to prevent timeouts  
+✅ **Clean up expired sessions** to prevent resource leaks  
+
+---
+
 ## 📡 Communication Protocol
 
 ### JSON Message Schema
@@ -528,6 +738,7 @@ class NexusOrchestrator:
     - Agent coordination and monitoring  
     - Real-time communication management
     - Performance optimization
+    - Session lifecycle management
     """
     
     def __init__(self, config: OrchestratorConfig):
@@ -536,15 +747,138 @@ class NexusOrchestrator:
         self.task_queue = AsyncPriorityQueue()
         self.message_bus = MessageBus()
         self.health_monitor = HealthMonitor()
+        self.session_manager = SessionManager()
+        self.active_sessions: Dict[str, str] = {}  # agent_id -> session_id
     
     async def start_orchestration(self):
         """Initialize all agents and begin coordination"""
+        # Initialize agents with session recovery
+        for agent_config in self.config.agents:
+            agent = ClaudeCodeAgent(agent_config)
+            
+            # Attempt to recover existing sessions
+            if await agent.resume_session():
+                self.active_sessions[agent.config.agent_id] = agent.session_id
+                logger.info(f"Recovered session for {agent.config.agent_id}: {agent.session_id}")
+            
+            self.agents[agent.config.agent_id] = agent
+            
+            # Start background session maintenance
+            asyncio.create_task(agent.maintain_session())
+        
+        logger.info(f"Orchestrator started with {len(self.agents)} agents")
         
     async def distribute_task(self, user_request: str) -> TaskDistributionPlan:
         """Analyze request and create optimal task distribution"""
+        # Use OpenAI to analyze and distribute the task
+        distribution_prompt = f"""
+        As NEXUS Prime, analyze this user request and create an optimal task distribution plan:
+        
+        Request: {user_request}
+        
+        Available agents:
+        {self._format_agent_capabilities()}
+        
+        Create a JSON plan with:
+        1. Task breakdown and dependencies
+        2. Agent assignments based on expertise
+        3. Parallel vs sequential execution strategy
+        4. Estimated timeline and resource allocation
+        """
+        
+        response = await self.openai_client.chat.completions.create(
+            model="gpt-4-turbo-preview",
+            messages=[{"role": "user", "content": distribution_prompt}],
+            response_format={"type": "json_object"}
+        )
+        
+        plan_data = json.loads(response.choices[0].message.content)
+        return TaskDistributionPlan.from_dict(plan_data)
         
     async def coordinate_execution(self, plan: TaskDistributionPlan) -> ExecutionResult:
         """Manage parallel execution with real-time monitoring"""
+        execution_tasks = []
+        results = {}
+        
+        for task in plan.tasks:
+            agent = self.agents.get(task.assigned_agent)
+            if not agent:
+                raise OrchestratorError(f"Agent {task.assigned_agent} not found")
+            
+            # Ensure agent has active session
+            if not agent.session_id:
+                await agent.start_session(
+                    f"Starting new session for task: {task.title}"
+                )
+                self.active_sessions[agent.config.agent_id] = agent.session_id
+            
+            # Create execution task
+            execution_task = asyncio.create_task(
+                self._execute_with_monitoring(agent, task)
+            )
+            execution_tasks.append(execution_task)
+        
+        # Execute tasks with real-time monitoring
+        completed_tasks = await asyncio.gather(*execution_tasks, return_exceptions=True)
+        
+        for i, result in enumerate(completed_tasks):
+            task_id = plan.tasks[i].task_id
+            if isinstance(result, Exception):
+                results[task_id] = TaskResult(
+                    task_id=task_id,
+                    status="failed",
+                    error=str(result)
+                )
+            else:
+                results[task_id] = result
+        
+        return ExecutionResult(
+            plan_id=plan.plan_id,
+            task_results=results,
+            overall_status="completed",
+            execution_time=time.time() - plan.created_at
+        )
+        
+    async def _execute_with_monitoring(self, agent: ClaudeCodeAgent, task: Task) -> TaskResult:
+        """Execute task with real-time progress monitoring"""
+        try:
+            # Send real-time status update
+            await self.message_bus.broadcast_status_update(
+                AgentStatusUpdate(
+                    agent_id=agent.config.agent_id,
+                    status="executing",
+                    current_task=task.task_id,
+                    session_id=agent.session_id
+                )
+            )
+            
+            # Execute the task
+            result = await agent.execute_task(task)
+            
+            # Broadcast completion
+            await self.message_bus.broadcast_status_update(
+                AgentStatusUpdate(
+                    agent_id=agent.config.agent_id,
+                    status="completed",
+                    current_task=None,
+                    session_id=agent.session_id
+                )
+            )
+            
+            return result
+            
+        except Exception as e:
+            # Broadcast error status
+            await self.message_bus.broadcast_status_update(
+                AgentStatusUpdate(
+                    agent_id=agent.config.agent_id,
+                    status="error",
+                    current_task=task.task_id,
+                    error=str(e),
+                    session_id=agent.session_id
+                )
+            )
+            raise
 ```
 
 **1.3 Claude Code Agent Wrapper**
@@ -554,10 +888,11 @@ class ClaudeCodeAgent:
     Wrapper for Claude Code CLI with personality and persistence
     
     Features:
-    - Persistent session management
+    - Persistent session management with proper session ID handling
     - Personality-driven prompting
     - Memory and context preservation
     - Health monitoring and recovery
+    - Session resumption and continuation
     """
     
     def __init__(self, agent_config: AgentConfig):
@@ -565,12 +900,151 @@ class ClaudeCodeAgent:
         self.personality = PersonalityEngine(agent_config.personality_profile)
         self.memory = AgentMemory(agent_config.memory_system)
         self.claude_process: Optional[subprocess.Popen] = None
+        self.session_id: Optional[str] = None
+        self.session_file: str = f"sessions/{agent_config.agent_id}_session.txt"
+        
+    async def start_session(self, initial_prompt: str) -> str:
+        """Start a new Claude Code session and capture session ID"""
+        cmd = [
+            "claude", "-p", initial_prompt,
+            "--output-format", "json"
+        ]
+        
+        result = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await result.communicate()
+        
+        if result.returncode != 0:
+            raise ClaudeSessionError(f"Failed to start session: {stderr.decode()}")
+        
+        response_data = json.loads(stdout.decode())
+        self.session_id = response_data.get('session_id')
+        
+        # Persist session ID to file for recovery
+        os.makedirs(os.path.dirname(self.session_file), exist_ok=True)
+        with open(self.session_file, 'w') as f:
+            f.write(self.session_id)
+        
+        return self.session_id
+        
+    async def resume_session(self, session_id: Optional[str] = None) -> bool:
+        """Resume existing session by ID or from stored session file"""
+        if session_id:
+            self.session_id = session_id
+        elif os.path.exists(self.session_file):
+            with open(self.session_file, 'r') as f:
+                self.session_id = f.read().strip()
+        else:
+            return False
+        
+        # Test session validity with a simple probe
+        try:
+            await self.send_message("Status check", test_only=True)
+            return True
+        except Exception:
+            self.session_id = None
+            return False
+        
+    async def send_message(self, message: str, test_only: bool = False) -> str:
+        """Send message to existing Claude Code session"""
+        if not self.session_id:
+            raise ClaudeSessionError("No active session. Call start_session() first.")
+        
+        # Apply personality-driven prompt engineering
+        contextualized_prompt = self.personality.generate_contextual_prompt(
+            message, self.memory.get_current_context()
+        )
+        
+        cmd = [
+            "claude", "-p", contextualized_prompt,
+            "--resume", self.session_id,
+            "--output-format", "json"
+        ]
+        
+        if test_only:
+            # For session validation, use a minimal probe
+            cmd = ["claude", "-p", "OK", "--resume", self.session_id]
+        
+        result = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await result.communicate()
+        
+        if result.returncode != 0:
+            raise ClaudeSessionError(f"Session communication failed: {stderr.decode()}")
+        
+        if test_only:
+            return "OK"
+        
+        response_data = json.loads(stdout.decode())
+        response_text = response_data.get('content', '')
+        
+        # Store interaction in agent memory
+        await self.memory.store_interaction(AgentInteraction(
+            input_message=message,
+            output_message=response_text,
+            timestamp=datetime.utcnow(),
+            session_id=self.session_id
+        ))
+        
+        return response_text
         
     async def execute_task(self, task: Task) -> TaskResult:
-        """Execute task with personality-driven approach"""
+        """Execute task with proper session management"""
+        try:
+            # Ensure we have an active session
+            if not self.session_id:
+                await self.start_session(
+                    f"Hello, I'm {self.config.name}, your {self.config.role}. "
+                    f"I'm ready to help with {task.type} tasks."
+                )
+            elif not await self.resume_session():
+                # Session expired, start a new one
+                await self.start_session(
+                    f"Resuming work as {self.config.name}. "
+                    f"Previous session context will be restored."
+                )
+            
+            # Execute the actual task
+            task_prompt = self._format_task_prompt(task)
+            response = await self.send_message(task_prompt)
+            
+            return TaskResult(
+                task_id=task.task_id,
+                agent_id=self.config.agent_id,
+                result=response,
+                session_id=self.session_id,
+                status="completed"
+            )
+            
+        except Exception as e:
+            return TaskResult(
+                task_id=task.task_id,
+                agent_id=self.config.agent_id,
+                error=str(e),
+                session_id=self.session_id,
+                status="failed"
+            )
         
     async def maintain_session(self):
-        """Keep Claude Code session alive and healthy"""
+        """Keep Claude Code session alive and healthy with periodic heartbeats"""
+        while True:
+            try:
+                if self.session_id:
+                    # Send heartbeat to keep session active
+                    await self.send_message("Heartbeat check", test_only=True)
+                await asyncio.sleep(self.config.health.heartbeat_interval)
+            except Exception as e:
+                logger.warning(f"Session heartbeat failed for {self.config.agent_id}: {e}")
+                self.session_id = None
+                await asyncio.sleep(5)  # Brief pause before retry
 ```
 
 ### Phase 2: Agent Personality System (Week 3)
@@ -899,13 +1373,32 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your OpenAI API key
 
-# 3. Start the system
+# 3. Install Claude Code CLI (required for agents)
+# Follow Anthropic's official installation guide
+
+# 4. Start the system
 python -m nexus.orchestrator start
 
-# 4. Test with simple task
+# 5. Test with simple task (system handles session management automatically)
 curl -X POST http://localhost:8080/api/tasks \
   -H "Content-Type: application/json" \
   -d '{"request": "Create a simple hello world function"}'
+
+# 6. Monitor agent sessions in real-time
+curl http://localhost:8080/api/sessions
+```
+
+### **Session Management Testing**
+```bash
+# Test session persistence and recovery
+python scripts/test_session_management.py
+
+# Expected output:
+# ✅ Created session for aria_coordinator: abc123-def456-789
+# ✅ Session persisted to: sessions/aria_coordinator.session  
+# ✅ Successfully resumed session: abc123-def456-789
+# ✅ Session recovery test passed
+# ✅ All agents have active sessions
 ```
 
 ### **Development Setup (15 Minutes)**

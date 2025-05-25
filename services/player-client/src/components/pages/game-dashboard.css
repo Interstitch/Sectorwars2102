@@ -3,16 +3,28 @@
 .game-dashboard {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: 1.5rem;
   height: 100%;
+  min-height: 100vh;
+  width: 100%;
+  padding: 1rem;
+  box-sizing: border-box;
   animation: hud-boot 1s ease-out;
+  background: transparent;
+  overflow-y: auto;
 }
 
 /* Dashboard Header */
 .dashboard-header {
-  margin-bottom: var(--space-lg);
-  padding: var(--space-lg);
-  border-radius: var(--border-radius-lg);
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: rgba(26, 31, 46, 0.9);
+  border: 1px solid rgba(77, 132, 253, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .commander-status {
@@ -28,6 +40,19 @@
 .status-text {
   color: var(--color-success);
   text-shadow: 0 0 10px rgba(0, 255, 127, 0.5);
+}
+
+/* Alert Messages and Error States */
+.hud-panel.error {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+.hud-panel.success {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
 }
 
 /* Alert Messages */
@@ -47,7 +72,96 @@
 }
 
 .encounter-log {
-  margin-top: var(--space-md);
+  margin-top: 1rem;
+}
+
+/* Tab System Styling */
+.cockpit-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 0.75rem;
+  border: 1px solid rgba(77, 132, 253, 0.2);
+}
+
+.tab-content {
+  background: rgba(26, 31, 46, 0.9);
+  border: 1px solid rgba(77, 132, 253, 0.2);
+  border-radius: 12px;
+  padding: 2rem;
+  min-height: 400px;
+  width: 100%;
+  box-sizing: border-box;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.tab-content .overview-tab,
+.tab-content .trading-tab,
+.tab-content .navigation-tab,
+.tab-content .players-tab {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Dashboard Grid Improvements */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.current-location,
+.sector-objects,
+.navigation {
+  background: rgba(19, 27, 44, 0.8);
+  border: 1px solid rgba(77, 132, 253, 0.2);
+  border-radius: 8px;
+  padding: 1.5rem;
+  backdrop-filter: blur(5px);
+}
+
+.current-location h4,
+.sector-objects h3,
+.navigation h3 {
+  color: #00d9ff;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Ensure visible content */
+.sector-details,
+.objects-grid,
+.navigation-options {
+  color: #e2e8f0;
+  line-height: 1.6;
+}
+
+.sector-details h4 {
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+}
+
+.sector-type-badge {
+  display: inline-block;
+  background: rgba(77, 132, 253, 0.2);
+  color: #4d84fd;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
   padding-top: var(--space-md);
   border-top: 1px solid var(--color-border);
 }
