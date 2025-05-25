@@ -183,16 +183,9 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [players, setPlayers] = useState<PlayerAccount[]>([]);
   
-  // Set up axios with authorization header
+  // Set up axios instance (headers set per request)
   const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || '',
-  });
-  
-  api.interceptors.request.use(config => {
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
   });
   
   // Load admin stats
@@ -211,7 +204,9 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setError(null);
     
     try {
-      const response = await api.get<AdminStats>('/api/v1/admin/stats');
+      const response = await api.get<AdminStats>('/api/v1/admin/stats', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       console.log('🔍 loadAdminStats: API Response status:', response.status);
       console.log('🔍 loadAdminStats: API Response data:', response.data);
       console.log('🔍 loadAdminStats: Setting adminStats to:', response.data);
@@ -239,7 +234,9 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       // Try to get the default galaxy
       console.log('loadGalaxyInfo: Making API request...');
-      const response = await api.get<GalaxyState | {galaxy: null}>('/api/v1/admin/galaxy');
+      const response = await api.get<GalaxyState | {galaxy: null}>('/api/v1/admin/galaxy', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       console.log('loadGalaxyInfo: Got response:', response.data);
       
       // Handle different response formats
@@ -484,7 +481,9 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setError(null);
     
     try {
-      const response = await api.get<{users: UserAccount[]}>('/api/v1/admin/users');
+      const response = await api.get<{users: UserAccount[]}>('/api/v1/admin/users', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       console.log('loadUsers: Got response:', response.data);
       setUsers(response.data.users || []);
     } catch (error) {
@@ -503,7 +502,9 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setError(null);
     
     try {
-      const response = await api.get<{players: PlayerAccount[]}>('/api/v1/admin/players');
+      const response = await api.get<{players: PlayerAccount[]}>('/api/v1/admin/players', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       console.log('loadPlayers: Got response:', response.data);
       setPlayers(response.data.players || []);
     } catch (error) {
