@@ -570,92 +570,132 @@ const AnalyticsReports: React.FC = () => {
                     </div>
                   </section>
 
-              {/* Economic Health */}
-              <div className="analytics-section">
-                <h3>Economic Health</h3>
-                <div className="metrics-grid">
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.economic_health.total_credits_in_circulation)}</h4>
-                    <p>Total Credits</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.economic_health.average_player_wealth)}</h4>
-                    <p>Avg Player Wealth</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.economic_health.active_traders_24h)}</h4>
-                    <p>Active Traders (24h)</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.economic_health.trade_volume_24h)}</h4>
-                    <p>Trade Volume (24h)</p>
-                  </div>
-                </div>
-                
-                <div className="resource-distribution">
-                  <h4>Resource Distribution</h4>
-                  <div className="resource-bars">
-                    {Object.entries(analytics.economic_health.resource_distribution).map(([resource, percentage]) => (
-                      <div key={resource} className="resource-bar">
-                        <span className="resource-name">{resource}</span>
-                        <div className="bar-container">
-                          <div 
-                            className="bar-fill" 
-                            style={{ width: `${percentage}%` }}
-                          />
+                  {/* Economic Health */}
+                  <section className="section">
+                    <h3 className="section-title">💰 Economic Health</h3>
+                    <div className="grid grid-auto-fit gap-6">
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">💵</span>
+                          <h4 className="dashboard-stat-title">Total Credits</h4>
                         </div>
-                        <span className="resource-percentage">{formatPercentage(percentage)}</span>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.economic_health.total_credits_in_circulation)}</div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">📊</span>
+                          <h4 className="dashboard-stat-title">Avg Player Wealth</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.economic_health.average_player_wealth)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">🔄</span>
+                          <h4 className="dashboard-stat-title">Active Traders (24h)</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.economic_health.active_traders_24h)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">📦</span>
+                          <h4 className="dashboard-stat-title">Trade Volume (24h)</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.economic_health.trade_volume_24h)}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="card mt-6">
+                      <div className="card-header">
+                        <h4 className="card-title">📦 Resource Distribution</h4>
+                      </div>
+                      <div className="card-body">
+                        <div className="space-y-4">
+                          {Object.entries(analytics.economic_health.resource_distribution).map(([resource, percentage]) => (
+                            <div key={resource} className="flex items-center gap-4">
+                              <span className="text-sm font-medium w-16">{resource}</span>
+                              <div className="flex-1 bg-surface-secondary rounded-full h-2">
+                                <div 
+                                  className="bg-primary-500 h-2 rounded-full transition-all duration-300" 
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                              <span className="text-sm text-muted w-12 text-right">{formatPercentage(percentage as number)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
 
-              {/* Combat Activity */}
-              <div className="analytics-section">
-                <h3>Combat Activity</h3>
-                <div className="metrics-grid">
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.combat_activity.combat_events_24h)}</h4>
-                    <p>Combat Events (24h)</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.combat_activity.unique_combatants_24h)}</h4>
-                    <p>Unique Combatants</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatDuration(analytics.combat_activity.average_combat_duration)}</h4>
-                    <p>Avg Combat Duration</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatPercentage(analytics.combat_activity.ship_destruction_rate)}</h4>
-                    <p>Ship Destruction Rate</p>
-                  </div>
-                </div>
-              </div>
+                  {/* Combat Activity */}
+                  <section className="section">
+                    <h3 className="section-title">⚔️ Combat Activity</h3>
+                    <div className="grid grid-auto-fit gap-6">
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">💥</span>
+                          <h4 className="dashboard-stat-title">Combat Events (24h)</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.combat_activity.combat_events_24h)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">👥</span>
+                          <h4 className="dashboard-stat-title">Unique Combatants</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.combat_activity.unique_combatants_24h)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">⏱️</span>
+                          <h4 className="dashboard-stat-title">Avg Combat Duration</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatDuration(analytics.combat_activity.average_combat_duration)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">🔥</span>
+                          <h4 className="dashboard-stat-title">Ship Destruction Rate</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatPercentage(analytics.combat_activity.ship_destruction_rate)}</div>
+                      </div>
+                    </div>
+                  </section>
 
-              {/* Exploration Progress */}
-              <div className="analytics-section">
-                <h3>Exploration Progress</h3>
-                <div className="metrics-grid">
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.exploration_progress.discovered_sectors)}/{formatNumber(analytics.exploration_progress.total_sectors)}</h4>
-                    <p>Sectors Discovered</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatPercentage(analytics.exploration_progress.exploration_percentage)}</h4>
-                    <p>Galaxy Explored</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.exploration_progress.new_discoveries_24h)}</h4>
-                    <p>New Discoveries (24h)</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.exploration_progress.active_explorers)}</h4>
-                    <p>Active Explorers</p>
-                  </div>
-                </div>
-              </div>
+                  {/* Exploration Progress */}
+                  <section className="section">
+                    <h3 className="section-title">🗺️ Exploration Progress</h3>
+                    <div className="grid grid-auto-fit gap-6">
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">🌌</span>
+                          <h4 className="dashboard-stat-title">Sectors Discovered</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.exploration_progress.discovered_sectors)}/{formatNumber(analytics.exploration_progress.total_sectors)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">📊</span>
+                          <h4 className="dashboard-stat-title">Galaxy Explored</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatPercentage(analytics.exploration_progress.exploration_percentage)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">✨</span>
+                          <h4 className="dashboard-stat-title">New Discoveries (24h)</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.exploration_progress.new_discoveries_24h)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">🚀</span>
+                          <h4 className="dashboard-stat-title">Active Explorers</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.exploration_progress.active_explorers)}</div>
+                      </div>
+                    </div>
+                  </section>
 
               {/* ARIA Intelligence System */}
               <div className="analytics-section aria-section">
@@ -802,7 +842,7 @@ const AnalyticsReports: React.FC = () => {
             </div>
           )}
 
-      {activeTab === 'reports' && (
+          {activeTab === 'reports' && (
         <div className="reports-content">
           {/* Reports Controls */}
           <div className="reports-controls">
@@ -963,7 +1003,8 @@ const AnalyticsReports: React.FC = () => {
               </div>
             )}
           </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
