@@ -318,7 +318,7 @@ const PlayerAnalytics: React.FC = () => {
             {/* Enhanced Player Controls */}
             <section className="section" style={{ padding: 'var(--space-4)' }}>
               <div className="card">
-                <div className="card-body" style={{ padding: 'var(--space-4)' }}>
+                <div className="card-body">
                   <PlayerSearchAndFilter
                     filters={state.filters}
                     onFiltersChange={handleFiltersChange}

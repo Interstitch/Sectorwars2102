@@ -47,6 +47,8 @@ class AIInteractionType(Enum):
     ARCHITECTURE_REVIEW = "architecture_review"
     SECURITY_AUDIT = "security_audit"
     PERFORMANCE_ANALYSIS = "performance_analysis"
+    LANGUAGE_ANALYSIS = "language_analysis"
+    CREATIVE_BUILDING = "creative_building"
 
 
 class AIConfidenceLevel(Enum):

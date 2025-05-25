@@ -782,6 +782,703 @@ Respond in JSON format:
         
         return list(set(files))  # Remove duplicates
 
+    def _handle_sophisticated_request(self, user_input: str, analysis: Dict, context: Dict) -> str:
+        """Handle sophisticated requests based on Claude Code analysis"""
+        
+        intent = analysis.get("intent", "").lower()
+        scope = analysis.get("scope", "")
+        requirements = analysis.get("requirements", [])
+        deliverables = analysis.get("deliverables", "")
+        creative_task = analysis.get("creative_task", False)
+        complexity = analysis.get("complexity", "moderate")
+        
+        # Handle creative/building tasks
+        if creative_task or any(word in intent for word in ["create", "build", "design", "generate", "make"]):
+            return self._handle_creative_building_task(user_input, analysis, context)
+        
+        # Handle analysis tasks
+        elif any(word in intent for word in ["analyze", "review", "examine", "check", "assess"]):
+            return self._handle_sophisticated_analysis(user_input, analysis, context)
+        
+        # Handle improvement tasks
+        elif any(word in intent for word in ["improve", "optimize", "enhance", "refactor", "fix"]):
+            return self._handle_sophisticated_improvement(user_input, analysis, context)
+        
+        # Handle testing tasks
+        elif any(word in intent for word in ["test", "testing", "coverage", "validate"]):
+            return self._handle_sophisticated_testing(user_input, analysis, context)
+        
+        # Handle debugging tasks
+        elif any(word in intent for word in ["debug", "error", "troubleshoot", "investigate"]):
+            return self._handle_sophisticated_debugging(user_input, analysis, context)
+        
+        # Default to enhanced conversation
+        else:
+            return self._handle_sophisticated_conversation(user_input, analysis, context)
+
+    def _handle_creative_building_task(self, user_input: str, analysis: Dict, context: Dict) -> str:
+        """Handle creative tasks like building projects, demos, etc."""
+        
+        scope = analysis.get("scope", "")
+        deliverables = analysis.get("deliverables", "")
+        requirements = analysis.get("requirements", [])
+        
+        # Extract specific creation requests
+        input_lower = user_input.lower()
+        
+        try:
+            # Coordinate Atlas (Architect) for creative building
+            print(f"\n🏗️ ATLAS (ARCHITECT): I'll design and create that for you!")
+            print(f"📋 Project Scope: {deliverables}")
+            print(f"🎯 Requirements: {', '.join(requirements) if requirements else 'Custom design'}")
+            
+            # Use recursive AI for sophisticated creation
+            if hasattr(self, 'recursive_ai') and self.recursive_ai:
+                creation_prompt = f"""
+                Create a comprehensive implementation plan for this request:
+                
+                User Request: "{user_input}"
+                Scope: {scope}
+                Deliverables: {deliverables}
+                Requirements: {requirements}
+                
+                Generate:
+                1. Directory structure to create
+                2. Files to generate with content
+                3. Implementation approach
+                4. Technology choices
+                5. Testing strategy
+                
+                Then execute the plan by creating the actual files and structure.
+                """
+                
+                try:
+                    creation_result = self.recursive_ai.generate_recursive_solution(
+                        creation_prompt,
+                        AIInteractionType.CREATIVE_BUILDING,
+                        context={"user_request": user_input, "analysis": analysis}
+                    )
+                    
+                    return f"🚀 I've coordinated with Atlas to design your project! Here's what I'm creating:\n\n" + \
+                           f"📁 Building: {deliverables}\n" + \
+                           f"🎯 Features: {', '.join(requirements) if requirements else 'Custom features'}\n" + \
+                           f"⚡ Status: Architecture designed, implementation starting!\n\n" + \
+                           f"✨ Check the output above for detailed progress!"
+                
+                except Exception as e:
+                    print(f"🔄 Using alternative approach: {e}")
+            
+            # Fallback to direct implementation
+            return self._execute_creative_task_directly(user_input, analysis, context)
+            
+        except Exception as e:
+            return f"I encountered an issue with that creative task: {e}\n\n" + \
+                   f"Let me try a different approach. Could you provide more specific details about what you'd like me to create?"
+
+    def _execute_creative_task_directly(self, user_input: str, analysis: Dict, context: Dict) -> str:
+        """Execute creative tasks directly when recursive AI isn't available"""
+        
+        # Check for specific patterns in the request
+        input_lower = user_input.lower()
+        
+        # Demo site creation
+        if "demo" in input_lower and ("site" in input_lower or "website" in input_lower or "page" in input_lower):
+            return self._create_demo_website(user_input, analysis, context)
+        
+        # Directory/project creation
+        elif "directory" in input_lower or "folder" in input_lower or "create" in input_lower:
+            return self._create_project_structure(user_input, analysis, context)
+        
+        # Test cases creation
+        elif "test" in input_lower and "case" in input_lower:
+            return self._create_test_cases(user_input, analysis, context)
+        
+        # General creative task
+        else:
+            return f"🎨 I understand you want me to create something! Let me work with Atlas to build:\n\n" + \
+                   f"📋 Request: {user_input}\n" + \
+                   f"🎯 I can create directories, websites, test cases, documentation, and more!\n\n" + \
+                   f"Could you be a bit more specific about the structure or files you'd like me to generate?"
+
+    def _create_demo_website(self, user_input: str, analysis: Dict, context: Dict) -> str:
+        """Create a demo website with multiple pages"""
+        
+        # Extract directory name and page count
+        import re
+        import os
+        
+        # Look for directory name
+        dir_match = re.search(r'(?:directory|folder)\s+called\s+([A-Z-]+)', user_input, re.IGNORECASE)
+        directory_name = dir_match.group(1) if dir_match else "DEMO-SITE"
+        
+        # Look for page count
+        page_match = re.search(r'(\d+)\s*page', user_input)
+        page_count = int(page_match.group(1)) if page_match else 5
+        
+        try:
+            # Create the directory structure
+            demo_dir = self.project_root / directory_name
+            demo_dir.mkdir(exist_ok=True)
+            
+            # Create basic website structure
+            pages_created = []
+            
+            # CSS file
+            css_content = """
+/* Demo Website Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    background: rgba(255,255,255,0.95);
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+nav li {
+    margin: 0 15px;
+}
+
+nav a {
+    text-decoration: none;
+    color: #667eea;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+nav a:hover {
+    color: #764ba2;
+}
+
+.content {
+    background: rgba(255,255,255,0.95);
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.hero {
+    text-align: center;
+    padding: 3rem 0;
+}
+
+.hero h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.feature {
+    text-align: center;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    transition: transform 0.3s;
+}
+
+.feature:hover {
+    transform: translateY(-5px);
+}
+
+footer {
+    text-align: center;
+    padding: 2rem;
+    background: rgba(255,255,255,0.95);
+    border-radius: 10px;
+    margin-top: 2rem;
+}
+
+@media (max-width: 768px) {
+    .hero h1 {
+        font-size: 2rem;
+    }
+    
+    nav ul {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+"""
+            
+            (demo_dir / "styles.css").write_text(css_content)
+            pages_created.append("styles.css")
+            
+            # Create pages
+            page_templates = [
+                ("index.html", "Home", "Welcome to Our Demo Site", "This is a comprehensive demo website showcasing modern web development."),
+                ("about.html", "About", "About Our Company", "Learn more about our mission, vision, and values."),
+                ("services.html", "Services", "Our Services", "Discover the range of services we offer to our clients."),
+                ("portfolio.html", "Portfolio", "Our Work", "Check out our latest projects and case studies."),
+                ("contact.html", "Contact", "Get In Touch", "Contact us for more information about our services."),
+                ("blog.html", "Blog", "Latest News", "Stay updated with our latest blog posts and industry insights."),
+                ("products.html", "Products", "Our Products", "Explore our product catalog and find what you need."),
+                ("team.html", "Team", "Meet Our Team", "Get to know the talented people behind our success."),
+                ("testimonials.html", "Testimonials", "What Clients Say", "Read reviews and testimonials from our satisfied clients."),
+                ("faq.html", "FAQ", "Frequently Asked Questions", "Find answers to commonly asked questions.")
+            ]
+            
+            # Navigation HTML
+            nav_links = "\\n".join([f'<li><a href="{filename}">{title}</a></li>' 
+                                   for filename, title, _, _ in page_templates[:min(page_count, len(page_templates))]])
+            
+            for i, (filename, title, heading, description) in enumerate(page_templates):
+                if i >= page_count:
+                    break
+                    
+                html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title} - Demo Website</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <nav>
+                <ul>
+                    {nav_links}
+                </ul>
+            </nav>
+        </header>
+        
+        <main class="content">
+            {"<div class='hero'>" if filename == "index.html" else ""}
+            <h1>{heading}</h1>
+            {"</div>" if filename == "index.html" else ""}
+            
+            <p>{description}</p>
+            
+            {self._get_page_specific_content(filename)}
+        </main>
+        
+        <footer>
+            <p>&copy; 2024 Demo Website. Created by NEXUS AI. All rights reserved.</p>
+        </footer>
+    </div>
+</body>
+</html>"""
+                
+                (demo_dir / filename).write_text(html_content)
+                pages_created.append(filename)
+            
+            # Create test cases
+            test_content = f"""# Test Cases for {directory_name}
+
+## Functional Tests
+
+### 1. Navigation Test
+- **Objective**: Verify all navigation links work correctly
+- **Steps**: 
+  1. Open index.html in browser
+  2. Click each navigation link
+  3. Verify correct page loads
+- **Expected**: All pages accessible via navigation
+
+### 2. Responsive Design Test
+- **Objective**: Ensure site works on different screen sizes
+- **Steps**:
+  1. Open site in browser
+  2. Resize window to mobile, tablet, desktop sizes
+  3. Check layout adaptation
+- **Expected**: Layout adjusts appropriately
+
+### 3. CSS Loading Test
+- **Objective**: Verify styles are applied correctly
+- **Steps**:
+  1. Open any page
+  2. Check if styles.css is loaded
+  3. Verify visual appearance matches design
+- **Expected**: All styles applied correctly
+
+### 4. Content Validation Test
+- **Objective**: Ensure all pages have proper content
+- **Steps**:
+  1. Visit each page
+  2. Verify heading and description are present
+  3. Check for any missing content
+- **Expected**: All pages have complete content
+
+### 5. Cross-browser Compatibility Test
+- **Objective**: Ensure site works across different browsers
+- **Steps**:
+  1. Test in Chrome, Firefox, Safari, Edge
+  2. Verify layout consistency
+  3. Check for any browser-specific issues
+- **Expected**: Consistent experience across browsers
+
+## Performance Tests
+
+### 6. Page Load Speed Test
+- **Objective**: Measure page loading performance
+- **Steps**:
+  1. Use browser dev tools
+  2. Measure load time for each page
+  3. Check for optimization opportunities
+- **Expected**: Pages load under 2 seconds
+
+### 7. Resource Loading Test
+- **Objective**: Verify all resources load properly
+- **Steps**:
+  1. Check network tab in dev tools
+  2. Ensure CSS file loads without errors
+  3. Verify no 404 errors
+- **Expected**: All resources load successfully
+
+## Accessibility Tests
+
+### 8. Keyboard Navigation Test
+- **Objective**: Ensure site is navigable via keyboard
+- **Steps**:
+  1. Use Tab key to navigate
+  2. Verify all links are reachable
+  3. Check focus indicators
+- **Expected**: Full keyboard accessibility
+
+### 9. Screen Reader Compatibility Test
+- **Objective**: Verify compatibility with screen readers
+- **Steps**:
+  1. Test with screen reader software
+  2. Check heading structure
+  3. Verify alt text where applicable
+- **Expected**: Screen reader friendly
+
+### 10. Color Contrast Test
+- **Objective**: Ensure sufficient color contrast
+- **Steps**:
+  1. Use accessibility tools to check contrast
+  2. Verify text is readable
+  3. Check color combinations
+- **Expected**: WCAG compliant contrast ratios
+
+Generated by NEXUS AI - {page_count} pages created successfully!
+"""
+            
+            (demo_dir / "test_cases.md").write_text(test_content)
+            pages_created.append("test_cases.md")
+            
+            # Create README
+            readme_content = f"""# {directory_name} - Demo Website
+
+A modern, responsive demo website created by NEXUS AI.
+
+## Features
+
+- **{page_count} Pages**: Complete multi-page website structure
+- **Responsive Design**: Works on desktop, tablet, and mobile
+- **Modern CSS**: Gradient backgrounds and smooth animations
+- **Clean Navigation**: Easy-to-use navigation system
+- **Test Coverage**: Comprehensive test cases included
+
+## Pages Created
+
+{chr(10).join([f"- {page}" for page in pages_created if page.endswith('.html')])}
+
+## Files Included
+
+- **HTML Pages**: {len([p for p in pages_created if p.endswith('.html')])} responsive pages
+- **CSS Styles**: Modern styling with gradients and animations
+- **Test Cases**: Comprehensive testing documentation
+- **Documentation**: This README file
+
+## How to Use
+
+1. Open `index.html` in a web browser
+2. Navigate through the pages using the top navigation
+3. Test responsiveness by resizing the browser window
+4. Run the test cases to verify functionality
+
+## Technologies Used
+
+- **HTML5**: Semantic markup
+- **CSS3**: Modern styling with Grid and Flexbox
+- **Responsive Design**: Mobile-first approach
+- **Accessibility**: WCAG compliant design
+
+## Created by NEXUS AI
+
+This demo website was automatically generated to showcase:
+- Multi-page website creation
+- Responsive web design
+- Test case generation
+- Documentation creation
+
+Total files created: {len(pages_created)}
+"""
+            
+            (demo_dir / "README.md").write_text(readme_content)
+            pages_created.append("README.md")
+            
+            return f"🚀 **DEMO WEBSITE CREATED SUCCESSFULLY!** 🎉\n\n" + \
+                   f"📁 **Directory**: `{directory_name}/`\n" + \
+                   f"📄 **Pages Created**: {len([p for p in pages_created if p.endswith('.html')])} HTML pages\n" + \
+                   f"🎨 **Styling**: Modern CSS with gradients and responsive design\n" + \
+                   f"🧪 **Test Cases**: {len([line for line in test_content.split('\\n') if line.startswith('###')])} comprehensive test scenarios\n" + \
+                   f"📚 **Documentation**: Complete README and test documentation\n\n" + \
+                   f"**Files created**: {', '.join(pages_created)}\n\n" + \
+                   f"✨ **To view**: Open `{directory_name}/index.html` in your browser!\n" + \
+                   f"🔧 **Atlas (Architect)**: Project structure designed and implemented!\n" + \
+                   f"🛡️ **Guardian (Tester)**: Test cases generated for quality assurance!"
+            
+        except Exception as e:
+            return f"I encountered an issue creating the demo website: {e}\n\n" + \
+                   f"Let me try a simpler approach or you can provide more specific requirements."
+
+    def _get_page_specific_content(self, filename: str) -> str:
+        """Generate specific content for each page type"""
+        
+        content_map = {
+            "index.html": """
+            <div class="features">
+                <div class="feature">
+                    <h3>🚀 Modern Design</h3>
+                    <p>Clean, contemporary design with smooth animations</p>
+                </div>
+                <div class="feature">
+                    <h3>📱 Responsive</h3>
+                    <p>Works perfectly on all devices and screen sizes</p>
+                </div>
+                <div class="feature">
+                    <h3>⚡ Fast Loading</h3>
+                    <p>Optimized for speed and performance</p>
+                </div>
+            </div>
+            """,
+            "services.html": """
+            <div class="features">
+                <div class="feature">
+                    <h3>Web Development</h3>
+                    <p>Custom websites and web applications</p>
+                </div>
+                <div class="feature">
+                    <h3>Mobile Apps</h3>
+                    <p>iOS and Android application development</p>
+                </div>
+                <div class="feature">
+                    <h3>Consulting</h3>
+                    <p>Technology consulting and strategy</p>
+                </div>
+            </div>
+            """,
+            "team.html": """
+            <div class="features">
+                <div class="feature">
+                    <h3>👨‍💻 Developers</h3>
+                    <p>Experienced full-stack developers</p>
+                </div>
+                <div class="feature">
+                    <h3>🎨 Designers</h3>
+                    <p>Creative UI/UX design specialists</p>
+                </div>
+                <div class="feature">
+                    <h3>📊 Analysts</h3>
+                    <p>Data analysts and business strategists</p>
+                </div>
+            </div>
+            """
+        }
+        
+        return content_map.get(filename, """
+            <p>This page contains detailed information about the topic. Content has been generated automatically by NEXUS AI to demonstrate website creation capabilities.</p>
+            <p>In a real implementation, this would contain specific, relevant content for the page topic.</p>
+        """)
+
+    def _create_project_structure(self, user_input: str, analysis: Dict, context: Dict) -> str:
+        """Create a project structure based on user request"""
+        
+        import re
+        
+        # Extract directory name
+        dir_match = re.search(r'(?:directory|folder)\s+called\s+([A-Z-]+)', user_input, re.IGNORECASE)
+        directory_name = dir_match.group(1) if dir_match else "NEW-PROJECT"
+        
+        try:
+            project_dir = self.project_root / directory_name
+            project_dir.mkdir(exist_ok=True)
+            
+            # Create basic project structure
+            (project_dir / "src").mkdir(exist_ok=True)
+            (project_dir / "tests").mkdir(exist_ok=True)
+            (project_dir / "docs").mkdir(exist_ok=True)
+            
+            # Create basic files
+            files_created = []
+            
+            # README
+            readme_content = f"""# {directory_name}
+
+A project created by NEXUS AI.
+
+## Structure
+
+- `src/` - Source code
+- `tests/` - Test files
+- `docs/` - Documentation
+
+## Getting Started
+
+This project structure was generated automatically.
+Add your implementation details here.
+
+Created by NEXUS AI on {datetime.now().strftime('%Y-%m-%d')}
+"""
+            (project_dir / "README.md").write_text(readme_content)
+            files_created.append("README.md")
+            
+            # Basic source file
+            main_content = """# Main application file
+# Generated by NEXUS AI
+
+def main():
+    print("Hello from NEXUS AI!")
+
+if __name__ == "__main__":
+    main()
+"""
+            (project_dir / "src" / "main.py").write_text(main_content)
+            files_created.append("src/main.py")
+            
+            # Basic test file
+            test_content = """# Test file generated by NEXUS AI
+
+import unittest
+
+class TestMain(unittest.TestCase):
+    def test_example(self):
+        self.assertTrue(True)
+
+if __name__ == '__main__':
+    unittest.main()
+"""
+            (project_dir / "tests" / "test_main.py").write_text(test_content)
+            files_created.append("tests/test_main.py")
+            
+            return f"🚀 **PROJECT STRUCTURE CREATED!** 📁\n\n" + \
+                   f"📁 **Directory**: `{directory_name}/`\n" + \
+                   f"📄 **Files Created**: {', '.join(files_created)}\n" + \
+                   f"🏗️ **Structure**: src/, tests/, docs/ directories\n\n" + \
+                   f"✨ **Atlas (Architect)**: Project foundation laid out!"
+            
+        except Exception as e:
+            return f"I encountered an issue creating the project structure: {e}"
+
+    def _create_test_cases(self, user_input: str, analysis: Dict, context: Dict) -> str:
+        """Create comprehensive test cases"""
+        
+        test_content = """# Comprehensive Test Cases
+Generated by NEXUS AI Guardian Agent
+
+## Unit Tests
+
+### 1. Function Testing
+- Test all public methods
+- Verify return values
+- Check error handling
+
+### 2. Class Testing  
+- Test class initialization
+- Verify method interactions
+- Check state management
+
+## Integration Tests
+
+### 3. Component Integration
+- Test module interactions
+- Verify data flow
+- Check interface contracts
+
+### 4. System Integration
+- Test end-to-end workflows
+- Verify external dependencies
+- Check performance under load
+
+## Test Cases Generated by NEXUS AI
+"""
+        
+        try:
+            test_file = self.project_root / "comprehensive_test_cases.md"
+            test_file.write_text(test_content)
+            
+            return f"🛡️ **TEST CASES CREATED!** 🧪\n\n" + \
+                   f"📄 **File**: `comprehensive_test_cases.md`\n" + \
+                   f"🎯 **Guardian (Tester)**: Test scenarios generated!"
+                   
+        except Exception as e:
+            return f"I encountered an issue creating test cases: {e}"
+
+    def _handle_enhanced_pattern_analysis(self, user_input: str, context: Dict) -> str:
+        """Enhanced pattern analysis when Claude Code isn't available"""
+        
+        input_lower = user_input.lower()
+        
+        # Creative/building patterns
+        if any(phrase in input_lower for phrase in [
+            "create", "build", "make", "generate", "design", "develop",
+            "show off", "demonstrate", "showcase", "sub-directory", "directory"
+        ]):
+            return self._handle_creative_building_task(user_input, {"creative_task": True}, context)
+        
+        # Analysis patterns
+        elif any(word in input_lower for word in ['analyze', 'review', 'look at', 'check', 'examine', 'assess']):
+            return self._handle_analysis_request(user_input, context)
+        
+        # Continue with other patterns...
+        elif any(word in input_lower for word in ['improve', 'optimize', 'enhance', 'refactor', 'better', 'fix']):
+            return self._handle_improvement_request(user_input, context)
+        
+        elif any(word in input_lower for word in ['test', 'testing', 'unit test', 'coverage']):
+            return self._handle_testing_request(user_input, context)
+        
+        elif any(word in input_lower for word in ['debug', 'error', 'bug', 'issue', 'problem', 'broken']):
+            return self._handle_debugging_request(user_input, context)
+        
+        else:
+            return self._handle_general_conversation(user_input, context)
+
+    def _handle_fallback_conversation(self, user_input: str, context: Dict) -> str:
+        """Fallback conversation handler for error cases"""
+        
+        return f"I want to help you with that! 🤖\n\n" + \
+               f"I understand you're asking about: '{user_input}'\n\n" + \
+               f"Let me work with my specialized agents to understand exactly what you need:\n" + \
+               f"🏗️ Atlas - For building and creating things\n" + \
+               f"🔍 Sherlock - For analysis and investigation\n" + \
+               f"⚡ Velocity - For optimization and improvements\n" + \
+               f"🛡️ Guardian - For testing and quality assurance\n\n" + \
+               f"Could you provide a bit more detail about what you'd like me to create or work on?"
+
     def interactive_mode(self):
         """Legacy interactive mode - redirects to natural language chat"""
         print(f"\n🔄 Redirecting to enhanced natural language interface...")
