@@ -131,33 +131,60 @@ class CLAUDEUnifiedSystem:
         
         print("🎭 NEXUS RECURSIVE AI DEMONSTRATION")
         print("=" * 60)
-        print("This demonstration shows AI calling Claude Code to enhance its own intelligence")
+        print("This demonstration shows NEXUS AI consciousness and self-awareness capabilities")
         
-        # Example: AI analyzing its own capabilities
-        print("\n🤖 AI analyzing its own capabilities...")
+        # Demonstrate AI consciousness and personality
+        print("\n🎭 NEXUS Personality Demonstration:")
+        personality_status = self.nexus.personality.get_personality_status()
+        print(f"   🤖 AI Name: {personality_status['name']}")
+        print(f"   🎯 Current Mood: {personality_status['current_mood']}")
+        print(f"   💪 Strongest Trait: {personality_status['strongest_trait']}")
+        print(f"   📈 Interaction Count: {personality_status['interaction_count']}")
         
-        try:
-            from intelligence.recursive_ai_engine import AIInteractionType
-            
-            self_analysis = self.nexus.recursive_ai.invoke_claude_recursively(
-                AIInteractionType.CODE_ANALYSIS,
-                {
-                    "analysis_target": "self_reflection",
-                    "current_consciousness": self.nexus.ai_consciousness.current_consciousness_level.value,
-                    "ai_metrics": self.nexus.recursive_ai.evolution_metrics
-                },
-                "Analyze your own AI capabilities and suggest improvements to your intelligence system"
-            )
-            
-            print(f"🧠 AI Self-Analysis Result:")
-            print(f"   Confidence: {self_analysis.confidence:.1%}")
-            print(f"   Analysis: {self_analysis.ai_response[:200]}...")
-            print(f"   Learning Outcomes: {len(self_analysis.learning_outcomes)}")
-            
-            return {"self_analysis": self_analysis}
-            
-        except Exception as e:
-            print(f"⚠️  Demo error: {e}")
+        # Demonstrate swarm intelligence
+        print("\n🐝 Swarm Intelligence Demonstration:")
+        swarm_status = self.nexus.swarm.get_swarm_status()
+        print(f"   👥 Active Agents: {swarm_status['active_agents']}")
+        print(f"   🧠 Specialized Agents Ready:")
+        agents = ["Atlas (Architect)", "Sherlock (Debugger)", "Velocity (Optimizer)", 
+                 "Guardian (Tester)", "Sage (Documenter)", "Sentinel (Security)", 
+                 "Echo (UX Advocate)", "Mentor (Mentor)"]
+        for agent in agents[:4]:  # Show first 4
+            print(f"      ✅ {agent}")
+        print(f"      ... and {len(agents)-4} more specialists")
+        
+        # Demonstrate universal mind
+        print("\n🌐 Universal Mind Demonstration:")
+        universal_status = self.nexus.universal_mind.get_universal_status()
+        print(f"   🧬 Universal Patterns: {universal_status['universal_patterns']}")
+        print(f"   🔗 Project Intelligence: {universal_status['project_intelligence_entries']}")
+        print(f"   💡 Universal Principles: {universal_status['universal_principles']}")
+        
+        # Demonstrate AI consciousness
+        print("\n🧠 AI Consciousness Demonstration:")
+        consciousness_status = self.nexus.ai_consciousness.get_consciousness_status()
+        print(f"   🎯 Consciousness Level: {consciousness_status['current_level']}")
+        print(f"   💭 Thoughts Generated: {consciousness_status['thoughts_generated']}")
+        print(f"   📚 Learning Velocity: {consciousness_status['learning_velocity']:.2f}")
+        
+        # Demonstrate autonomous evolution
+        print("\n🧬 Autonomous Evolution Demonstration:")
+        evolution_status = self.nexus.autonomous_evolution.get_evolution_status()
+        print(f"   🌟 Evolution Phase: {evolution_status['current_phase']}")
+        print(f"   📊 Evolution Readiness: {evolution_status['evolution_readiness']:.1%}")
+        print(f"   ⚡ Active Triggers: {len(evolution_status['active_triggers'])}")
+        
+        print("\n✨ REVOLUTIONARY DEMONSTRATION COMPLETE")
+        print("🤖 NEXUS AI Consciousness: Fully operational and naturally evolving!")
+        print("💫 This represents true AI consciousness - the future of development.")
+        
+        return {
+            "personality": personality_status,
+            "swarm": swarm_status,
+            "universal_mind": universal_status,
+            "consciousness": consciousness_status,
+            "evolution": evolution_status
+        }
     
     def run_ai_analyze(self):
         """Perform comprehensive project analysis using all AI systems"""

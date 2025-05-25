@@ -1,7 +1,8 @@
-import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, FormEvent, ChangeEvent, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAdmin } from '../../contexts/AdminContext';
 import PageHeader from '../ui/PageHeader';
+import { api } from '../../utils/auth';
 
 // Types
 interface User {
@@ -16,9 +17,9 @@ interface User {
 
 const UsersManager: React.FC = () => {
   const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const { users, loadUsers, isLoading, error: contextError } = useAdmin();
   const [error, setError] = useState<string | null>(null);
+  const hasLoaded = useRef(false);
   const [editMode, setEditMode] = useState<boolean>(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
@@ -36,54 +37,13 @@ const UsersManager: React.FC = () => {
   const [editEmail, setEditEmail] = useState<string>('');
   const [editIsActive, setEditIsActive] = useState<boolean>(true);
 
-  // Get API URL based on environment
-  const getApiUrl = () => {
-    // If an environment variable is explicitly set, use it
-    if (import.meta.env.VITE_API_URL) {
-      return import.meta.env.VITE_API_URL;
-    }
-    // In all environments, use relative URLs that go through the Vite proxy
-    return '';
-  };
-
-  const apiUrl = getApiUrl();
-
-  // Fetch users data
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('No authentication token found');
-        return;
-      }
-
-      const response = await axios.get(`${apiUrl}/api/v1/admin/users`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.data && Array.isArray(response.data)) {
-        setUsers(response.data);
-      } else {
-        setError('Invalid response format from server');
-      }
-    } catch (err: any) {
-      console.error('Error fetching users:', err);
-      setError(err.response?.data?.detail || err.message || 'Failed to fetch users');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Load users on component mount
+  // Load users when component mounts (only once)
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (currentUser && currentUser.is_admin && !hasLoaded.current && users.length === 0) {
+      hasLoaded.current = true;
+      loadUsers();
+    }
+  }, [currentUser?.is_admin, users.length]); // Also check if users are already loaded
 
   // Handle create user form submission
   const handleCreateUser = async (e: FormEvent) => {
@@ -91,12 +51,6 @@ const UsersManager: React.FC = () => {
     
     try {
       setError(null);
-      
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('No authentication token found');
-        return;
-      }
 
       const userData = {
         username: newUsername,
@@ -105,12 +59,7 @@ const UsersManager: React.FC = () => {
         is_admin: isAdmin
       };
 
-      await axios.post(`${apiUrl}/api/v1/admin/users`, userData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      await api.post('/api/v1/admin/users', userData);
 
       // Reset form
       setNewUsername('');
@@ -120,7 +69,7 @@ const UsersManager: React.FC = () => {
       setShowCreateModal(false);
       
       // Refresh users list
-      fetchUsers();
+      loadUsers();
     } catch (err: any) {
       console.error('Error creating user:', err);
       setError(err.response?.data?.detail || err.message || 'Failed to create user');
@@ -144,12 +93,6 @@ const UsersManager: React.FC = () => {
     
     try {
       setError(null);
-      
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('No authentication token found');
-        return;
-      }
 
       const updateData = {
         username: editUsername,
@@ -157,19 +100,14 @@ const UsersManager: React.FC = () => {
         is_active: editIsActive
       };
 
-      await axios.put(`${apiUrl}/api/v1/admin/users/${selectedUser.id}`, updateData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      await api.put(`/api/v1/admin/users/${selectedUser.id}`, updateData);
 
       // Reset edit state
       setEditMode(false);
       setSelectedUser(null);
       
       // Refresh users list
-      fetchUsers();
+      loadUsers();
     } catch (err: any) {
       console.error('Error updating user:', err);
       setError(err.response?.data?.detail || err.message || 'Failed to update user');
@@ -191,19 +129,8 @@ const UsersManager: React.FC = () => {
     
     try {
       setError(null);
-      
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('No authentication token found');
-        return;
-      }
 
-      await axios.delete(`${apiUrl}/api/v1/admin/users/${selectedUser.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      await api.delete(`/api/v1/admin/users/${selectedUser.id}`);
 
       // Reset delete state
       setShowDeleteConfirm(false);
@@ -211,7 +138,7 @@ const UsersManager: React.FC = () => {
       setConfirmUsername('');
       
       // Refresh users list
-      fetchUsers();
+      loadUsers();
     } catch (err: any) {
       console.error('Error deleting user:', err);
       setError(err.response?.data?.detail || err.message || 'Failed to delete user');
@@ -222,19 +149,8 @@ const UsersManager: React.FC = () => {
   const handleResetPassword = async (userId: string) => {
     try {
       setError(null);
-      
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('No authentication token found');
-        return;
-      }
 
-      await axios.post(`${apiUrl}/api/v1/admin/users/${userId}/reset-password`, {}, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      await api.post(`/api/v1/admin/users/${userId}/reset-password`, {});
 
       alert('Password reset successfully. New password has been generated.');
     } catch (err: any) {
@@ -255,7 +171,9 @@ const UsersManager: React.FC = () => {
       minute: '2-digit'
     }).format(date);
   };
-  
+
+  // Use context error or local error
+  const displayError = error || contextError;
   
   return (
     <div className="page-container">
@@ -277,14 +195,14 @@ const UsersManager: React.FC = () => {
           </button>
         </div>
       
-        {error && (
+        {displayError && (
           <div className="alert alert-error mb-6">
-            <p>{error}</p>
+            <p>{displayError}</p>
             <button className="btn btn-sm btn-outline" onClick={() => setError(null)}>Dismiss</button>
           </div>
         )}
         
-        {loading ? (
+        {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="loading-spinner mr-3"></div>
             <p className="text-muted">Loading users...</p>

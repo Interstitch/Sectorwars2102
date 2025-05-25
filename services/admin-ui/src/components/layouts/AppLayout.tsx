@@ -52,7 +52,7 @@ const AppLayout: React.FC = () => {
   // Special case for login page - never show loading spinner on login page
   if (isLoginPage) {
     return (
-      <div className="app-container">
+      <div className="app-layout">
         <main className="main-content">
           <Outlet />
         </main>
@@ -69,7 +69,7 @@ const AppLayout: React.FC = () => {
   if (isLoading) {
     if (loadingTimeout) {
       return (
-        <div className="app-container">
+        <div className="app-layout">
           <main className="main-content">
             <div className="alert alert-error">
               <h2>Authentication Timeout</h2>
@@ -90,18 +90,28 @@ const AppLayout: React.FC = () => {
   }
 
   return (
-    <div className="app-container">
+    <div className="app-layout">
       {/* Don't show sidebar on login page or if not authenticated */}
       {!isLoginPage && isAuthenticated && (
         <>
-          <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-            <Sidebar />
-          </div>
+          <Sidebar />
 
           {isMobile && (
             <button
               className={`sidebar-toggle ${sidebarOpen ? 'open' : ''}`}
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{
+                position: 'fixed',
+                top: 'var(--space-4)',
+                left: 'var(--space-4)',
+                zIndex: 'calc(var(--z-fixed) + 1)',
+                background: 'var(--interactive-primary)',
+                color: 'white',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                padding: 'var(--space-2) var(--space-3)',
+                fontSize: 'var(--font-size-lg)'
+              }}
             >
               {sidebarOpen ? '×' : '☰'}
             </button>
@@ -109,7 +119,7 @@ const AppLayout: React.FC = () => {
         </>
       )}
 
-      <main className={`main-content ${!isLoginPage && isAuthenticated && sidebarOpen ? 'sidebar-open' : ''}`}>
+      <main className="main-content">
         <Outlet />
       </main>
     </div>
