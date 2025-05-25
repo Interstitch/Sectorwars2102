@@ -22,6 +22,7 @@ const AdminDashboard: React.FC = () => {
   
   useEffect(() => {
     // Reload data on component mount
+    console.log('AdminDashboard: Loading data on mount...');
     loadAdminStats();
     loadGalaxyInfo();
     loadUsers();
@@ -62,6 +63,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="stat-card">
                     <div className="stat-value">{adminStats?.totalUsers || 0}</div>
                     <div className="stat-label">Total Users</div>
+                    <div className="stat-debug">Debug: {JSON.stringify(adminStats)}</div>
                   </div>
                   <div className="stat-card">
                     <div className="stat-value">{adminStats?.activePlayers || 0}</div>
@@ -70,6 +72,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="stat-card">
                     <div className="stat-value">{galaxyState?.statistics?.total_sectors || 0}</div>
                     <div className="stat-label">Total Sectors</div>
+                    <div className="stat-debug">Debug: {JSON.stringify(galaxyState?.statistics)}</div>
                   </div>
                   <div className="stat-card">
                     <div className="stat-value">{galaxyState?.statistics?.planet_count || 0}</div>

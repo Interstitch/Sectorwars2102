@@ -197,13 +197,19 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   
   // Load admin stats
   const loadAdminStats = async () => {
-    if (!user || !user.is_admin) return;
+    if (!user || !user.is_admin) {
+      console.log('loadAdminStats: No admin user, returning');
+      return;
+    }
     
+    console.log('loadAdminStats: Starting admin stats load...');
     setIsLoading(true);
     setError(null);
     
     try {
+      console.log('loadAdminStats: Making API request...');
       const response = await api.get<AdminStats>('/api/v1/admin/stats');
+      console.log('loadAdminStats: Got response:', response.data);
       setAdminStats(response.data);
     } catch (error) {
       console.error('Error loading admin stats:', error);
