@@ -11,6 +11,7 @@ import {
   PlayerFilters,
   PlayerAnalyticsState
 } from '../../types/playerManagement';
+import './player-analytics-override.css';
 
 const PlayerAnalytics: React.FC = () => {
   const [state, setState] = useState<PlayerAnalyticsState>({
@@ -215,9 +216,9 @@ const PlayerAnalytics: React.FC = () => {
   }, []);
 
   return (
-    <div className="page-container">
+    <div className="page-container" style={{ maxWidth: '1200px' }}>
       <PageHeader 
-        title="Enhanced Player Analytics" 
+        title="Players" 
         subtitle="Comprehensive player management and monitoring"
       />
       
@@ -245,84 +246,86 @@ const PlayerAnalytics: React.FC = () => {
             <span>Loading enhanced player data...</span>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Enhanced Player Metrics */}
             {state.metrics && (
-              <section className="section">
-                <div className="section-header">
-                  <h3 className="section-title">📊 Player Metrics</h3>
-                  <p className="section-subtitle">Real-time player analytics and performance indicators</p>
+              <section className="section" style={{ padding: 'var(--space-4)' }}>
+                <div className="section-header" style={{ marginBottom: 'var(--space-4)', paddingBottom: 'var(--space-2)' }}>
+                  <div>
+                    <h3 className="section-title" style={{ fontSize: 'var(--font-size-lg)', margin: 0 }}>📊 Player Metrics</h3>
+                    <p className="section-subtitle" style={{ margin: '0', fontSize: 'var(--font-size-sm)' }}>Real-time player analytics and performance indicators</p>
+                  </div>
                 </div>
                 
-                <div className="grid grid-auto-fit gap-6">
-                  <div className="dashboard-stat-card stat-primary">
-                    <div className="dashboard-stat-header">
-                      <span className="dashboard-stat-icon">👥</span>
+                <div className="grid grid-auto-fit-sm gap-4">
+                  <div className="dashboard-stat-card stat-primary" style={{ padding: 'var(--space-4)' }}>
+                    <div className="dashboard-stat-header" style={{ marginBottom: 'var(--space-2)' }}>
+                      <span className="dashboard-stat-icon" style={{ fontSize: 'var(--font-size-lg)' }}>👥</span>
                       <h4 className="dashboard-stat-title">Active Players</h4>
                     </div>
-                    <div className="dashboard-stat-value">{state.metrics.total_active_players.toLocaleString()}</div>
-                    <div className="dashboard-stat-description">Online: {state.metrics.players_online_now}</div>
+                    <div className="dashboard-stat-value" style={{ fontSize: 'var(--font-size-2xl)', marginBottom: 'var(--space-1)' }}>{state.metrics.total_active_players.toLocaleString()}</div>
+                    <div className="dashboard-stat-description" style={{ fontSize: 'var(--font-size-xs)' }}>Online: {state.metrics.players_online_now}</div>
                   </div>
                   
-                  <div className="dashboard-stat-card">
-                    <div className="dashboard-stat-header">
-                      <span className="dashboard-stat-icon">💰</span>
+                  <div className="dashboard-stat-card" style={{ padding: 'var(--space-4)' }}>
+                    <div className="dashboard-stat-header" style={{ marginBottom: 'var(--space-2)' }}>
+                      <span className="dashboard-stat-icon" style={{ fontSize: 'var(--font-size-lg)' }}>💰</span>
                       <h4 className="dashboard-stat-title">Total Credits</h4>
                     </div>
-                    <div className="dashboard-stat-value">{state.metrics.total_credits_circulation.toLocaleString()}</div>
-                    <div className="dashboard-stat-description">In Circulation</div>
+                    <div className="dashboard-stat-value" style={{ fontSize: 'var(--font-size-2xl)', marginBottom: 'var(--space-1)' }}>{state.metrics.total_credits_circulation.toLocaleString()}</div>
+                    <div className="dashboard-stat-description" style={{ fontSize: 'var(--font-size-xs)' }}>In Circulation</div>
                   </div>
                   
-                  <div className="dashboard-stat-card">
-                    <div className="dashboard-stat-header">
-                      <span className="dashboard-stat-icon">⏱️</span>
+                  <div className="dashboard-stat-card" style={{ padding: 'var(--space-4)' }}>
+                    <div className="dashboard-stat-header" style={{ marginBottom: 'var(--space-2)' }}>
+                      <span className="dashboard-stat-icon" style={{ fontSize: 'var(--font-size-lg)' }}>⏱️</span>
                       <h4 className="dashboard-stat-title">Session Time</h4>
                     </div>
-                    <div className="dashboard-stat-value">{state.metrics.average_session_time.toFixed(1)}h</div>
-                    <div className="dashboard-stat-description">Average</div>
+                    <div className="dashboard-stat-value" style={{ fontSize: 'var(--font-size-2xl)', marginBottom: 'var(--space-1)' }}>{state.metrics.average_session_time.toFixed(1)}h</div>
+                    <div className="dashboard-stat-description" style={{ fontSize: 'var(--font-size-xs)' }}>Average</div>
                   </div>
                   
-                  <div className="dashboard-stat-card">
-                    <div className="dashboard-stat-header">
-                      <span className="dashboard-stat-icon">🆕</span>
+                  <div className="dashboard-stat-card" style={{ padding: 'var(--space-4)' }}>
+                    <div className="dashboard-stat-header" style={{ marginBottom: 'var(--space-2)' }}>
+                      <span className="dashboard-stat-icon" style={{ fontSize: 'var(--font-size-lg)' }}>🆕</span>
                       <h4 className="dashboard-stat-title">New Players</h4>
                     </div>
-                    <div className="dashboard-stat-value">{state.metrics.new_players_today}</div>
-                    <div className="dashboard-stat-description">Today</div>
+                    <div className="dashboard-stat-value" style={{ fontSize: 'var(--font-size-2xl)', marginBottom: 'var(--space-1)' }}>{state.metrics.new_players_today}</div>
+                    <div className="dashboard-stat-description" style={{ fontSize: 'var(--font-size-xs)' }}>Today</div>
                   </div>
                   
-                  <div className="dashboard-stat-card">
-                    <div className="dashboard-stat-header">
-                      <span className="dashboard-stat-icon">📈</span>
+                  <div className="dashboard-stat-card" style={{ padding: 'var(--space-4)' }}>
+                    <div className="dashboard-stat-header" style={{ marginBottom: 'var(--space-2)' }}>
+                      <span className="dashboard-stat-icon" style={{ fontSize: 'var(--font-size-lg)' }}>📈</span>
                       <h4 className="dashboard-stat-title">Retention Rate</h4>
                     </div>
-                    <div className="dashboard-stat-value">{state.metrics.player_retention_rate.toFixed(1)}%</div>
-                    <div className="dashboard-stat-description">7-Day Retention</div>
+                    <div className="dashboard-stat-value" style={{ fontSize: 'var(--font-size-2xl)', marginBottom: 'var(--space-1)' }}>{state.metrics.player_retention_rate.toFixed(1)}%</div>
+                    <div className="dashboard-stat-description" style={{ fontSize: 'var(--font-size-xs)' }}>7-Day Retention</div>
                   </div>
                   
-                  <div className="dashboard-stat-card stat-warning">
-                    <div className="dashboard-stat-header">
-                      <span className="dashboard-stat-icon">🚨</span>
+                  <div className="dashboard-stat-card stat-warning" style={{ padding: 'var(--space-4)' }}>
+                    <div className="dashboard-stat-header" style={{ marginBottom: 'var(--space-2)' }}>
+                      <span className="dashboard-stat-icon" style={{ fontSize: 'var(--font-size-lg)' }}>🚨</span>
                       <h4 className="dashboard-stat-title">Security Alerts</h4>
                     </div>
-                    <div className="dashboard-stat-value">{state.metrics.suspicious_activity_alerts}</div>
-                    <div className="dashboard-stat-description">Suspicious Activity</div>
+                    <div className="dashboard-stat-value" style={{ fontSize: 'var(--font-size-2xl)', marginBottom: 'var(--space-1)' }}>{state.metrics.suspicious_activity_alerts}</div>
+                    <div className="dashboard-stat-description" style={{ fontSize: 'var(--font-size-xs)' }}>Suspicious Activity</div>
                   </div>
                 </div>
               </section>
             )}
 
             {/* Enhanced Player Controls */}
-            <section className="section">
+            <section className="section" style={{ padding: 'var(--space-4)' }}>
               <div className="card">
-                <div className="card-body">
+                <div className="card-body" style={{ padding: 'var(--space-4)' }}>
                   <PlayerSearchAndFilter
                     filters={state.filters}
                     onFiltersChange={handleFiltersChange}
                     loading={state.loading}
                   />
                   
-                  <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
+                  <div className="flex flex-wrap items-center justify-between gap-4" style={{ marginTop: 'var(--space-4)' }}>
                     <div className="flex items-center gap-3">
                       <button 
                         onClick={toggleRealTimeUpdates}
@@ -356,10 +359,10 @@ const PlayerAnalytics: React.FC = () => {
 
             {/* Enhanced Players Table */}
             <section className="section">
-              <div className="section-header">
+              <div className="section-header" style={{ marginBottom: 'var(--space-4)', paddingBottom: 'var(--space-2)' }}>
                 <div>
-                  <h3 className="section-title">👥 Player Management</h3>
-                  <p className="section-subtitle">
+                  <h3 className="section-title" style={{ fontSize: 'var(--font-size-lg)', margin: 0 }}>👥 Player Management</h3>
+                  <p className="section-subtitle" style={{ margin: '0', fontSize: 'var(--font-size-sm)' }}>
                     Showing {state.players.length} of {state.totalCount.toLocaleString()} players
                   </p>
                 </div>

@@ -1,0 +1,104 @@
+/* Player Analytics Page Specific Overrides */
+
+/* Fix card styles for dark theme */
+.card {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-body {
+  padding: var(--space-6);
+}
+
+/* Compact metrics styling */
+.dashboard-stat-card.stat-primary {
+  background: linear-gradient(135deg, var(--color-primary-900) 0%, var(--color-primary-800) 100%);
+  border-color: var(--color-primary-600);
+}
+
+.dashboard-stat-card.stat-warning {
+  background: linear-gradient(135deg, var(--color-warning-700) 0%, var(--color-warning-600) 100%);
+  border-color: var(--color-warning-500);
+}
+
+/* Ensure proper dark text colors in sections */
+.section .section-title {
+  color: var(--text-primary) !important;
+}
+
+.section .section-subtitle {
+  color: var(--text-tertiary) !important;
+}
+
+/* Dashboard stat value improvements */
+.dashboard-stat-description {
+  color: var(--text-tertiary);
+}
+
+/* Table container improvements */
+.table-container {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  background-color: var(--background-secondary);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+}
+
+.table tbody tr:hover {
+  background-color: var(--background-secondary);
+}
+
+/* Pagination styling */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+}
+
+/* Badge styling for dark theme */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-full);
+}
+
+.badge-success {
+  background-color: var(--status-success-bg);
+  color: var(--status-success);
+}
+
+.badge-error {
+  background-color: var(--status-error-bg);
+  color: var(--status-error);
+}
+
+.badge-secondary {
+  background-color: var(--background-tertiary);
+  color: var(--text-secondary);
+}
