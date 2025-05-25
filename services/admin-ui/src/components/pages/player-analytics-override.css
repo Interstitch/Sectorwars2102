@@ -151,6 +151,60 @@
   margin-bottom: var(--space-4) !important; /* Reduce from default spacing */
 }
 
+/* Column visibility dropdown */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown:hover .dropdown-menu {
+  display: block;
+}
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+}
+
+.dropdown-menu label {
+  cursor: pointer;
+  padding: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-base);
+}
+
+.dropdown-menu label:hover {
+  background-color: var(--background-secondary);
+}
+
+/* Responsive table - hide columns on smaller screens */
+@media (max-width: 1024px) {
+  /* On tablets, hide activity by default */
+  .table th:nth-child(7), /* Activity */
+  .table td:nth-child(7) {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  /* On mobile, only show essential columns */
+  .table th:nth-child(5), /* Assets */
+  .table td:nth-child(5),
+  .table th:nth-child(6), /* Location */
+  .table td:nth-child(6) {
+    display: none;
+  }
+}
+
 /* Make table rows more compact */
 .table tbody tr {
   line-height: 1.3; /* Tighter line height */

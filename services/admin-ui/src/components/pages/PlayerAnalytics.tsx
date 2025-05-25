@@ -50,6 +50,19 @@ const PlayerAnalytics: React.FC = () => {
     showActivityMonitor: false
   });
 
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState({
+    player: true,
+    status: true,
+    credits: true,
+    assets: true,
+    location: false, // Hidden by default for space
+    activity: false, // Hidden by default for space
+    lastLogin: true,
+    turns: true,
+    actions: true
+  });
+
   useEffect(() => {
     fetchPlayerData();
   }, [state.currentPage, state.filters, state.sortBy, state.sortOrder]);
@@ -385,6 +398,42 @@ const PlayerAnalytics: React.FC = () => {
                   >
                     {state.sortOrder === 'asc' ? '↑' : '↓'}
                   </button>
+                  
+                  {/* Column Visibility Toggle */}
+                  <div className="dropdown">
+                    <button className="btn btn-sm btn-outline">
+                      📋 Columns
+                    </button>
+                    <div className="dropdown-menu" style={{ minWidth: '180px', padding: 'var(--space-2)' }}>
+                      <label className="flex items-center gap-2 p-1">
+                        <input
+                          type="checkbox"
+                          checked={visibleColumns.location}
+                          onChange={(e) => setVisibleColumns(prev => ({ ...prev, location: e.target.checked }))}
+                          className="form-checkbox"
+                        />
+                        <span className="text-sm">Location</span>
+                      </label>
+                      <label className="flex items-center gap-2 p-1">
+                        <input
+                          type="checkbox"
+                          checked={visibleColumns.activity}
+                          onChange={(e) => setVisibleColumns(prev => ({ ...prev, activity: e.target.checked }))}
+                          className="form-checkbox"
+                        />
+                        <span className="text-sm">Activity</span>
+                      </label>
+                      <label className="flex items-center gap-2 p-1">
+                        <input
+                          type="checkbox"
+                          checked={visibleColumns.assets}
+                          onChange={(e) => setVisibleColumns(prev => ({ ...prev, assets: e.target.checked }))}
+                          className="form-checkbox"
+                        />
+                        <span className="text-sm">Assets</span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
               
@@ -402,15 +451,15 @@ const PlayerAnalytics: React.FC = () => {
                               className="form-checkbox"
                             />
                           </th>
-                          <th>Player</th>
-                          <th>Status</th>
-                          <th>Credits</th>
-                          <th>Assets</th>
-                          <th>Location</th>
-                          <th>Activity</th>
-                          <th>Last Login</th>
-                          <th>Turns</th>
-                          <th>Actions</th>
+                          {visibleColumns.player && <th>Player</th>}
+                          {visibleColumns.status && <th>Status</th>}
+                          {visibleColumns.credits && <th>Credits</th>}
+                          {visibleColumns.assets && <th>Assets</th>}
+                          {visibleColumns.location && <th>Location</th>}
+                          {visibleColumns.activity && <th>Activity</th>}
+                          {visibleColumns.lastLogin && <th>Last Login</th>}
+                          {visibleColumns.turns && <th>Turns</th>}
+                          {visibleColumns.actions && <th>Actions</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -428,75 +477,93 @@ const PlayerAnalytics: React.FC = () => {
                                 className="form-checkbox"
                               />
                             </td>
-                            <td>
-                              <div className="flex items-center gap-2">
-                                <div>
-                                  <div className="font-medium">{player.username}</div>
-                                  <div className="text-sm text-muted">{player.id.slice(0, 8)}</div>
+                            {visibleColumns.player && (
+                              <td>
+                                <div className="flex items-center gap-2">
+                                  <div>
+                                    <div className="font-medium">{player.username}</div>
+                                    <div className="text-sm text-muted">{player.id.slice(0, 8)}</div>
+                                  </div>
+                                  {player.activity.suspicious_activity && <span className="text-warning">⚠️</span>}
                                 </div>
-                                {player.activity.suspicious_activity && <span className="text-warning">⚠️</span>}
-                              </div>
-                            </td>
-                            <td>
-                              <span className={`badge ${
-                                player.status === 'active' ? 'badge-success' : 
-                                player.status === 'banned' ? 'badge-error' : 'badge-secondary'
-                              }`}>
-                                {player.status}
-                              </span>
-                            </td>
-                            <td className="font-mono">{player.credits.toLocaleString()}</td>
-                            <td>
-                              <div className="flex items-center gap-2 text-sm">
-                                <span>🚀 {player.assets.ships_count}</span>
-                                <span>🌍 {player.assets.planets_count}</span>
-                                <span>🏪 {player.assets.ports_count}</span>
-                              </div>
-                            </td>
-                            <td>
-                              <span className="text-sm">Sector {player.current_sector_id || 'Unknown'}</span>
-                            </td>
-                            <td>
-                              <div className="text-sm">
-                                <div>Actions: {player.activity.actions_today}</div>
-                                <div>Combat: {player.activity.combat_rating}</div>
-                              </div>
-                            </td>
-                            <td className="text-sm">{new Date(player.activity.last_login).toLocaleDateString()}</td>
-                            <td>
-                              <span className={`font-mono ${player.turns < 10 ? 'text-warning' : ''}`}>
-                                {player.turns}
-                              </span>
-                            </td>
-                            <td onClick={(e) => e.stopPropagation()}>
-                              <div className="flex items-center gap-1">
-                                <button 
-                                  className="btn btn-xs btn-outline"
-                                  onClick={() => openPlayerDetail(player)}
-                                  title="View Details"
-                                >
-                                  👁️
-                                </button>
-                                <button 
-                                  className="btn btn-xs btn-outline"
-                                  onClick={() => {
-                                    setState(prev => ({ ...prev, selectedPlayer: player, editMode: true }));
-                                  }}
-                                  title="Edit Player"
-                                >
-                                  ✏️
-                                </button>
-                                <button 
-                                  className="btn btn-xs btn-error"
-                                  onClick={() => {
-                                    setState(prev => ({ ...prev, selectedPlayer: player, showEmergencyOps: true }));
-                                  }}
-                                  title="Emergency Operations"
-                                >
-                                  🚨
-                                </button>
-                              </div>
-                            </td>
+                              </td>
+                            )}
+                            {visibleColumns.status && (
+                              <td>
+                                <span className={`badge ${
+                                  player.status === 'active' ? 'badge-success' : 
+                                  player.status === 'banned' ? 'badge-error' : 'badge-secondary'
+                                }`}>
+                                  {player.status}
+                                </span>
+                              </td>
+                            )}
+                            {visibleColumns.credits && (
+                              <td className="font-mono">{player.credits.toLocaleString()}</td>
+                            )}
+                            {visibleColumns.assets && (
+                              <td>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span>🚀 {player.assets.ships_count}</span>
+                                  <span>🌍 {player.assets.planets_count}</span>
+                                  <span>🏪 {player.assets.ports_count}</span>
+                                </div>
+                              </td>
+                            )}
+                            {visibleColumns.location && (
+                              <td>
+                                <span className="text-sm">Sector {player.current_sector_id || 'Unknown'}</span>
+                              </td>
+                            )}
+                            {visibleColumns.activity && (
+                              <td>
+                                <div className="text-sm">
+                                  <div>Actions: {player.activity.actions_today}</div>
+                                  <div>Combat: {player.activity.combat_rating}</div>
+                                </div>
+                              </td>
+                            )}
+                            {visibleColumns.lastLogin && (
+                              <td className="text-sm">{new Date(player.activity.last_login).toLocaleDateString()}</td>
+                            )}
+                            {visibleColumns.turns && (
+                              <td>
+                                <span className={`font-mono ${player.turns < 10 ? 'text-warning' : ''}`}>
+                                  {player.turns}
+                                </span>
+                              </td>
+                            )}
+                            {visibleColumns.actions && (
+                              <td onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center gap-1">
+                                  <button 
+                                    className="btn btn-xs btn-outline"
+                                    onClick={() => openPlayerDetail(player)}
+                                    title="View Details"
+                                  >
+                                    👁️
+                                  </button>
+                                  <button 
+                                    className="btn btn-xs btn-outline"
+                                    onClick={() => {
+                                      setState(prev => ({ ...prev, selectedPlayer: player, editMode: true }));
+                                    }}
+                                    title="Edit Player"
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button 
+                                    className="btn btn-xs btn-error"
+                                    onClick={() => {
+                                      setState(prev => ({ ...prev, selectedPlayer: player, showEmergencyOps: true }));
+                                    }}
+                                    title="Emergency Operations"
+                                  >
+                                    🚨
+                                  </button>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
