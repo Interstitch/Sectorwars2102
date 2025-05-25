@@ -267,6 +267,24 @@ main() {{
     python CLAUDE_SYSTEM/claude-system.py --quick
     local quick_result=$?
     
+    # Collect development intelligence
+    echo "🧠 Collecting development intelligence..."
+    if [ -f "CLAUDE_SYSTEM/intelligence/intelligence_integration.py" ]; then
+        python -c "
+import sys
+sys.path.append('CLAUDE_SYSTEM')
+from intelligence.intelligence_integration import IntelligenceIntegration
+from pathlib import Path
+integration = IntelligenceIntegration(Path('.'))
+result = integration.on_pre_commit({{'phase': 'pre_commit', 'quick_result': $quick_result}})
+print('🔮 Intelligence: ' + str(result.get('intelligence_decision', 'Analyzing...')))
+if result.get('predictions'):
+    print('📊 Predictions: ' + str(len(result['predictions'])) + ' potential issues detected')
+for rec in result.get('recommendations', [])[:2]:
+    print('💡 ' + str(rec))
+" 2>/dev/null || echo "🤖 Intelligence system warming up..."
+    fi
+    
     # Store health check timestamp for future reference
     echo "$(date -Iseconds): Pre-commit health check completed (exit: $quick_result)" >> .claude/memory/health_checks.log
     
@@ -460,6 +478,26 @@ main() {{
             echo "✅ Pattern learning completed successfully"
         else
             echo "⚠️  Pattern learning completed with warnings"
+        fi
+        
+        # Collect post-commit intelligence
+        echo "🔮 Collecting post-commit intelligence..."
+        if [ -f "CLAUDE_SYSTEM/intelligence/intelligence_integration.py" ]; then
+            python -c "
+import sys
+sys.path.append('CLAUDE_SYSTEM')
+from intelligence.intelligence_integration import IntelligenceIntegration
+from pathlib import Path
+integration = IntelligenceIntegration(Path('.'))
+result = integration.on_post_commit({{'phase': 'post_commit', 'learn_result': $learn_result}})
+print('🎯 Next Phase: ' + str(result.get('next_phase_recommendation', 'Continue development')))
+for insight in result.get('learning_insights', {{}}).get('pattern_recognition', [])[:2]:
+    print('📈 Pattern: ' + str(insight))
+for opt in result.get('optimization_recommendations', [])[:2]:
+    print('⚡ Optimization: ' + str(opt.get('recommendation', 'No recommendation')))
+if result.get('healing_actions'):
+    print('🔧 Auto-healing: ' + str(len(result['healing_actions'])) + ' actions taken')
+" 2>/dev/null || echo "🤖 Intelligence analysis in progress..."
         fi
         
         # Log learning activity
