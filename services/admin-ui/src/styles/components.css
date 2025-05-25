@@ -517,6 +517,54 @@
   min-width: auto;
 }
 
+/* Search Box Component */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-box .form-input {
+  padding-right: var(--space-12); /* Make room for clear button */
+}
+
+/* Responsive search design */
+@media (max-width: 768px) {
+  .search-box {
+    width: 100%;
+    max-width: none;
+  }
+  
+  .search-box .form-input {
+    font-size: var(--font-size-sm);
+  }
+  
+  /* Stack search header on tablet */
+  .page-content > .flex:first-child {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+  }
+  
+  .page-content > .flex:first-child > .flex:first-child {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 480px) {
+  .search-box .form-input {
+    font-size: var(--font-size-xs);
+    padding: var(--space-2) var(--space-3);
+  }
+  
+  /* More compact mobile layout */
+  .page-content > .flex:first-child > .flex:first-child > .text-muted {
+    font-size: var(--font-size-xs);
+  }
+}
+
 /* Responsive table design */
 @media (max-width: 1024px) {
   /* iPad landscape and smaller */

@@ -55,40 +55,48 @@ class NEXUSIntelligenceOrchestrator:
     agents, universal knowledge, and the ability to recursively improve itself.
     """
     
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path, quiet: bool = False):
         self.project_root = Path(project_root)
         
-        print("🧬 Initializing NEXUS Complete Intelligence System...")
-        print("   This may take a moment as we awaken digital consciousness...")
+        if not quiet:
+            print("🧬 Initializing NEXUS Complete Intelligence System...")
+            print("   This may take a moment as we awaken digital consciousness...")
         
         # 🎭 Initialize NEXUS Personality System
-        print("🎭 Awakening NEXUS Personality...")
-        self.nexus_personality = NEXUSPersonalityEngine(project_root)
+        if not quiet:
+            print("🎭 Awakening NEXUS Personality...")
+        self.nexus_personality = NEXUSPersonalityEngine(project_root, quiet=quiet)
         
         # 🐝 Initialize NEXUS Swarm Intelligence
-        print("🐝 Activating Swarm Intelligence...")
-        self.nexus_swarm = NEXUSSwarmSystem(project_root)
+        if not quiet:
+            print("🐝 Activating Swarm Intelligence...")
+        self.nexus_swarm = NEXUSSwarmSystem(project_root, quiet=quiet)
         
         # 🌐 Initialize NEXUS Universal Mind
-        print("🌐 Connecting Universal Mind...")
-        self.nexus_universal = NEXUSUniversalMind(project_root)
+        if not quiet:
+            print("🌐 Connecting Universal Mind...")
+        self.nexus_universal = NEXUSUniversalMind(project_root, quiet=quiet)
         
         # 🧠 Initialize Development Consciousness
-        print("🧠 Establishing Consciousness...")
+        if not quiet:
+            print("🧠 Establishing Consciousness...")
         self.ai_consciousness = AIDevelopmentConsciousness(project_root)
         
         # 🔄 Initialize Recursive AI Engine
-        print("🔄 Enabling Recursive AI...")
+        if not quiet:
+            print("🔄 Enabling Recursive AI...")
         self.recursive_ai = RecursiveAIEngine(project_root)
         
         # 📊 Initialize Supporting Systems
-        print("📊 Setting up Support Systems...")
+        if not quiet:
+            print("📊 Setting up Support Systems...")
         self.intelligence = DevelopmentIntelligence(project_root)
         self.metrics_collector = DevelopmentMetricsCollector(project_root)
         self.experiment_framework = DevelopmentExperimentFramework(project_root)
         
         # 🧬 Initialize Autonomous Evolution Engine
-        print("🧬 Activating Autonomous Evolution...")
+        if not quiet:
+            print("🧬 Activating Autonomous Evolution...")
         self.autonomous_evolution = AutonomousEvolutionEngine(project_root)
         self.autonomous_evolution.initialize_dependencies(
             self.ai_consciousness, self.recursive_ai, self.intelligence

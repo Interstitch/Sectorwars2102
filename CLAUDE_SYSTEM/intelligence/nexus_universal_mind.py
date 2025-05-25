@@ -177,7 +177,7 @@ class NEXUSUniversalMind:
     and principles that improve all software development.
     """
     
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path, quiet: bool = False):
         self.project_root = Path(project_root)
         self.universal_mind_dir = self.project_root / ".claude" / "universal_mind"
         self.universal_mind_dir.mkdir(parents=True, exist_ok=True)
@@ -205,12 +205,13 @@ class NEXUSUniversalMind:
         if not self.universal_patterns:
             self._seed_foundational_patterns()
         
-        print(f"🌐 NEXUS Universal Mind Active")
-        print(f"   Projects in Database: {len(self.projects_database)}")
-        print(f"   Universal Patterns: {len(self.universal_patterns)}")
-        print(f"   Universal Principles: {len(self.universal_principles)}")
-        print(f"   Technology Profiles: {len(self.technology_profiles)}")
-        print(f"   Current Project: {self.current_project_id}")
+        if not quiet:
+            print(f"🌐 NEXUS Universal Mind Active")
+            print(f"   Projects in Database: {len(self.projects_database)}")
+            print(f"   Universal Patterns: {len(self.universal_patterns)}")
+            print(f"   Universal Principles: {len(self.universal_principles)}")
+            print(f"   Technology Profiles: {len(self.technology_profiles)}")
+            print(f"   Current Project: {self.current_project_id}")
     
     def _generate_project_id(self) -> str:
         """Generate a unique project ID"""

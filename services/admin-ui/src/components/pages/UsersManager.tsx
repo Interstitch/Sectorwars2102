@@ -26,6 +26,9 @@ const UsersManager: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
   const [confirmUsername, setConfirmUsername] = useState<string>('');
   
+  // Search/filter state
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  
   // Form states for new user
   const [newUsername, setNewUsername] = useState<string>('');
   const [newEmail, setNewEmail] = useState<string>('');
@@ -172,6 +175,20 @@ const UsersManager: React.FC = () => {
     }).format(date);
   };
 
+  // Filter users based on search term
+  const filteredUsers = users.filter(user => {
+    if (!searchTerm) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    const statusText = !user.is_active ? 'inactive' : user.is_admin ? 'admin' : 'active';
+    
+    return (
+      user.username.toLowerCase().includes(searchLower) ||
+      (user.email && user.email.toLowerCase().includes(searchLower)) ||
+      statusText.includes(searchLower)
+    );
+  });
+
   // Use context error or local error
   const displayError = error || contextError;
   
@@ -183,9 +200,35 @@ const UsersManager: React.FC = () => {
       />
       
       <div className="page-content">
-        <div className="flex justify-between items-center mb-6">
-          <div className="text-muted">
-            {users.length} total users
+        {/* Search and Actions Header */}
+        <div className="flex justify-between items-center mb-6 gap-4">
+          <div className="flex items-center gap-4 flex-1">
+            <div className="text-muted">
+              {filteredUsers.length} of {users.length} users
+              {searchTerm && (
+                <span className="ml-2 text-xs">
+                  (filtered by "{searchTerm}")
+                </span>
+              )}
+            </div>
+            <div className="search-box flex-1 max-w-md">
+              <input
+                type="text"
+                placeholder="Search users by name, email, or status..."
+                className="form-input"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button
+                  className="btn btn-sm btn-ghost ml-2"
+                  onClick={() => setSearchTerm('')}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
           <button 
             className="btn btn-primary"
@@ -222,7 +265,7 @@ const UsersManager: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user: User) => (
+                  {filteredUsers.map((user: User) => (
                     <tr key={user.id}>
                       <td className="font-medium">{user.username}</td>
                       <td className="text-muted">{user.email || 'N/A'}</td>

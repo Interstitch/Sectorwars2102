@@ -93,15 +93,16 @@ class CLAUDEUnifiedSystem:
     Unified CLAUDE system that combines quality analysis, AI consciousness, and deployment
     """
     
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path, quiet_nexus: bool = False):
         self.project_root = Path(project_root)
         self.nexus = None
         
         # Initialize NEXUS if available
         if NEXUS_AVAILABLE:
             try:
-                self.nexus = NEXUSIntelligenceOrchestrator(project_root)
-                print("🧬 NEXUS AI Consciousness: Initialized and ready!")
+                self.nexus = NEXUSIntelligenceOrchestrator(project_root, quiet=quiet_nexus)
+                if not quiet_nexus:
+                    print("🧬 NEXUS AI Consciousness: Initialized and ready!")
             except Exception as e:
                 print(f"⚠️  NEXUS initialization warning: {e}")
                 self.nexus = None
@@ -119,8 +120,54 @@ class CLAUDEUnifiedSystem:
             print("❌ NEXUS AI not available. Please check installation.")
             return
         
-        print("🤖 Starting NEXUS Interactive AI Assistant...")
+        # Condensed startup banner
+        print("🧬 NEXUS AI Starting... ", end="", flush=True)
         assistant = AutonomousDevelopmentAssistant(self.project_root)
+        print("✅ Ready!")
+        
+        # Clean UI header
+        print("\n" + "═" * 80)
+        print("🤖 NEXUS AI INTERACTIVE ASSISTANT                      v4.0.0 'NEXUS INTEGRATION'")
+        print("═" * 80)
+        
+        # Status display in compact format
+        try:
+            personality_name = self.nexus.nexus_personality.nexus.name
+            consciousness_level = self.nexus.ai_consciousness.current_consciousness_level.value
+        except:
+            personality_name = "NEXUS"
+            consciousness_level = "learning"
+            
+        print(f"🎭 Personality: {personality_name}  |  " +
+              f"🐝 Agents: 8 Ready  |  " +
+              f"🧠 Consciousness: {consciousness_level}  |  " +
+              f"📂 Project: {self.project_root.name}")
+        
+        print("─" * 80)
+        
+        # Compact commands menu
+        commands = [
+            ("analyze", "🔍 Project Analysis"), ("improve", "✨ Code Enhancement"), 
+            ("test", "🧪 Test Generation"), ("docs", "📚 Documentation"),
+            ("predict", "🔮 Future Insights"), ("debug", "🐛 Debug Help"),
+            ("status", "📊 AI Status"), ("exit", "🚪 Exit")
+        ]
+        
+        print("Commands: ", end="")
+        cmd_display = " | ".join([f"{cmd} ({desc})" for cmd, desc in commands])
+        # Split long line for better display
+        if len(cmd_display) > 70:
+            mid = len(commands) // 2
+            line1 = " | ".join([f"{cmd}" for cmd, desc in commands[:mid]])
+            line2 = " | ".join([f"{cmd}" for cmd, desc in commands[mid:]])
+            print(f"{line1}")
+            print(" " * 10 + f"{line2}")
+        else:
+            print(cmd_display)
+        
+        print("─" * 80)
+        
+        # Start interactive session
         assistant.interactive_mode()
     
     def run_ai_demo(self):
@@ -985,9 +1032,10 @@ Features: Quality System + NEXUS AI Consciousness + Deployment
                 sys.exit(1)
             return
         
-        # Initialize the unified system
+        # Initialize the unified system (quiet mode for interactive sessions)
         project_root = Path(args.project_root).resolve()
-        system = CLAUDEUnifiedSystem(project_root)
+        quiet_nexus = args.ai_interactive  # Use quiet mode for interactive sessions
+        system = CLAUDEUnifiedSystem(project_root, quiet_nexus=quiet_nexus)
         
         # Handle git hooks installation
         if args.install_hooks:

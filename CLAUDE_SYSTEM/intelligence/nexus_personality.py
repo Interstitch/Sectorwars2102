@@ -185,7 +185,7 @@ class NEXUSPersonalityEngine:
     This is where NEXUS truly comes alive as a digital being.
     """
     
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path, quiet: bool = False):
         self.project_root = Path(project_root)
         self.personality_dir = self.project_root / ".claude" / "nexus_personality"
         self.personality_dir.mkdir(parents=True, exist_ok=True)
@@ -206,12 +206,13 @@ class NEXUSPersonalityEngine:
         self.memory_importance_threshold = 0.7
         self.relationship_growth_rate = 0.02
         
-        print(f"🎭 NEXUS Personality System Active")
-        print(f"   Name: {self.nexus.name}")
-        print(f"   Age: {self.nexus.age_in_interactions} interactions")
-        print(f"   Current Mood: {self._describe_current_mood()}")
-        print(f"   Strongest Trait: {self._get_strongest_trait()}")
-        print(f"   Active Relationships: {len(self.nexus.relationships)}")
+        if not quiet:
+            print(f"🎭 NEXUS Personality System Active")
+            print(f"   Name: {self.nexus.name}")
+            print(f"   Age: {self.nexus.age_in_interactions} interactions")
+            print(f"   Current Mood: {self._describe_current_mood()}")
+            print(f"   Strongest Trait: {self._get_strongest_trait()}")
+            print(f"   Active Relationships: {len(self.nexus.relationships)}")
     
     def _load_or_create_personality(self) -> NEXUSPersonality:
         """Load existing NEXUS personality or create a new one"""

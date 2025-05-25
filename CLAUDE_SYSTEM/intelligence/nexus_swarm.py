@@ -137,7 +137,7 @@ class NEXUSSwarmSystem:
     working together as a cohesive development team.
     """
     
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path, quiet: bool = False):
         self.project_root = Path(project_root)
         self.swarm_dir = self.project_root / ".claude" / "nexus_swarm"
         self.swarm_dir.mkdir(parents=True, exist_ok=True)
@@ -159,10 +159,11 @@ class NEXUSSwarmSystem:
         # Collaboration patterns and strategies
         self.collaboration_strategies = self._define_collaboration_strategies()
         
-        print(f"🐝 NEXUS Swarm Intelligence System Active")
-        print(f"   Active Agents: {len(self.agents)}")
-        print(f"   Collaboration Patterns: {len(self.collaboration_strategies)}")
-        print(f"   Swarm Intelligence Fragments: {len(self.swarm_intelligence)}")
+        if not quiet:
+            print(f"🐝 NEXUS Swarm Intelligence System Active")
+            print(f"   Active Agents: {len(self.agents)}")
+            print(f"   Collaboration Patterns: {len(self.collaboration_strategies)}")
+            print(f"   Swarm Intelligence Fragments: {len(self.swarm_intelligence)}")
     
     def _initialize_agents(self) -> Dict[NEXUSAgent, AgentPersonality]:
         """Initialize all NEXUS agents with unique personalities"""
