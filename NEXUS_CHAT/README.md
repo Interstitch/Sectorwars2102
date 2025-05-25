@@ -102,6 +102,8 @@ graph TB
 
 **NEXUS implements proper session management following Anthropic's best practices:**
 
+> **Important**: Claude Code sessions are **conversation contexts**, not persistent processes. Each `claude` command executes and exits immediately. Sessions preserve conversation history and context across multiple command invocations using session IDs.
+
 #### **1. Session Initialization Pattern**
 ```bash
 # Start a session and capture the session ID
@@ -223,20 +225,20 @@ class SessionManager:
         return response_data.get('content', '')
     
     async def cleanup_expired_sessions(self):
-        """Remove expired sessions and clean up storage"""
+        """Clean up session tracking for sessions that no longer exist"""
         current_time = datetime.utcnow()
         expired_sessions = []
         
         for session_id, session_info in self.sessions.items():
-            # Consider sessions expired after 24 hours of inactivity
-            if (current_time - session_info.last_activity).total_seconds() > 86400:
+            # Test if session still exists by attempting resume
+            if not await self.resume_session(session_id):
                 expired_sessions.append(session_id)
         
         for session_id in expired_sessions:
             del self.sessions[session_id]
             await self._remove_session_file(session_id)
         
-        logger.info(f"Cleaned up {len(expired_sessions)} expired sessions")
+        logger.info(f"Cleaned up {len(expired_sessions)} expired session references")
 ```
 
 #### **3. Session Recovery and Continuity**
@@ -301,8 +303,8 @@ class SessionRecoveryManager:
 ✅ **Implement session validation** with periodic health checks  
 ✅ **Persist session IDs** to files for recovery  
 ✅ **Handle session expiration** gracefully with automatic restart  
-✅ **Monitor session activity** to prevent timeouts  
-✅ **Clean up expired sessions** to prevent resource leaks  
+✅ **Track session context** for conversation continuity  
+✅ **Clean up expired session references** to maintain accurate state  
 
 ---
 
@@ -763,8 +765,7 @@ class NexusOrchestrator:
             
             self.agents[agent.config.agent_id] = agent
             
-            # Start background session maintenance
-            asyncio.create_task(agent.maintain_session())
+            # Note: No background processes needed - Claude Code handles session context automatically
         
         logger.info(f"Orchestrator started with {len(self.agents)} agents")
         
@@ -888,18 +889,18 @@ class ClaudeCodeAgent:
     Wrapper for Claude Code CLI with personality and persistence
     
     Features:
-    - Persistent session management with proper session ID handling
+    - Session ID management for conversation context
     - Personality-driven prompting
     - Memory and context preservation
-    - Health monitoring and recovery
-    - Session resumption and continuation
+    - Session validation and recovery
+    - Conversation continuity via --resume flag
     """
     
     def __init__(self, agent_config: AgentConfig):
         self.config = agent_config
         self.personality = PersonalityEngine(agent_config.personality_profile)
         self.memory = AgentMemory(agent_config.memory_system)
-        self.claude_process: Optional[subprocess.Popen] = None
+        # Note: No persistent process - Claude Code executes commands and exits
         self.session_id: Optional[str] = None
         self.session_file: str = f"sessions/{agent_config.agent_id}_session.txt"
         
@@ -1033,18 +1034,26 @@ class ClaudeCodeAgent:
                 status="failed"
             )
         
-    async def maintain_session(self):
-        """Keep Claude Code session alive and healthy with periodic heartbeats"""
-        while True:
-            try:
-                if self.session_id:
-                    # Send heartbeat to keep session active
-                    await self.send_message("Heartbeat check", test_only=True)
-                await asyncio.sleep(self.config.health.heartbeat_interval)
-            except Exception as e:
-                logger.warning(f"Session heartbeat failed for {self.config.agent_id}: {e}")
-                self.session_id = None
-                await asyncio.sleep(5)  # Brief pause before retry
+    async def validate_session(self) -> bool:
+        """Validate that session ID is still valid for conversation context"""
+        if not self.session_id:
+            return False
+            
+        try:
+            # Test session validity with a minimal probe
+            cmd = ["claude", "-p", "OK", "--resume", self.session_id]
+            
+            result = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await result.communicate()
+            return result.returncode == 0
+            
+        except Exception:
+            return False
 ```
 
 ### Phase 2: Agent Personality System (Week 3)
