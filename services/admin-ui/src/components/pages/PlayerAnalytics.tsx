@@ -134,7 +134,7 @@ const PlayerAnalytics: React.FC = () => {
       setState(prev => ({
         ...prev,
         players: transformedPlayers,
-        totalCount: rawData.total || transformedPlayers.length,
+        totalCount: rawData.total_count || transformedPlayers.length,
         metrics: {
           total_active_players: analyticsData.total_active_players || transformedPlayers.filter((p: any) => p.status === 'active').length,
           total_credits_circulation: analyticsData.total_credits_circulation || transformedPlayers.reduce((sum: number, p: any) => sum + p.credits, 0),
