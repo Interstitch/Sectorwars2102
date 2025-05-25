@@ -11,7 +11,7 @@
 /* Basic Filters */
 .basic-filters {
   display: grid;
-  grid-template-columns: 2fr 1fr auto;
+  grid-template-columns: 1fr 1.5fr auto;
   gap: 1rem;
   align-items: center;
 }
