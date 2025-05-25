@@ -95,7 +95,7 @@ const Dashboard: React.FC = () => {
       };
 
       // Process admin stats data
-      const stats = adminStatsRes.data;
+      const stats = adminStatsRes.data as any;
       
       const dashboardData: DashboardData = {
         system_health: systemHealth,
@@ -109,7 +109,8 @@ const Dashboard: React.FC = () => {
           total_sectors: stats.total_sectors || 0,
           total_planets: stats.total_planets || 0,
           total_ports: stats.total_ports || 0,
-          total_ships: stats.total_ships || 0
+          total_ships: stats.total_ships || 0,
+          total_warp_tunnels: stats.total_warp_tunnels || 0
         },
         last_updated: new Date().toISOString()
       };
@@ -126,7 +127,7 @@ const Dashboard: React.FC = () => {
           gameserver: { status: 'unavailable', response_time: 0 }
         },
         player_stats: { total_players: 0, active_sessions: 0, new_today: 0, new_this_week: 0 },
-        universe_stats: { total_sectors: 0, total_planets: 0, total_ports: 0, total_ships: 0 },
+        universe_stats: { total_sectors: 0, total_planets: 0, total_ports: 0, total_ships: 0, total_warp_tunnels: 0 },
         last_updated: new Date().toISOString()
       });
     } finally {
