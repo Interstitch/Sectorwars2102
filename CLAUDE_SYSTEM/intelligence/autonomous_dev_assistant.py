@@ -34,7 +34,7 @@ import argparse
 
 from .recursive_ai_engine import RecursiveAIEngine, AIInteractionType, AIConfidenceLevel
 from .ai_consciousness import AIDevelopmentConsciousness, AIThoughtType, ConsciousnessLevel
-from .intelligence_integration import IntelligenceIntegration
+from .intelligence_integration import NEXUSIntelligenceOrchestrator
 
 
 class AutonomousDevelopmentAssistant:
@@ -49,7 +49,7 @@ class AutonomousDevelopmentAssistant:
         # Initialize all AI systems
         self.recursive_ai = RecursiveAIEngine(project_root)
         self.consciousness = AIDevelopmentConsciousness(project_root)
-        self.intelligence_integration = IntelligenceIntegration(project_root)
+        self.intelligence_integration = NEXUSIntelligenceOrchestrator(project_root)
         
         # Assistant state
         self.session_id = None

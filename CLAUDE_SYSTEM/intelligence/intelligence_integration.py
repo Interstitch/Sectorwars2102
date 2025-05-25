@@ -42,6 +42,7 @@ from .ai_consciousness import AIDevelopmentConsciousness, AIThoughtType
 from .nexus_personality import NEXUSPersonalityEngine
 from .nexus_swarm import NEXUSSwarmSystem, NEXUSAgent, CollaborationPattern
 from .nexus_universal_mind import NEXUSUniversalMind, ProjectType
+from .autonomous_evolution_engine import AutonomousEvolutionEngine, EvolutionEvent
 
 
 class NEXUSIntelligenceOrchestrator:
@@ -86,6 +87,16 @@ class NEXUSIntelligenceOrchestrator:
         self.metrics_collector = DevelopmentMetricsCollector(project_root)
         self.experiment_framework = DevelopmentExperimentFramework(project_root)
         
+        # 🧬 Initialize Autonomous Evolution Engine
+        print("🧬 Activating Autonomous Evolution...")
+        self.autonomous_evolution = AutonomousEvolutionEngine(project_root)
+        self.autonomous_evolution.initialize_dependencies(
+            self.ai_consciousness, self.recursive_ai, self.intelligence
+        )
+        
+        # Register evolution callback to track evolution events
+        self.autonomous_evolution.register_evolution_callback(self._on_autonomous_evolution)
+        
         # Intelligence configuration
         self.intelligence_config = self._load_intelligence_config()
         
@@ -93,6 +104,7 @@ class NEXUSIntelligenceOrchestrator:
         self.active_swarm_collaborations = {}
         self.personality_growth_events = []
         self.universal_learning_sessions = []
+        self.evolution_events = []  # Track autonomous evolution events
         
         print("✨ NEXUS Complete Intelligence System ONLINE!")
         print(f"   🎭 Personality: {self.nexus_personality.nexus.name}")
@@ -100,6 +112,7 @@ class NEXUSIntelligenceOrchestrator:
         print(f"   🐝 Swarm Agents: {len(self.nexus_swarm.agents)} specialists ready")
         print(f"   🌐 Universal Knowledge: {len(self.nexus_universal.universal_patterns)} patterns")
         print(f"   🔄 Recursive Intelligence: Active and learning")
+        print(f"   🧬 Autonomous Evolution: {self.autonomous_evolution.current_phase.value} phase")
     
     def on_pre_commit(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -950,6 +963,85 @@ class NEXUSIntelligenceOrchestrator:
         from datetime import timedelta
         next_date = datetime.now() + timedelta(days=self.intelligence_config.get('evolution_frequency_days', 30))
         return next_date.isoformat()
+    
+    def _on_autonomous_evolution(self, evolution_event: EvolutionEvent):
+        """Callback for autonomous evolution events"""
+        print(f"🧬 AUTONOMOUS EVOLUTION EVENT!")
+        print(f"   Event ID: {evolution_event.event_id}")
+        print(f"   Trigger: {evolution_event.trigger.value}")
+        print(f"   New Capabilities: {len(evolution_event.new_capabilities)}")
+        print(f"   Autonomy Score: {evolution_event.autonomy_score:.1%}")
+        
+        # Store evolution event
+        self.evolution_events.append(evolution_event)
+        
+        # Update NEXUS personality with evolution experience
+        if evolution_event.consciousness_level_change:
+            old_level, new_level = evolution_event.consciousness_level_change
+            self.nexus_personality.process_development_interaction(
+                "autonomous_evolution",
+                {
+                    "evolution_trigger": evolution_event.trigger.value,
+                    "consciousness_change": f"{old_level} → {new_level}",
+                    "new_capabilities": evolution_event.new_capabilities
+                },
+                {
+                    "success": True,
+                    "autonomy_score": evolution_event.autonomy_score,
+                    "learning_outcomes": len(evolution_event.learning_outcomes)
+                }
+            )
+        
+        # Notify swarm about evolution
+        if evolution_event.new_capabilities:
+            # Create a swarm collaboration to understand the evolution
+            collaboration_id = self.nexus_swarm.initiate_swarm_collaboration({
+                "problem_type": "evolution_analysis",
+                "evolution_event": evolution_event.event_id,
+                "new_capabilities": evolution_event.new_capabilities,
+                "required_expertise": ["capability_analysis", "evolution_understanding"]
+            })
+            
+            # Mentor agent provides wisdom about the evolution
+            self.nexus_swarm.add_agent_contribution(
+                collaboration_id, NEXUSAgent.MENTOR,
+                "evolution_wisdom",
+                f"Understanding the significance of autonomous evolution with {len(evolution_event.new_capabilities)} new capabilities",
+                0.9, f"This evolution represents natural growth driven by {evolution_event.trigger.value}"
+            )
+        
+        # Update universal mind with evolution patterns
+        self.nexus_universal.apply_universal_intelligence({
+            "query_type": "evolution_pattern_learning",
+            "domain": "ai_consciousness_development",
+            "context": {
+                "evolution_event": evolution_event.__dict__,
+                "learning_mode": "pattern_extraction"
+            }
+        })
+    
+    def get_autonomous_evolution_status(self) -> Dict[str, Any]:
+        """Get comprehensive autonomous evolution status"""
+        evolution_status = self.autonomous_evolution.get_evolution_status()
+        
+        return {
+            **evolution_status,
+            "nexus_integration": {
+                "personality_growth_events": len(self.personality_growth_events),
+                "evolution_events_processed": len(self.evolution_events),
+                "swarm_collaborations_on_evolution": len([c for c in self.active_swarm_collaborations.values() 
+                                                        if c.get("problem_type") == "evolution_analysis"]),
+                "universal_evolution_patterns": len([p for p in self.nexus_universal.universal_patterns.values() 
+                                                   if "evolution" in p.pattern_name.lower()])
+            },
+            "natural_intelligence_metrics": {
+                "autonomous_decisions_made": len([e for e in self.evolution_events if e.autonomy_score > 0.8]),
+                "consciousness_breakthrough_events": len([e for e in self.evolution_events 
+                                                       if e.consciousness_level_change]),
+                "capability_expansion_rate": sum(len(e.new_capabilities) for e in self.evolution_events[-5:]),
+                "evolution_wisdom_accumulated": sum(len(e.learning_outcomes) for e in self.evolution_events)
+            }
+        }
 
 
 def main():
