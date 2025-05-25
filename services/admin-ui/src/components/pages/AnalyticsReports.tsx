@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import PageHeader from '../ui/PageHeader';
 import { api } from '../../utils/auth';
-import './analytics-reports.css';
 
 interface AnalyticsDashboard {
   player_engagement: {
@@ -445,100 +443,132 @@ const AnalyticsReports: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="analytics-reports">
-        <PageHeader 
-          title="Analytics & Reports" 
-          subtitle="Advanced analytics and custom reporting"
-        />
-        <div className="loading-spinner">Loading analytics data...</div>
+      <div className="page-container">
+        <div className="page-header">
+          <h1 className="page-title">Analytics & Reports</h1>
+          <p className="page-subtitle">Advanced analytics and custom reporting</p>
+        </div>
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>Loading analytics data...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="analytics-reports">
-      <PageHeader 
-        title="Analytics & Reports" 
-        subtitle="Advanced analytics and custom reporting"
-      />
-      
-      {/* Tab Navigation */}
-      <div className="tab-navigation">
-        <button 
-          className={activeTab === 'dashboard' ? 'active' : ''}
-          onClick={() => setActiveTab('dashboard')}
-        >
-          Analytics Dashboard
-        </button>
-        <button 
-          className={activeTab === 'reports' ? 'active' : ''}
-          onClick={() => setActiveTab('reports')}
-        >
-          Reports
-        </button>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">Analytics & Reports</h1>
+        <p className="page-subtitle">Advanced analytics and custom reporting</p>
       </div>
+      
+      <div className="page-content">
+        {/* Tab Navigation */}
+        <div className="tabs">
+          <button 
+            className={`tab ${activeTab === 'dashboard' ? 'tab-active' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+          >
+            Analytics Dashboard
+          </button>
+          <button 
+            className={`tab ${activeTab === 'reports' ? 'tab-active' : ''}`}
+            onClick={() => setActiveTab('reports')}
+          >
+            Reports
+          </button>
+        </div>
 
-      {activeTab === 'dashboard' && (
-        <div className="dashboard-content">
-          {/* Time Range Selector */}
-          <div className="time-range-selector">
-            <label>Time Range:</label>
-            <select 
-              value={selectedTimeRange} 
-              onChange={(e) => setSelectedTimeRange(e.target.value)}
-            >
-              <option value="1h">Last Hour</option>
-              <option value="24h">Last 24 Hours</option>
-              <option value="7d">Last 7 Days</option>
-              <option value="30d">Last 30 Days</option>
-              <option value="90d">Last 90 Days</option>
-            </select>
-            
-            <div className="export-buttons">
-              <button onClick={() => exportData('json')}>Export JSON</button>
-              <button onClick={() => exportData('csv')}>Export CSV</button>
-              <button onClick={() => exportData('pdf')}>Export PDF</button>
-            </div>
-          </div>
-
-          {error && (
-            <div className="error-notice">
-              <p>Using demo data due to API error: {error}</p>
-            </div>
-          )}
-
-          {analytics && (
-            <>
-              {/* Player Engagement */}
-              <div className="analytics-section">
-                <h3>Player Engagement</h3>
-                <div className="metrics-grid">
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.player_engagement.daily_active_users)}</h4>
-                    <p>Daily Active Users</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.player_engagement.weekly_active_users)}</h4>
-                    <p>Weekly Active Users</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.player_engagement.monthly_active_users)}</h4>
-                    <p>Monthly Active Users</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatNumber(analytics.player_engagement.new_registrations_24h)}</h4>
-                    <p>New Registrations (24h)</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatDuration(analytics.player_engagement.average_session_length)}</h4>
-                    <p>Avg Session Length</p>
-                  </div>
-                  <div className="metric-card">
-                    <h4>{formatPercentage(analytics.player_engagement.retention_rate_7d)}</h4>
-                    <p>7-Day Retention</p>
+        <div className="tab-content">
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              {/* Time Range Selector */}
+              <section className="section">
+                <div className="card">
+                  <div className="card-body">
+                    <div className="flex justify-between items-center">
+                      <div className="form-group">
+                        <label className="form-label">Time Range:</label>
+                        <select 
+                          className="form-select"
+                          value={selectedTimeRange} 
+                          onChange={(e) => setSelectedTimeRange(e.target.value)}
+                        >
+                          <option value="1h">Last Hour</option>
+                          <option value="24h">Last 24 Hours</option>
+                          <option value="7d">Last 7 Days</option>
+                          <option value="30d">Last 30 Days</option>
+                          <option value="90d">Last 90 Days</option>
+                        </select>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <button className="btn btn-secondary btn-sm" onClick={() => exportData('json')}>Export JSON</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => exportData('csv')}>Export CSV</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => exportData('pdf')}>Export PDF</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </section>
+
+              {error && (
+                <div className="alert alert-warning">
+                  <p>Using demo data due to API error: {error}</p>
+                </div>
+              )}
+
+              {analytics && (
+                <>
+                  {/* Player Engagement */}
+                  <section className="section">
+                    <h3 className="section-title">Player Engagement</h3>
+                    <div className="grid grid-auto-fit gap-6">
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">📈</span>
+                          <h4 className="dashboard-stat-title">Daily Active Users</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.player_engagement.daily_active_users)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">📊</span>
+                          <h4 className="dashboard-stat-title">Weekly Active Users</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.player_engagement.weekly_active_users)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">📅</span>
+                          <h4 className="dashboard-stat-title">Monthly Active Users</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.player_engagement.monthly_active_users)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">🆕</span>
+                          <h4 className="dashboard-stat-title">New Registrations (24h)</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatNumber(analytics.player_engagement.new_registrations_24h)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">⏱️</span>
+                          <h4 className="dashboard-stat-title">Avg Session Length</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatDuration(analytics.player_engagement.average_session_length)}</div>
+                      </div>
+                      <div className="dashboard-stat-card">
+                        <div className="dashboard-stat-header">
+                          <span className="dashboard-stat-icon">🔄</span>
+                          <h4 className="dashboard-stat-title">7-Day Retention</h4>
+                        </div>
+                        <div className="dashboard-stat-value">{formatPercentage(analytics.player_engagement.retention_rate_7d)}</div>
+                      </div>
+                    </div>
+                  </section>
 
               {/* Economic Health */}
               <div className="analytics-section">
@@ -767,10 +797,10 @@ const AnalyticsReports: React.FC = () => {
                   </div>
                 </div>
               </div>
-            </>
+                </>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
       {activeTab === 'reports' && (
         <div className="reports-content">
@@ -933,8 +963,8 @@ const AnalyticsReports: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
