@@ -47,9 +47,9 @@ const SectorsManager: React.FC = () => {
   const [filterDiscovered, setFilterDiscovered] = useState<boolean | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   
-  // Pagination - Optimized for 1,000+ sectors
+  // Pagination - Ultra-optimized for 1,000+ sectors  
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage] = useState<number>(50); // Increased from 20 to 50
+  const [itemsPerPage] = useState<number>(100); // Increased to 100 for maximum efficiency
   
   // Load galaxy info on component mount
   useEffect(() => {
@@ -352,31 +352,25 @@ const SectorsManager: React.FC = () => {
                             className={`sectors-grid-row ${selectedSector?.id === sector.id ? 'selected' : ''}`}
                             onClick={() => handleSectorSelect(sector)}
                           >
-                            <div className="sector-main-info">
-                              <div className="sector-identity">
-                                <div className="sector-name">{sector.name}</div>
-                                <div className="sector-id">#{sector.sector_id}</div>
-                              </div>
-                              
-                              <div className="sector-coordinates">
-                                <span>({sector.x_coord}, {sector.y_coord}, {sector.z_coord})</span>
-                              </div>
-                              
-                              <div className="sector-location">
-                                <div className="region-name">{regionName}</div>
-                                <div className="cluster-name">{clusterName}</div>
-                              </div>
-                              
-                              <div className="sector-features">
-                                {sector.has_port && <span className="feature-tag port-tag">Port</span>}
-                                {sector.has_planet && <span className="feature-tag planet-tag">Planet</span>}
-                                {sector.has_warp_tunnel && <span className="feature-tag warp-tag">Warp</span>}
-                                {sector.is_discovered ? (
-                                  <span className="feature-tag discovered-tag">Disc</span>
-                                ) : (
-                                  <span className="feature-tag undiscovered-tag">Hidden</span>
-                                )}
-                              </div>
+                            <div className="sector-identity">
+                              <div className="sector-name">{sector.name}</div>
+                              <div className="sector-id">#{sector.sector_id}</div>
+                            </div>
+                            
+                            <div className="sector-coordinates">
+                              {sector.x_coord},{sector.y_coord},{sector.z_coord}
+                            </div>
+                            
+                            <div className="sector-status-icons">
+                              {sector.has_port && <div className="status-icon icon-port" title="Port"></div>}
+                              {sector.has_planet && <div className="status-icon icon-planet" title="Planet"></div>}
+                              {sector.has_warp_tunnel && <div className="status-icon icon-warp" title="Warp Tunnel"></div>}
+                              <div className={`status-icon ${sector.is_discovered ? 'icon-discovered' : 'icon-undiscovered'}`} 
+                                   title={sector.is_discovered ? 'Discovered' : 'Undiscovered'}></div>
+                            </div>
+                            
+                            <div className="sector-location">
+                              {regionName} • {clusterName}
                             </div>
                             
                             <div className="sector-actions">
@@ -407,81 +401,7 @@ const SectorsManager: React.FC = () => {
                 )}
               </div>
               
-              {selectedSector && (
-                <div className="sector-details-panel">
-                  <h3>Sector Details</h3>
-                  <div className="sector-details">
-                    <div className="detail-header">
-                      <h4>{selectedSector.name}</h4>
-                      <div className="sector-id">ID: {selectedSector.id}</div>
-                    </div>
-                    
-                    <div className="detail-section">
-                      <h5>Location</h5>
-                      <div className="detail-item">
-                        <span className="detail-label">Coordinates:</span>
-                        <span className="detail-value">
-                          {selectedSector.x_coord}, {selectedSector.y_coord}, {selectedSector.z_coord}
-                        </span>
-                      </div>
-                      <div className="detail-item">
-                        <span className="detail-label">Region:</span>
-                        <span className="detail-value">
-                          {selectedSector.region_name || 'Unknown'}
-                        </span>
-                      </div>
-                      <div className="detail-item">
-                        <span className="detail-label">Cluster:</span>
-                        <span className="detail-value">
-                          {clusters.find(c => c.id === selectedSector.cluster_id)?.name || 'Unknown'}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="detail-section">
-                      <h5>Features</h5>
-                      <div className="detail-item">
-                        <span className="detail-label">Port:</span>
-                        <span className="detail-value">{selectedSector.has_port ? 'Yes' : 'No'}</span>
-                      </div>
-                      <div className="detail-item">
-                        <span className="detail-label">Planet:</span>
-                        <span className="detail-value">{selectedSector.has_planet ? 'Yes' : 'No'}</span>
-                      </div>
-                      <div className="detail-item">
-                        <span className="detail-label">Warp Tunnel:</span>
-                        <span className="detail-value">{selectedSector.has_warp_tunnel ? 'Yes' : 'No'}</span>
-                      </div>
-                      <div className="detail-item">
-                        <span className="detail-label">Discovered:</span>
-                        <span className="detail-value">{selectedSector.is_discovered ? 'Yes' : 'No'}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="detail-section">
-                      <h5>Additional Information</h5>
-                      <div className="detail-item">
-                        <span className="detail-label">Hazard Level:</span>
-                        <span className="detail-value">{selectedSector.hazard_level}</span>
-                      </div>
-                      <div className="detail-item">
-                        <span className="detail-label">Player Count:</span>
-                        <span className="detail-value">{selectedSector.player_count}</span>
-                      </div>
-                      <div className="detail-item">
-                        <span className="detail-label">Controlling Faction:</span>
-                        <span className="detail-value">{selectedSector.controlling_faction || 'None'}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="detail-actions">
-                      <button className="edit-button">Edit Sector</button>
-                      <button className="feature-button">Add Feature</button>
-                      <button className="connect-button">Create Connection</button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Details panel removed for full-width efficiency - use modal or expandable rows for details */}
             </div>
           )}
         </div>
