@@ -3,14 +3,35 @@
 Git Hooks Healer - CLAUDE System Component
 ==========================================
 
-This healer ensures proper git hooks are installed for the CLAUDE.md system.
-The hooks provide automated quality checks and pattern learning.
+This healer ensures comprehensive self-healing git hooks are installed for the CLAUDE.md system.
+The enhanced hooks provide automated quality checks, pattern learning, AI context preservation,
+and development cycle tracking with intelligent next-step recommendations.
 
-Features:
-- Installs pre-commit hook for quality checks
-- Installs post-commit hook for pattern learning
-- Creates backup of existing hooks
-- Validates hook permissions and functionality
+Enhanced Features:
+- Installs enhanced pre-commit hook with AI context reminders and Phase 0 health checks
+- Installs intelligent post-commit hook with commit pattern analysis and next-phase suggestions
+- Provides AI context preservation with explicit 6-phase methodology reminders
+- Implements self-healing mechanisms to detect missed development phases
+- Creates comprehensive logging for development session tracking
+- Includes development velocity monitoring and analysis recommendations
+- Provides automatic directory creation and backup of existing hooks
+- Validates hook permissions and functionality with version management
+
+Pre-commit Hook Capabilities:
+- AI context reminders with complete 6-phase development loop guidance
+- Development context analysis to detect missed phases
+- Phase 0 system health check execution with result logging
+- Self-healing recommendations when quality gates fail
+- Critical reminders about proper commit practices and methodology adherence
+
+Post-commit Hook Capabilities:
+- Intelligent commit pattern analysis (feat/fix/refactor/docs/test detection)
+- Automatic next-phase suggestions based on commit type and file changes
+- Development velocity tracking with high-activity period detection
+- Comprehensive analysis recommendations for significant changes
+- Specific testing and documentation suggestions with exact commands
+- Long-term development cycle monitoring with warning systems
+- Pattern learning integration with result tracking and logging
 """
 
 import os
