@@ -76,11 +76,11 @@ if (testing_from_host != "false" and
     if match:
         endpoint_id = match.group(1)
         if "?" in main_db_url:
-            main_db_url += f"&options=endpoint%3D{endpoint_id}"
-            test_db_url += f"&options=endpoint%3D{endpoint_id}"
+            main_db_url += f"&options=endpoint={endpoint_id}"
+            test_db_url += f"&options=endpoint={endpoint_id}"
         else:
-            main_db_url += f"?options=endpoint%3D{endpoint_id}"
-            test_db_url += f"?options=endpoint%3D{endpoint_id}"
+            main_db_url += f"?options=endpoint={endpoint_id}"
+            test_db_url += f"?options=endpoint={endpoint_id}"
 
 os.environ["DATABASE_URL"] = main_db_url
 os.environ["DATABASE_TEST_URL"] = test_db_url
@@ -109,6 +109,20 @@ from src.models.admin_credentials import AdminCredentials
 # Use the DATABASE_TEST_URL from settings for the test database engine
 # settings.get_db_url() should return the DATABASE_TEST_URL in 'testing' environment
 TEST_DATABASE_URL = str(settings.get_db_url())
+
+# Apply endpoint parameter fix AFTER settings processing for host testing
+testing_from_host = os.environ.get("TESTING_FROM_HOST", "true")  # Default to host system
+if (testing_from_host != "false" and 
+    "neon.tech" in TEST_DATABASE_URL and "options=endpoint" not in TEST_DATABASE_URL):
+    import re
+    match = re.search(r'@(ep-[^-]+-[^-]+-[^-]+)', TEST_DATABASE_URL)
+    if match:
+        endpoint_id = match.group(1)
+        if "?" in TEST_DATABASE_URL:
+            TEST_DATABASE_URL += f"&options=endpoint%3D{endpoint_id}"
+        else:
+            TEST_DATABASE_URL += f"?options=endpoint%3D{endpoint_id}"
+        print(f"[conftest.py] Added endpoint parameter to TEST_DATABASE_URL for host testing")
 
 # Ensure TEST_DATABASE_URL is a string and not None before proceeding
 if not TEST_DATABASE_URL or not TEST_DATABASE_URL.startswith("postgres"):
