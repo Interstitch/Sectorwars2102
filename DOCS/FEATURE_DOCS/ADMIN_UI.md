@@ -291,6 +291,48 @@ Comprehensive monitoring of AI service providers (OpenAI and Anthropic) with rea
 - **Integration**: Automatic detection of environment variables and library availability
 - **Performance**: Minimal overhead with cached results and optimized API calls
 
+## Database Health Monitoring
+
+**Added:** 2025-05-25  
+**Component:** `DatabaseHealthStatus.tsx`  
+**Location:** Sidebar Footer (Above AI Health Status)
+
+### Overview
+Comprehensive monitoring of PostgreSQL database health with real-time connection status, pool metrics, and database statistics.
+
+### Features
+- **Real-time Connection Monitoring**: Auto-refresh every 30 seconds
+- **Connection Pool Metrics**: Pool size, utilization percentage, overflow tracking
+- **Database Statistics**: Size (MB), table count, active connections count
+- **Performance Tracking**: Connection response time measurement
+- **Connection Status**: Visual indicators for database connectivity
+- **Detailed Analytics**: Expandable interface with comprehensive database metrics
+- **Error Reporting**: Detailed error messages for troubleshooting
+
+### Status Indicators
+- **🔗 Connected**: Green if database connection is active, red if disconnected
+- **✓ Healthy**: Database is connected and responding normally
+- **⚠ Degraded**: Database connection issues or performance problems
+- **✗ Unavailable**: Database is unreachable or has critical errors
+
+### Database Metrics
+- **Connection Pool Status**: Size, checked out connections, overflow count
+- **Pool Utilization**: Percentage of connections currently in use
+- **Database Size**: Total database size in MB with pretty formatting
+- **Table Count**: Number of tables in the public schema
+- **Active Connections**: Current number of active database connections
+- **Response Time**: Database query response time in milliseconds
+
+### API Endpoint
+- `GET /api/v1/status/database` - PostgreSQL database health check
+
+### Technical Implementation
+- **Backend**: SQLAlchemy engine with connection pool monitoring
+- **Database Queries**: PostgreSQL-specific system catalog queries
+- **Pool Monitoring**: Real-time connection pool status tracking
+- **Error Handling**: Comprehensive error detection and graceful degradation
+- **Performance**: Sub-50ms response times with efficient database queries
+
 ## Maintenance Notes
 
 ### Documentation Consolidation (2025-05-24)
