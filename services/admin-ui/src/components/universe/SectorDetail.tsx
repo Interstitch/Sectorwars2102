@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../utils/auth';
-import './universe-detail.css';
 
 interface SectorDetailProps {
   sector: any;
@@ -243,80 +242,95 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
   };
 
   return (
-    <div className="sector-detail">
-      <div className="detail-header">
-        <button className="back-button" onClick={onBack}>
-          ← Back to Universe
-        </button>
-        <h2>Sector {sector.sector_id}: {sector.name}</h2>
+    <div className="page-container">
+      <div className="page-header">
+        <div className="flex items-center gap-4">
+          <button className="btn btn-secondary" onClick={onBack}>
+            ← Back to Universe
+          </button>
+          <div>
+            <h1 className="page-title">Sector {sector.sector_id}: {sector.name}</h1>
+            <p className="page-subtitle">Detailed sector information and management</p>
+          </div>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="loading">Loading sector details...</div>
-      ) : (
-        <div className="detail-content">
-          <div className="sector-info-panel">
-            <h3>Sector Information</h3>
-            <div className="info-grid">
-              <div className="info-item">
-                <span className="label">Name:</span>
-                <span className="value">
-                  <EditableField field="name" value={sector.name} type="text" />
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="label">Type:</span>
-                <span className="value" style={{ color: getSectorTypeColor(sector.type) }}>
-                  <EditableField 
-                    field="type" 
-                    value={sector.type} 
-                    type="select"
-                    options={['NORMAL', 'NEBULA', 'ASTEROID_FIELD', 'RADIATION_ZONE', 'WARP_STORM']}
-                  />
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="label">X Coordinate:</span>
-                <span className="value">
-                  <EditableField field="x_coord" value={sector.x_coord} type="number" />
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="label">Y Coordinate:</span>
-                <span className="value">
-                  <EditableField field="y_coord" value={sector.y_coord} type="number" />
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="label">Z Coordinate:</span>
-                <span className="value">
-                  <EditableField field="z_coord" value={sector.z_coord} type="number" />
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="label">Hazard Level:</span>
-                <span className="value hazard-level" data-level={Math.floor(sector.hazard_level)}>
-                  <EditableField field="hazard_level" value={sector.hazard_level} type="number" /> / 10
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="label">Discovered:</span>
-                <span className="value">
-                  <EditableField field="is_discovered" value={sector.is_discovered} type="boolean" />
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="label">Controlling Faction:</span>
-                <span className="value">
-                  <EditableField field="controlling_faction" value={sector.controlling_faction || 'None'} type="text" />
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="label">Ships in Sector:</span>
-                <span className="value">{shipsInSector.length}</span>
-              </div>
-            </div>
+      <div className="page-content">
+        {loading ? (
+          <div className="loading-state">
+            <div className="spinner"></div>
+            <p>Loading sector details...</p>
           </div>
+        ) : (
+          <div className="space-y-6">
+            <section className="section">
+              <div className="card">
+                <div className="card-header">
+                  <h3 className="card-title">Sector Information</h3>
+                </div>
+                <div className="card-body">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-muted">Name:</span>
+                      <span className="text-primary">
+                        <EditableField field="name" value={sector.name} type="text" />
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-muted">Type:</span>
+                      <span style={{ color: getSectorTypeColor(sector.type) }}>
+                        <EditableField 
+                          field="type" 
+                          value={sector.type} 
+                          type="select"
+                          options={['NORMAL', 'NEBULA', 'ASTEROID_FIELD', 'RADIATION_ZONE', 'WARP_STORM']}
+                        />
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-muted">X Coordinate:</span>
+                      <span className="font-mono">
+                        <EditableField field="x_coord" value={sector.x_coord} type="number" />
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-muted">Y Coordinate:</span>
+                      <span className="font-mono">
+                        <EditableField field="y_coord" value={sector.y_coord} type="number" />
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-muted">Z Coordinate:</span>
+                      <span className="font-mono">
+                        <EditableField field="z_coord" value={sector.z_coord} type="number" />
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-muted">Hazard Level:</span>
+                      <span className={`font-semibold ${sector.hazard_level > 7 ? 'text-error' : sector.hazard_level > 4 ? 'text-warning' : 'text-success'}`}>
+                        <EditableField field="hazard_level" value={sector.hazard_level} type="number" /> / 10
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-muted">Discovered:</span>
+                      <span>
+                        <EditableField field="is_discovered" value={sector.is_discovered} type="boolean" />
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-muted">Controlling Faction:</span>
+                      <span>
+                        <EditableField field="controlling_faction" value={sector.controlling_faction || 'None'} type="text" />
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-muted">Ships in Sector:</span>
+                      <span className="font-semibold">{shipsInSector.length}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
 
           <div className="sector-features">
             {/* Always show port section - either with data or empty state */}
@@ -405,10 +419,10 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
               </div>
             </div>
           )}
-        </div>
-      )}
-      
-      {/* Create Port Modal */}
+          </div>
+        )}
+
+        {/* Create Port Modal */}
       {showCreatePortModal && (
         <div className="modal-overlay" onClick={() => setShowCreatePortModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -547,6 +561,7 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
