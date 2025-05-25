@@ -309,19 +309,19 @@ const Dashboard: React.FC = () => {
                 <h4>Universe</h4>
               </div>
               <div className="stat-card-content">
-                <div className="primary-stat">
+                <Link to="/universe/sectors" className="primary-stat clickable-stat">
                   <span className="stat-number">{dashboardData.universe_stats.total_sectors.toLocaleString()}</span>
-                  <span className="stat-label">Sectors</span>
-                </div>
+                  <span className="stat-label">Sectors →</span>
+                </Link>
                 <div className="secondary-stats">
-                  <div className="secondary-stat">
+                  <Link to="/universe/planets" className="secondary-stat clickable-stat">
                     <span className="secondary-number">{dashboardData.universe_stats.total_planets}</span>
-                    <span className="secondary-label">Planets</span>
-                  </div>
-                  <div className="secondary-stat">
+                    <span className="secondary-label">Planets →</span>
+                  </Link>
+                  <Link to="/universe/ports" className="secondary-stat clickable-stat">
                     <span className="secondary-number">{dashboardData.universe_stats.total_ports}</span>
-                    <span className="secondary-label">Ports</span>
-                  </div>
+                    <span className="secondary-label">Ports →</span>
+                  </Link>
                 </div>
               </div>
             </div>

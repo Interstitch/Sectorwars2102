@@ -20,6 +20,9 @@ import TeamManagement from './components/pages/TeamManagement';
 import EventManagement from './components/pages/EventManagement';
 import AnalyticsReports from './components/pages/AnalyticsReports';
 import SectorsManager from './components/pages/SectorsManager';
+import PlanetsManager from './components/pages/PlanetsManager';
+import PortsManager from './components/pages/PortsManager';
+import WarpTunnelsManager from './components/pages/WarpTunnelsManager';
 
 // Components
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -139,6 +142,43 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <SectorsManager />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Universe CRUD Routes */}
+              <Route
+                path="universe/sectors"
+                element={
+                  <ProtectedRoute>
+                    <SectorsManager />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="universe/planets"
+                element={
+                  <ProtectedRoute>
+                    <PlanetsManager />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="universe/ports"
+                element={
+                  <ProtectedRoute>
+                    <PortsManager />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="universe/warptunnels"
+                element={
+                  <ProtectedRoute>
+                    <WarpTunnelsManager />
                   </ProtectedRoute>
                 }
               />

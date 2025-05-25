@@ -1,5 +1,19 @@
 /* Users Manager Styles */
 
+/* Ensure CSS variables are always defined */
+:root {
+  --text-color: #333;
+  --surface-color: #ffffff;
+  --border-color: #eaeaea;
+  --header-bg: #f8f9fa;
+  --hover-bg: #f8f9fa;
+  --primary-color: #4a6cf7;
+  --primary-hover: #3a5ce6;
+  --muted-color: #888;
+  --label-color: #555;
+  --input-border: #ddd;
+}
+
 .users-manager-container {
   display: flex;
   flex-direction: column;
@@ -91,6 +105,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   align-self: center;
+  color: #333 !important;
 }
 
 .grid-actions {
