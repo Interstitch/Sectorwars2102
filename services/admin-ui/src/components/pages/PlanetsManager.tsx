@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../utils/auth';
 import PageHeader from '../ui/PageHeader';
 import PlanetDetailModal from '../universe/PlanetDetailModal';
@@ -39,7 +39,7 @@ const PlanetsManager: React.FC = () => {
   const [modalMode, setModalMode] = useState<'view' | 'edit'>('view');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const fetchPlanets = async () => {
+  const fetchPlanets = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/api/v1/admin/planets/comprehensive', {
@@ -57,11 +57,11 @@ const PlanetsManager: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage, filterType]);
 
   useEffect(() => {
     fetchPlanets();
-  }, [currentPage, filterType]);
+  }, [currentPage, filterType, fetchPlanets]);
 
   const handleViewPlanet = (planet: Planet) => {
     setSelectedPlanet(planet);

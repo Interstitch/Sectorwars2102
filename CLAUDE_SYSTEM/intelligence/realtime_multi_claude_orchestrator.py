@@ -170,14 +170,14 @@ class RealTimeMultiClaudeOrchestrator(MultiClaudeOrchestrator):
         
         # NEXUS agent mapping
         self.nexus_agent_map = {
-            NEXUSAgent.ATLAS: {"name": "Atlas (Architect)", "expertise": ["architecture", "design", "planning"]},
-            NEXUSAgent.SHERLOCK: {"name": "Sherlock (Detective)", "expertise": ["analysis", "investigation", "debugging"]},
-            NEXUSAgent.VELOCITY: {"name": "Velocity (Optimizer)", "expertise": ["performance", "optimization", "efficiency"]},
-            NEXUSAgent.GUARDIAN: {"name": "Guardian (Tester)", "expertise": ["testing", "quality_assurance", "validation"]},
-            NEXUSAgent.SAGE: {"name": "Sage (Documenter)", "expertise": ["documentation", "knowledge", "writing"]},
-            NEXUSAgent.SENTINEL: {"name": "Sentinel (Security)", "expertise": ["security", "protection", "monitoring"]},
-            NEXUSAgent.ECHO: {"name": "Echo (Predictor)", "expertise": ["prediction", "forecasting", "analysis"]},
-            NEXUSAgent.MENTOR: {"name": "Mentor (Teacher)", "expertise": ["guidance", "learning", "mentoring"]}
+            NEXUSAgent.ARCHITECT: {"name": "Architect", "expertise": ["architecture", "design", "planning"]},
+            NEXUSAgent.DEBUGGER: {"name": "Debugger", "expertise": ["analysis", "investigation", "debugging"]},
+            NEXUSAgent.OPTIMIZER: {"name": "Optimizer", "expertise": ["performance", "optimization", "efficiency"]},
+            NEXUSAgent.TESTER: {"name": "Tester", "expertise": ["testing", "quality_assurance", "validation"]},
+            NEXUSAgent.DOCUMENTER: {"name": "Documenter", "expertise": ["documentation", "knowledge", "writing"]},
+            NEXUSAgent.SECURITY: {"name": "Security", "expertise": ["security", "protection", "monitoring"]},
+            NEXUSAgent.UX_ADVOCATE: {"name": "UX Advocate", "expertise": ["user_experience", "ui_ux", "usability"]},
+            NEXUSAgent.MENTOR: {"name": "Mentor", "expertise": ["guidance", "learning", "mentoring"]}
         }
         
         self.emit_message(MessageType.ORCHESTRATOR, "orchestrator", 

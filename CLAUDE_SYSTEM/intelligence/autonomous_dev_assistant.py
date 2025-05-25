@@ -2813,7 +2813,7 @@ def main():
     parser.add_argument("--improve", nargs="+", help="Autonomous code improvement for files")
     parser.add_argument("--test", nargs="+", help="Generate tests for files")
     parser.add_argument("--docs", action="store_true", help="Update documentation")
-    parser.add_argument("--predict", type=int, default=7, help="Predict development future (days)")
+    parser.add_argument("--predict", type=int, help="Predict development future (days, default: 7)")
     parser.add_argument("--debug", help="Debugging assistance for error")
     parser.add_argument("--evolve", action="store_true", help="Evolve AI consciousness")
     parser.add_argument("--status", action="store_true", help="Get AI system status")
