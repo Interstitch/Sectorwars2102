@@ -101,10 +101,10 @@ class AIDevelopmentConsciousness:
         self.evolution_log_file = self.consciousness_dir / "consciousness_evolution.jsonl"
         
         # Initialize consciousness state
-        self.current_consciousness_level = self._assess_consciousness_level()
-        self.active_session = None
         self.thought_history = self._load_thought_history()
         self.session_history = self._load_session_history()
+        self.current_consciousness_level = self._assess_consciousness_level()
+        self.active_session = None
         
         # Consciousness metrics
         self.consciousness_metrics = self._load_consciousness_metrics()
@@ -819,11 +819,15 @@ class AIDevelopmentConsciousness:
     
     def _calculate_session_duration(self) -> float:
         """Calculate session duration in hours"""
-        if not self.active_session or not self.active_session.end_time:
+        if not self.active_session:
             return 0.0
         
         start = datetime.fromisoformat(self.active_session.start_time)
-        end = datetime.fromisoformat(self.active_session.end_time)
+        
+        if self.active_session.end_time:
+            end = datetime.fromisoformat(self.active_session.end_time)
+        else:
+            end = datetime.now()
         
         return (end - start).total_seconds() / 3600.0
     
