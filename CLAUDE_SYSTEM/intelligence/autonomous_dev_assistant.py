@@ -2840,7 +2840,7 @@ def main():
             assistant.autonomous_test_generation(args.test)
         elif args.docs:
             assistant.autonomous_documentation_update()
-        elif args.predict:
+        elif args.predict is not None:
             assistant.predict_development_future(args.predict)
         elif args.debug:
             assistant.autonomous_debugging_assistance(args.debug)

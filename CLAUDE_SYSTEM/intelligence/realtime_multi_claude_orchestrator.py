@@ -219,49 +219,49 @@ class RealTimeMultiClaudeOrchestrator(MultiClaudeOrchestrator):
         
         # Architecture/Design requests
         if any(word in request_lower for word in ['create', 'build', 'design', 'architecture']):
-            selected_agents.append(NEXUSAgent.ATLAS)
+            selected_agents.append(NEXUSAgent.ARCHITECT)
             self.emit_message(MessageType.ORCHESTRATOR, "orchestrator",
                              "🏗️ Atlas (Architect) selected for design and architecture",
                              {"selection_reason": "design_and_architecture"})
         
         # Analysis requests
         if any(word in request_lower for word in ['analyze', 'review', 'investigate', 'examine']):
-            selected_agents.append(NEXUSAgent.SHERLOCK)
+            selected_agents.append(NEXUSAgent.DEBUGGER)
             self.emit_message(MessageType.ORCHESTRATOR, "orchestrator", 
                              "🔍 Sherlock (Detective) selected for analysis and investigation",
                              {"selection_reason": "analysis_required"})
         
         # Performance/Optimization
         if any(word in request_lower for word in ['optimize', 'improve', 'performance', 'speed']):
-            selected_agents.append(NEXUSAgent.VELOCITY)
+            selected_agents.append(NEXUSAgent.OPTIMIZER)
             self.emit_message(MessageType.ORCHESTRATOR, "orchestrator",
                              "⚡ Velocity (Optimizer) selected for performance improvements",
                              {"selection_reason": "optimization_needed"})
         
         # Testing requests
         if any(word in request_lower for word in ['test', 'testing', 'quality', 'validate']):
-            selected_agents.append(NEXUSAgent.GUARDIAN)
+            selected_agents.append(NEXUSAgent.TESTER)
             self.emit_message(MessageType.ORCHESTRATOR, "orchestrator",
                              "🛡️ Guardian (Tester) selected for testing and validation",
                              {"selection_reason": "testing_required"})
         
         # Documentation requests
         if any(word in request_lower for word in ['document', 'docs', 'explain', 'guide']):
-            selected_agents.append(NEXUSAgent.SAGE)
+            selected_agents.append(NEXUSAgent.DOCUMENTER)
             self.emit_message(MessageType.ORCHESTRATOR, "orchestrator",
                              "📚 Sage (Documenter) selected for documentation",
                              {"selection_reason": "documentation_needed"})
         
         # Security requests
         if any(word in request_lower for word in ['security', 'secure', 'vulnerability', 'protect']):
-            selected_agents.append(NEXUSAgent.SENTINEL)
+            selected_agents.append(NEXUSAgent.SECURITY)
             self.emit_message(MessageType.ORCHESTRATOR, "orchestrator",
                              "🛡️ Sentinel (Security) selected for security analysis",
                              {"selection_reason": "security_focus"})
         
         # Prediction/Future analysis
         if any(word in request_lower for word in ['predict', 'forecast', 'future', 'trends']):
-            selected_agents.append(NEXUSAgent.ECHO)
+            selected_agents.append(NEXUSAgent.ANALYST)
             self.emit_message(MessageType.ORCHESTRATOR, "orchestrator",
                              "🔮 Echo (Predictor) selected for predictive analysis",
                              {"selection_reason": "prediction_required"})
@@ -275,7 +275,7 @@ class RealTimeMultiClaudeOrchestrator(MultiClaudeOrchestrator):
         
         # Default to core agents if none specifically selected
         if not selected_agents:
-            selected_agents = [NEXUSAgent.ATLAS, NEXUSAgent.SHERLOCK, NEXUSAgent.VELOCITY]
+            selected_agents = [NEXUSAgent.ARCHITECT, NEXUSAgent.DEBUGGER, NEXUSAgent.OPTIMIZER]
             self.emit_message(MessageType.ORCHESTRATOR, "orchestrator",
                              "🎯 Selected core agents for general request",
                              {"selection_reason": "default_core_agents"})
@@ -400,7 +400,7 @@ class RealTimeMultiClaudeOrchestrator(MultiClaudeOrchestrator):
         expertise = agent_info["expertise"]
         
         # Agent-specific response patterns
-        if agent == NEXUSAgent.ATLAS:
+        if agent == NEXUSAgent.ARCHITECT:
             return {
                 "agent": agent_name,
                 "insights": [
@@ -416,7 +416,7 @@ class RealTimeMultiClaudeOrchestrator(MultiClaudeOrchestrator):
                 "confidence": 0.85
             }
             
-        elif agent == NEXUSAgent.SHERLOCK:
+        elif agent == NEXUSAgent.DEBUGGER:
             return {
                 "agent": agent_name,
                 "insights": [
@@ -432,7 +432,7 @@ class RealTimeMultiClaudeOrchestrator(MultiClaudeOrchestrator):
                 "confidence": 0.90
             }
             
-        elif agent == NEXUSAgent.VELOCITY:
+        elif agent == NEXUSAgent.OPTIMIZER:
             return {
                 "agent": agent_name,
                 "insights": [
@@ -448,7 +448,7 @@ class RealTimeMultiClaudeOrchestrator(MultiClaudeOrchestrator):
                 "confidence": 0.88
             }
             
-        elif agent == NEXUSAgent.GUARDIAN:
+        elif agent == NEXUSAgent.TESTER:
             return {
                 "agent": agent_name,
                 "insights": [
