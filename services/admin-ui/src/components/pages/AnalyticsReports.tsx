@@ -837,22 +837,24 @@ const AnalyticsReports: React.FC = () => {
                   </div>
                 </div>
               </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'reports' && (
-        <div className="reports-content">
-          {/* Reports Controls */}
-          <div className="reports-controls">
-            <button 
-              onClick={() => setShowCreateReport(!showCreateReport)}
-              className="create-report-btn"
-            >
-              {showCreateReport ? 'Cancel' : 'Generate Report'}
-            </button>
+              </>
+            )}
           </div>
+        )}
+
+        {activeTab === 'reports' && (
+          <div className="space-y-6">
+            {/* Reports Controls */}
+            <div className="card">
+              <div className="card-body">
+                <button 
+                  onClick={() => setShowCreateReport(!showCreateReport)}
+                  className="btn btn-primary"
+                >
+                  {showCreateReport ? 'Cancel' : 'Generate Report'}
+                </button>
+              </div>
+            </div>
 
           {/* Create Report Form */}
           {showCreateReport && (
@@ -1003,8 +1005,7 @@ const AnalyticsReports: React.FC = () => {
               </div>
             )}
           </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
