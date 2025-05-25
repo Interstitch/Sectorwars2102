@@ -128,29 +128,57 @@ async def get_admin_stats(
         from src.models.ship import Ship
         total_ships = db.query(Ship).count()
         
+        # Get warp tunnel count
+        total_warp_tunnels = db.query(WarpTunnel).count()
+        
+        # Get port count
+        total_ports = db.query(Port).count()
+        
         # For active sessions, we'll count players with recent activity (last 24 hours)
         from datetime import datetime, timedelta
         cutoff_time = datetime.utcnow() - timedelta(hours=24)
         
         # Simplify the session query to avoid complex logic that might fail
         try:
-            player_sessions = db.query(Player).filter(
+            active_sessions = db.query(Player).filter(
                 Player.last_game_login >= cutoff_time
             ).count()
         except:
             # If session query fails, just return 0
-            player_sessions = 0
+            active_sessions = 0
+        
+        # Get new players today
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        try:
+            new_players_today = db.query(Player).filter(
+                Player.created_at >= today_start
+            ).count()
+        except:
+            new_players_today = 0
+        
+        # Get new players this week  
+        week_start = datetime.utcnow() - timedelta(days=7)
+        try:
+            new_players_week = db.query(Player).filter(
+                Player.created_at >= week_start
+            ).count()
+        except:
+            new_players_week = 0
         
         # Ensure we commit the read transactions
         db.commit()
         
         return {
-            "totalUsers": total_users,
-            "activePlayers": active_players,
-            "totalSectors": total_sectors,
-            "totalPlanets": total_planets,
-            "totalShips": total_ships,
-            "playerSessions": player_sessions
+            "total_users": total_users,
+            "total_players": active_players,
+            "total_sectors": total_sectors,
+            "total_planets": total_planets,
+            "total_ports": total_ports,
+            "total_ships": total_ships,
+            "total_warp_tunnels": total_warp_tunnels,
+            "active_sessions": active_sessions,
+            "new_players_today": new_players_today,
+            "new_players_week": new_players_week
         }
         
     except Exception as e:
@@ -184,14 +212,28 @@ async def get_admin_stats(
             total_ships = db.query(Ship).count()
         except:
             total_ships = 0
+            
+        try:
+            total_warp_tunnels = db.query(WarpTunnel).count()
+        except:
+            total_warp_tunnels = 0
+            
+        try:
+            total_ports = db.query(Port).count()
+        except:
+            total_ports = 0
         
         return {
-            "totalUsers": total_users,
-            "activePlayers": active_players,
-            "totalSectors": total_sectors,
-            "totalPlanets": total_planets,
-            "totalShips": total_ships,
-            "playerSessions": 0
+            "total_users": total_users,
+            "total_players": active_players,
+            "total_sectors": total_sectors,
+            "total_planets": total_planets,
+            "total_ports": total_ports,
+            "total_ships": total_ships,
+            "total_warp_tunnels": total_warp_tunnels,
+            "active_sessions": 0,
+            "new_players_today": 0,
+            "new_players_week": 0
         }
 
 @router.get("/galaxy")

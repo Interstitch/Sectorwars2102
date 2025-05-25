@@ -26,8 +26,8 @@ CLAUDE_SYSTEM_DIR = Path(__file__).parent
 sys.path.insert(0, str(CLAUDE_SYSTEM_DIR))
 
 # Version constants
-SYSTEM_VERSION = "3.0.1"
-RELEASE_DATE = "2025-05-24"
+SYSTEM_VERSION = "3.1.0"
+RELEASE_DATE = "2025-05-25"
 
 def main():
     """Main entry point for the CLAUDE system"""

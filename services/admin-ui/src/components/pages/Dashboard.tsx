@@ -5,6 +5,7 @@ import './pages.css';
 
 // Components
 import PageHeader from '../ui/PageHeader';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Define types for our dashboard data
 interface SystemHealth {
@@ -47,6 +48,7 @@ interface DashboardData {
 }
 
 const Dashboard: React.FC = () => {
+  const { token } = useAuth();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
@@ -63,12 +65,15 @@ const Dashboard: React.FC = () => {
     const apiUrl = getApiUrl();
     
     try {
+      // Prepare headers with authentication
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
       // Fetch all dashboard data concurrently
       const [dbHealthRes, aiHealthRes, gameServerRes, adminStatsRes] = await Promise.all([
-        axios.get(`${apiUrl}/api/v1/status/database`),
-        axios.get(`${apiUrl}/api/v1/status/ai/providers`),
-        axios.get(`${apiUrl}/api/v1/status`),
-        axios.get(`${apiUrl}/api/v1/admin/stats`)
+        axios.get(`${apiUrl}/api/v1/status/database`, { headers }),
+        axios.get(`${apiUrl}/api/v1/status/ai/providers`, { headers }),
+        axios.get(`${apiUrl}/api/v1/status`, { headers }),
+        axios.get(`${apiUrl}/api/v1/admin/stats`, { headers })
       ]);
 
       // Process system health data
@@ -324,7 +329,7 @@ const Dashboard: React.FC = () => {
                     <span className="secondary-label">Ports →</span>
                   </Link>
                   <Link to="/universe/warptunnels" className="secondary-stat clickable-stat">
-                    <span className="secondary-number">{dashboardData.universe_stats.total_warp_tunnels || 42}</span>
+                    <span className="secondary-number">{dashboardData.universe_stats.total_warp_tunnels || 0}</span>
                     <span className="secondary-label">Warp Tunnels →</span>
                   </Link>
                 </div>
@@ -374,8 +379,12 @@ const Dashboard: React.FC = () => {
                     <span className="secondary-label">Active Rate</span>
                   </div>
                   <div className="secondary-stat">
-                    <span className="secondary-number">+{Math.floor(Math.random() * 15) + 5}%</span>
-                    <span className="secondary-label">Growth</span>
+                    <span className="secondary-number">
+                      +{dashboardData.player_stats.total_players > 0 
+                        ? Math.round((dashboardData.player_stats.new_this_week / dashboardData.player_stats.total_players) * 100)
+                        : 0}%
+                    </span>
+                    <span className="secondary-label">Weekly Growth</span>
                   </div>
                 </div>
               </div>

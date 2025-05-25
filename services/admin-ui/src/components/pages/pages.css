@@ -245,16 +245,9 @@
 
 .section-header h3 {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--primary-color, #4a6cf7) !important;
-  background: linear-gradient(135deg, var(--primary-color, #4a6cf7), #5c7cfa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 0 2px 4px rgba(74, 108, 247, 0.1);
-  letter-spacing: -0.02em;
-  position: relative;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--title-color, #111);
 }
 
 .refresh-info {
