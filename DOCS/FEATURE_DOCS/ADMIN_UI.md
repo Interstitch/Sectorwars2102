@@ -30,10 +30,11 @@ The Sectorwars2102 Admin UI provides comprehensive administrative control over a
   - Port and planet population
   - Warp tunnel creation
 
-- **Dashboard** (90%)
+- **Dashboard** (95%)
   - System overview
   - Quick access cards
   - Game Server Status component
+  - AI Health Status monitoring
   - Basic statistics
 
 ### 🔄 Partially Implemented
@@ -253,6 +254,42 @@ interface GalaxyGenerationConfig {
 
 ### Implementation Reference
 **Detailed implementation timeline**: See `/DOCS/development-plans/2025-05-24-admin-ui-implementation-plan.md` for comprehensive 12-week development schedule following CLAUDE methodology.
+
+## AI Health Status Monitoring
+
+**Added:** 2025-05-25  
+**Component:** `AIHealthStatus.tsx`  
+**Location:** Sidebar Footer (Above Game Server Status)
+
+### Overview
+Comprehensive monitoring of AI service providers (OpenAI and Anthropic) with real-time health checks and detailed diagnostic information.
+
+### Features
+- **Real-time Health Monitoring**: Auto-refresh every 60 seconds
+- **Provider Status Indicators**: Visual status for OpenAI and Anthropic APIs
+- **Configuration Detection**: Automatically detects if API keys are present
+- **Network Reachability**: Tests actual connectivity to AI service endpoints
+- **Response Time Metrics**: Measures API response times for performance monitoring
+- **Expandable Interface**: Collapsible view with detailed provider information
+- **Error Reporting**: Displays specific error messages for troubleshooting
+
+### Status Indicators
+- **🔑 Configuration**: Green if API key is configured, gray if missing
+- **🌐 Network**: Green if API is reachable, red if connection fails  
+- **✓ Healthy**: Provider is configured and reachable
+- **⚠ Degraded**: Provider is configured but not reachable
+- **✗ Unavailable**: Provider is not configured or has errors
+
+### API Endpoints
+- `GET /api/v1/status/ai/providers` - Overall AI providers health status
+- `GET /api/v1/status/ai/openai` - OpenAI-specific health check
+- `GET /api/v1/status/ai/anthropic` - Anthropic-specific health check
+
+### Technical Implementation
+- **Backend**: Health check endpoints in `status.py` with error handling
+- **Frontend**: React component with TypeScript interfaces and CSS styling
+- **Integration**: Automatic detection of environment variables and library availability
+- **Performance**: Minimal overhead with cached results and optimized API calls
 
 ## Maintenance Notes
 
