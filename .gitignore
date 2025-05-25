@@ -23,6 +23,11 @@ pip-delete-this-directory.txt
 .env.local
 .env.test
 
+# Trashcan
+.DELETEME/
+.DELETEME/*.sh
+.DELETEME/*.py
+
 # Node.js
 node_modules/
 npm-debug.log
