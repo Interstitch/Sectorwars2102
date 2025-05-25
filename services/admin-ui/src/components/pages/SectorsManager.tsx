@@ -364,9 +364,8 @@ const SectorsManager: React.FC = () => {
                             <div className="sector-status-icons">
                               {sector.has_port && <div className="status-badge badge-port" title="Trading Port"></div>}
                               {sector.has_planet && <div className="status-badge badge-planet" title="Habitable Planet"></div>}
-                              {sector.has_warp_tunnel && <div className="status-badge badge-warp" title="Warp Tunnel"></div>}
-                              <div className={`status-badge ${sector.is_discovered ? 'badge-discovered' : 'badge-undiscovered'}`} 
-                                   title={sector.is_discovered ? 'Sector Mapped' : 'Sector Unknown'}></div>
+                              {!sector.has_warp_tunnel && <div className="status-badge badge-no-warp" title="No Warp Tunnel"></div>}
+                              {sector.is_discovered && <div className="status-badge badge-discovered" title="Sector Mapped"></div>}
                             </div>
                             
                             <div className="sector-location">
@@ -374,8 +373,16 @@ const SectorsManager: React.FC = () => {
                             </div>
                             
                             <div className="sector-actions">
-                              <button className="view-button">View</button>
-                              <button className="edit-button">Edit</button>
+                              <button 
+                                className="edit-button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // TODO: Open edit modal/page for sector
+                                  console.log('Edit sector:', sector.name);
+                                }}
+                              >
+                                Edit
+                              </button>
                             </div>
                           </div>
                         );

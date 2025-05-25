@@ -377,15 +377,15 @@
   content: "WORLD";
 }
 
-/* Warp Tunnel: Transportation portal */
-.badge-warp {
-  background-color: #581c87;
-  color: #e9d5ff;
-  border-color: #8b5cf6;
+/* No Warp: Isolated sector (exception highlighting) */
+.badge-no-warp {
+  background-color: #dc2626;
+  color: #fecaca;
+  border-color: #ef4444;
 }
 
-.badge-warp::after {
-  content: "WARP";
+.badge-no-warp::after {
+  content: "NO WARP";
 }
 
 /* Discovery status badges */
@@ -399,15 +399,7 @@
   content: "MAPPED";
 }
 
-.badge-undiscovered {
-  background-color: #374151;
-  color: #d1d5db;
-  border-color: #6b7280;
-}
-
-.badge-undiscovered::after {
-  content: "UNKNOWN";
-}
+/* Removed badge-undiscovered - unknown status is implied when MAPPED badge is absent */
 
 .sector-features {
   display: flex;
@@ -456,30 +448,18 @@
   border: 1px solid rgba(100, 116, 139, 0.5);
 }
 
-.view-button, .edit-button {
-  padding: 0.15rem 0.4rem;
+.edit-button {
+  padding: 0.15rem 0.5rem;
   border-radius: 3px;
   border: none;
   font-size: 0.7rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  min-width: 28px;
+  min-width: 32px;
   height: 22px;
-}
-
-.view-button {
-  background-color: #475569;
-  color: #cbd5e1;
-}
-
-.edit-button {
   background-color: #3b82f6;
   color: white;
-}
-
-.view-button:hover {
-  background-color: #64748b;
 }
 
 .edit-button:hover {
@@ -700,8 +680,8 @@
     padding: 0.1rem 0.3rem;
   }
   
-  .view-button, .edit-button {
-    min-width: 24px;
+  .edit-button {
+    min-width: 28px;
     height: 18px;
     font-size: 0.65rem;
     padding: 0.1rem 0.3rem;
