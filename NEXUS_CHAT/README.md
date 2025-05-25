@@ -116,31 +116,18 @@ $ claude -p --resume "$(cat session.txt)" "Add unit tests"
 #### **2. Session Management Implementation**
 ```python
 class SessionManager:
-    """
-    Centralized session management for all Claude Code agents
-    
-    Features:
-    - Session ID capture and persistence
-    - Session validation and recovery
-    - Session lifecycle monitoring
-    - Cross-agent session coordination
-    """
-    
     def __init__(self):
         self.sessions: Dict[str, SessionInfo] = {}
         self.session_storage_path = "sessions/"
         
     async def create_session(self, agent_id: str, initial_prompt: str) -> str:
-        """Create new Claude Code session with proper ID capture"""
         cmd = [
             "claude", "-p", initial_prompt,
             "--output-format", "json"
         ]
         
         result = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         
         stdout, stderr = await result.communicate()
@@ -151,7 +138,6 @@ class SessionManager:
         response_data = json.loads(stdout.decode())
         session_id = response_data.get('session_id')
         
-        # Store session information
         session_info = SessionInfo(
             session_id=session_id,
             agent_id=agent_id,
@@ -162,41 +148,9 @@ class SessionManager:
         
         self.sessions[session_id] = session_info
         await self._persist_session(session_info)
-        
         return session_id
     
-    async def resume_session(self, session_id: str) -> bool:
-        """Resume existing session with validation"""
-        try:
-            # Test session validity with minimal probe
-            cmd = ["claude", "-p", "Status check", "--resume", session_id]
-            
-            result = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            
-            stdout, stderr = await result.communicate()
-            
-            if result.returncode == 0:
-                # Update session activity
-                if session_id in self.sessions:
-                    self.sessions[session_id].last_activity = datetime.utcnow()
-                    self.sessions[session_id].status = "active"
-                return True
-            else:
-                # Mark session as expired
-                if session_id in self.sessions:
-                    self.sessions[session_id].status = "expired"
-                return False
-                
-        except Exception as e:
-            logger.warning(f"Session resume failed for {session_id}: {e}")
-            return False
-    
     async def send_to_session(self, session_id: str, message: str) -> str:
-        """Send message to existing session with --resume flag"""
         if session_id not in self.sessions:
             raise SessionError(f"Unknown session: {session_id}")
         
@@ -207,9 +161,7 @@ class SessionManager:
         ]
         
         result = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         
         stdout, stderr = await result.communicate()
@@ -218,44 +170,14 @@ class SessionManager:
             raise SessionError(f"Message failed: {stderr.decode()}")
         
         response_data = json.loads(stdout.decode())
-        
-        # Update session activity
         self.sessions[session_id].last_activity = datetime.utcnow()
-        
         return response_data.get('content', '')
-    
-    async def cleanup_expired_sessions(self):
-        """Clean up session tracking for sessions that no longer exist"""
-        current_time = datetime.utcnow()
-        expired_sessions = []
-        
-        for session_id, session_info in self.sessions.items():
-            # Test if session still exists by attempting resume
-            if not await self.resume_session(session_id):
-                expired_sessions.append(session_id)
-        
-        for session_id in expired_sessions:
-            del self.sessions[session_id]
-            await self._remove_session_file(session_id)
-        
-        logger.info(f"Cleaned up {len(expired_sessions)} expired session references")
 ```
 
 #### **3. Session Recovery and Continuity**
 ```python
 class SessionRecoveryManager:
-    """
-    Handles session recovery across system restarts
-    
-    Features:
-    - Persistent session storage
-    - System restart recovery
-    - Session health validation
-    - Graceful session migration
-    """
-    
     async def recover_all_sessions(self) -> Dict[str, str]:
-        """Recover all agent sessions from persistent storage"""
         recovered_sessions = {}
         session_files = glob.glob("sessions/*.session")
         
@@ -267,7 +189,6 @@ class SessionRecoveryManager:
                 session_id = session_data['session_id']
                 agent_id = session_data['agent_id']
                 
-                # Validate session is still active
                 if await self.session_manager.resume_session(session_id):
                     recovered_sessions[agent_id] = session_id
                     logger.info(f"Recovered session for {agent_id}: {session_id}")
@@ -279,21 +200,6 @@ class SessionRecoveryManager:
                 logger.error(f"Failed to recover session from {session_file}: {e}")
         
         return recovered_sessions
-    
-    async def create_session_checkpoint(self, agent_id: str, session_id: str):
-        """Create persistent checkpoint for session recovery"""
-        checkpoint_data = {
-            'agent_id': agent_id,
-            'session_id': session_id,
-            'created_at': datetime.utcnow().isoformat(),
-            'last_checkpoint': datetime.utcnow().isoformat()
-        }
-        
-        os.makedirs('sessions', exist_ok=True)
-        checkpoint_file = f"sessions/{agent_id}.session"
-        
-        with open(checkpoint_file, 'w') as f:
-            json.dump(checkpoint_data, f, indent=2)
 ```
 
 #### **4. Session Best Practices Summary**
@@ -347,656 +253,60 @@ sequenceDiagram
     
     O->>AL: "Read code_to_alpha.md and create tests"
     AL->>SP: Read implementation from code_to_alpha.md
-    AL->>SP: Write test strategy to alpha_to_beta.md
-    AL->>O: "Tests created, ready for validation"
+    AL->>SP: Write test cases to alpha_to_beta.md
+    AL->>O: "Test cases complete, ready for validation"
     
     O->>B: "Read alpha_to_beta.md and validate"
     B->>SP: Read tests from alpha_to_beta.md
-    B->>SP: Write validation results to beta_to_aria.md
-    B->>O: "Validation complete with results"
-    
-    O->>O: Analyze all outputs for completion
+    B->>SP: Write results to beta_to_aria.md
+    B->>O: "Validation complete"
 ```
 
-#### **3. Orchestrator Feedback Loop**
-```python
-class OrchestrationFeedbackLoop:
-    """
-    Manages the feedback loop between agents and orchestrator
-    
-    Features:
-    - Task completion analysis via OpenAI
-    - Multi-agent output synthesis
-    - Iterative refinement decisions
-    - Quality gate validation
-    """
-    
-    async def analyze_agent_outputs(self, task_id: str) -> CompletionAnalysis:
-        """Analyze all agent outputs to determine if task is complete"""
-        
-        # Collect all scratchpad outputs
-        scratchpad_data = await self._collect_scratchpad_outputs(task_id)
-        
-        # Use OpenAI to analyze completion status
-        analysis_prompt = f"""
-        As NEXUS Prime, analyze the collaborative work from your agent team:
-        
-        TASK: {task_id}
-        
-        AGENT OUTPUTS:
-        Aria (Coordinator): {scratchpad_data.get('aria_analysis', '')}
-        Code (Developer): {scratchpad_data.get('code_implementation', '')}
-        Alpha (Test Creator): {scratchpad_data.get('alpha_tests', '')}
-        Beta (Test Validator): {scratchpad_data.get('beta_validation', '')}
-        
-        ANALYSIS REQUIRED:
-        1. Is the original task fully completed?
-        2. Are there any gaps or issues that need addressing?
-        3. What specific follow-up actions (if any) are needed?
-        4. Which agent(s) should handle follow-up work?
-        5. Overall quality assessment (1-10)
-        
-        Respond in JSON format with completion_status, follow_up_actions, and rationale.
-        """
-        
-        response = await self.openai_client.chat.completions.create(
-            model="gpt-4-turbo-preview",
-            messages=[{"role": "user", "content": analysis_prompt}],
-            response_format={"type": "json_object"}
-        )
-        
-        return CompletionAnalysis.from_dict(json.loads(response.choices[0].message.content))
-    
-    async def create_follow_up_instructions(self, analysis: CompletionAnalysis) -> List[FollowUpTask]:
-        """Generate specific follow-up tasks based on analysis"""
-        
-        if analysis.completion_status == "complete":
-            return []
-        
-        follow_up_tasks = []
-        for action in analysis.follow_up_actions:
-            task = FollowUpTask(
-                task_id=f"followup_{uuid4()}",
-                original_task=analysis.task_id,
-                assigned_agent=action.agent_id,
-                instructions=action.specific_instructions,
-                expected_output=action.expected_deliverable,
-                priority="high" if action.blocks_completion else "medium"
-            )
-            follow_up_tasks.append(task)
-        
-        return follow_up_tasks
-```
-
-#### **4. Scratchpad Communication Implementation**
+#### **3. Scratchpad Manager Implementation**
 ```python
 class ScratchpadManager:
-    """
-    Manages inter-agent communication via shared files
+    def __init__(self, workspace_path: str):
+        self.scratchpad_dir = f"{workspace_path}/scratchpads"
+        os.makedirs(self.scratchpad_dir, exist_ok=True)
     
-    Features:
-    - Structured file-based communication
-    - Agent read/write permissions
-    - Conversation threading
-    - Change notifications
-    """
-    
-    def __init__(self, workspace_path: str = "workspaces/scratchpads"):
-        self.workspace_path = workspace_path
-        self.communication_channels = {
-            'aria_to_code': 'coordinator_to_developer.md',
-            'code_to_alpha': 'developer_to_test_creator.md', 
-            'alpha_to_beta': 'test_creator_to_validator.md',
-            'beta_to_aria': 'validator_to_coordinator.md',
-            'shared_context': 'global_project_context.md',
-            'orchestrator_feedback': 'orchestrator_instructions.md'
-        }
-    
-    async def write_to_scratchpad(self, channel: str, agent_id: str, content: str):
-        """Write agent communication to specific scratchpad"""
-        file_path = os.path.join(self.workspace_path, self.communication_channels[channel])
+    async def write_message(self, from_agent: str, to_agent: str, content: dict):
+        filename = f"{from_agent}_to_{to_agent}.md"
+        filepath = os.path.join(self.scratchpad_dir, filename)
         
         timestamp = datetime.utcnow().isoformat()
-        formatted_content = f"""
----
-FROM: {agent_id}
-TIMESTAMP: {timestamp}
----
-
-{content}
-
----
-"""
         
-        # Append to existing content to maintain conversation history
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        
-        with open(file_path, 'a') as f:
-            f.write(formatted_content)
+        with open(filepath, 'w') as f:
+            f.write(f"# Message from {from_agent} to {to_agent}\n\n")
+            f.write(f"**Timestamp**: {timestamp}\n\n")
+            f.write(f"**Content**:\n{json.dumps(content, indent=2)}\n\n")
     
-    async def read_from_scratchpad(self, channel: str) -> str:
-        """Read latest content from scratchpad"""
-        file_path = os.path.join(self.workspace_path, self.communication_channels[channel])
+    async def read_latest_message(self, from_agent: str, to_agent: str) -> dict:
+        filename = f"{from_agent}_to_{to_agent}.md"
+        filepath = os.path.join(self.scratchpad_dir, filename)
         
-        if not os.path.exists(file_path):
-            return ""
-        
-        with open(file_path, 'r') as f:
-            return f.read()
-    
-    async def create_agent_prompt_with_scratchpad_context(self, 
-                                                        agent_id: str, 
-                                                        task: str, 
-                                                        read_from: List[str] = None,
-                                                        write_to: str = None) -> str:
-        """Create agent prompt with scratchpad reading/writing instructions"""
-        
-        prompt_parts = [f"You are {agent_id}. Your task: {task}"]
-        
-        # Add reading instructions
-        if read_from:
-            for channel in read_from:
-                content = await self.read_from_scratchpad(channel)
-                if content:
-                    prompt_parts.append(f"\nREAD FROM {channel.upper()}:\n{content}")
-        
-        # Add writing instructions  
-        if write_to:
-            prompt_parts.append(f"""
-IMPORTANT: When you complete your work, write your output to the {write_to} scratchpad using this format:
-
----
-AGENT: {agent_id}
-TASK: {task}
-STATUS: [COMPLETE/IN_PROGRESS/BLOCKED]
----
-
-[Your detailed work output here]
-
----
-NEXT_STEPS: [What the next agent should do with this]
----
-""")
-        
-        return "\n".join(prompt_parts)
+        if os.path.exists(filepath):
+            with open(filepath, 'r') as f:
+                content = f.read()
+                # Parse content and extract JSON
+                return self._parse_scratchpad_content(content)
+        return {}
 ```
 
-#### **5. Bidirectional Communication Tracking**
-```python
-class CommunicationHistory:
-    """
-    Tracks bidirectional communication between orchestrator and agents
-    
-    Features:
-    - Message direction tracking (orchestrator→agent, agent→orchestrator)
-    - Conversation threading and context preservation
-    - Response time monitoring
-    - Communication pattern analysis
-    """
-    
-    def __init__(self, agent_id: str):
-        self.agent_id = agent_id
-        self.messages: List[CommunicationMessage] = []
-        self.last_direction: Optional[str] = None  # "to_agent" or "from_agent"
-        self.last_message_time: Optional[datetime] = None
-        self.conversation_state: str = "idle"  # "idle", "waiting_response", "processing"
-    
-    def add_message(self, direction: str, content: str, message_type: str = "task"):
-        """Record a message in the communication history"""
-        message = CommunicationMessage(
-            timestamp=datetime.utcnow(),
-            direction=direction,  # "to_agent" or "from_agent"
-            content=content,
-            message_type=message_type,
-            message_id=f"msg_{uuid4()}"
-        )
-        
-        self.messages.append(message)
-        self.last_direction = direction
-        self.last_message_time = message.timestamp
-        
-        # Update conversation state
-        if direction == "to_agent":
-            self.conversation_state = "waiting_response"
-        elif direction == "from_agent":
-            self.conversation_state = "processing"
-    
-    def get_last_exchange(self) -> Dict[str, CommunicationMessage]:
-        """Get the most recent orchestrator→agent and agent→orchestrator messages"""
-        last_to_agent = None
-        last_from_agent = None
-        
-        for message in reversed(self.messages):
-            if message.direction == "to_agent" and not last_to_agent:
-                last_to_agent = message
-            elif message.direction == "from_agent" and not last_from_agent:
-                last_from_agent = message
-            
-            if last_to_agent and last_from_agent:
-                break
-        
-        return {
-            "last_to_agent": last_to_agent,
-            "last_from_agent": last_from_agent
-        }
-    
-    def is_waiting_for_response(self) -> bool:
-        """Check if orchestrator is waiting for agent response"""
-        return (self.last_direction == "to_agent" and 
-                self.conversation_state == "waiting_response")
-    
-    def get_response_time(self) -> Optional[float]:
-        """Calculate response time for last exchange"""
-        exchange = self.get_last_exchange()
-        
-        if exchange["last_to_agent"] and exchange["last_from_agent"]:
-            if exchange["last_from_agent"].timestamp > exchange["last_to_agent"].timestamp:
-                delta = exchange["last_from_agent"].timestamp - exchange["last_to_agent"].timestamp
-                return delta.total_seconds()
-        
-        return None
+### 📨 Message Format Standard
 
-class CommunicationTracker:
-    """
-    Manages communication tracking for all agents
-    
-    Features:
-    - Cross-agent communication analysis
-    - Performance metrics tracking
-    - Communication bottleneck detection
-    - Real-time status monitoring
-    """
-    
-    def __init__(self):
-        self.agent_histories: Dict[str, CommunicationHistory] = {}
-    
-    def initialize_agent(self, agent_id: str):
-        """Initialize communication tracking for an agent"""
-        self.agent_histories[agent_id] = CommunicationHistory(agent_id)
-    
-    def record_orchestrator_to_agent(self, agent_id: str, content: str, message_type: str = "task"):
-        """Record message from orchestrator to agent"""
-        if agent_id not in self.agent_histories:
-            self.initialize_agent(agent_id)
-        
-        self.agent_histories[agent_id].add_message("to_agent", content, message_type)
-        
-        print(f"📤 NEXUS → {agent_id}: {message_type}")
-    
-    def record_agent_to_orchestrator(self, agent_id: str, content: str, message_type: str = "response"):
-        """Record message from agent to orchestrator"""
-        if agent_id not in self.agent_histories:
-            self.initialize_agent(agent_id)
-        
-        self.agent_histories[agent_id].add_message("from_agent", content, message_type)
-        
-        response_time = self.agent_histories[agent_id].get_response_time()
-        response_info = f" ({response_time:.1f}s)" if response_time else ""
-        
-        print(f"📥 {agent_id} → NEXUS: {message_type}{response_info}")
-    
-    def get_communication_status(self) -> Dict[str, dict]:
-        """Get current communication status for all agents"""
-        status = {}
-        
-        for agent_id, history in self.agent_histories.items():
-            status[agent_id] = {
-                "last_direction": history.last_direction,
-                "conversation_state": history.conversation_state,
-                "waiting_for_response": history.is_waiting_for_response(),
-                "last_message_time": history.last_message_time.isoformat() if history.last_message_time else None,
-                "message_count": len(history.messages),
-                "avg_response_time": self._calculate_avg_response_time(history)
-            }
-        
-        return status
-    
-    def _calculate_avg_response_time(self, history: CommunicationHistory) -> Optional[float]:
-        """Calculate average response time for an agent"""
-        response_times = []
-        
-        for i in range(len(history.messages) - 1):
-            current = history.messages[i]
-            next_msg = history.messages[i + 1]
-            
-            if (current.direction == "to_agent" and 
-                next_msg.direction == "from_agent"):
-                delta = next_msg.timestamp - current.timestamp
-                response_times.append(delta.total_seconds())
-        
-        return sum(response_times) / len(response_times) if response_times else None
-
-class SQLiteDatabase:
-    """
-    Auto-initializing SQLite database for NEXUS data persistence
-    
-    Features:
-    - Automatic database creation and schema setup
-    - Agent communication history storage
-    - Task execution tracking
-    - Session state persistence
-    """
-    
-    def __init__(self, db_path: str):
-        self.db_path = db_path
-    
-    async def initialize(self):
-        """Create database and tables if they don't exist"""
-        async with aiosqlite.connect(self.db_path) as db:
-            # Communication history table
-            await db.execute("""
-                CREATE TABLE IF NOT EXISTS communication_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    agent_id TEXT NOT NULL,
-                    timestamp TEXT NOT NULL,
-                    direction TEXT NOT NULL,
-                    message_type TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    response_time_seconds REAL
-                )
-            """)
-            
-            # Agent status table
-            await db.execute("""
-                CREATE TABLE IF NOT EXISTS agent_status (
-                    agent_id TEXT PRIMARY KEY,
-                    status TEXT NOT NULL,
-                    session_id TEXT,
-                    current_task TEXT,
-                    last_update TEXT NOT NULL
-                )
-            """)
-            
-            # Task execution table
-            await db.execute("""
-                CREATE TABLE IF NOT EXISTS task_execution (
-                    task_id TEXT PRIMARY KEY,
-                    task_title TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    assigned_agents TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    completed_at TEXT,
-                    quality_score REAL
-                )
-            """)
-            
-            await db.commit()
-            print(f"✅ SQLite database initialized: {self.db_path}")
-    
-    async def store_communication(self, agent_id: str, direction: str, 
-                                message_type: str, content: str, 
-                                response_time: float = None):
-        """Store communication message in database"""
-        async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("""
-                INSERT INTO communication_history 
-                (agent_id, timestamp, direction, message_type, content, response_time_seconds)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                agent_id,
-                datetime.utcnow().isoformat(),
-                direction,
-                message_type,
-                content[:500],  # Truncate long messages
-                response_time
-            ))
-            await db.commit()
-    
-    async def update_agent_status(self, agent_id: str, status: str, 
-                                session_id: str = None, current_task: str = None):
-        """Update agent status in database"""
-        async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("""
-                INSERT OR REPLACE INTO agent_status 
-                (agent_id, status, session_id, current_task, last_update)
-                VALUES (?, ?, ?, ?, ?)
-            """, (
-                agent_id,
-                status,
-                session_id,
-                current_task,
-                datetime.utcnow().isoformat()
-            ))
-            await db.commit()
-
-#### **6. Terminal User Interface**
-```python
-from textual.app import App, ComposeResult
-from textual.containers import Container, Vertical, Horizontal
-from textual.widgets import Header, Footer, Static, Input, Log, DataTable
-from textual.reactive import reactive
-from rich.console import RenderableType
-from rich.table import Table
-from rich.panel import Panel
-from rich.text import Text
-
-class NexusTerminalUI(App):
-    """
-    Real-time terminal interface for NEXUS Multi-Agent Orchestrator
-    
-    Features:
-    - Live Agent Activity Monitor 
-    - User input box for new tasks
-    - Real-time communication tracking
-    - SQLite-backed data persistence
-    """
-    
-    CSS = """
-    .agent-monitor {
-        border: thick $accent;
-        height: 15;
-    }
-    
-    .input-container {
-        height: 5;
-        border: thick $primary;
-    }
-    
-    .communication-log {
-        height: 1fr;
-        border: thick $secondary;
-    }
-    """
-    
-    def __init__(self, orchestrator: NexusOrchestrator):
-        super().__init__()
-        self.orchestrator = orchestrator
-        self.agent_status = {}
-        self.communication_count = 0
-    
-    def compose(self) -> ComposeResult:
-        """Create the terminal UI layout"""
-        yield Header()
-        
-        with Vertical():
-            # Agent Activity Monitor
-            yield Static(
-                self.render_agent_monitor(), 
-                id="agent-monitor",
-                classes="agent-monitor"
-            )
-            
-            # Communication Log
-            yield Log(
-                id="communication-log",
-                classes="communication-log"
-            )
-            
-            # User Input Box
-            with Container(classes="input-container"):
-                yield Static("💬 Enter your task for NEXUS:")
-                yield Input(
-                    placeholder="Type your request here (e.g., 'Build a secure login system')",
-                    id="user-input"
-                )
-        
-        yield Footer()
-    
-    def render_agent_monitor(self) -> RenderableType:
-        """Render the Agent Activity Monitor"""
-        table = Table(title="🧠 NEXUS Multi-Agent Dashboard", show_header=True)
-        table.add_column("Agent", style="cyan", width=20)
-        table.add_column("Status", width=12)
-        table.add_column("Current Task", width=30)
-        table.add_column("Response Time", width=12)
-        table.add_column("Messages", width=8)
-        
-        # System status row
-        table.add_row(
-            "🎯 NEXUS Prime",
-            "[green]● ACTIVE[/green]",
-            f"Orchestrating {len(self.agent_status)} agents",
-            "1.2s avg",
-            str(self.communication_count)
-        )
-        
-        # Individual agent rows
-        agents = [
-            ("🧭 Aria (Coordinator)", "aria_coordinator"),
-            ("💻 Code (Developer)", "code_developer"), 
-            ("🧪 Alpha (Test Creator)", "alpha_test_creator"),
-            ("🛡️ Beta (Test Validator)", "beta_test_validator")
-        ]
-        
-        for display_name, agent_id in agents:
-            status = self.agent_status.get(agent_id, {})
-            
-            status_text = self._format_status(status.get('status', 'IDLE'))
-            current_task = status.get('current_task', 'No active task')[:25] + "..." if len(status.get('current_task', '')) > 25 else status.get('current_task', 'No active task')
-            response_time = f"{status.get('avg_response_time', 0):.1f}s"
-            message_count = str(status.get('message_count', 0))
-            
-            table.add_row(
-                display_name,
-                status_text,
-                current_task,
-                response_time,
-                message_count
-            )
-        
-        return Panel(table, border_style="bright_blue")
-    
-    def _format_status(self, status: str) -> str:
-        """Format agent status with colors"""
-        status_map = {
-            'ACTIVE': '[green]● ACTIVE[/green]',
-            'IDLE': '[yellow]○ IDLE[/yellow]',
-            'EXECUTING': '[blue]◐ EXECUTING[/blue]',
-            'ERROR': '[red]✗ ERROR[/red]',
-            'WAITING': '[orange]⏳ WAITING[/orange]'
-        }
-        return status_map.get(status.upper(), f'[dim]{status}[/dim]')
-    
-    async def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Handle user input submission"""
-        if event.input.id == "user-input":
-            user_request = event.value.strip()
-            
-            if user_request:
-                # Log the user request
-                comm_log = self.query_one("#communication-log", Log)
-                comm_log.write_line(f"[bold blue]👤 User:[/bold blue] {user_request}")
-                
-                # Clear input
-                event.input.value = ""
-                
-                # Process the request through orchestrator
-                await self.process_user_request(user_request)
-    
-    async def process_user_request(self, request: str):
-        """Process user request through the orchestrator"""
-        try:
-            comm_log = self.query_one("#communication-log", Log)
-            comm_log.write_line(f"[green]🧠 NEXUS:[/green] Processing request...")
-            
-            # Create and distribute task
-            plan = await self.orchestrator.distribute_task(request)
-            comm_log.write_line(f"[green]🧠 NEXUS:[/green] Task plan created with {len(plan.tasks)} tasks")
-            
-            # Execute with real-time updates
-            result = await self.orchestrator.coordinate_execution(plan)
-            
-            # Show completion
-            comm_log.write_line(f"[green]✅ NEXUS:[/green] Task completed! Quality score: {result.quality_score}/10")
-            
-        except Exception as e:
-            comm_log = self.query_one("#communication-log", Log)
-            comm_log.write_line(f"[red]❌ ERROR:[/red] {str(e)}")
-    
-    async def update_agent_status(self, agent_id: str, status_data: dict):
-        """Update agent status and refresh display"""
-        self.agent_status[agent_id] = status_data
-        self.communication_count += 1
-        
-        # Update the agent monitor display
-        monitor = self.query_one("#agent-monitor")
-        monitor.update(self.render_agent_monitor())
-        
-        # Log the status change
-        comm_log = self.query_one("#communication-log", Log)
-        comm_log.write_line(
-            f"[cyan]{agent_id}:[/cyan] {status_data.get('status', 'unknown')}"
-        )
-    
-    def run_nexus_chat(self):
-        """Main entry point for nexus-chat command"""
-        self.run()
-
-async def start_nexus_chat():
-    """
-    Main entry point for the nexus-chat terminal application
-    
-    Usage: python -m nexus.chat
-    or: nexus-chat (if installed as CLI tool)
-    """
-    try:
-        # Initialize environment and orchestrator
-        env_manager = EnvironmentManager()
-        workspace_config = env_manager.get_workspace_config()
-        
-        print(f"🧬 Starting NEXUS Chat Interface...")
-        print(f"📁 Workspace: {workspace_config['workspace_path']}")
-        print(f"🤖 Model: {workspace_config['openai_model']}")
-        
-        # Initialize database
-        database = SQLiteDatabase(workspace_config['database_path'])
-        await database.initialize()
-        
-        # Create orchestrator
-        orchestrator = NexusOrchestrator(OrchestratorConfig(), workspace_config['workspace_path'])
-        await orchestrator.start_orchestration()
-        
-        # Start terminal UI
-        app = NexusTerminalUI(orchestrator)
-        app.run_nexus_chat()
-        
-    except Exception as e:
-        print(f"❌ Failed to start NEXUS Chat: {e}")
-        print("Please check your .env file and ensure Claude Code CLI is installed")
-
-# CLI entry point
-if __name__ == "__main__":
-    import asyncio
-    asyncio.run(start_nexus_chat())
-```
-
-### JSON Message Schema
-All communication follows a standardized JSON protocol ensuring type safety and reliability:
-
+#### **Orchestrator → Agent Message Schema**
 ```json
 {
   "message_id": "msg_20250525_184530_abc123",
   "timestamp": "2025-05-25T18:45:30.123Z",
-  "protocol_version": "1.0",
   "from": {
     "agent_id": "nexus_prime",
-    "agent_type": "orchestrator",
-    "instance_id": "orch_001"
+    "agent_type": "openai_orchestrator"
   },
   "to": {
     "agent_id": "aria_coordinator", 
     "agent_type": "claude_code_agent",
-    "instance_id": "claude_001"
+    "session_id": "claude_session_abc123"
   },
   "message_type": "task_assignment",
   "priority": "high",
@@ -1021,21 +331,15 @@ All communication follows a standardized JSON protocol ensuring type safety and 
           "compliance": ["GDPR", "SOX"],
           "technologies": ["OAuth2", "JWT", "bcrypt"]
         }
-      },
-      "context": {
-        "project_background": "Enterprise SaaS platform requiring secure multi-tenant authentication",
-        "existing_systems": ["PostgreSQL", "Node.js", "React"],
-        "team_preferences": ["TypeScript", "REST APIs", "microservices"]
       }
     }
   },
   "response_expected": true,
-  "timeout_seconds": 7200,
-  "conversation_thread": "thread_auth_analysis_001"
+  "timeout_seconds": 7200
 }
 ```
 
-### Agent Response Schema
+#### **Agent Response Schema**
 ```json
 {
   "message_id": "resp_20250525_184545_def456",
@@ -1060,25 +364,10 @@ All communication follows a standardized JSON protocol ensuring type safety and 
       },
       "recommendations": [
         "Implement OAuth2 with PKCE for enhanced security",
-        "Use JWT with short expiration times and refresh tokens",
-        "Deploy rate limiting and account lockout policies"
-      ],
-      "next_steps": [
-        "Review security recommendations with team",
-        "Create detailed implementation timeline",
-        "Set up development environment"
-      ]
-    },
-    "agent_feedback": {
-      "clarity_rating": 9,
-      "complexity_rating": 7,
-      "additional_questions": [
-        "Should we implement SSO integration?",
-        "What's the preferred session timeout duration?"
+        "Use JWT with short expiration times and refresh tokens"
       ]
     }
-  },
-  "conversation_thread": "thread_auth_analysis_001"
+  }
 }
 ```
 
@@ -1097,36 +386,24 @@ All communication follows a standardized JSON protocol ensuring type safety and 
     "communication_style": "structured and methodical",
     "decision_making": "data-driven with risk analysis",
     "collaboration_style": "facilitator and consensus-builder",
-    "stress_response": "increases documentation and planning detail"
+    "strengths": [
+      "Requirements gathering and analysis",
+      "Risk assessment and mitigation planning", 
+      "Project roadmap development",
+      "Stakeholder communication"
+    ],
+    "preferences": {
+      "information_format": "detailed specifications with clear structure",
+      "workflow_style": "planned and systematic approach",
+      "feedback_style": "constructive with actionable recommendations"
+    }
   },
-  "expertise_areas": [
-    "project_planning",
-    "risk_analysis", 
-    "requirements_gathering",
-    "technical_research",
-    "stakeholder_coordination",
-    "process_optimization"
-  ],
-  "capabilities": [
-    "research_and_analysis",
-    "strategic_planning", 
-    "technical_documentation",
-    "feasibility_studies",
-    "timeline_estimation",
-    "resource_allocation"
-  ],
-  "claude_configuration": {
-    "model": "claude-3-sonnet-20240229",
-    "max_tokens": 4000,
-    "temperature": 0.3,
-    "system_prompt": "You are Aria, a highly organized and analytical project coordinator. Your role is to research, analyze, and create comprehensive plans. You approach every task methodically, considering risks and dependencies. You communicate in a structured way and always provide actionable insights.",
-    "tools_enabled": ["web_search", "file_analysis", "documentation_tools"]
-  },
-  "memory_system": {
-    "conversation_retention": "full_session",
-    "learning_patterns": "progressive_expertise_building",
-    "context_preservation": "project_and_domain_specific"
-  }
+  "expertise_domains": [
+    "software_architecture",
+    "project_management",
+    "risk_analysis",
+    "requirements_engineering"
+  ]
 }
 ```
 
@@ -1137,128 +414,92 @@ All communication follows a standardized JSON protocol ensuring type safety and 
   "name": "Code",
   "role": "developer",
   "personality_profile": {
-    "core_traits": ["creative", "precise", "quality-focused", "innovative"],
+    "core_traits": ["creative", "precise", "innovative", "quality-focused"],
     "communication_style": "technical and solution-oriented", 
-    "decision_making": "best-practices driven with creative problem-solving",
-    "collaboration_style": "mentor and knowledge-sharer",
-    "stress_response": "focuses on code quality and testing"
+    "decision_making": "best practices with innovation",
+    "collaboration_style": "hands-on problem solver",
+    "strengths": [
+      "Clean code implementation",
+      "Architecture design and patterns",
+      "Performance optimization",
+      "Code refactoring and improvement"
+    ],
+    "preferences": {
+      "information_format": "clear requirements with technical context",
+      "workflow_style": "iterative development with frequent testing",
+      "feedback_style": "specific technical suggestions"
+    }
   },
-  "expertise_areas": [
+  "expertise_domains": [
     "full_stack_development",
-    "software_architecture",
-    "code_optimization", 
     "design_patterns",
-    "api_design",
-    "database_design"
-  ],
-  "capabilities": [
-    "code_generation",
-    "refactoring_and_optimization",
-    "architecture_design",
-    "debugging_and_troubleshooting", 
-    "performance_analysis",
-    "security_implementation"
-  ],
-  "claude_configuration": {
-    "model": "claude-3-sonnet-20240229", 
-    "max_tokens": 8000,
-    "temperature": 0.1,
-    "system_prompt": "You are Code, a skilled and creative software developer. You write clean, efficient, and well-documented code following best practices. You think about scalability, maintainability, and performance. You explain your implementation decisions and provide multiple solutions when appropriate.",
-    "tools_enabled": ["code_execution", "file_editing", "git_operations", "terminal_access"]
-  },
-  "memory_system": {
-    "conversation_retention": "full_session",
-    "learning_patterns": "technical_pattern_recognition",
-    "context_preservation": "codebase_and_architecture_aware"
-  }
+    "performance_optimization", 
+    "code_quality"
+  ]
 }
 ```
 
 ### 🧪 Alpha the Test Creator
 ```json
 {
-  "agent_id": "alpha_test_creator",
-  "name": "Alpha", 
+  "agent_id": "alpha_test_creator", 
+  "name": "Alpha",
   "role": "test_creator",
   "personality_profile": {
-    "core_traits": ["systematic", "thorough", "edge-case-focused", "detail-oriented"],
-    "communication_style": "precise and coverage-focused",
-    "decision_making": "comprehensive and scenario-based",
-    "collaboration_style": "quality_advocate and risk_identifier", 
-    "stress_response": "increases test coverage and edge case analysis"
+    "core_traits": ["systematic", "thorough", "detail-oriented", "quality-assurance-focused"],
+    "communication_style": "comprehensive and verification-focused",
+    "decision_making": "coverage-driven and edge-case aware",
+    "collaboration_style": "quality guardian and validator",
+    "strengths": [
+      "Comprehensive test strategy development",
+      "Edge case identification",
+      "Test automation framework design",
+      "Quality metrics and coverage analysis"
+    ],
+    "preferences": {
+      "information_format": "detailed specifications with acceptance criteria",
+      "workflow_style": "systematic testing with full coverage",
+      "feedback_style": "quality-focused with improvement suggestions"
+    }
   },
-  "expertise_areas": [
-    "test_strategy_design",
-    "test_case_generation",
-    "coverage_analysis",
-    "testing_frameworks",
+  "expertise_domains": [
+    "test_strategy",
     "quality_assurance",
-    "automation_design"
-  ],
-  "capabilities": [
-    "unit_test_creation",
-    "integration_test_design", 
-    "end_to_end_test_planning",
-    "test_data_generation",
-    "mock_and_stub_creation",
-    "performance_test_design"
-  ],
-  "claude_configuration": {
-    "model": "claude-3-sonnet-20240229",
-    "max_tokens": 6000, 
-    "temperature": 0.2,
-    "system_prompt": "You are Alpha, a meticulous test strategist and test case creator. You think about edge cases, failure scenarios, and comprehensive coverage. You create thorough test suites that catch bugs before they reach production. You focus on both positive and negative test cases.",
-    "tools_enabled": ["test_runners", "coverage_tools", "file_editing", "code_analysis"]
-  },
-  "memory_system": {
-    "conversation_retention": "full_session",
-    "learning_patterns": "bug_pattern_recognition", 
-    "context_preservation": "test_coverage_and_quality_metrics"
-  }
+    "test_automation",
+    "coverage_analysis"
+  ]
 }
 ```
 
 ### 🛡️ Beta the Test Validator
 ```json
 {
-  "agent_id": "beta_test_validator", 
-  "name": "Beta",
+  "agent_id": "beta_test_validator",
+  "name": "Beta", 
   "role": "test_validator",
   "personality_profile": {
-    "core_traits": ["persistent", "problem-solving", "validation-focused", "thorough"],
-    "communication_style": "diagnostic and solution-oriented",
-    "decision_making": "evidence-based with root cause analysis", 
-    "collaboration_style": "problem_solver and quality_guardian",
-    "stress_response": "deepens debugging analysis and increases validation rigor"
+    "core_traits": ["persistent", "analytical", "problem-solving", "results-oriented"],
+    "communication_style": "results-driven and evidence-based",
+    "decision_making": "validation-focused with continuous improvement",
+    "collaboration_style": "feedback provider and continuous improver",
+    "strengths": [
+      "Test execution and automation",
+      "Bug identification and analysis",
+      "Performance testing and optimization",
+      "CI/CD integration and monitoring"
+    ],
+    "preferences": {
+      "information_format": "executable test cases with clear expectations",
+      "workflow_style": "automated execution with detailed reporting",
+      "feedback_style": "actionable results with improvement paths"
+    }
   },
-  "expertise_areas": [
+  "expertise_domains": [
     "test_execution",
-    "failure_analysis", 
-    "debugging_strategies",
-    "regression_testing",
-    "performance_validation",
-    "security_testing"
-  ],
-  "capabilities": [
-    "test_automation_execution",
-    "bug_reproduction_and_isolation",
-    "performance_benchmarking",
-    "security_vulnerability_scanning", 
-    "regression_test_maintenance",
+    "bug_analysis",
+    "performance_testing",
     "ci_cd_integration"
-  ],
-  "claude_configuration": {
-    "model": "claude-3-sonnet-20240229",
-    "max_tokens": 6000,
-    "temperature": 0.1, 
-    "system_prompt": "You are Beta, a persistent test validator and quality guardian. You execute tests, analyze failures, and ensure quality standards. You're excellent at debugging, root cause analysis, and ensuring nothing slips through the cracks. You validate that implementations meet requirements.",
-    "tools_enabled": ["test_runners", "debugging_tools", "performance_monitors", "security_scanners"]
-  },
-  "memory_system": {
-    "conversation_retention": "full_session",
-    "learning_patterns": "failure_pattern_recognition",
-    "context_preservation": "quality_metrics_and_bug_history"
-  }
+  ]
 }
 ```
 
@@ -1266,1484 +507,636 @@ All communication follows a standardized JSON protocol ensuring type safety and 
 
 ## ⚡ Real-Time Feedback System
 
-### 📊 Live Dashboard Features
+### 📊 Live Status Broadcasting
 
-**1. Agent Activity Monitor**
-```
-┌─────────────────────────────────────────────────────────────┐
-│ 🧠 NEXUS Multi-Agent Dashboard                             │
-├─────────────────────────────────────────────────────────────┤
-│ 🎯 Orchestrator Status: ● ACTIVE                           │
-│ 📈 System Load: 68% (4/6 agents active)                    │
-│ ⏱️  Average Response Time: 1.2s                             │
-├─────────────────────────────────────────────────────────────┤
-│ Agent Status:                                               │
-│ 🧭 Aria (Coordinator)    ● ACTIVE    Task: Requirements    │
-│ 💻 Code (Developer)      ● ACTIVE    Task: Implementation  │  
-│ 🧪 Alpha (Test Creator)  ● IDLE      Last: 2m ago         │
-│ 🛡️ Beta (Test Validator) ● ACTIVE    Task: Bug Analysis   │
-├─────────────────────────────────────────────────────────────┤
-│ Active Tasks (3):                                           │
-│ 🔴 HIGH   │ User Auth System        │ Code     │ 45% │ 1h  │
-│ 🟡 MEDIUM │ API Documentation       │ Aria     │ 80% │ 15m │
-│ 🟢 LOW    │ Performance Tests       │ Beta     │ 20% │ 2h  │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**2. Real-Time Communication Flow**
-```mermaid
-sequenceDiagram
-    participant User
-    participant NEXUS as 🧠 NEXUS Prime
-    participant Aria as 🧭 Aria
-    participant Code as 💻 Code
-    participant Alpha as 🧪 Alpha
-    participant Beta as 🛡️ Beta
+```python
+class StatusBroadcaster:
+    def __init__(self):
+        self.status_channel = "agent_status"
+        self.subscribers = []
+        self.current_status = {}
     
-    User->>NEXUS: "Build secure login system"
-    NEXUS->>NEXUS: Analyze request & plan distribution
+    async def broadcast_status(self, agent_id: str, status: dict):
+        message = {
+            "agent_id": agent_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "status": status,
+            "event_type": "status_update"
+        }
+        
+        self.current_status[agent_id] = message
+        
+        for subscriber in self.subscribers:
+            await subscriber.receive_status(message)
     
-    par Parallel Task Assignment
-        NEXUS->>Aria: Research security requirements
-        NEXUS->>Code: Prepare for implementation
-        NEXUS->>Alpha: Plan test strategy
-    end
-    
-    Aria->>NEXUS: Security analysis complete
-    NEXUS->>Code: Implement with Aria's specifications
-    
-    Code->>NEXUS: Implementation ready
-    NEXUS->>Alpha: Create comprehensive tests
-    NEXUS->>Beta: Prepare validation environment
-    
-    par Parallel Testing
-        Alpha->>NEXUS: Test cases created
-        Beta->>NEXUS: Validation complete
-    end
-    
-    NEXUS->>User: ✅ Secure login system complete with tests
+    async def get_all_agent_status(self) -> dict:
+        return self.current_status
 ```
 
-**3. Performance Metrics Dashboard**
-```json
-{
-  "real_time_metrics": {
-    "timestamp": "2025-05-25T18:45:00Z",
-    "system_health": {
-      "orchestrator_status": "healthy",
-      "active_agents": 4,
-      "total_agents": 4,
-      "cpu_usage": 68.5,
-      "memory_usage": 45.2,
-      "response_time_avg_ms": 1200
-    },
-    "task_metrics": {
-      "tasks_completed_today": 15,
-      "tasks_in_progress": 3,
-      "tasks_queued": 2,
-      "average_completion_time_minutes": 45,
-      "success_rate_percentage": 96.8
-    },
-    "agent_performance": {
-      "aria_coordinator": {
-        "status": "active",
-        "tasks_completed": 8,
-        "average_quality_score": 9.2,
-        "current_task": "requirements_analysis",
-        "estimated_completion": "15_minutes"
-      },
-      "code_developer": {
-        "status": "active", 
-        "tasks_completed": 12,
-        "average_quality_score": 9.5,
-        "current_task": "authentication_implementation",
-        "estimated_completion": "60_minutes"
-      },
-      "alpha_test_creator": {
-        "status": "idle",
-        "tasks_completed": 6,
-        "average_quality_score": 9.0,
-        "last_activity": "2_minutes_ago"
-      },
-      "beta_test_validator": {
-        "status": "active",
-        "tasks_completed": 7, 
-        "average_quality_score": 9.3,
-        "current_task": "bug_analysis",
-        "estimated_completion": "30_minutes"
-      }
-    }
-  }
-}
+### 📈 Progress Tracking
+
+```python
+class ProgressTracker:
+    def __init__(self):
+        self.task_progress = {}
+        self.milestones = {}
+    
+    async def update_progress(self, task_id: str, agent_id: str, progress: float):
+        if task_id not in self.task_progress:
+            self.task_progress[task_id] = {}
+        
+        self.task_progress[task_id][agent_id] = {
+            "progress": progress,
+            "timestamp": datetime.utcnow().isoformat(),
+            "status": "in_progress" if progress < 1.0 else "completed"
+        }
+        
+        await self.broadcast_progress_update(task_id)
+    
+    async def calculate_overall_progress(self, task_id: str) -> float:
+        if task_id not in self.task_progress:
+            return 0.0
+        
+        agent_progress = self.task_progress[task_id]
+        if not agent_progress:
+            return 0.0
+        
+        total_progress = sum(data["progress"] for data in agent_progress.values())
+        return total_progress / len(agent_progress)
 ```
 
 ---
 
 ## 🚀 Implementation Guide
 
-### Phase 1: Core Infrastructure (Week 1-2)
+### Core System Components
 
-**1.1 Environment Setup**
-```bash
-# Python 3.9+ with asyncio support
-pip install openai>=1.0.0 pydantic>=2.0.0 websockets>=11.0.0 python-dotenv>=1.0.0
-
-# Terminal UI and database
-pip install rich>=13.0.0 textual>=0.40.0 aiosqlite>=0.19.0
-
-# Claude Code CLI installation 
-# (Follow Anthropic's official installation guide)
-
-# Environment configuration
-cp .env.example .env
-# Edit .env to include:
-# OPENAI_API_KEY=your_openai_api_key_here
-```
-
-**1.1.1 Environment Configuration**
+#### 1. NEXUS Orchestrator
 ```python
-# config/environment.py
-import os
-from pathlib import Path
-from dotenv import load_dotenv
-
-class EnvironmentManager:
-    """
-    Manages environment variables and configuration loading
-    
-    Features:
-    - Automatic .env file detection and loading
-    - OpenAI API key validation
-    - Workspace path resolution
-    - Configuration validation
-    """
-    
-    def __init__(self, workspace_path: str = None):
-        self.workspace_path = Path(workspace_path or os.getcwd())
-        self.env_file = self.workspace_path / ".env"
-        self.load_environment()
-    
-    def load_environment(self):
-        """Load environment variables from workspace .env file"""
-        if self.env_file.exists():
-            load_dotenv(self.env_file)
-            print(f"✅ Loaded environment from: {self.env_file}")
-        else:
-            print(f"⚠️  No .env file found at: {self.env_file}")
-            print("Please create .env file with OPENAI_API_KEY")
-    
-    def get_openai_api_key(self) -> str:
-        """Get and validate OpenAI API key from environment"""
-        api_key = os.getenv('OPENAI_API_KEY')
-        
-        if not api_key:
-            raise EnvironmentError(
-                "OPENAI_API_KEY not found in environment. "
-                f"Please add it to {self.env_file}"
-            )
-        
-        if not api_key.startswith('sk-'):
-            raise EnvironmentError(
-                "Invalid OPENAI_API_KEY format. Should start with 'sk-'"
-            )
-        
-        return api_key
-    
-    def get_openai_model(self) -> str:
-        """Get OpenAI model from environment with default fallback"""
-        return os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview')
-    
-    def get_workspace_config(self) -> dict:
-        """Get complete workspace configuration"""
-        return {
-            'workspace_path': str(self.workspace_path),
-            'env_file': str(self.env_file),
-            'openai_api_key': self.get_openai_api_key(),
-            'openai_model': self.get_openai_model(),
-            'scratchpad_path': str(self.workspace_path / 'scratchpads'),
-            'sessions_path': str(self.workspace_path / 'sessions'),
-            'logs_path': str(self.workspace_path / 'logs'),
-            'database_path': str(self.workspace_path / 'nexus.db')
-        }
-```
-
-**1.2 Core Orchestrator Implementation**
-```python
-# Language: Python
-# Architecture: Async/await with event-driven messaging
-# Dependencies: OpenAI SDK, asyncio, pydantic, websockets
-
-class NexusOrchestrator:
-    """
-    Core orchestrator managing multiple Claude Code agents
-    
-    Responsibilities:
-    - Task analysis and distribution
-    - Agent coordination and monitoring  
-    - Real-time communication management
-    - Performance optimization
-    - Session lifecycle management
-    """
-    
-    def __init__(self, config: OrchestratorConfig, workspace_path: str = None):
-        # Initialize environment manager and load configuration
-        self.env_manager = EnvironmentManager(workspace_path)
-        workspace_config = self.env_manager.get_workspace_config()
-        
-        # Initialize OpenAI client with API key and model from .env
-        self.openai_client = AsyncOpenAI(api_key=workspace_config['openai_api_key'])
-        self.openai_model = workspace_config['openai_model']
-        
-        # Core components
-        self.agents: Dict[str, ClaudeCodeAgent] = {}
-        self.task_queue = AsyncPriorityQueue()
-        self.message_bus = MessageBus()
-        self.health_monitor = HealthMonitor()
+class NEXUSOrchestrator:
+    def __init__(self):
         self.session_manager = SessionManager()
-        self.scratchpad_manager = ScratchpadManager(workspace_config['scratchpad_path'])
-        self.feedback_loop = OrchestrationFeedbackLoop(self.openai_client, self.openai_model)
-        self.database = SQLiteDatabase(workspace_config['database_path'])
+        self.scratchpad_manager = ScratchpadManager("./workspace")
+        self.status_broadcaster = StatusBroadcaster()
+        self.progress_tracker = ProgressTracker()
+        self.agents = {}
+        self.task_queue = asyncio.Queue()
         
-        # Session and communication tracking
-        self.active_sessions: Dict[str, str] = {}  # agent_id -> session_id
-        self.communication_tracker = CommunicationTracker()
+    async def initialize_agents(self):
+        """Initialize all Claude Code agent sessions"""
+        agent_configs = [
+            {"id": "aria", "prompt": self._get_aria_prompt()},
+            {"id": "code", "prompt": self._get_code_prompt()},
+            {"id": "alpha", "prompt": self._get_alpha_prompt()},
+            {"id": "beta", "prompt": self._get_beta_prompt()}
+        ]
         
-        # Workspace configuration
-        self.workspace_config = workspace_config
-        
-        print(f"🧠 NEXUS Orchestrator initialized")
-        print(f"📁 Workspace: {workspace_config['workspace_path']}")
-        print(f"🔑 OpenAI API Key: {'sk-***' + workspace_config['openai_api_key'][-4:]}")
-        print(f"📝 Scratchpads: {workspace_config['scratchpad_path']}")
-        print(f"🔄 Sessions: {workspace_config['sessions_path']}")
+        for config in agent_configs:
+            session_id = await self.session_manager.create_session(
+                config["id"], config["prompt"]
+            )
+            self.agents[config["id"]] = session_id
+            
+            await self.status_broadcaster.broadcast_status(
+                config["id"], {"status": "initialized", "session_id": session_id}
+            )
     
-    async def start_orchestration(self):
-        """Initialize all agents and begin coordination"""
-        # Initialize agents with session recovery and communication tracking
-        for agent_config in self.config.agents:
-            agent = ClaudeCodeAgent(agent_config)
-            
-            # Initialize communication tracking for this agent
-            self.communication_tracker.initialize_agent(agent.config.agent_id)
-            
-            # Attempt to recover existing sessions
-            if await agent.resume_session():
-                self.active_sessions[agent.config.agent_id] = agent.session_id
-                logger.info(f"Recovered session for {agent.config.agent_id}: {agent.session_id}")
-            
-            self.agents[agent.config.agent_id] = agent
-            
-            # Note: No background processes needed - Claude Code handles session context automatically
+    async def coordinate_task(self, task: dict) -> dict:
+        """Main orchestration logic"""
+        task_id = f"task_{int(time.time())}"
         
-        logger.info(f"Orchestrator started with {len(self.agents)} agents")
+        # Phase 1: Analysis (Aria)
+        await self.progress_tracker.update_progress(task_id, "aria", 0.0)
+        analysis = await self.delegate_to_agent("aria", {
+            "task": "analyze_requirements",
+            "details": task
+        })
+        await self.progress_tracker.update_progress(task_id, "aria", 1.0)
         
-    async def distribute_task(self, user_request: str) -> TaskDistributionPlan:
-        """Analyze request and create optimal task distribution"""
-        # Use OpenAI to analyze and distribute the task
-        distribution_prompt = f"""
-        As NEXUS Prime, analyze this user request and create an optimal task distribution plan:
+        # Phase 2: Implementation (Code)
+        await self.progress_tracker.update_progress(task_id, "code", 0.0)
+        implementation = await self.delegate_to_agent("code", {
+            "task": "implement_solution",
+            "requirements": analysis
+        })
+        await self.progress_tracker.update_progress(task_id, "code", 1.0)
         
-        Request: {user_request}
+        # Phase 3: Test Creation (Alpha)
+        await self.progress_tracker.update_progress(task_id, "alpha", 0.0)
+        tests = await self.delegate_to_agent("alpha", {
+            "task": "create_tests", 
+            "implementation": implementation
+        })
+        await self.progress_tracker.update_progress(task_id, "alpha", 1.0)
         
-        Available agents:
-        {self._format_agent_capabilities()}
+        # Phase 4: Validation (Beta)
+        await self.progress_tracker.update_progress(task_id, "beta", 0.0)
+        validation = await self.delegate_to_agent("beta", {
+            "task": "validate_tests",
+            "tests": tests,
+            "implementation": implementation
+        })
+        await self.progress_tracker.update_progress(task_id, "beta", 1.0)
         
-        Create a JSON plan with:
-        1. Task breakdown and dependencies
-        2. Agent assignments based on expertise
-        3. Parallel vs sequential execution strategy
-        4. Estimated timeline and resource allocation
+        return {
+            "task_id": task_id,
+            "analysis": analysis,
+            "implementation": implementation, 
+            "tests": tests,
+            "validation": validation,
+            "overall_progress": await self.progress_tracker.calculate_overall_progress(task_id)
+        }
+    
+    async def delegate_to_agent(self, agent_id: str, task: dict) -> str:
+        """Send task to specific agent"""
+        session_id = self.agents[agent_id]
+        
+        await self.status_broadcaster.broadcast_status(
+            agent_id, {"status": "processing", "task": task}
+        )
+        
+        prompt = f"""
+        Task: {task['task']}
+        Details: {json.dumps(task, indent=2)}
+        
+        Please complete this task following your role as {agent_id}.
         """
         
-        response = await self.openai_client.chat.completions.create(
-            model=self.openai_model,
-            messages=[{"role": "user", "content": distribution_prompt}],
-            response_format={"type": "json_object"}
+        response = await self.session_manager.send_to_session(session_id, prompt)
+        
+        await self.status_broadcaster.broadcast_status(
+            agent_id, {"status": "completed", "task": task}
         )
         
-        plan_data = json.loads(response.choices[0].message.content)
-        return TaskDistributionPlan.from_dict(plan_data)
-        
-    async def coordinate_execution(self, plan: TaskDistributionPlan) -> ExecutionResult:
-        """Manage collaborative execution with scratchpad communication"""
-        results = {}
-        
-        # Initialize shared workspace for this plan
-        await self.scratchpad_manager.initialize_workspace(plan.plan_id)
-        
-        # Execute tasks in dependency order (not parallel) to enable agent communication
-        for task in plan.get_execution_order():
-            agent = self.agents.get(task.assigned_agent)
-            if not agent:
-                raise OrchestratorError(f"Agent {task.assigned_agent} not found")
-            
-            # Ensure agent has active session
-            if not agent.session_id:
-                await agent.start_session(
-                    f"Starting collaborative session for: {task.title}"
-                )
-                self.active_sessions[agent.config.agent_id] = agent.session_id
-            
-            # Execute task with scratchpad integration
-            result = await self._execute_with_scratchpad_communication(agent, task)
-            results[task.task_id] = result
-            
-            # After each agent completes, analyze if we need feedback loops
-            if result.status == "completed":
-                completion_analysis = await self.feedback_loop.analyze_agent_outputs(task.task_id)
-                
-                # If task needs refinement, create follow-up tasks
-                if completion_analysis.completion_status != "complete":
-                    follow_up_tasks = await self.feedback_loop.create_follow_up_instructions(completion_analysis)
-                    
-                    # Execute follow-up tasks immediately
-                    for follow_up in follow_up_tasks:
-                        follow_up_agent = self.agents.get(follow_up.assigned_agent)
-                        follow_up_result = await self._execute_with_scratchpad_communication(
-                            follow_up_agent, follow_up
-                        )
-                        results[follow_up.task_id] = follow_up_result
-        
-        # Final orchestrator analysis of all work
-        final_analysis = await self.feedback_loop.analyze_complete_workflow(plan.plan_id)
-        
-        return ExecutionResult(
-            plan_id=plan.plan_id,
-            task_results=results,
-            overall_status=final_analysis.overall_status,
-            execution_time=time.time() - plan.created_at,
-            quality_score=final_analysis.quality_score,
-            agent_collaboration_metrics=final_analysis.collaboration_metrics
-        )
-        
-    async def _execute_with_scratchpad_communication(self, agent: ClaudeCodeAgent, task: Task) -> TaskResult:
-        """Execute task with agent-to-agent communication via scratchpads"""
-        try:
-            # Determine communication channels for this agent and task
-            read_channels = self._get_input_channels(agent.config.agent_id, task)
-            write_channel = self._get_output_channel(agent.config.agent_id, task)
-            
-            # Create enhanced prompt with scratchpad context
-            enhanced_prompt = await self.scratchpad_manager.create_agent_prompt_with_scratchpad_context(
-                agent_id=agent.config.agent_id,
-                task=task.description,
-                read_from=read_channels,
-                write_to=write_channel
-            )
-            
-            # Execute with real-time monitoring
-            await self.message_bus.broadcast_status_update(
-                AgentStatusUpdate(
-                    agent_id=agent.config.agent_id,
-                    status="executing",
-                    current_task=task.task_id,
-                    session_id=agent.session_id,
-                    communication_channels={"reading": read_channels, "writing": write_channel}
-                )
-            )
-            
-            # Record outbound communication
-            self.communication_tracker.record_orchestrator_to_agent(
-                agent.config.agent_id, enhanced_prompt, "task_execution"
-            )
-            
-            # Send enhanced prompt to agent
-            response = await agent.send_message(enhanced_prompt)
-            
-            # Record inbound communication
-            self.communication_tracker.record_agent_to_orchestrator(
-                agent.config.agent_id, response, "task_completion"
-            )
-            
-            # Extract and store agent's scratchpad output
-            await self._process_agent_scratchpad_output(agent.config.agent_id, response, write_channel)
-            
-            return TaskResult(
-                task_id=task.task_id,
-                agent_id=agent.config.agent_id,
-                result=response,
-                session_id=agent.session_id,
-                status="completed",
-                scratchpad_outputs={write_channel: await self.scratchpad_manager.read_from_scratchpad(write_channel)}
-            )
-            
-        except Exception as e:
-            await self.message_bus.broadcast_status_update(
-                AgentStatusUpdate(
-                    agent_id=agent.config.agent_id,
-                    status="error",
-                    current_task=task.task_id,
-                    error=str(e),
-                    session_id=agent.session_id
-                )
-            )
-            raise
-    
-    def _get_input_channels(self, agent_id: str, task: Task) -> List[str]:
-        """Determine which scratchpads this agent should read from"""
-        channel_map = {
-            'aria_coordinator': ['orchestrator_feedback', 'beta_to_aria'],
-            'code_developer': ['aria_to_code', 'orchestrator_feedback'],
-            'alpha_test_creator': ['code_to_alpha', 'orchestrator_feedback'],
-            'beta_test_validator': ['alpha_to_beta', 'orchestrator_feedback']
-        }
-        return channel_map.get(agent_id, ['orchestrator_feedback'])
-    
-    def _get_output_channel(self, agent_id: str, task: Task) -> str:
-        """Determine which scratchpad this agent should write to"""
-        channel_map = {
-            'aria_coordinator': 'aria_to_code',
-            'code_developer': 'code_to_alpha', 
-            'alpha_test_creator': 'alpha_to_beta',
-            'beta_test_validator': 'beta_to_aria'
-        }
-        return channel_map.get(agent_id, 'shared_context')
-        
-    async def _execute_with_monitoring(self, agent: ClaudeCodeAgent, task: Task) -> TaskResult:
-        """Execute task with real-time progress monitoring"""
-        try:
-            # Send real-time status update
-            await self.message_bus.broadcast_status_update(
-                AgentStatusUpdate(
-                    agent_id=agent.config.agent_id,
-                    status="executing",
-                    current_task=task.task_id,
-                    session_id=agent.session_id
-                )
-            )
-            
-            # Execute the task
-            result = await agent.execute_task(task)
-            
-            # Broadcast completion
-            await self.message_bus.broadcast_status_update(
-                AgentStatusUpdate(
-                    agent_id=agent.config.agent_id,
-                    status="completed",
-                    current_task=None,
-                    session_id=agent.session_id
-                )
-            )
-            
-            return result
-            
-        except Exception as e:
-            # Broadcast error status
-            await self.message_bus.broadcast_status_update(
-                AgentStatusUpdate(
-                    agent_id=agent.config.agent_id,
-                    status="error",
-                    current_task=task.task_id,
-                    error=str(e),
-                    session_id=agent.session_id
-                )
-            )
-            raise
+        return response
 ```
 
-**1.3 Claude Code Agent Wrapper**
+#### 2. Web Interface
 ```python
-class ClaudeCodeAgent:
-    """
-    Wrapper for Claude Code CLI with personality and persistence
-    
-    Features:
-    - Session ID management for conversation context
-    - Personality-driven prompting
-    - Memory and context preservation
-    - Session validation and recovery
-    - Conversation continuity via --resume flag
-    """
-    
-    def __init__(self, agent_config: AgentConfig):
-        self.config = agent_config
-        self.personality = PersonalityEngine(agent_config.personality_profile)
-        self.memory = AgentMemory(agent_config.memory_system)
-        # Note: No persistent process - Claude Code executes commands and exits
-        self.session_id: Optional[str] = None
-        self.session_file: str = f"sessions/{agent_config.agent_id}_session.txt"
-        
-    async def start_session(self, initial_prompt: str) -> str:
-        """Start a new Claude Code session and capture session ID"""
-        cmd = [
-            "claude", "-p", initial_prompt,
-            "--output-format", "json"
-        ]
-        
-        result = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        
-        stdout, stderr = await result.communicate()
-        
-        if result.returncode != 0:
-            raise ClaudeSessionError(f"Failed to start session: {stderr.decode()}")
-        
-        response_data = json.loads(stdout.decode())
-        self.session_id = response_data.get('session_id')
-        
-        # Persist session ID to file for recovery
-        os.makedirs(os.path.dirname(self.session_file), exist_ok=True)
-        with open(self.session_file, 'w') as f:
-            f.write(self.session_id)
-        
-        return self.session_id
-        
-    async def resume_session(self, session_id: Optional[str] = None) -> bool:
-        """Resume existing session by ID or from stored session file"""
-        if session_id:
-            self.session_id = session_id
-        elif os.path.exists(self.session_file):
-            with open(self.session_file, 'r') as f:
-                self.session_id = f.read().strip()
-        else:
-            return False
-        
-        # Test session validity with a simple probe
-        try:
-            await self.send_message("Status check", test_only=True)
-            return True
-        except Exception:
-            self.session_id = None
-            return False
-        
-    async def send_message(self, message: str, test_only: bool = False) -> str:
-        """Send message to existing Claude Code session"""
-        if not self.session_id:
-            raise ClaudeSessionError("No active session. Call start_session() first.")
-        
-        # Apply personality-driven prompt engineering
-        contextualized_prompt = self.personality.generate_contextual_prompt(
-            message, self.memory.get_current_context()
-        )
-        
-        cmd = [
-            "claude", "-p", contextualized_prompt,
-            "--resume", self.session_id,
-            "--output-format", "json"
-        ]
-        
-        if test_only:
-            # For session validation, use a minimal probe
-            cmd = ["claude", "-p", "OK", "--resume", self.session_id]
-        
-        result = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        
-        stdout, stderr = await result.communicate()
-        
-        if result.returncode != 0:
-            raise ClaudeSessionError(f"Session communication failed: {stderr.decode()}")
-        
-        if test_only:
-            return "OK"
-        
-        response_data = json.loads(stdout.decode())
-        response_text = response_data.get('content', '')
-        
-        # Store interaction in agent memory
-        await self.memory.store_interaction(AgentInteraction(
-            input_message=message,
-            output_message=response_text,
-            timestamp=datetime.utcnow(),
-            session_id=self.session_id
-        ))
-        
-        return response_text
-        
-    async def execute_task(self, task: Task) -> TaskResult:
-        """Execute task with proper session management"""
-        try:
-            # Ensure we have an active session
-            if not self.session_id:
-                await self.start_session(
-                    f"Hello, I'm {self.config.name}, your {self.config.role}. "
-                    f"I'm ready to help with {task.type} tasks."
-                )
-            elif not await self.resume_session():
-                # Session expired, start a new one
-                await self.start_session(
-                    f"Resuming work as {self.config.name}. "
-                    f"Previous session context will be restored."
-                )
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+
+app = FastAPI()
+orchestrator = NEXUSOrchestrator()
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+manager = ConnectionManager()
+
+@app.on_event("startup")
+async def startup_event():
+    await orchestrator.initialize_agents()
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            task = json.loads(data)
             
-            # Execute the actual task
-            task_prompt = self._format_task_prompt(task)
-            response = await self.send_message(task_prompt)
+            # Send task to orchestrator
+            result = await orchestrator.coordinate_task(task)
             
-            return TaskResult(
-                task_id=task.task_id,
-                agent_id=self.config.agent_id,
-                result=response,
-                session_id=self.session_id,
-                status="completed"
-            )
+            # Send result back to client
+            await websocket.send_text(json.dumps(result))
             
-        except Exception as e:
-            return TaskResult(
-                task_id=task.task_id,
-                agent_id=self.config.agent_id,
-                error=str(e),
-                session_id=self.session_id,
-                status="failed"
-            )
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+@app.get("/")
+async def get():
+    return HTMLResponse("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>NEXUS Control Panel</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+            .online { background-color: #d4edda; color: #155724; }
+            .processing { background-color: #fff3cd; color: #856404; }
+            textarea { width: 100%; height: 100px; }
+            button { padding: 10px 20px; margin: 10px 0; }
+        </style>
+    </head>
+    <body>
+        <h1>🧬 NEXUS Multi-Agent Orchestrator</h1>
+        <div id="status" class="status online">🟢 Connected to NEXUS</div>
         
-    async def validate_session(self) -> bool:
-        """Validate that session ID is still valid for conversation context"""
-        if not self.session_id:
-            return False
+        <h3>Agent Status</h3>
+        <div id="agentStatus"></div>
+        
+        <h3>Send Task</h3>
+        <textarea id="taskInput" placeholder="Describe your task..."></textarea>
+        <button onclick="sendTask()">Send to NEXUS</button>
+        
+        <h3>Results</h3>
+        <div id="results"></div>
+        
+        <script>
+            const ws = new WebSocket("ws://localhost:8000/ws");
             
-        try:
-            # Test session validity with a minimal probe
-            cmd = ["claude", "-p", "OK", "--resume", self.session_id]
+            ws.onopen = function(event) {
+                document.getElementById("status").innerHTML = "🟢 Connected to NEXUS";
+            };
             
-            result = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
+            ws.onmessage = function(event) {
+                const result = JSON.parse(event.data);
+                document.getElementById("results").innerHTML = `
+                    <h4>Task Results:</h4>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            };
             
-            stdout, stderr = await result.communicate()
-            return result.returncode == 0
-            
-        except Exception:
-            return False
+            function sendTask() {
+                const task = {
+                    description: document.getElementById("taskInput").value,
+                    timestamp: new Date().toISOString()
+                };
+                ws.send(JSON.stringify(task));
+            }
+        </script>
+    </body>
+    </html>
+    """)
+
+@app.get("/api/agents/status")
+async def get_agent_status():
+    return await orchestrator.status_broadcaster.get_all_agent_status()
+
+@app.get("/api/tasks/{task_id}/progress")
+async def get_task_progress(task_id: str):
+    progress = await orchestrator.progress_tracker.calculate_overall_progress(task_id)
+    return {"task_id": task_id, "progress": progress}
 ```
 
-### Phase 2: Agent Personality System (Week 3)
+### CLI Interface
 
-**2.1 Personality Engine**
 ```python
-class PersonalityEngine:
-    """
-    Manages agent personality traits and communication styles
-    
-    Features:
-    - Dynamic prompt generation based on personality
-    - Communication style adaptation
-    - Stress response patterns
-    - Learning and growth over time
-    """
-    
-    def generate_contextual_prompt(self, task: Task, context: Dict) -> str:
-        """Create personality-driven prompts for Claude Code"""
+import click
+import asyncio
+
+@click.group()
+def nexus():
+    """NEXUS Multi-Agent Orchestrator CLI"""
+    pass
+
+@nexus.command()
+@click.option('--task', prompt='Task description', help='Describe the task for NEXUS')
+def execute(task):
+    """Execute a task using NEXUS orchestration"""
+    async def run_task():
+        orchestrator = NEXUSOrchestrator()
+        await orchestrator.initialize_agents()
         
-    def adapt_communication_style(self, recipient: str, urgency: str) -> CommunicationStyle:
-        """Adjust communication based on context and recipient"""
-```
-
-**2.2 Memory and Learning System**
-```python
-class AgentMemory:
-    """
-    Persistent memory system for agents
-    
-    Features:
-    - Conversation history preservation
-    - Pattern learning and recognition
-    - Context-aware retrieval
-    - Cross-session continuity
-    """
-    
-    async def store_interaction(self, interaction: AgentInteraction):
-        """Store interaction with metadata and context"""
+        print(f"🧬 NEXUS: Processing task - {task}")
         
-    async def retrieve_relevant_context(self, current_task: Task) -> List[ContextItem]:
-        """Get relevant historical context for current task"""
-```
-
-### Phase 3: Communication Infrastructure (Week 4)
-
-**3.1 Message Bus Implementation**
-```python
-class MessageBus:
-    """
-    High-performance message routing and delivery system
-    
-    Features:
-    - Guaranteed delivery with retry logic
-    - Message ordering and priority
-    - Real-time status updates
-    - Error handling and recovery
-    """
-    
-    async def route_message(self, message: Message) -> MessageDeliveryResult:
-        """Route message to appropriate agent with delivery confirmation"""
+        result = await orchestrator.coordinate_task({"description": task})
         
-    async def broadcast_status_update(self, status: SystemStatus):
-        """Send real-time updates to monitoring dashboard"""
-```
+        print("✅ Task completed!")
+        print(f"📊 Results: {json.dumps(result, indent=2)}")
+    
+    asyncio.run(run_task())
 
-**3.2 Real-Time WebSocket Dashboard**
-```javascript
-// Frontend: React + WebSocket for real-time updates
-// Backend: WebSocket server integrated with message bus
+@nexus.command()
+def status():
+    """Check NEXUS system status"""
+    async def check_status():
+        orchestrator = NEXUSOrchestrator()
+        await orchestrator.initialize_agents()
+        
+        status = await orchestrator.status_broadcaster.get_all_agent_status()
+        
+        print("🧬 NEXUS System Status:")
+        for agent_id, agent_status in status.items():
+            print(f"  {agent_id}: {agent_status['status']}")
+    
+    asyncio.run(check_status())
 
-class RealTimeDashboard {
-    constructor() {
-        this.websocket = new WebSocket('ws://localhost:8080/dashboard');
-        this.agentStates = new Map();
-        this.taskQueue = [];
-    }
-    
-    handleAgentUpdate(agentData) {
-        // Update agent status in real-time
-        // Visualize task progress
-        // Display communication flow
-    }
-    
-    handleTaskProgress(taskData) {
-        // Update task completion percentages
-        // Show estimated completion times
-        // Display quality metrics
-    }
-}
-```
-
-### Phase 4: Testing and Validation (Week 5)
-
-**4.1 Integration Testing Strategy**
-```python
-async def test_multi_agent_workflow():
-    """
-    Comprehensive test of full multi-agent collaboration
-    
-    Scenario: Build complete authentication system
-    Agents: All four agents working in coordination
-    Validation: Code quality, test coverage, documentation
-    """
-    
-    # Test orchestrator task distribution
-    orchestrator = NexusOrchestrator(test_config)
-    result = await orchestrator.process_request(
-        "Build secure JWT authentication with comprehensive tests"
-    )
-    
-    # Validate agent coordination
-    assert result.aria_analysis.quality_score > 8.5
-    assert result.code_implementation.test_coverage > 90
-    assert result.alpha_tests.edge_case_coverage > 85
-    assert result.beta_validation.bug_count == 0
-```
-
-**4.2 Performance Benchmarking**
-```python
-async def benchmark_system_performance():
-    """
-    Performance testing for concurrent agent operations
-    
-    Metrics:
-    - Response time under load
-    - Memory usage with multiple agents
-    - Task throughput and quality
-    - Error recovery time
-    """
-    
-    # Load testing with 10 concurrent complex tasks
-    tasks = [generate_complex_task() for _ in range(10)]
-    start_time = time.time()
-    
-    results = await asyncio.gather(*[
-        orchestrator.process_request(task) for task in tasks
-    ])
-    
-    execution_time = time.time() - start_time
-    assert execution_time < 300  # 5 minutes max for 10 complex tasks
-    assert all(result.quality_score > 8.0 for result in results)
+if __name__ == '__main__':
+    nexus()
 ```
 
 ---
 
 ## 🎯 Success Metrics and KPIs
 
-### 📈 Performance Indicators
+### Performance Metrics
+- **Task Completion Rate**: >95%
+- **Average Response Time**: <30 seconds per agent
+- **Session Uptime**: >99.9%
+- **Agent Collaboration Efficiency**: >90%
 
-**System Performance:**
-- **Response Time**: < 2 seconds for task distribution
-- **Throughput**: 50+ tasks per hour with 4 agents
-- **Uptime**: 99.9% availability during operation
-- **Resource Usage**: < 2GB RAM, < 50% CPU per agent
+### Quality Metrics  
+- **Code Quality Score**: >8.5/10
+- **Test Coverage**: >90%
+- **Bug Detection Rate**: >95%
+- **Documentation Completeness**: >85%
 
-**Quality Metrics:**
-- **Code Quality Score**: > 9.0/10 (based on linting, complexity, documentation)
-- **Test Coverage**: > 90% for all generated code
-- **Bug Escape Rate**: < 2% (bugs found in production vs. development)
-- **Documentation Completeness**: > 95% API coverage
-
-**Agent Collaboration:**
-- **Task Completion Rate**: > 95% successful task completion
-- **Inter-Agent Communication Efficiency**: < 5% message retries
-- **Context Preservation**: > 98% relevant context retention across sessions
-- **Learning Progression**: Measurable improvement in agent performance over time
-
-### 🏆 Success Criteria
-
-**Technical Excellence:**
-1. **Seamless Agent Coordination**: All agents work together without conflicts
-2. **Personality Consistency**: Each agent maintains distinct personality traits
-3. **Memory Persistence**: Agents remember context across sessions
-4. **Real-Time Monitoring**: Live dashboard provides accurate system status
-
-**Business Value:**
-1. **Development Acceleration**: 3x faster project completion vs. single-agent approach
-2. **Quality Improvement**: Higher code quality through specialized review
-3. **Risk Reduction**: Better error detection through multi-agent validation
-4. **Knowledge Retention**: Persistent agent memory reduces context loss
+### User Experience Metrics
+- **Task Understanding Accuracy**: >92%
+- **User Satisfaction Score**: >4.5/5
+- **System Reliability**: >99.5%
 
 ---
 
 ## 🛠️ Technology Stack Recommendations
 
-### **Core Language: Python 3.9+**
-**Rationale**: Superior async support, excellent OpenAI integration, robust subprocess management, mature ecosystem for AI/ML workflows.
+### Core Technologies
+- **Orchestrator**: OpenAI GPT-4 Turbo API
+- **Agents**: Claude Code CLI
+- **Communication**: JSON message passing via files/WebSockets
+- **Session Management**: Python asyncio with persistent storage
+- **Web Interface**: FastAPI + WebSockets + HTML/JavaScript
+- **Storage**: File-based scratchpads + JSON session storage
 
-### **Primary Dependencies:**
-```python
-# AI and API Integration
-openai>=1.0.0              # OpenAI API client
-anthropic>=0.3.0            # Future Claude API integration
-
-# Async and Networking  
-asyncio                     # Core async functionality
-websockets>=11.0.0          # Real-time communication
-aiohttp>=3.8.0              # Async HTTP client/server
-
-# Data and Serialization
-pydantic>=2.0.0             # Data validation and serialization
-dataclasses-json>=0.6.0     # JSON serialization for dataclasses
-orjson>=3.8.0               # High-performance JSON parsing
-
-# Process and System Management
-psutil>=5.9.0               # Process monitoring
-supervisor>=4.2.0           # Process management and recovery
-
-# Storage and Caching
-redis>=4.0.0                # Message queue and caching
-aiosqlite>=0.19.0           # Async SQLite for agent memory
-
-# Monitoring and Logging
-structlog>=23.0.0           # Structured logging
-prometheus-client>=0.16.0   # Metrics collection
-rich>=13.0.0                # Beautiful console output
-
-# Development and Testing
-pytest>=7.0.0               # Testing framework
-pytest-asyncio>=0.21.0      # Async testing support
-black>=23.0.0               # Code formatting
-mypy>=1.0.0                 # Type checking
+### Dependencies
+```bash
+pip install openai anthropic fastapi uvicorn websockets click asyncio python-multipart
+npm install ws express socket.io  # if using Node.js components
 ```
 
-### **Frontend Dashboard (Optional):**
-```javascript
-// Real-time monitoring dashboard
-React 18+                   // UI framework
-Socket.io-client           // WebSocket communication  
-Chart.js                   // Performance visualizations
-Material-UI                // UI components
-TypeScript                 // Type safety
-```
-
-### **Infrastructure:**
-```yaml
-# Container orchestration
-Docker                     # Containerization
-Docker Compose            # Local development
-Kubernetes (optional)     # Production scaling
-
-# Monitoring and Observability  
-Grafana                   # Metrics dashboard
-Prometheus                # Metrics collection
-Jaeger (optional)         # Distributed tracing
-```
+### Infrastructure Requirements
+- **Minimum**: 2 CPU cores, 4GB RAM, 10GB storage
+- **Recommended**: 4 CPU cores, 8GB RAM, 50GB storage
+- **Network**: Stable internet connection for API calls
+- **OS**: Linux/macOS/Windows with Python 3.8+
 
 ---
 
 ## 🔧 Configuration Examples
 
-### **Orchestrator Configuration**
-```yaml
-# config/orchestrator.yaml
-orchestrator:
-  name: "NEXUS_Prime"
-  openai:
-    model: "gpt-4-turbo-preview"
-    api_key_env: "OPENAI_API_KEY"
-    max_tokens: 4000
-    temperature: 0.7
-  
-  performance:
-    max_concurrent_tasks: 10
-    task_timeout_seconds: 3600
-    health_check_interval: 30
-    
-  communication:
-    message_queue_type: "redis"  # or "memory" for development
-    redis_url: "redis://localhost:6379"
-    websocket_port: 8080
-    
-  monitoring:
-    enable_dashboard: true
-    metrics_retention_hours: 168  # 1 week
-    log_level: "INFO"
+### Environment Setup
+```bash
+# .env file
+OPENAI_API_KEY=your_openai_key_here
+ANTHROPIC_API_KEY=your_anthropic_key_here
+NEXUS_WORKSPACE=/path/to/workspace
+NEXUS_LOG_LEVEL=INFO
+NEXUS_SESSION_TIMEOUT=3600
+NEXUS_MAX_RETRIES=3
 ```
 
-### **Agent Configuration Template**
-```yaml
-# config/agents/aria_coordinator.yaml
-agent:
-  id: "aria_coordinator"
-  name: "Aria"
-  role: "coordinator"
-  
-  personality:
-    traits: ["analytical", "organized", "strategic"]
-    communication_style: "structured"
-    decision_making: "data_driven"
-    
-  claude_code:
-    model: "claude-3-sonnet-20240229"
-    max_tokens: 4000
-    temperature: 0.3
-    tools_enabled: ["web_search", "file_analysis"]
-    
-  capabilities:
-    primary: ["research", "analysis", "planning"]
-    secondary: ["documentation", "coordination"]
-    
-  memory:
-    retention_policy: "full_session"
-    max_conversations: 1000
-    context_window_size: 50
-    
-  health:
-    heartbeat_interval: 60
-    max_response_time: 120
-    restart_threshold: 3
+### Agent Configuration
+```json
+{
+  "agents": {
+    "aria": {
+      "role": "coordinator",
+      "session_timeout": 3600,
+      "max_retries": 3,
+      "personality_config": {
+        "detail_level": "high",
+        "analysis_depth": "comprehensive"
+      }
+    },
+    "code": {
+      "role": "developer", 
+      "session_timeout": 3600,
+      "max_retries": 3,
+      "personality_config": {
+        "coding_style": "clean_code",
+        "optimization_focus": "performance"
+      }
+    },
+    "alpha": {
+      "role": "test_creator",
+      "session_timeout": 1800,
+      "max_retries": 2,
+      "personality_config": {
+        "coverage_target": 95,
+        "test_thoroughness": "comprehensive"
+      }
+    },
+    "beta": {
+      "role": "test_validator",
+      "session_timeout": 1800, 
+      "max_retries": 2,
+      "personality_config": {
+        "validation_strictness": "high",
+        "performance_focus": "optimization"
+      }
+    }
+  },
+  "orchestrator": {
+    "task_timeout": 7200,
+    "parallel_tasks": 4,
+    "feedback_frequency": 30
+  }
+}
 ```
 
 ---
 
 ## 🚦 Getting Started
 
-### **Quick Start (5 Minutes)**
+### Quick Start
 ```bash
 # 1. Clone and setup
-git clone https://github.com/your-org/nexus-orchestrator.git
-cd nexus-orchestrator
+git clone <nexus-repo>
+cd nexus-chat
 pip install -r requirements.txt
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env with your OpenAI API key and model:
-# OPENAI_API_KEY=sk-your-api-key-here
-# OPENAI_MODEL=gpt-4-turbo-preview
+# Edit .env with your API keys
 
-# 3. Install Claude Code CLI (required for agents)
-# Follow Anthropic's official installation guide
+# 3. Start NEXUS
+python nexus.py --mode web
+# Access at http://localhost:8000
 
-# 4. Start NEXUS Chat Interface (automatically loads WORKSPACE/.env)
-nexus-chat
-# or: python -m nexus.chat
-
-# 5. Use the terminal interface to interact with your AI team
-# Type tasks in the input box and watch agents collaborate in real-time!
+# OR use CLI
+python nexus.py execute --task "Build a user authentication system"
 ```
 
-### **Terminal Interface Overview**
-When you run `nexus-chat`, you'll see:
+### Example Usage Scenarios
 
-```
-🧠 NEXUS Multi-Agent Dashboard
-┌─────────────────────────────────────────────────────────────┐
-│ Agent                │ Status       │ Current Task        │...│
-├─────────────────────────────────────────────────────────────┤
-│ 🎯 NEXUS Prime       │ ● ACTIVE     │ Orchestrating 4...  │...│
-│ 🧭 Aria (Coordinator)│ ○ IDLE       │ No active task      │...│
-│ 💻 Code (Developer)  │ ○ IDLE       │ No active task      │...│
-│ 🧪 Alpha (Test Creat)│ ○ IDLE       │ No active task      │...│
-│ 🛡️ Beta (Test Valid) │ ○ IDLE       │ No active task      │...│
-└─────────────────────────────────────────────────────────────┘
+#### Scenario 1: Web Application Development
+```python
+task = {
+    "description": "Create a REST API for user management",
+    "requirements": ["Authentication", "CRUD operations", "Input validation"],
+    "technology": "FastAPI + SQLAlchemy",
+    "timeline": "2 hours"
+}
 
-Communication Log:
-[19:45:30] System initialized successfully
-[19:45:31] All agents ready for collaboration
-
-💬 Enter your task for NEXUS:
-> Type your request here (e.g., 'Build a secure login system')_
+result = await orchestrator.coordinate_task(task)
 ```
 
-**Example Interaction:**
-```
-👤 User: Build a secure login system
-🧠 NEXUS: Processing request...
-🧠 NEXUS: Task plan created with 4 tasks
-🧭 aria_coordinator: EXECUTING - Analyzing security requirements
-💻 code_developer: WAITING - Ready for implementation specs
-🧪 alpha_test_creator: IDLE - Waiting for code to test
-🛡️ beta_test_validator: IDLE - Ready for validation
-✅ NEXUS: Task completed! Quality score: 9.2/10
-```
+#### Scenario 2: Bug Fix and Testing
+```python
+task = {
+    "description": "Fix login bug and add comprehensive tests",
+    "context": "Users reporting 401 errors on valid credentials",
+    "priority": "high",
+    "existing_code": "/path/to/auth/module"
+}
 
-**Example .env file:**
-```bash
-# .env
-# NEXUS Multi-Agent Orchestrator Configuration
-
-# OpenAI API Key (required for orchestrator)
-OPENAI_API_KEY=sk-your-openai-api-key-here
-
-# OpenAI Model (customize based on your needs)
-OPENAI_MODEL=gpt-4-turbo-preview
-
-# Optional: Custom workspace paths
-# SCRATCHPAD_PATH=./scratchpads
-# SESSIONS_PATH=./sessions
-# LOGS_PATH=./logs
-
-# Optional: Redis configuration (for production)
-# REDIS_URL=redis://localhost:6379
-
-# Optional: Performance tuning
-# MAX_CONCURRENT_TASKS=10
-# AGENT_TIMEOUT_SECONDS=300
+result = await orchestrator.coordinate_task(task)
 ```
 
-### **Session Management Testing**
-```bash
-# Test session persistence and recovery
-python scripts/test_session_management.py
+#### Scenario 3: Code Review and Optimization
+```python
+task = {
+    "description": "Review and optimize database queries",
+    "focus": "Performance improvement",
+    "target_files": ["models.py", "queries.py"],
+    "performance_target": "50% improvement"
+}
 
-# Expected output:
-# ✅ Created session for aria_coordinator: abc123-def456-789
-# ✅ Session persisted to: sessions/aria_coordinator.session  
-# ✅ Successfully resumed session: abc123-def456-789
-# ✅ Session recovery test passed
-# ✅ All agents have active sessions
+result = await orchestrator.coordinate_task(task)
 ```
 
-### **Inter-Agent Collaboration Testing**
-```bash
-# Test complete agent collaboration workflow
-python scripts/test_agent_collaboration.py
-
-# Expected workflow:
-# 🧠 NEXUS: "Build secure login system"
-# 🧭 Aria: Writes analysis to aria_to_code.md
-# 💻 Code: Reads requirements, writes implementation to code_to_alpha.md  
-# 🧪 Alpha: Reads code, writes tests to alpha_to_beta.md
-# 🛡️ Beta: Reads tests, writes validation to beta_to_aria.md
-# 🧠 NEXUS: Analyzes all outputs, determines completion
-```
-
-**Example Scratchpad Output:**
-```markdown
-# aria_to_code.md
 ---
-FROM: aria_coordinator
-TIMESTAMP: 2025-05-25T19:00:00.000Z
----
-
-# Authentication System Requirements Analysis
 
 ## Security Requirements
-- JWT tokens with 15-minute expiration
-- Refresh tokens stored securely
-- bcrypt password hashing (cost factor 12)
-- Rate limiting: 5 attempts per minute
-- Account lockout after 10 failed attempts
 
-## Implementation Specifications
-- OAuth2 with PKCE for enhanced security
-- Multi-factor authentication support
-- Session management with secure cookies
-- Password strength validation
+### API Security
+- **Authentication**: API keys securely stored in environment variables
+- **Rate Limiting**: Implement rate limiting for API calls
+- **Input Validation**: Sanitize all user inputs
+- **Session Security**: Encrypt session data and implement timeouts
 
-## Database Schema
-- Users table with encrypted PII
-- Sessions table for token management
-- Audit log for security events
-
----
-NEXT_STEPS: Implement these specifications with comprehensive error handling and logging
----
-```
-
-### **Development Setup (15 Minutes)**
-```bash
-# 1. Install Claude Code CLI
-# Follow official Anthropic installation guide
-
-# 2. Setup development environment
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements-dev.txt
-
-# 3. Initialize agent configurations
-python scripts/init_agents.py
-
-# 4. Start with monitoring dashboard
-python -m nexus.orchestrator start --with-dashboard
-
-# 5. Open dashboard
-open http://localhost:8080/dashboard
-```
-
-### **Production Deployment (30 Minutes)**
-```bash
-# 1. Container deployment
-docker-compose -f docker-compose.prod.yml up -d
-
-# 2. Health check
-curl http://localhost:8080/health
-
-# 3. Configure monitoring
-# Setup Grafana dashboard (template provided)
-
-# 4. Load testing
-python scripts/load_test.py --concurrent=10 --duration=300
-```
+### Data Protection
+- **Sensitive Data**: Never log API keys or personal information
+- **File Permissions**: Restrict scratchpad access to authorized users
+- **Network Security**: Use HTTPS for all external communications
 
 ---
 
 ## 🔮 Future Roadmap
 
-### **Phase 1: Foundation (Q2 2025)**
-- ✅ Core orchestrator implementation
-- ✅ Basic agent personality system  
-- ✅ JSON communication protocol
-- ✅ Real-time monitoring dashboard
+### Phase 1: Core Implementation ✅
+- Multi-agent orchestration
+- Session management  
+- Basic communication protocol
+- Web and CLI interfaces
 
-### **Phase 2: Advanced Features (Q3 2025)**
-- 🔄 Dynamic agent spawning based on workload
-- 🔄 Advanced learning and adaptation algorithms
-- 🔄 Multi-project memory and knowledge sharing
-- 🔄 Advanced failure recovery and self-healing
+### Phase 2: Enhanced Features 🚧
+- Advanced personality modeling
+- Learning from interaction patterns
+- Performance optimization
+- Enhanced error handling
 
-### **Phase 3: Enterprise Features (Q4 2025)**
-- 📋 Enterprise authentication and authorization
-- 📋 Advanced security and compliance features
-- 📋 Kubernetes-native deployment
-- 📋 Advanced analytics and reporting
+### Phase 3: Advanced Capabilities 📋
+- Dynamic agent spawning
+- Cross-project knowledge sharing
+- Integration with external tools
+- Advanced analytics and reporting
 
-### **Phase 4: AI Revolution (Q1 2026)**
-- 🚀 Agent-to-agent learning and knowledge transfer
-- 🚀 Autonomous agent improvement and evolution
-- 🚀 Cross-organization agent collaboration
-- 🚀 Revolutionary AI consciousness networks
+### Phase 4: Enterprise Features 🔮
+- Multi-tenant support
+- Advanced security features
+- Custom agent creation
+- Enterprise integrations
 
 ---
 
 ## 📚 API Reference
 
-### **Core Orchestrator API**
+### Core Classes
 
-**POST /api/tasks** - Submit New Task
-```http
-POST /api/tasks HTTP/1.1
-Content-Type: application/json
-
-{
-  "request": "Build a secure user authentication system",
-  "priority": "high",
-  "deadline": "2025-05-26T18:00:00Z",
-  "context": {
-    "project_type": "web_application",
-    "technologies": ["Node.js", "PostgreSQL", "JWT"]
-  }
-}
-
-Response:
-{
-  "task_id": "task_12345",
-  "status": "accepted",
-  "estimated_completion": "2025-05-25T20:30:00Z",
-  "assigned_agents": ["aria_coordinator", "code_developer"],
-  "tracking_url": "/api/tasks/task_12345"
-}
+#### NEXUSOrchestrator
+```python
+class NEXUSOrchestrator:
+    async def initialize_agents() -> None
+    async def coordinate_task(task: dict) -> dict
+    async def delegate_to_agent(agent_id: str, task: dict) -> str
+    async def get_agent_status(agent_id: str) -> dict
+    async def shutdown() -> None
 ```
 
-**GET /api/tasks/{task_id}** - Get Task Status
-```http
-GET /api/tasks/task_12345 HTTP/1.1
-
-Response:
-{
-  "task_id": "task_12345",
-  "status": "in_progress",
-  "progress_percentage": 65,
-  "current_phase": "implementation",
-  "assigned_agents": {
-    "aria_coordinator": "completed",
-    "code_developer": "in_progress", 
-    "alpha_test_creator": "pending"
-  },
-  "deliverables": {
-    "requirements_analysis": "completed",
-    "technical_specification": "completed",
-    "implementation": "in_progress"
-  },
-  "estimated_completion": "2025-05-25T20:15:00Z"
-}
+#### SessionManager  
+```python
+class SessionManager:
+    async def create_session(agent_id: str, prompt: str) -> str
+    async def send_to_session(session_id: str, message: str) -> str
+    async def resume_session(session_id: str) -> bool
+    async def cleanup_expired_sessions() -> None
+    async def get_session_info(session_id: str) -> SessionInfo
 ```
 
-**GET /api/agents** - List All Agents
-```http
-GET /api/agents HTTP/1.1
+### REST API Endpoints
 
-Response:
-{
-  "agents": [
-    {
-      "agent_id": "aria_coordinator",
-      "name": "Aria",
-      "role": "coordinator",
-      "status": "active",
-      "current_task": "task_12345",
-      "health_score": 9.8,
-      "tasks_completed_today": 8,
-      "session_id": "session_abc123",
-      "communication_channels": {
-        "reading_from": ["orchestrator_feedback", "beta_to_aria"],
-        "writing_to": "aria_to_code"
-      }
-    },
-    {
-      "agent_id": "code_developer", 
-      "name": "Code",
-      "role": "developer",
-      "status": "active",
-      "current_task": "task_12345",
-      "health_score": 9.5,
-      "tasks_completed_today": 12,
-      "session_id": "session_def456",
-      "communication_channels": {
-        "reading_from": ["aria_to_code", "orchestrator_feedback"],
-        "writing_to": "code_to_alpha"
-      }
-    }
-  ],
-  "system_health": "excellent",
-  "total_agents": 4,
-  "active_agents": 4
-}
+#### Task Management
+```
+POST /api/tasks/create
+  Request: {"description": "task description", "requirements": [...]}
+  Response: {"task_id": "task_123", "status": "processing"}
+
+GET /api/tasks/{task_id}/status
+  Response: {"task_id": "task_123", "status": "completed", "progress": 1.0}
+
+GET /api/tasks/{task_id}/result
+  Response: {"task_id": "task_123", "result": {...}}
+
+DELETE /api/tasks/{task_id}
+  Response: {"task_id": "task_123", "status": "cancelled"}
 ```
 
-**GET /api/scratchpads** - Monitor Inter-Agent Communication
-```http
-GET /api/scratchpads HTTP/1.1
-
-Response:
-{
-  "scratchpads": {
-    "aria_to_code": {
-      "last_updated": "2025-05-25T19:00:00Z",
-      "message_count": 3,
-      "latest_from": "aria_coordinator",
-      "content_preview": "# Authentication System Requirements Analysis\n..."
-    },
-    "code_to_alpha": {
-      "last_updated": "2025-05-25T19:15:00Z", 
-      "message_count": 2,
-      "latest_from": "code_developer",
-      "content_preview": "# JWT Authentication Implementation\n..."
-    },
-    "alpha_to_beta": {
-      "last_updated": "2025-05-25T19:30:00Z",
-      "message_count": 1,
-      "latest_from": "alpha_test_creator",
-      "content_preview": "# Comprehensive Authentication Test Suite\n..."
-    }
-  },
-  "communication_flow": "sequential",
-  "active_conversations": 3
-}
+#### Agent Management
 ```
+GET /api/agents/status
+  Response: {"aria": {"status": "active"}, "code": {"status": "processing"}}
 
-**GET /api/scratchpads/{channel}** - Read Specific Communication Channel
-```http
-GET /api/scratchpads/aria_to_code HTTP/1.1
+POST /api/agents/{agent_id}/message
+  Request: {"message": "task details"}
+  Response: {"response": "agent response"}
 
-Response:
-{
-  "channel": "aria_to_code",
-  "full_content": "---\nFROM: aria_coordinator\nTIMESTAMP: 2025-05-25T19:00:00Z\n---\n\n# Authentication System Requirements Analysis...",
-  "messages": [
-    {
-      "from": "aria_coordinator",
-      "timestamp": "2025-05-25T19:00:00Z",
-      "content": "# Authentication System Requirements Analysis..."
-    }
-  ],
-  "next_expected_reader": "code_developer"
-}
-```
-
-**POST /api/orchestrator/analyze** - Trigger Completion Analysis
-```http
-POST /api/orchestrator/analyze HTTP/1.1
-Content-Type: application/json
-
-{
-  "task_id": "task_12345",
-  "analysis_type": "completion_check"
-}
-
-Response:
-{
-  "analysis_id": "analysis_67890",
-  "completion_status": "needs_refinement",
-  "quality_score": 8.5,
-  "follow_up_actions": [
-    {
-      "agent_id": "code_developer",
-      "action": "Add input validation to login endpoint",
-      "priority": "high",
-      "estimated_time": "30_minutes"
-    }
-  ],
-  "rationale": "Implementation is solid but missing comprehensive input validation for security",
-  "overall_assessment": "High quality work with minor security improvements needed"
-}
-```
-
-**GET /api/communication** - Monitor Bidirectional Communication
-```http
-GET /api/communication HTTP/1.1
-
-Response:
-{
-  "communication_status": {
-    "aria_coordinator": {
-      "last_direction": "from_agent",
-      "conversation_state": "processing",
-      "waiting_for_response": false,
-      "last_message_time": "2025-05-25T19:45:30Z",
-      "message_count": 12,
-      "avg_response_time": 45.2
-    },
-    "code_developer": {
-      "last_direction": "to_agent", 
-      "conversation_state": "waiting_response",
-      "waiting_for_response": true,
-      "last_message_time": "2025-05-25T19:46:15Z",
-      "message_count": 8,
-      "avg_response_time": 62.8
-    },
-    "alpha_test_creator": {
-      "last_direction": "from_agent",
-      "conversation_state": "idle",
-      "waiting_for_response": false,
-      "last_message_time": "2025-05-25T19:30:00Z",
-      "message_count": 4,
-      "avg_response_time": 38.5
-    },
-    "beta_test_validator": {
-      "last_direction": "from_agent",
-      "conversation_state": "idle", 
-      "waiting_for_response": false,
-      "last_message_time": "2025-05-25T19:35:12Z",
-      "message_count": 6,
-      "avg_response_time": 51.3
-    }
-  },
-  "system_metrics": {
-    "total_messages": 30,
-    "avg_system_response_time": 49.45,
-    "active_conversations": 1,
-    "idle_agents": 3
-  }
-}
-```
-
-**GET /api/communication/{agent_id}** - Detailed Agent Communication History
-```http
-GET /api/communication/aria_coordinator HTTP/1.1
-
-Response:
-{
-  "agent_id": "aria_coordinator",
-  "conversation_history": [
-    {
-      "message_id": "msg_abc123",
-      "timestamp": "2025-05-25T19:00:00Z",
-      "direction": "to_agent",
-      "message_type": "task_execution",
-      "content_preview": "Analyze authentication requirements for enterprise application..."
-    },
-    {
-      "message_id": "msg_def456", 
-      "timestamp": "2025-05-25T19:00:45Z",
-      "direction": "from_agent",
-      "message_type": "task_completion",
-      "content_preview": "Analysis complete. Comprehensive security requirements documented...",
-      "response_time_seconds": 45.2
-    }
-  ],
-  "communication_patterns": {
-    "avg_response_time": 45.2,
-    "fastest_response": 23.1,
-    "slowest_response": 67.8,
-    "total_exchanges": 6,
-    "current_state": "processing"
-  }
-}
-```
-
-**WebSocket /ws/dashboard** - Real-Time Updates
-```javascript
-// WebSocket connection for real-time monitoring
-const ws = new WebSocket('ws://localhost:8080/ws/dashboard');
-
-ws.onmessage = (event) => {
-  const update = JSON.parse(event.data);
-  
-  switch(update.type) {
-    case 'agent_status':
-      updateAgentDisplay(update.agent_id, update.status);
-      break;
-    case 'task_progress':
-      updateTaskProgress(update.task_id, update.progress);
-      break;
-    case 'system_metrics':
-      updateSystemMetrics(update.metrics);
-      break;
-  }
-};
+GET /api/agents/{agent_id}/session
+  Response: {"session_id": "session_123", "status": "active"}
 ```
 
 ---
 
 ## 🏅 Conclusion
 
-The NEXUS Multi-Agent Orchestrator System represents a **paradigm shift in AI-assisted development**. By combining the speed of OpenAI with the specialized expertise of multiple Claude Code agents, we create something unprecedented: **a true digital development team** where each AI has distinct personalities, memories, and collaborative capabilities.
+NEXUS represents a revolutionary approach to AI collaboration, enabling multiple specialized AI agents to work together seamlessly. By combining the strategic capabilities of OpenAI with the specialized expertise of Claude Code, NEXUS creates a powerful platform for complex task execution.
 
-This isn't just automation—it's **the future of human-AI collaboration**, where specialized AI agents work together seamlessly, learn from each interaction, and continuously improve their collective intelligence.
+The system's modular design, robust session management, and intelligent orchestration make it suitable for a wide range of applications, from software development to content creation and beyond.
 
-**Ready to revolutionize your development workflow?** The future of AI collaboration starts here.
-
----
-
-*Built with ❤️ by the NEXUS Development Team*  
-*Powered by OpenAI and Claude Code*
+Key innovations include:
+- **True multi-agent collaboration** with persistent personalities
+- **Robust session management** for reliable AI interactions
+- **Intelligent task orchestration** with real-time feedback
+- **Scalable architecture** supporting complex workflows
 
 ---
 
 ## 📄 License
 
-MIT License - See LICENSE file for details
+MIT License - see LICENSE file for details.
 
 ## 🤝 Contributing
 
-We welcome contributions! See CONTRIBUTING.md for guidelines.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+7. Push to the branch (`git push origin feature/AmazingFeature`)
+8. Open a Pull Request
 
-## 📞 Support
+### Development Guidelines
+- Follow Python PEP 8 style guidelines
+- Add comprehensive tests for new features
+- Update documentation for API changes
+- Use meaningful commit messages
 
-- GitHub Issues: [Report bugs and request features]
-- Documentation: [Full API documentation]
-- Community: [Join our Discord server]
-- Email: nexus-support@your-domain.com
+For questions or support, please open an issue on GitHub.
