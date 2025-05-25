@@ -215,125 +215,160 @@ const PlayerAnalytics: React.FC = () => {
   }, []);
 
   return (
-    <div className="player-analytics enhanced">
+    <div className="page-container">
       <PageHeader 
         title="Enhanced Player Analytics" 
         subtitle="Comprehensive player management and monitoring"
       />
       
-      {/* Error Display */}
-      {state.errors.length > 0 && (
-        <div className="error-banner">
-          <div className="error-content">
-            <span className="error-icon">⚠️</span>
-            <div className="error-messages">
-              {state.errors.map((error, index) => (
-                <div key={index} className="error-message">
-                  {error.field}: {error.message}
-                </div>
-              ))}
-            </div>
-            <button onClick={clearErrors} className="error-close">×</button>
-          </div>
-        </div>
-      )}
-      
-      {state.loading ? (
-        <div className="loading-spinner">
-          <div className="spinner"></div>
-          <span>Loading enhanced player data...</span>
-        </div>
-      ) : (
-        <>
-          {/* Enhanced Player Metrics */}
-          <div className="metrics-grid enhanced">
-            {state.metrics && (
-              <>
-                <div className="metric-card primary">
-                  <h3>Active Players</h3>
-                  <span className="metric-value">{state.metrics.total_active_players.toLocaleString()}</span>
-                  <span className="metric-label">Currently Active</span>
-                  <div className="metric-trend">Online: {state.metrics.players_online_now}</div>
-                </div>
-                <div className="metric-card">
-                  <h3>Total Credits</h3>
-                  <span className="metric-value">{state.metrics.total_credits_circulation.toLocaleString()}</span>
-                  <span className="metric-label">In Circulation</span>
-                </div>
-                <div className="metric-card">
-                  <h3>Session Time</h3>
-                  <span className="metric-value">{state.metrics.average_session_time.toFixed(1)}</span>
-                  <span className="metric-label">Hours Average</span>
-                </div>
-                <div className="metric-card">
-                  <h3>New Players</h3>
-                  <span className="metric-value">{state.metrics.new_players_today}</span>
-                  <span className="metric-label">Today</span>
-                </div>
-                <div className="metric-card">
-                  <h3>Retention Rate</h3>
-                  <span className="metric-value">{state.metrics.player_retention_rate.toFixed(1)}%</span>
-                  <span className="metric-label">7-Day Retention</span>
-                </div>
-                <div className="metric-card warning">
-                  <h3>Security Alerts</h3>
-                  <span className="metric-value">{state.metrics.suspicious_activity_alerts}</span>
-                  <span className="metric-label">Suspicious Activity</span>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Enhanced Player Controls */}
-          <div className="player-controls enhanced">
-            <PlayerSearchAndFilter
-              filters={state.filters}
-              onFiltersChange={handleFiltersChange}
-              loading={state.loading}
-            />
-            
-            <div className="control-actions">
-              <div className="view-controls">
-                <button 
-                  onClick={toggleRealTimeUpdates}
-                  className={`real-time-btn ${state.realTimeUpdates ? 'active' : ''}`}
-                >
-                  {state.realTimeUpdates ? '🔴' : '⚪'} Real-time
-                </button>
-                
-                <button onClick={fetchPlayerData} className="refresh-btn">
-                  🔄 Refresh
-                </button>
+      <div className="page-content">
+        {/* Error Display */}
+        {state.errors.length > 0 && (
+          <div className="alert alert-error mb-6">
+            <div className="flex items-center gap-3">
+              <span>⚠️</span>
+              <div className="flex-1">
+                {state.errors.map((error, index) => (
+                  <div key={index}>
+                    {error.field}: {error.message}
+                  </div>
+                ))}
               </div>
-              
-              {hasSelectedPlayers && (
-                <div className="bulk-actions">
-                  <span className="selection-count">
-                    {state.selectedPlayers.length} selected
-                  </span>
-                  <button 
-                    onClick={() => setState(prev => ({ ...prev, showBulkOperations: true }))}
-                    className="bulk-operations-btn"
-                  >
-                    📋 Bulk Operations
-                  </button>
-                </div>
-              )}
+              <button onClick={clearErrors} className="btn btn-sm">×</button>
             </div>
           </div>
+        )}
+        
+        {state.loading ? (
+          <div className="loading-container text-center py-12">
+            <div className="loading-spinner mx-auto mb-4"></div>
+            <span>Loading enhanced player data...</span>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Enhanced Player Metrics */}
+            {state.metrics && (
+              <section className="section">
+                <div className="section-header">
+                  <h3 className="section-title">📊 Player Metrics</h3>
+                  <p className="section-subtitle">Real-time player analytics and performance indicators</p>
+                </div>
+                
+                <div className="grid grid-auto-fit gap-6">
+                  <div className="dashboard-stat-card stat-primary">
+                    <div className="dashboard-stat-header">
+                      <span className="dashboard-stat-icon">👥</span>
+                      <h4 className="dashboard-stat-title">Active Players</h4>
+                    </div>
+                    <div className="dashboard-stat-value">{state.metrics.total_active_players.toLocaleString()}</div>
+                    <div className="dashboard-stat-description">Online: {state.metrics.players_online_now}</div>
+                  </div>
+                  
+                  <div className="dashboard-stat-card">
+                    <div className="dashboard-stat-header">
+                      <span className="dashboard-stat-icon">💰</span>
+                      <h4 className="dashboard-stat-title">Total Credits</h4>
+                    </div>
+                    <div className="dashboard-stat-value">{state.metrics.total_credits_circulation.toLocaleString()}</div>
+                    <div className="dashboard-stat-description">In Circulation</div>
+                  </div>
+                  
+                  <div className="dashboard-stat-card">
+                    <div className="dashboard-stat-header">
+                      <span className="dashboard-stat-icon">⏱️</span>
+                      <h4 className="dashboard-stat-title">Session Time</h4>
+                    </div>
+                    <div className="dashboard-stat-value">{state.metrics.average_session_time.toFixed(1)}h</div>
+                    <div className="dashboard-stat-description">Average</div>
+                  </div>
+                  
+                  <div className="dashboard-stat-card">
+                    <div className="dashboard-stat-header">
+                      <span className="dashboard-stat-icon">🆕</span>
+                      <h4 className="dashboard-stat-title">New Players</h4>
+                    </div>
+                    <div className="dashboard-stat-value">{state.metrics.new_players_today}</div>
+                    <div className="dashboard-stat-description">Today</div>
+                  </div>
+                  
+                  <div className="dashboard-stat-card">
+                    <div className="dashboard-stat-header">
+                      <span className="dashboard-stat-icon">📈</span>
+                      <h4 className="dashboard-stat-title">Retention Rate</h4>
+                    </div>
+                    <div className="dashboard-stat-value">{state.metrics.player_retention_rate.toFixed(1)}%</div>
+                    <div className="dashboard-stat-description">7-Day Retention</div>
+                  </div>
+                  
+                  <div className="dashboard-stat-card stat-warning">
+                    <div className="dashboard-stat-header">
+                      <span className="dashboard-stat-icon">🚨</span>
+                      <h4 className="dashboard-stat-title">Security Alerts</h4>
+                    </div>
+                    <div className="dashboard-stat-value">{state.metrics.suspicious_activity_alerts}</div>
+                    <div className="dashboard-stat-description">Suspicious Activity</div>
+                  </div>
+                </div>
+              </section>
+            )}
 
-          {/* Enhanced Players Table */}
-          <div className="players-table-section enhanced">
-            <div className="table-header">
-              <div className="table-info">
-                <span className="result-count">
-                  Showing {state.players.length} of {state.totalCount.toLocaleString()} players
-                </span>
-                <div className="sort-controls">
+            {/* Enhanced Player Controls */}
+            <section className="section">
+              <div className="card">
+                <div className="card-body">
+                  <PlayerSearchAndFilter
+                    filters={state.filters}
+                    onFiltersChange={handleFiltersChange}
+                    loading={state.loading}
+                  />
+                  
+                  <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={toggleRealTimeUpdates}
+                        className={`btn btn-sm ${state.realTimeUpdates ? 'btn-error' : 'btn-outline'}`}
+                      >
+                        {state.realTimeUpdates ? '🔴' : '⚪'} Real-time
+                      </button>
+                      
+                      <button onClick={fetchPlayerData} className="btn btn-sm btn-outline">
+                        🔄 Refresh
+                      </button>
+                    </div>
+                    
+                    {hasSelectedPlayers && (
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-muted">
+                          {state.selectedPlayers.length} selected
+                        </span>
+                        <button 
+                          onClick={() => setState(prev => ({ ...prev, showBulkOperations: true }))}
+                          className="btn btn-sm btn-primary"
+                        >
+                          📋 Bulk Operations
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Enhanced Players Table */}
+            <section className="section">
+              <div className="section-header">
+                <div>
+                  <h3 className="section-title">👥 Player Management</h3>
+                  <p className="section-subtitle">
+                    Showing {state.players.length} of {state.totalCount.toLocaleString()} players
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-3">
                   <select 
                     value={state.sortBy} 
                     onChange={(e) => handleSortChange(e.target.value, state.sortOrder)}
-                    className="sort-select"
+                    className="form-select form-select-sm"
                   >
                     <option value="credits">Sort by Credits</option>
                     <option value="last_login">Sort by Last Login</option>
@@ -343,359 +378,372 @@ const PlayerAnalytics: React.FC = () => {
                   </select>
                   <button 
                     onClick={() => handleSortChange(state.sortBy, state.sortOrder === 'asc' ? 'desc' : 'asc')}
-                    className="sort-order-btn"
+                    className="btn btn-sm btn-outline"
                   >
                     {state.sortOrder === 'asc' ? '↑' : '↓'}
                   </button>
                 </div>
               </div>
               
-              <div className="table-actions">
-                <label className="select-all">
-                  <input 
-                    type="checkbox" 
-                    checked={allPlayersSelected}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                  />
-                  Select All
-                </label>
-              </div>
-            </div>
-            
-            <div className="players-table-container">
-              <table className="players-table enhanced">
-                <thead>
-                  <tr>
-                    <th style={{width: '40px'}}>Select</th>
-                    <th>Player</th>
-                    <th>Status</th>
-                    <th>Credits</th>
-                    <th>Assets</th>
-                    <th>Location</th>
-                    <th>Activity</th>
-                    <th>Last Login</th>
-                    <th>Turns</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {state.players.map((player) => (
-                    <tr 
-                      key={player.id} 
-                      className={`player-row ${state.selectedPlayers.includes(player.id) ? 'selected' : ''} ${player.activity.suspicious_activity ? 'suspicious' : ''}`}
-                      onClick={() => openPlayerDetail(player)}
-                    >
-                      <td onClick={(e) => e.stopPropagation()}>
-                        <input 
-                          type="checkbox" 
-                          checked={state.selectedPlayers.includes(player.id)}
-                          onChange={(e) => handlePlayerSelect(player.id, e.target.checked)}
-                        />
-                      </td>
-                      <td>
-                        <div className="player-info">
-                          <span className="username">{player.username}</span>
-                          <span className="user-id">{player.id.slice(0, 8)}</span>
-                          {player.activity.suspicious_activity && <span className="warning-flag">⚠️</span>}
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`status-badge ${player.status}`}>
-                          {player.status}
-                        </span>
-                      </td>
-                      <td className="credits">{player.credits.toLocaleString()}</td>
-                      <td>
-                        <div className="asset-summary">
-                          <span className="asset-item">🚀 {player.assets.ships_count}</span>
-                          <span className="asset-item">🌍 {player.assets.planets_count}</span>
-                          <span className="asset-item">🏪 {player.assets.ports_count}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="location-info">
-                          <span className="sector">Sector {player.current_sector_id || 'Unknown'}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="activity-summary">
-                          <span className="actions">Actions: {player.activity.actions_today}</span>
-                          <span className="rating">Combat: {player.activity.combat_rating}</span>
-                        </div>
-                      </td>
-                      <td>{new Date(player.activity.last_login).toLocaleDateString()}</td>
-                      <td>
-                        <span className={`turns ${player.turns < 10 ? 'low' : ''}`}>
-                          {player.turns}
-                        </span>
-                      </td>
-                      <td onClick={(e) => e.stopPropagation()}>
-                        <div className="action-buttons">
-                          <button 
-                            className="action-btn view"
+              <div className="card">
+                <div className="card-body p-0">
+                  <div className="table-container">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th style={{width: '40px'}}>
+                            <input 
+                              type="checkbox" 
+                              checked={allPlayersSelected}
+                              onChange={(e) => handleSelectAll(e.target.checked)}
+                              className="form-checkbox"
+                            />
+                          </th>
+                          <th>Player</th>
+                          <th>Status</th>
+                          <th>Credits</th>
+                          <th>Assets</th>
+                          <th>Location</th>
+                          <th>Activity</th>
+                          <th>Last Login</th>
+                          <th>Turns</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {state.players.map((player) => (
+                          <tr 
+                            key={player.id} 
+                            className={`cursor-pointer hover:bg-hover ${state.selectedPlayers.includes(player.id) ? 'bg-primary-50' : ''} ${player.activity.suspicious_activity ? 'border-l-4 border-warning' : ''}`}
                             onClick={() => openPlayerDetail(player)}
-                            title="View Details"
                           >
-                            👁️
-                          </button>
-                          <button 
-                            className="action-btn edit"
-                            onClick={() => {
-                              setState(prev => ({ ...prev, selectedPlayer: player, editMode: true }));
-                            }}
-                            title="Edit Player"
-                          >
-                            ✏️
-                          </button>
-                          <button 
-                            className="action-btn emergency"
-                            onClick={() => {
-                              setState(prev => ({ ...prev, selectedPlayer: player, showEmergencyOps: true }));
-                            }}
-                            title="Emergency Operations"
-                          >
-                            🚨
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="pagination">
-                <button 
-                  onClick={() => handlePageChange(state.currentPage - 1)}
-                  disabled={state.currentPage === 1}
-                  className="pagination-btn"
-                >
-                  ← Previous
-                </button>
-                
-                <div className="page-info">
-                  <span>Page {state.currentPage} of {totalPages}</span>
-                  <select 
-                    value={state.pageSize} 
-                    onChange={(e) => setState(prev => ({ ...prev, pageSize: parseInt(e.target.value), currentPage: 1 }))}
-                    className="page-size-select"
-                  >
-                    <option value="10">10 per page</option>
-                    <option value="25">25 per page</option>
-                    <option value="50">50 per page</option>
-                    <option value="100">100 per page</option>
-                  </select>
-                </div>
-                
-                <button 
-                  onClick={() => handlePageChange(state.currentPage + 1)}
-                  disabled={state.currentPage === totalPages}
-                  className="pagination-btn"
-                >
-                  Next →
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Enhanced Player Detail Modal */}
-          {state.selectedPlayer && !state.editMode && !state.showAssetManager && !state.showEmergencyOps && (
-            <div className="modal-overlay" onClick={closePlayerDetail}>
-              <div className="player-detail-modal enhanced" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h3>Player Details: {state.selectedPlayer.username}</h3>
-                  <div className="header-actions">
-                    <button onClick={toggleEditMode} className="edit-btn">
-                      ✏️ Edit
-                    </button>
-                    <button className="close-btn" onClick={closePlayerDetail}>×</button>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <input 
+                                type="checkbox" 
+                                checked={state.selectedPlayers.includes(player.id)}
+                                onChange={(e) => handlePlayerSelect(player.id, e.target.checked)}
+                                className="form-checkbox"
+                              />
+                            </td>
+                            <td>
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  <div className="font-medium">{player.username}</div>
+                                  <div className="text-sm text-muted">{player.id.slice(0, 8)}</div>
+                                </div>
+                                {player.activity.suspicious_activity && <span className="text-warning">⚠️</span>}
+                              </div>
+                            </td>
+                            <td>
+                              <span className={`badge ${
+                                player.status === 'active' ? 'badge-success' : 
+                                player.status === 'banned' ? 'badge-error' : 'badge-secondary'
+                              }`}>
+                                {player.status}
+                              </span>
+                            </td>
+                            <td className="font-mono">{player.credits.toLocaleString()}</td>
+                            <td>
+                              <div className="flex items-center gap-2 text-sm">
+                                <span>🚀 {player.assets.ships_count}</span>
+                                <span>🌍 {player.assets.planets_count}</span>
+                                <span>🏪 {player.assets.ports_count}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="text-sm">Sector {player.current_sector_id || 'Unknown'}</span>
+                            </td>
+                            <td>
+                              <div className="text-sm">
+                                <div>Actions: {player.activity.actions_today}</div>
+                                <div>Combat: {player.activity.combat_rating}</div>
+                              </div>
+                            </td>
+                            <td className="text-sm">{new Date(player.activity.last_login).toLocaleDateString()}</td>
+                            <td>
+                              <span className={`font-mono ${player.turns < 10 ? 'text-warning' : ''}`}>
+                                {player.turns}
+                              </span>
+                            </td>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-1">
+                                <button 
+                                  className="btn btn-xs btn-outline"
+                                  onClick={() => openPlayerDetail(player)}
+                                  title="View Details"
+                                >
+                                  👁️
+                                </button>
+                                <button 
+                                  className="btn btn-xs btn-outline"
+                                  onClick={() => {
+                                    setState(prev => ({ ...prev, selectedPlayer: player, editMode: true }));
+                                  }}
+                                  title="Edit Player"
+                                >
+                                  ✏️
+                                </button>
+                                <button 
+                                  className="btn btn-xs btn-error"
+                                  onClick={() => {
+                                    setState(prev => ({ ...prev, selectedPlayer: player, showEmergencyOps: true }));
+                                  }}
+                                  title="Emergency Operations"
+                                >
+                                  🚨
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
+                  
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="pagination">
+                      <button 
+                        onClick={() => handlePageChange(state.currentPage - 1)}
+                        disabled={state.currentPage === 1}
+                        className="btn btn-sm btn-outline"
+                      >
+                        ← Previous
+                      </button>
+                      
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm">Page {state.currentPage} of {totalPages}</span>
+                        <select 
+                          value={state.pageSize} 
+                          onChange={(e) => setState(prev => ({ ...prev, pageSize: parseInt(e.target.value), currentPage: 1 }))}
+                          className="form-select form-select-sm"
+                        >
+                          <option value="10">10 per page</option>
+                          <option value="25">25 per page</option>
+                          <option value="50">50 per page</option>
+                          <option value="100">100 per page</option>
+                        </select>
+                      </div>
+                      
+                      <button 
+                        onClick={() => handlePageChange(state.currentPage + 1)}
+                        disabled={state.currentPage === totalPages}
+                        className="btn btn-sm btn-outline"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  )}
                 </div>
-                
-                <div className="modal-content">
-                  <div className="detail-tabs">
-                    <div className="detail-grid">
-                      <div className="detail-section">
-                        <h4>Account Information</h4>
-                        <div className="detail-item">
-                          <span className="label">User ID:</span>
-                          <span className="value">{state.selectedPlayer.id}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Username:</span>
-                          <span className="value">{state.selectedPlayer.username}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Email:</span>
-                          <span className="value">{state.selectedPlayer.email}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Status:</span>
-                          <span className={`value status-badge ${state.selectedPlayer.status}`}>
-                            {state.selectedPlayer.status}
-                          </span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Account Created:</span>
-                          <span className="value">{new Date(state.selectedPlayer.created_at).toLocaleDateString()}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Last Login:</span>
-                          <span className="value">{new Date(state.selectedPlayer.activity.last_login).toLocaleString()}</span>
-                        </div>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* Enhanced Player Detail Modal */}
+        {state.selectedPlayer && !state.editMode && !state.showAssetManager && !state.showEmergencyOps && (
+          <div className="modal-overlay" onClick={closePlayerDetail}>
+            <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">Player Details: {state.selectedPlayer.username}</h3>
+                <div className="flex items-center gap-2">
+                  <button onClick={toggleEditMode} className="btn btn-sm btn-primary">
+                    ✏️ Edit
+                  </button>
+                  <button className="btn btn-sm btn-ghost" onClick={closePlayerDetail}>×</button>
+                </div>
+              </div>
+              
+              <div className="modal-body">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold">Account Information</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="text-sm text-muted">User ID</div>
+                        <div className="font-mono text-sm">{state.selectedPlayer.id}</div>
                       </div>
-                      
-                      <div className="detail-section">
-                        <h4>Game Statistics</h4>
-                        <div className="detail-item">
-                          <span className="label">Credits:</span>
-                          <span className="value credits">{state.selectedPlayer.credits.toLocaleString()}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Current Location:</span>
-                          <span className="value">Sector {state.selectedPlayer.current_sector_id || 'Unknown'}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Turns Remaining:</span>
-                          <span className="value">{state.selectedPlayer.turns}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Combat Rating:</span>
-                          <span className="value">{state.selectedPlayer.activity.combat_rating}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Trade Volume:</span>
-                          <span className="value credits">{state.selectedPlayer.activity.total_trade_volume.toLocaleString()}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Team:</span>
-                          <span className="value">{state.selectedPlayer.team_id || 'None'}</span>
-                        </div>
+                      <div>
+                        <div className="text-sm text-muted">Username</div>
+                        <div className="font-medium">{state.selectedPlayer.username}</div>
                       </div>
-                      
-                      <div className="detail-section">
-                        <h4>Assets & Inventory</h4>
-                        <div className="detail-item">
-                          <span className="label">Ships Owned:</span>
-                          <span className="value">{state.selectedPlayer.assets.ships_count}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Planets Owned:</span>
-                          <span className="value">{state.selectedPlayer.assets.planets_count}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Ports Owned:</span>
-                          <span className="value">{state.selectedPlayer.assets.ports_count}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Current Ship:</span>
-                          <span className="value">{state.selectedPlayer.current_ship_id || 'None'}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Total Asset Value:</span>
-                          <span className="value credits">{state.selectedPlayer.assets.total_value.toLocaleString()}</span>
-                        </div>
+                      <div>
+                        <div className="text-sm text-muted">Email</div>
+                        <div>{state.selectedPlayer.email}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted">Status</div>
+                        <span className={`badge ${
+                          state.selectedPlayer.status === 'active' ? 'badge-success' : 
+                          state.selectedPlayer.status === 'banned' ? 'badge-error' : 'badge-secondary'
+                        }`}>
+                          {state.selectedPlayer.status}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted">Account Created</div>
+                        <div>{new Date(state.selectedPlayer.created_at).toLocaleDateString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted">Last Login</div>
+                        <div>{new Date(state.selectedPlayer.activity.last_login).toLocaleString()}</div>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="modal-actions">
-                    <button 
-                      className="action-btn asset-manager"
-                      onClick={() => setState(prev => ({ ...prev, showAssetManager: true }))}
-                    >
-                      🏭 Manage Assets
-                    </button>
-                    <button 
-                      className="action-btn emergency"
-                      onClick={() => setState(prev => ({ ...prev, showEmergencyOps: true }))}
-                    >
-                      🚨 Emergency Ops
-                    </button>
-                    <button 
-                      className="action-btn edit"
-                      onClick={toggleEditMode}
-                    >
-                      ✏️ Edit Player
-                    </button>
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold">Game Statistics</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="text-sm text-muted">Credits</div>
+                        <div className="font-mono text-lg">{state.selectedPlayer.credits.toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted">Current Location</div>
+                        <div>Sector {state.selectedPlayer.current_sector_id || 'Unknown'}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted">Turns Remaining</div>
+                        <div>{state.selectedPlayer.turns}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted">Combat Rating</div>
+                        <div>{state.selectedPlayer.activity.combat_rating}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted">Trade Volume</div>
+                        <div className="font-mono">{state.selectedPlayer.activity.total_trade_volume.toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted">Team</div>
+                        <div>{state.selectedPlayer.team_id || 'None'}</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold">Assets & Inventory</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="text-sm text-muted">Ships Owned</div>
+                        <div>{state.selectedPlayer.assets.ships_count}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted">Planets Owned</div>
+                        <div>{state.selectedPlayer.assets.planets_count}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted">Ports Owned</div>
+                        <div>{state.selectedPlayer.assets.ports_count}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted">Current Ship</div>
+                        <div>{state.selectedPlayer.current_ship_id || 'None'}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted">Total Asset Value</div>
+                        <div className="font-mono">{state.selectedPlayer.assets.total_value.toLocaleString()}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+              
+              <div className="modal-footer">
+                <div className="flex gap-3">
+                  <button 
+                    className="btn btn-outline"
+                    onClick={() => setState(prev => ({ ...prev, showAssetManager: true }))}
+                  >
+                    🏭 Manage Assets
+                  </button>
+                  <button 
+                    className="btn btn-error"
+                    onClick={() => setState(prev => ({ ...prev, showEmergencyOps: true }))}
+                  >
+                    🚨 Emergency Ops
+                  </button>
+                  <button 
+                    className="btn btn-primary"
+                    onClick={toggleEditMode}
+                  >
+                    ✏️ Edit Player
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
-          
-          {/* Player Detail Editor Modal */}
-          {state.selectedPlayer && state.editMode && (
-            <div className="modal-overlay" onClick={() => setState(prev => ({ ...prev, editMode: false }))}>
-              <PlayerDetailEditor
-                player={state.selectedPlayer}
-                onClose={() => setState(prev => ({ ...prev, editMode: false, selectedPlayer: null }))}
-                onSave={(updatedPlayer) => {
-                  // Update the player in the list
-                  setState(prev => ({
-                    ...prev,
-                    players: prev.players.map(p => p.id === updatedPlayer.id ? updatedPlayer : p),
-                    selectedPlayer: updatedPlayer,
-                    editMode: false
-                  }));
-                }}
-              />
-            </div>
-          )}
-          
-          {state.showBulkOperations && (
-            <div className="modal-overlay" onClick={() => setState(prev => ({ ...prev, showBulkOperations: false }))}>
-              <BulkOperationPanel
-                selectedPlayers={state.selectedPlayers.map(id => state.players.find(p => p.id === id)!).filter(Boolean)}
-                onClose={() => setState(prev => ({ ...prev, showBulkOperations: false, selectedPlayers: [] }))}
-                onComplete={(operation, results) => {
-                  console.log(`Bulk operation ${operation} completed:`, results);
-                  // Refresh the player data after bulk operation
-                  fetchPlayerData();
-                  // Clear selection after operation
-                  setState(prev => ({ ...prev, selectedPlayers: [] }));
-                }}
-              />
-            </div>
-          )}
-          
-          {state.selectedPlayer && state.showAssetManager && (
-            <div className="modal-overlay" onClick={() => setState(prev => ({ ...prev, showAssetManager: false }))}>
-              <PlayerAssetManager
-                player={state.selectedPlayer}
-                onClose={() => setState(prev => ({ ...prev, showAssetManager: false }))}
-                onUpdate={(updatedPlayer) => {
-                  // Update the player in the list
-                  setState(prev => ({
-                    ...prev,
-                    players: prev.players.map(p => p.id === updatedPlayer.id ? updatedPlayer : p),
-                    selectedPlayer: updatedPlayer
-                  }));
-                }}
-              />
-            </div>
-          )}
-          
-          {state.selectedPlayer && state.showEmergencyOps && (
-            <div className="modal-overlay" onClick={() => setState(prev => ({ ...prev, showEmergencyOps: false }))}>
-              <EmergencyOperationsPanel
-                player={state.selectedPlayer}
-                onClose={() => setState(prev => ({ ...prev, showEmergencyOps: false }))}
-                onUpdate={(updatedPlayer) => {
-                  // Update the player in the list
-                  setState(prev => ({
-                    ...prev,
-                    players: prev.players.map(p => p.id === updatedPlayer.id ? updatedPlayer : p),
-                    selectedPlayer: updatedPlayer
-                  }));
-                }}
-              />
-            </div>
-          )}
-        </>
-      )}
+          </div>
+        )}
+        
+        {/* Player Detail Editor Modal */}
+        {state.selectedPlayer && state.editMode && (
+          <div className="modal-overlay" onClick={() => setState(prev => ({ ...prev, editMode: false }))}>
+            <PlayerDetailEditor
+              player={state.selectedPlayer}
+              onClose={() => setState(prev => ({ ...prev, editMode: false, selectedPlayer: null }))}
+              onSave={(updatedPlayer) => {
+                // Update the player in the list
+                setState(prev => ({
+                  ...prev,
+                  players: prev.players.map(p => p.id === updatedPlayer.id ? updatedPlayer : p),
+                  selectedPlayer: updatedPlayer,
+                  editMode: false
+                }));
+              }}
+            />
+          </div>
+        )}
+        
+        {state.showBulkOperations && (
+          <div className="modal-overlay" onClick={() => setState(prev => ({ ...prev, showBulkOperations: false }))}>
+            <BulkOperationPanel
+              selectedPlayers={state.selectedPlayers.map(id => state.players.find(p => p.id === id)!).filter(Boolean)}
+              onClose={() => setState(prev => ({ ...prev, showBulkOperations: false, selectedPlayers: [] }))}
+              onComplete={(operation, results) => {
+                console.log(`Bulk operation ${operation} completed:`, results);
+                // Refresh the player data after bulk operation
+                fetchPlayerData();
+                // Clear selection after operation
+                setState(prev => ({ ...prev, selectedPlayers: [] }));
+              }}
+            />
+          </div>
+        )}
+        
+        {state.selectedPlayer && state.showAssetManager && (
+          <div className="modal-overlay" onClick={() => setState(prev => ({ ...prev, showAssetManager: false }))}>
+            <PlayerAssetManager
+              player={state.selectedPlayer}
+              onClose={() => setState(prev => ({ ...prev, showAssetManager: false }))}
+              onUpdate={(updatedPlayer) => {
+                // Update the player in the list
+                setState(prev => ({
+                  ...prev,
+                  players: prev.players.map(p => p.id === updatedPlayer.id ? updatedPlayer : p),
+                  selectedPlayer: updatedPlayer
+                }));
+              }}
+            />
+          </div>
+        )}
+        
+        {state.selectedPlayer && state.showEmergencyOps && (
+          <div className="modal-overlay" onClick={() => setState(prev => ({ ...prev, showEmergencyOps: false }))}>
+            <EmergencyOperationsPanel
+              player={state.selectedPlayer}
+              onClose={() => setState(prev => ({ ...prev, showEmergencyOps: false }))}
+              onUpdate={(updatedPlayer) => {
+                // Update the player in the list
+                setState(prev => ({
+                  ...prev,
+                  players: prev.players.map(p => p.id === updatedPlayer.id ? updatedPlayer : p),
+                  selectedPlayer: updatedPlayer
+                }));
+              }}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -47,44 +47,71 @@ const UsersManager: React.FC = () => {
   };
 
   const apiUrl = getApiUrl();
-  
-  // Load users
-  useEffect(() => {
-    const fetchUsers = async () => {
+
+  // Fetch users data
+  const fetchUsers = async () => {
+    try {
       setLoading(true);
-      try {
-        const response = await axios.get<User[]>(`${apiUrl}/api/v1/users/`);
-        setUsers(response.data);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching users:', err);
-        setError('Failed to load users. Please try again later.');
-      } finally {
-        setLoading(false);
+      setError(null);
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('No authentication token found');
+        return;
       }
-    };
-    
+
+      const response = await axios.get(`${apiUrl}/api/v1/admin/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data && Array.isArray(response.data)) {
+        setUsers(response.data);
+      } else {
+        setError('Invalid response format from server');
+      }
+    } catch (err: any) {
+      console.error('Error fetching users:', err);
+      setError(err.response?.data?.detail || err.message || 'Failed to fetch users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load users on component mount
+  useEffect(() => {
     fetchUsers();
-  }, [apiUrl]);
-  
-  // Create user
+  }, []);
+
+  // Handle create user form submission
   const handleCreateUser = async (e: FormEvent) => {
     e.preventDefault();
     
     try {
+      setError(null);
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
       const userData = {
         username: newUsername,
-        email: newEmail,
+        email: newEmail || null,
         password: newPassword,
         is_admin: isAdmin
       };
-      
-      const endpoint = isAdmin ? `${apiUrl}/api/v1/users/admin` : `${apiUrl}/api/v1/users/`;
-      const response = await axios.post<User>(endpoint, userData);
-      
-      // Add new user to list
-      setUsers([...users, response.data]);
-      
+
+      await axios.post(`${apiUrl}/api/v1/admin/users`, userData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
       // Reset form
       setNewUsername('');
       setNewEmail('');
@@ -92,15 +119,15 @@ const UsersManager: React.FC = () => {
       setIsAdmin(false);
       setShowCreateModal(false);
       
-      // Show success message
-      setError(null);
+      // Refresh users list
+      fetchUsers();
     } catch (err: any) {
       console.error('Error creating user:', err);
-      setError(err.response?.data?.detail || 'Failed to create user. Please try again.');
+      setError(err.response?.data?.detail || err.message || 'Failed to create user');
     }
   };
-  
-  // Edit user setup
+
+  // Handle edit user click
   const handleEditClick = (user: User) => {
     setSelectedUser(user);
     setEditUsername(user.username);
@@ -108,92 +135,117 @@ const UsersManager: React.FC = () => {
     setEditIsActive(user.is_active);
     setEditMode(true);
   };
-  
-  // Save edited user
+
+  // Handle save edit form submission
   const handleSaveEdit = async (e: FormEvent) => {
     e.preventDefault();
     
     if (!selectedUser) return;
     
     try {
-      const userData = {
+      setError(null);
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
+      const updateData = {
         username: editUsername,
         email: editEmail || null,
         is_active: editIsActive
       };
-      
-      const response = await axios.put<User>(`${apiUrl}/api/v1/users/${selectedUser.id}`, userData);
-      
-      // Update user in list
-      setUsers(users.map((u: User) => u.id === selectedUser.id ? response.data : u));
-      
-      // Exit edit mode
+
+      await axios.put(`${apiUrl}/api/v1/admin/users/${selectedUser.id}`, updateData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // Reset edit state
       setEditMode(false);
       setSelectedUser(null);
-      setError(null);
+      
+      // Refresh users list
+      fetchUsers();
     } catch (err: any) {
       console.error('Error updating user:', err);
-      setError(err.response?.data?.detail || 'Failed to update user. Please try again.');
+      setError(err.response?.data?.detail || err.message || 'Failed to update user');
     }
   };
-  
-  // Delete user setup
+
+  // Handle delete user click
   const handleDeleteClick = (user: User) => {
     setSelectedUser(user);
     setConfirmUsername('');
     setShowDeleteConfirm(true);
   };
-  
-  // Confirm delete user
+
+  // Handle confirm delete
   const handleConfirmDelete = async () => {
-    if (!selectedUser) return;
-    
-    if (confirmUsername !== selectedUser.username) {
-      setError('Username does not match. Deletion canceled.');
+    if (!selectedUser || confirmUsername !== selectedUser.username) {
       return;
     }
     
     try {
-      await axios.delete(`${apiUrl}/api/v1/users/${selectedUser.id}`);
+      setError(null);
       
-      // Remove user from list
-      setUsers(users.filter((u: User) => u.id !== selectedUser.id));
-      
-      // Close modal
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
+      await axios.delete(`${apiUrl}/api/v1/admin/users/${selectedUser.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // Reset delete state
       setShowDeleteConfirm(false);
       setSelectedUser(null);
-      setError(null);
+      setConfirmUsername('');
+      
+      // Refresh users list
+      fetchUsers();
     } catch (err: any) {
       console.error('Error deleting user:', err);
-      setError(err.response?.data?.detail || 'Failed to delete user. Please try again.');
+      setError(err.response?.data?.detail || err.message || 'Failed to delete user');
     }
   };
-  
-  // Reset password
+
+  // Handle reset password
   const handleResetPassword = async (userId: string) => {
-    const password = prompt('Enter new password (minimum 8 characters):');
-    
-    if (!password) return;
-    
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
-      return;
-    }
-    
     try {
-      await axios.put(`${apiUrl}/api/v1/users/${userId}/password`, { password });
       setError(null);
-      alert('Password updated successfully.');
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
+      await axios.post(`${apiUrl}/api/v1/admin/users/${userId}/reset-password`, {}, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      alert('Password reset successfully. New password has been generated.');
     } catch (err: any) {
       console.error('Error resetting password:', err);
-      setError(err.response?.data?.detail || 'Failed to reset password. Please try again.');
+      setError(err.response?.data?.detail || err.message || 'Failed to reset password');
     }
   };
-  
-  // Format date
+
+  // Format date for display
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Never';
-    
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
@@ -316,7 +368,7 @@ const UsersManager: React.FC = () => {
             <div className="modal">
               <div className="modal-header">
                 <h3 className="modal-title">Create New User</h3>
-                <button className="modal-close" onClick={() => setShowCreateModal(false)}>×</button>
+                <button className="btn btn-sm btn-ghost" onClick={() => setShowCreateModal(false)}>×</button>
               </div>
               <div className="modal-body">
                 <form onSubmit={handleCreateUser} className="space-y-4">
@@ -358,125 +410,140 @@ const UsersManager: React.FC = () => {
                       minLength={8}
                     />
                   </div>
-              
-              <div className="form-field checkbox-field">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={isAdmin}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setIsAdmin(e.target.checked)}
-                  />
-                  Grant Admin Privileges
-                </label>
+                  
+                  <div className="form-group">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={isAdmin}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => setIsAdmin(e.target.checked)}
+                        className="form-checkbox mr-2"
+                      />
+                      Grant Admin Privileges
+                    </label>
+                  </div>
+                  
+                  <div className="modal-footer">
+                    <button type="button" className="btn btn-outline" onClick={() => setShowCreateModal(false)}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                      Create User
+                    </button>
+                  </div>
+                </form>
               </div>
-              
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowCreateModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="primary-button">
-                  Create User
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      
-      {/* Edit User Modal */}
-      {editMode && selectedUser && (
-        <div className="modal-overlay">
-          <div className="modal-container">
-            <h3>Edit User: {selectedUser.username}</h3>
-            <form onSubmit={handleSaveEdit}>
-              <div className="form-field">
-                <label htmlFor="edit-username">Username</label>
-                <input
-                  id="edit-username"
-                  type="text"
-                  value={editUsername}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setEditUsername(e.target.value)}
-                  required
-                  minLength={3}
-                  maxLength={50}
-                />
-              </div>
-              
-              <div className="form-field">
-                <label htmlFor="edit-email">Email</label>
-                <input
-                  id="edit-email"
-                  type="email"
-                  value={editEmail}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setEditEmail(e.target.value)}
-                />
-              </div>
-              
-              <div className="form-field checkbox-field">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={editIsActive}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setEditIsActive(e.target.checked)}
-                  />
-                  Account Active
-                </label>
-              </div>
-              
-              <div className="modal-actions">
-                <button type="button" onClick={() => {
-                  setEditMode(false);
-                  setSelectedUser(null);
-                }}>
-                  Cancel
-                </button>
-                <button type="submit" className="primary-button">
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && selectedUser && (
-        <div className="modal-overlay">
-          <div className="modal-container delete-confirm">
-            <h3>Delete User</h3>
-            <p>
-              Are you sure you want to delete the user <strong>{selectedUser.username}</strong>?
-              This action cannot be undone.
-            </p>
-            <p>
-              Type the username <strong>{selectedUser.username}</strong> to confirm:
-            </p>
-            <input
-              type="text"
-              value={confirmUsername}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirmUsername(e.target.value)}
-              className="confirm-input"
-            />
-            
-            <div className="modal-actions">
-              <button type="button" onClick={() => {
-                setShowDeleteConfirm(false);
-                setSelectedUser(null);
-              }}>
-                Cancel
-              </button>
-              <button 
-                type="button" 
-                className="delete-button"
-                disabled={confirmUsername !== selectedUser.username}
-                onClick={handleConfirmDelete}
-              >
-                Delete User
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      
+        {/* Edit User Modal */}
+        {editMode && selectedUser && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <div className="modal-header">
+                <h3 className="modal-title">Edit User: {selectedUser.username}</h3>
+                <button className="btn btn-sm btn-ghost" onClick={() => setEditMode(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <form onSubmit={handleSaveEdit} className="space-y-4">
+                  <div className="form-group">
+                    <label htmlFor="edit-username" className="form-label">Username</label>
+                    <input
+                      id="edit-username"
+                      type="text"
+                      className="form-input"
+                      value={editUsername}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setEditUsername(e.target.value)}
+                      required
+                      minLength={3}
+                      maxLength={50}
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="edit-email" className="form-label">Email</label>
+                    <input
+                      id="edit-email"
+                      type="email"
+                      className="form-input"
+                      value={editEmail}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setEditEmail(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={editIsActive}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => setEditIsActive(e.target.checked)}
+                        className="form-checkbox mr-2"
+                      />
+                      Account Active
+                    </label>
+                  </div>
+                  
+                  <div className="modal-footer">
+                    <button type="button" className="btn btn-outline" onClick={() => {
+                      setEditMode(false);
+                      setSelectedUser(null);
+                    }}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                      Save Changes
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+      
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && selectedUser && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <div className="modal-header">
+                <h3 className="modal-title">Delete User</h3>
+                <button className="btn btn-sm btn-ghost" onClick={() => setShowDeleteConfirm(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <p className="mb-4">
+                  Are you sure you want to delete the user <strong>{selectedUser.username}</strong>?
+                  This action cannot be undone.
+                </p>
+                <p className="mb-4">
+                  Type the username <strong>{selectedUser.username}</strong> to confirm:
+                </p>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={confirmUsername}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirmUsername(e.target.value)}
+                />
+                
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-outline" onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setSelectedUser(null);
+                  }}>
+                    Cancel
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-error"
+                    disabled={confirmUsername !== selectedUser.username}
+                    onClick={handleConfirmDelete}
+                  >
+                    Delete User
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

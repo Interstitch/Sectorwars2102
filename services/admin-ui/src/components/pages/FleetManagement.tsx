@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../ui/PageHeader';
 import { api } from '../../utils/auth';
-import './fleet-management.css';
 
 interface Ship {
   id: string;
@@ -246,199 +245,255 @@ const FleetManagement: React.FC = () => {
 
   if (loading && ships.length === 0) {
     return (
-      <div className="fleet-management">
+      <div className="page-container">
         <PageHeader 
           title="Fleet Management" 
           subtitle="Manage ships across the galaxy"
         />
-        <div className="loading-spinner">Loading fleet data...</div>
+        <div className="page-content">
+          <div className="loading-container text-center py-12">
+            <div className="loading-spinner mx-auto mb-4"></div>
+            <span>Loading fleet data...</span>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="fleet-management">
+    <div className="page-container">
       <PageHeader 
         title="Fleet Management" 
         subtitle="Manage ships across the galaxy"
       />
       
-      {error && (
-        <div className="error-banner">
-          <span className="error-icon">⚠️</span>
-          <span>{error}</span>
-          <button onClick={fetchShips} className="retry-button">Retry</button>
-        </div>
-      )}
-      
-      {/* Fleet Statistics */}
-      {stats && (
-        <div className="stats-overview">
-          <div className="stat-card">
-            <h3>{stats.total_ships}</h3>
-            <p>Total Ships</p>
+      <div className="page-content">
+        {error && (
+          <div className="alert alert-error mb-6">
+            <div className="flex items-center gap-3">
+              <span>⚠️</span>
+              <span className="flex-1">{error}</span>
+              <button onClick={fetchShips} className="btn btn-sm">Retry</button>
+            </div>
           </div>
-          <div className="stat-card">
-            <h3>{stats.average_maintenance.toFixed(1)}%</h3>
-            <p>Avg Maintenance</p>
-          </div>
-          <div className="stat-card">
-            <h3>{stats.inactive_ships}</h3>
-            <p>Inactive Ships</p>
-          </div>
-          <div className="stat-card">
-            <h3>{stats.total_cargo_capacity.toLocaleString()}</h3>
-            <p>Total Cargo Capacity</p>
-          </div>
-        </div>
-      )}
-
-      <div className="fleet-content">
-        {/* Fleet Controls */}
-        <div className="fleet-controls">
-          <div className="search-and-filters">
-            <div className="search-bar">
-              <input
-                type="text"
-                placeholder="Search ships by name or owner..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+        )}
+        
+        {/* Fleet Statistics */}
+        {stats && (
+          <section className="section">
+            <div className="section-header">
+              <h3 className="section-title">🚀 Fleet Statistics</h3>
+              <p className="section-subtitle">Overview of all ships in the galaxy</p>
             </div>
             
-            <div className="filter-controls">
-              <select 
-                value={typeFilter} 
-                onChange={(e) => setTypeFilter(e.target.value)}
-              >
-                <option value="all">All Types</option>
-                {SHIP_TYPES.map(type => (
-                  <option key={type} value={type}>{type.replace('_', ' ')}</option>
-                ))}
-              </select>
+            <div className="grid grid-auto-fit gap-6">
+              <div className="dashboard-stat-card">
+                <div className="dashboard-stat-header">
+                  <span className="dashboard-stat-icon">🚀</span>
+                  <h4 className="dashboard-stat-title">Total Ships</h4>
+                </div>
+                <div className="dashboard-stat-value">{stats.total_ships}</div>
+                <div className="dashboard-stat-description">All ships</div>
+              </div>
               
-              <input
-                type="text"
-                placeholder="Filter by owner..."
-                value={ownerFilter}
-                onChange={(e) => setOwnerFilter(e.target.value)}
-              />
+              <div className="dashboard-stat-card">
+                <div className="dashboard-stat-header">
+                  <span className="dashboard-stat-icon">🔧</span>
+                  <h4 className="dashboard-stat-title">Avg Maintenance</h4>
+                </div>
+                <div className="dashboard-stat-value">{stats.average_maintenance.toFixed(1)}%</div>
+                <div className="dashboard-stat-description">Fleet condition</div>
+              </div>
               
-              <input
-                type="number"
-                placeholder="Filter by sector..."
-                value={sectorFilter}
-                onChange={(e) => setSectorFilter(e.target.value)}
-              />
+              <div className="dashboard-stat-card stat-warning">
+                <div className="dashboard-stat-header">
+                  <span className="dashboard-stat-icon">⚠️</span>
+                  <h4 className="dashboard-stat-title">Inactive Ships</h4>
+                </div>
+                <div className="dashboard-stat-value">{stats.inactive_ships}</div>
+                <div className="dashboard-stat-description">Need attention</div>
+              </div>
               
-              <select 
-                value={statusFilter} 
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
+              <div className="dashboard-stat-card">
+                <div className="dashboard-stat-header">
+                  <span className="dashboard-stat-icon">📦</span>
+                  <h4 className="dashboard-stat-title">Total Cargo</h4>
+                </div>
+                <div className="dashboard-stat-value">{stats.total_cargo_capacity.toLocaleString()}</div>
+                <div className="dashboard-stat-description">Capacity</div>
+              </div>
             </div>
+          </section>
+        )}
+
+        {/* Fleet Controls */}
+        <section className="section">
+          <div className="section-header">
+            <h3 className="section-title">🛸 Fleet Management</h3>
+            <p className="section-subtitle">Search, filter, and manage all ships</p>
           </div>
           
-          <div className="action-controls">
-            <button 
-              onClick={() => setShowCreateForm(true)}
-              className="create-ship-btn"
-            >
-              + Create Ship
-            </button>
-            <button onClick={fetchShips} className="refresh-btn">
-              🔄 Refresh
-            </button>
-          </div>
-        </div>
+          <div className="card">
+            <div className="card-body">
+              {/* Search and Filters */}
+              <div className="flex flex-wrap items-center gap-4 mb-6">
+                <div className="flex-1 min-w-64">
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Search ships by name or owner..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                
+                <select 
+                  value={typeFilter} 
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="all">All Types</option>
+                  {SHIP_TYPES.map(type => (
+                    <option key={type} value={type}>{type.replace('_', ' ')}</option>
+                  ))}
+                </select>
+                
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Filter by owner..."
+                  value={ownerFilter}
+                  onChange={(e) => setOwnerFilter(e.target.value)}
+                />
+                
+                <input
+                  type="number"
+                  className="form-input"
+                  placeholder="Filter by sector..."
+                  value={sectorFilter}
+                  onChange={(e) => setSectorFilter(e.target.value)}
+                />
+                
+                <select 
+                  value={statusFilter} 
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+                
+                <button 
+                  onClick={() => setShowCreateForm(true)}
+                  className="btn btn-primary"
+                >
+                  + Create Ship
+                </button>
+                
+                <button onClick={fetchShips} className="btn btn-outline">
+                  🔄 Refresh
+                </button>
+              </div>
 
-        {/* Ships Table */}
-        <div className="ships-table-container">
-          <table className="ships-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Owner</th>
-                <th>Sector</th>
-                <th>Maintenance</th>
-                <th>Cargo</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredShips.map(ship => (
-                <tr key={ship.id} className={!ship.is_active ? 'inactive-ship' : ''}>
-                  <td className="ship-name">{ship.name}</td>
-                  <td>{ship.ship_type.replace('_', ' ')}</td>
-                  <td>{ship.owner_name}</td>
-                  <td>{ship.current_sector_id}</td>
-                  <td>
-                    <div className={`maintenance-bar ${ship.maintenance_rating < 50 ? 'low' : ship.maintenance_rating < 80 ? 'medium' : 'high'}`}>
-                      <div 
-                        className="maintenance-fill" 
-                        style={{ width: `${ship.maintenance_rating}%` }}
-                      ></div>
-                      <span>{ship.maintenance_rating.toFixed(1)}%</span>
-                    </div>
-                  </td>
-                  <td>{ship.cargo_used} / {ship.cargo_capacity}</td>
-                  <td>
-                    <span className={`status ${ship.is_active ? 'active' : 'inactive'}`}>
-                      {ship.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="action-buttons">
-                      <button 
-                        onClick={() => openEditForm(ship)}
-                        className="action-btn edit"
-                        title="Edit Ship"
-                      >
-                        ✏️
-                      </button>
-                      <button 
-                        onClick={() => openTeleportForm(ship)}
-                        className="action-btn teleport"
-                        title="Teleport Ship"
-                      >
-                        🌀
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteShip(ship.id)}
-                        className="action-btn delete"
-                        title="Delete Ship"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        
-        {/* Pagination */}
-        <div className="pagination">
-          <button 
-            onClick={() => setPage(page - 1)} 
-            disabled={page === 1}
-          >
-            Previous
-          </button>
-          <span>Page {page} of {totalPages} ({totalCount} ships)</span>
-          <button 
-            onClick={() => setPage(page + 1)} 
-            disabled={page === totalPages}
-          >
-            Next
-          </button>
-        </div>
+              {/* Ships Table */}
+              <div className="table-container">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Type</th>
+                      <th>Owner</th>
+                      <th>Sector</th>
+                      <th>Maintenance</th>
+                      <th>Cargo</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredShips.map(ship => (
+                      <tr key={ship.id} className={!ship.is_active ? 'opacity-50' : ''}>
+                        <td className="font-medium">{ship.name}</td>
+                        <td>{ship.ship_type.replace('_', ' ')}</td>
+                        <td>{ship.owner_name}</td>
+                        <td>{ship.current_sector_id}</td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full ${
+                                  ship.maintenance_rating < 30 ? 'bg-red-500' :
+                                  ship.maintenance_rating < 70 ? 'bg-yellow-500' : 'bg-green-500'
+                                }`}
+                                style={{ width: `${ship.maintenance_rating}%` }}
+                              />
+                            </div>
+                            <span className="text-sm">{ship.maintenance_rating.toFixed(1)}%</span>
+                          </div>
+                        </td>
+                        <td className="font-mono text-sm">{ship.cargo_used} / {ship.cargo_capacity}</td>
+                        <td>
+                          <span className={`badge ${ship.is_active ? 'badge-success' : 'badge-secondary'}`}>
+                            {ship.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-1">
+                            <button 
+                              onClick={() => openEditForm(ship)}
+                              className="btn btn-xs btn-outline"
+                              title="Edit Ship"
+                            >
+                              ✏️
+                            </button>
+                            <button 
+                              onClick={() => openTeleportForm(ship)}
+                              className="btn btn-xs btn-outline"
+                              title="Teleport Ship"
+                            >
+                              🌀
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteShip(ship.id)}
+                              className="btn btn-xs btn-error"
+                              title="Delete Ship"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <button 
+                    onClick={() => setPage(page - 1)} 
+                    disabled={page === 1}
+                    className="btn btn-sm btn-outline"
+                  >
+                    ← Previous
+                  </button>
+                  <div className="text-sm">
+                    Page {page} of {totalPages} ({totalCount} ships)
+                  </div>
+                  <button 
+                    onClick={() => setPage(page + 1)} 
+                    disabled={page === totalPages}
+                    className="btn btn-sm btn-outline"
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
       
       {/* Create Ship Modal */}
@@ -446,15 +501,16 @@ const FleetManagement: React.FC = () => {
         <div className="modal-overlay" onClick={() => setShowCreateForm(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Create New Ship</h3>
-              <button onClick={() => setShowCreateForm(false)} className="close-btn">×</button>
+              <h3 className="modal-title">Create New Ship</h3>
+              <button onClick={() => setShowCreateForm(false)} className="btn btn-sm btn-ghost">×</button>
             </div>
-            <div className="modal-content">
-              <form onSubmit={handleCreateShip}>
+            <div className="modal-body">
+              <form onSubmit={handleCreateShip} className="space-y-4">
                 <div className="form-group">
-                  <label>Ship Name:</label>
+                  <label className="form-label">Ship Name</label>
                   <input
                     type="text"
+                    className="form-input"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                     required
@@ -462,8 +518,9 @@ const FleetManagement: React.FC = () => {
                 </div>
                 
                 <div className="form-group">
-                  <label>Ship Type:</label>
+                  <label className="form-label">Ship Type</label>
                   <select
+                    className="form-select"
                     value={formData.ship_type}
                     onChange={(e) => setFormData({...formData, ship_type: e.target.value})}
                     required
@@ -475,8 +532,9 @@ const FleetManagement: React.FC = () => {
                 </div>
                 
                 <div className="form-group">
-                  <label>Owner:</label>
+                  <label className="form-label">Owner</label>
                   <select
+                    className="form-select"
                     value={formData.owner_id}
                     onChange={(e) => setFormData({...formData, owner_id: e.target.value})}
                     required
@@ -489,9 +547,10 @@ const FleetManagement: React.FC = () => {
                 </div>
                 
                 <div className="form-group">
-                  <label>Starting Sector:</label>
+                  <label className="form-label">Starting Sector</label>
                   <input
                     type="number"
+                    className="form-input"
                     min="1"
                     value={formData.current_sector_id}
                     onChange={(e) => setFormData({...formData, current_sector_id: parseInt(e.target.value)})}
@@ -499,9 +558,13 @@ const FleetManagement: React.FC = () => {
                   />
                 </div>
                 
-                <div className="form-actions">
-                  <button type="button" onClick={() => setShowCreateForm(false)}>Cancel</button>
-                  <button type="submit">Create Ship</button>
+                <div className="modal-footer">
+                  <button type="button" onClick={() => setShowCreateForm(false)} className="btn btn-outline">
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Create Ship
+                  </button>
                 </div>
               </form>
             </div>
@@ -514,15 +577,16 @@ const FleetManagement: React.FC = () => {
         <div className="modal-overlay" onClick={() => setShowEditForm(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Edit Ship: {selectedShip.name}</h3>
-              <button onClick={() => setShowEditForm(false)} className="close-btn">×</button>
+              <h3 className="modal-title">Edit Ship: {selectedShip.name}</h3>
+              <button onClick={() => setShowEditForm(false)} className="btn btn-sm btn-ghost">×</button>
             </div>
-            <div className="modal-content">
-              <form onSubmit={handleUpdateShip}>
+            <div className="modal-body">
+              <form onSubmit={handleUpdateShip} className="space-y-4">
                 <div className="form-group">
-                  <label>Ship Name:</label>
+                  <label className="form-label">Ship Name</label>
                   <input
                     type="text"
+                    className="form-input"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                     required
@@ -530,8 +594,9 @@ const FleetManagement: React.FC = () => {
                 </div>
                 
                 <div className="form-group">
-                  <label>Owner:</label>
+                  <label className="form-label">Owner</label>
                   <select
+                    className="form-select"
                     value={formData.owner_id}
                     onChange={(e) => setFormData({...formData, owner_id: e.target.value})}
                     required
@@ -543,9 +608,10 @@ const FleetManagement: React.FC = () => {
                 </div>
                 
                 <div className="form-group">
-                  <label>Current Sector:</label>
+                  <label className="form-label">Current Sector</label>
                   <input
                     type="number"
+                    className="form-input"
                     min="1"
                     value={formData.current_sector_id}
                     onChange={(e) => setFormData({...formData, current_sector_id: parseInt(e.target.value)})}
@@ -553,9 +619,13 @@ const FleetManagement: React.FC = () => {
                   />
                 </div>
                 
-                <div className="form-actions">
-                  <button type="button" onClick={() => setShowEditForm(false)}>Cancel</button>
-                  <button type="submit">Update Ship</button>
+                <div className="modal-footer">
+                  <button type="button" onClick={() => setShowEditForm(false)} className="btn btn-outline">
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Update Ship
+                  </button>
                 </div>
               </form>
             </div>
@@ -568,19 +638,22 @@ const FleetManagement: React.FC = () => {
         <div className="modal-overlay" onClick={() => setShowTeleportForm(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Teleport Ship: {selectedShip.name}</h3>
-              <button onClick={() => setShowTeleportForm(false)} className="close-btn">×</button>
+              <h3 className="modal-title">Teleport Ship: {selectedShip.name}</h3>
+              <button onClick={() => setShowTeleportForm(false)} className="btn btn-sm btn-ghost">×</button>
             </div>
-            <div className="modal-content">
-              <form onSubmit={handleTeleportShip}>
-                <div className="form-group">
-                  <label>Current Sector: {selectedShip.current_sector_id}</label>
+            <div className="modal-body">
+              <form onSubmit={handleTeleportShip} className="space-y-4">
+                <div className="alert alert-info">
+                  <div>
+                    <strong>Current Sector:</strong> {selectedShip.current_sector_id}
+                  </div>
                 </div>
                 
                 <div className="form-group">
-                  <label>Target Sector:</label>
+                  <label className="form-label">Target Sector</label>
                   <input
                     type="number"
+                    className="form-input"
                     min="1"
                     value={teleportSector}
                     onChange={(e) => setTeleportSector(parseInt(e.target.value))}
@@ -588,9 +661,13 @@ const FleetManagement: React.FC = () => {
                   />
                 </div>
                 
-                <div className="form-actions">
-                  <button type="button" onClick={() => setShowTeleportForm(false)}>Cancel</button>
-                  <button type="submit">Teleport Ship</button>
+                <div className="modal-footer">
+                  <button type="button" onClick={() => setShowTeleportForm(false)} className="btn btn-outline">
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-warning">
+                    Teleport Ship
+                  </button>
                 </div>
               </form>
             </div>

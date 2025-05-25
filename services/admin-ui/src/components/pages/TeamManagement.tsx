@@ -210,29 +210,38 @@ const TeamManagement: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="team-management">
+      <div className="page-container">
         <PageHeader 
           title="Team Management" 
           subtitle="Manage teams, factions, and diplomatic relations"
         />
-        <div className="loading-spinner">Loading team data...</div>
+        <div className="page-content">
+          <div className="loading-container text-center py-12">
+            <div className="loading-spinner mx-auto mb-4"></div>
+            <span>Loading team data...</span>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="team-management">
+      <div className="page-container">
         <PageHeader 
           title="Team Management" 
           subtitle="Manage teams, factions, and diplomatic relations"
         />
-        <div className="error-message">
-          <h3>Error Loading Team Data</h3>
-          <p>{error}</p>
-          <button onClick={fetchTeamData} className="retry-button">
-            Retry
-          </button>
+        <div className="page-content">
+          <div className="alert alert-error">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Error Loading Team Data</h3>
+              <p className="mb-4">{error}</p>
+              <button onClick={fetchTeamData} className="btn btn-primary">
+                Retry
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -249,60 +258,72 @@ const TeamManagement: React.FC = () => {
         {/* Team Statistics */}
         {teamStats && (
           <section className="section">
-            <div className="grid grid-auto-fit gap-6 mb-6">
+            <div className="section-header">
+              <h3 className="section-title">📊 Team Statistics</h3>
+              <p className="section-subtitle">Overview of team activity and organization</p>
+            </div>
+            
+            <div className="grid grid-auto-fit gap-6">
               <div className="dashboard-stat-card">
                 <div className="dashboard-stat-header">
                   <span className="dashboard-stat-icon">🏢</span>
                   <h4 className="dashboard-stat-title">Total Teams</h4>
                 </div>
                 <div className="dashboard-stat-value">{teamStats.total_teams}</div>
-                <div className="dashboard-stat-subtitle">All teams in system</div>
+                <div className="dashboard-stat-description">All teams in system</div>
               </div>
-              <div className="dashboard-stat-card dashboard-stat-card-success">
+              
+              <div className="dashboard-stat-card stat-success">
                 <div className="dashboard-stat-header">
                   <span className="dashboard-stat-icon">✅</span>
                   <h4 className="dashboard-stat-title">Active Teams</h4>
                 </div>
                 <div className="dashboard-stat-value">{teamStats.active_teams}</div>
-                <div className="dashboard-stat-subtitle">Currently active</div>
+                <div className="dashboard-stat-description">Currently active</div>
               </div>
+              
               <div className="dashboard-stat-card">
                 <div className="dashboard-stat-header">
                   <span className="dashboard-stat-icon">👥</span>
                   <h4 className="dashboard-stat-title">Total Members</h4>
                 </div>
                 <div className="dashboard-stat-value">{teamStats.total_members}</div>
-                <div className="dashboard-stat-subtitle">Players in teams</div>
+                <div className="dashboard-stat-description">Players in teams</div>
               </div>
+              
               <div className="dashboard-stat-card">
                 <div className="dashboard-stat-header">
                   <span className="dashboard-stat-icon">📊</span>
                   <h4 className="dashboard-stat-title">Average Size</h4>
                 </div>
                 <div className="dashboard-stat-value">{teamStats.average_team_size}</div>
-                <div className="dashboard-stat-subtitle">Members per team</div>
+                <div className="dashboard-stat-description">Members per team</div>
               </div>
+              
               <div className="dashboard-stat-card">
                 <div className="dashboard-stat-header">
                   <span className="dashboard-stat-icon">🏆</span>
                   <h4 className="dashboard-stat-title">Largest Team</h4>
                 </div>
                 <div className="dashboard-stat-value">{teamStats.largest_team_size}</div>
-                <div className="dashboard-stat-subtitle">Max team size</div>
+                <div className="dashboard-stat-description">Max team size</div>
               </div>
             </div>
           </section>
         )}
 
+        {/* Teams Management */}
         <section className="section">
+          <div className="section-header">
+            <h3 className="section-title">🏢 Teams Management</h3>
+            <p className="section-subtitle">Search, filter, and manage all teams</p>
+          </div>
+          
           <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">Teams Management</h3>
-            </div>
             <div className="card-body">
-              <div className="flex flex-wrap gap-4 mb-6">
-                <div className="form-group">
-                  <label className="form-label sr-only">Search teams</label>
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-4 mb-6">
+                <div className="flex-1 min-w-64">
                   <input
                     type="text"
                     className="form-input"
@@ -311,187 +332,209 @@ const TeamManagement: React.FC = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-              
-              <select 
-                value={statusFilter} 
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">All Teams</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-            
-            <div className="sort-controls">
-              <select 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value)}
-                className="filter-select"
-              >
-                <option value="created_at">Created Date</option>
-                <option value="name">Team Name</option>
-                <option value="member_count">Member Count</option>
-                <option value="total_credits">Total Credits</option>
-              </select>
-              
-              <button 
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="sort-button"
-              >
-                {sortOrder === 'asc' ? '↑' : '↓'}
-              </button>
-            </div>
-            
-            <div className="action-buttons">
-              <button className="btn btn-primary">
-                ➕ Create Team
-              </button>
-            </div>
-          </div>
-
-          <div className="teams-table-container">
-            <table className="teams-table">
-              <thead>
-                <tr>
-                  <th>Team Name</th>
-                  <th>Leader</th>
-                  <th>Members</th>
-                  <th>Total Credits</th>
-                  <th>Created</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTeams.map(team => (
-                  <tr 
-                    key={team.id} 
-                    className={selectedTeam?.id === team.id ? 'selected' : ''}
-                    onClick={() => setSelectedTeam(team)}
+                
+                <select 
+                  value={statusFilter} 
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="all">All Teams</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+                
+                <div className="flex items-center gap-2">
+                  <select 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="form-select"
                   >
-                    <td className="team-name">{team.name}</td>
-                    <td className="team-leader">{team.leader_name}</td>
-                    <td>{team.member_count}</td>
-                    <td>{formatCredits(team.total_credits)}</td>
-                    <td>{formatDate(team.created_at)}</td>
-                    <td>
-                      <span className={`status-badge ${team.is_active ? 'active' : 'inactive'}`}>
-                        {team.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDissolveTeam(team.id);
-                        }}
-                        className="dissolve-btn"
-                        disabled={!team.is_active}
-                      >
-                        Dissolve
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          <div className="pagination">
-            <button 
-              onClick={() => setPage(page - 1)} 
-              disabled={page === 1}
-              className="pagination-btn"
-            >
-              ← Previous
-            </button>
-            <div className="pagination-info">
-              Page {page} of {totalPages}
-            </div>
-            <button 
-              onClick={() => setPage(page + 1)} 
-              disabled={page === totalPages}
-              className="pagination-btn"
-            >
-              Next →
-            </button>
-          </div>
-        </div>
-
-        {/* Team Details */}
-        {selectedTeam && (
-          <div className="team-details-section">
-            <div className="team-details-header">
-              <h3>{selectedTeam.name}</h3>
-              <div className="team-meta">
-                <p><strong>Leader:</strong> {selectedTeam.leader_name}</p>
-                <p><strong>Members:</strong> {selectedTeam.member_count}</p>
-                <p><strong>Total Credits:</strong> {formatCredits(selectedTeam.total_credits)}</p>
-                <p><strong>Created:</strong> {formatDate(selectedTeam.created_at)}</p>
-                <p><strong>Status:</strong> 
-                  <span className={`status ${selectedTeam.is_active ? 'active' : 'inactive'}`}>
-                    {selectedTeam.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div className="team-members">
-              <h4>Team Members</h4>
-              {teamMembers.length > 0 ? (
-                <div className="members-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Username</th>
-                        <th>Role</th>
-                        <th>Credits</th>
-                        <th>Turns</th>
-                        <th>Sector</th>
-                        <th>Last Login</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {teamMembers.map(member => (
-                        <tr key={member.id}>
-                          <td>{member.username}</td>
-                          <td>
-                            <span className={`role ${member.role}`}>
-                              {member.role}
-                            </span>
-                          </td>
-                          <td>{formatCredits(member.credits)}</td>
-                          <td>{member.turns}</td>
-                          <td>{member.current_sector_id}</td>
-                          <td>
-                            {member.last_login 
-                              ? formatDate(member.last_login)
-                              : 'Never'
-                            }
-                          </td>
-                          <td>
-                            {member.role !== 'leader' && (
-                              <button 
-                                onClick={() => handleRemoveMember(selectedTeam.id, member.id)}
-                                className="remove-member-btn"
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                    <option value="created_at">Created Date</option>
+                    <option value="name">Team Name</option>
+                    <option value="member_count">Member Count</option>
+                    <option value="total_credits">Total Credits</option>
+                  </select>
+                  
+                  <button 
+                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                    className="btn btn-outline btn-sm"
+                  >
+                    {sortOrder === 'asc' ? '↑' : '↓'}
+                  </button>
                 </div>
-              ) : (
-                <p>No team members found.</p>
+                
+                <button className="btn btn-primary">
+                  ➕ Create Team
+                </button>
+              </div>
+
+              {/* Teams Table */}
+              <div className="table-container">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Team Name</th>
+                      <th>Leader</th>
+                      <th>Members</th>
+                      <th>Total Credits</th>
+                      <th>Created</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTeams.map(team => (
+                      <tr 
+                        key={team.id} 
+                        className={`cursor-pointer hover:bg-hover ${selectedTeam?.id === team.id ? 'bg-primary-50' : ''}`}
+                        onClick={() => setSelectedTeam(team)}
+                      >
+                        <td className="font-medium">{team.name}</td>
+                        <td>{team.leader_name}</td>
+                        <td>{team.member_count}</td>
+                        <td className="font-mono">{formatCredits(team.total_credits)}</td>
+                        <td className="text-sm">{formatDate(team.created_at)}</td>
+                        <td>
+                          <span className={`badge ${team.is_active ? 'badge-success' : 'badge-secondary'}`}>
+                            {team.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <button 
+                            onClick={() => handleDissolveTeam(team.id)}
+                            className="btn btn-xs btn-error"
+                            disabled={!team.is_active}
+                          >
+                            Dissolve
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <button 
+                    onClick={() => setPage(page - 1)} 
+                    disabled={page === 1}
+                    className="btn btn-sm btn-outline"
+                  >
+                    ← Previous
+                  </button>
+                  <div className="text-sm">
+                    Page {page} of {totalPages}
+                  </div>
+                  <button 
+                    onClick={() => setPage(page + 1)} 
+                    disabled={page === totalPages}
+                    className="btn btn-sm btn-outline"
+                  >
+                    Next →
+                  </button>
+                </div>
               )}
             </div>
           </div>
+        </section>
+
+        {/* Team Details */}
+        {selectedTeam && (
+          <section className="section">
+            <div className="section-header">
+              <h3 className="section-title">👥 Team Details: {selectedTeam.name}</h3>
+              <p className="section-subtitle">Detailed team information and member management</p>
+            </div>
+            
+            <div className="card">
+              <div className="card-body">
+                {/* Team Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                  <div>
+                    <div className="text-sm text-muted">Leader</div>
+                    <div className="font-medium">{selectedTeam.leader_name}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted">Members</div>
+                    <div className="font-medium">{selectedTeam.member_count}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted">Total Credits</div>
+                    <div className="font-mono">{formatCredits(selectedTeam.total_credits)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted">Created</div>
+                    <div>{formatDate(selectedTeam.created_at)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted">Status</div>
+                    <span className={`badge ${selectedTeam.is_active ? 'badge-success' : 'badge-secondary'}`}>
+                      {selectedTeam.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Team Members */}
+                <div>
+                  <h4 className="text-lg font-semibold mb-4">Team Members</h4>
+                  {teamMembers.length > 0 ? (
+                    <div className="table-container">
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Credits</th>
+                            <th>Turns</th>
+                            <th>Sector</th>
+                            <th>Last Login</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {teamMembers.map(member => (
+                            <tr key={member.id}>
+                              <td className="font-medium">{member.username}</td>
+                              <td>
+                                <span className={`badge ${member.role === 'leader' ? 'badge-warning' : 'badge-primary'}`}>
+                                  {member.role}
+                                </span>
+                              </td>
+                              <td className="font-mono">{formatCredits(member.credits)}</td>
+                              <td>{member.turns}</td>
+                              <td>{member.current_sector_id}</td>
+                              <td className="text-sm">
+                                {member.last_login 
+                                  ? formatDate(member.last_login)
+                                  : 'Never'
+                                }
+                              </td>
+                              <td>
+                                {member.role !== 'leader' && (
+                                  <button 
+                                    onClick={() => handleRemoveMember(selectedTeam.id, member.id)}
+                                    className="btn btn-xs btn-error"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted">
+                      No team members found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
         )}
       </div>
     </div>
