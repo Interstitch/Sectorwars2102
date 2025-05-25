@@ -923,6 +923,95 @@ async def get_system_health(
         logger.error(f"Error in get_system_health: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get system health: {str(e)}")
 
+# Warp Tunnel Management Endpoints
+
+class WarpTunnelManagementResponse(BaseModel):
+    id: str
+    name: str
+    origin_sector_id: int
+    destination_sector_id: int
+    type: str
+    status: str
+    stability: float
+    is_bidirectional: bool
+    turn_cost: int
+    is_active: bool
+    total_traversals: int
+    created_at: datetime
+
+@router.get("/warp-tunnels/comprehensive", response_model=Dict[str, Any])
+async def get_warp_tunnels_comprehensive(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    filter_type: Optional[str] = None,
+    filter_status: Optional[str] = None,
+    filter_origin_sector: Optional[int] = None,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get comprehensive warp tunnel information"""
+    try:
+        query = db.query(WarpTunnel)
+        
+        # Apply filters
+        if filter_type:
+            query = query.filter(WarpTunnel.type == filter_type)
+        if filter_status:
+            query = query.filter(WarpTunnel.status == filter_status)
+        if filter_origin_sector:
+            # Need to join with sectors to filter by sector_id (integer)
+            query = query.join(Sector, WarpTunnel.origin_sector_id == Sector.id).filter(Sector.sector_id == filter_origin_sector)
+        
+        # Get total count
+        total_count = query.count()
+        
+        # Apply pagination
+        offset = (page - 1) * limit
+        warp_tunnels = query.offset(offset).limit(limit).all()
+        
+        # Build response data
+        tunnels_data = []
+        for tunnel in warp_tunnels:
+            # Get origin and destination sector integers for display
+            origin_sector_int = None
+            dest_sector_int = None
+            
+            if tunnel.origin_sector:
+                origin_sector_int = tunnel.origin_sector.sector_id
+            if tunnel.destination_sector:
+                dest_sector_int = tunnel.destination_sector.sector_id
+            
+            # Extract active status from tunnel_status JSONB
+            tunnel_status_data = tunnel.tunnel_status or {}
+            is_active = tunnel_status_data.get("is_active", True) and tunnel.status.value == "ACTIVE"
+            
+            tunnels_data.append(WarpTunnelManagementResponse(
+                id=str(tunnel.id),
+                name=tunnel.name,
+                origin_sector_id=origin_sector_int or 0,
+                destination_sector_id=dest_sector_int or 0,
+                type=tunnel.type.value,
+                status=tunnel.status.value,
+                stability=tunnel.stability,
+                is_bidirectional=tunnel.is_bidirectional,
+                turn_cost=tunnel.turn_cost,
+                is_active=is_active,
+                total_traversals=tunnel.total_traversals,
+                created_at=tunnel.created_at
+            ))
+        
+        return {
+            "warp_tunnels": tunnels_data,
+            "total_count": total_count,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total_count + limit - 1) // limit
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in get_warp_tunnels_comprehensive: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch warp tunnels: {str(e)}")
+
 # Team Management Endpoints
 
 @router.get("/teams/comprehensive", response_model=Dict[str, Any])
@@ -1323,3 +1412,71 @@ async def take_security_action(
     except Exception as e:
         logger.error(f"Error taking security action: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to take security action: {str(e)}")
+
+
+# =============================================================================
+# SIMPLE REDIRECT ENDPOINTS FOR FRONTEND COMPATIBILITY
+# =============================================================================
+
+@router.get("/planets", response_model=Dict[str, Any])
+async def get_planets(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    filter_type: Optional[str] = None,
+    filter_owner: Optional[str] = None,
+    filter_colonized: Optional[bool] = None,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Simple planets endpoint that redirects to comprehensive endpoint"""
+    return await get_planets_comprehensive(
+        page=page,
+        limit=limit,
+        filter_type=filter_type,
+        filter_owner=filter_owner,
+        filter_colonized=filter_colonized,
+        current_admin=current_admin,
+        db=db
+    )
+
+@router.get("/ports", response_model=Dict[str, Any])
+async def get_ports(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    filter_class: Optional[str] = None,
+    filter_type: Optional[str] = None,
+    filter_owner: Optional[str] = None,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Simple ports endpoint that redirects to comprehensive endpoint"""
+    return await get_ports_comprehensive(
+        page=page,
+        limit=limit,
+        filter_class=filter_class,
+        filter_type=filter_type,
+        filter_owner=filter_owner,
+        current_admin=current_admin,
+        db=db
+    )
+
+@router.get("/warp-tunnels", response_model=Dict[str, Any])
+async def get_warp_tunnels(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    filter_type: Optional[str] = None,
+    filter_status: Optional[str] = None,
+    filter_origin_sector: Optional[int] = None,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Simple warp tunnels endpoint that redirects to comprehensive endpoint"""
+    return await get_warp_tunnels_comprehensive(
+        page=page,
+        limit=limit,
+        filter_type=filter_type,
+        filter_status=filter_status,
+        filter_origin_sector=filter_origin_sector,
+        current_admin=current_admin,
+        db=db
+    )
