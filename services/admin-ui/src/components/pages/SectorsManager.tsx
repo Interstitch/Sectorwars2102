@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAdmin } from '../../contexts/AdminContext';
 import { api } from '../../utils/auth';
 import SectorEditModal from '../universe/SectorEditModal';
-import './sectors-manager.css';
 
 interface Sector {
   id: string;
@@ -208,228 +207,257 @@ const SectorsManager: React.FC = () => {
   };
   
   return (
-    <div className="sectors-manager">
-        <div className="sectors-header">
-          <h2>Sectors Management</h2>
-          <p>View and manage all sectors in the game universe.</p>
-        </div>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">Sectors Management</h1>
+        <p className="page-subtitle">View and manage all sectors in the game universe.</p>
+      </div>
+      <div className="page-content">
         
         {error && (
-          <div className="error-message">
+          <div className="alert alert-error">
             {error}
           </div>
         )}
         
-        <div className="sectors-controls">
-          <div className="filters-panel">
-            <h3>Filters</h3>
-            
-            <div className="filter-row">
-              <div className="filter-group">
-                <label htmlFor="region-filter">Region</label>
-                <select 
-                  id="region-filter" 
-                  value={selectedRegion}
-                  onChange={handleRegionChange}
-                >
-                  <option value="">All Regions</option>
-                  {regions.map(region => (
-                    <option key={region.id} value={region.id}>
-                      {region.name} ({region.type})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="filter-group">
-                <label htmlFor="cluster-filter">Cluster</label>
-                <select 
-                  id="cluster-filter" 
-                  value={selectedCluster}
-                  onChange={handleClusterChange}
-                  disabled={!selectedRegion}
-                >
-                  <option value="">All Clusters</option>
-                  {clusters.map(cluster => (
-                    <option key={cluster.id} value={cluster.id}>
-                      {cluster.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        <section className="section">
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">Filters</h3>
             </div>
+            <div className="card-body">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="form-group">
+                  <label htmlFor="region-filter" className="form-label">Region</label>
+                  <select 
+                    id="region-filter" 
+                    className="form-select"
+                    value={selectedRegion}
+                    onChange={handleRegionChange}
+                  >
+                    <option value="">All Regions</option>
+                    {regions.map(region => (
+                      <option key={region.id} value={region.id}>
+                        {region.name} ({region.type})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="cluster-filter" className="form-label">Cluster</label>
+                  <select 
+                    id="cluster-filter" 
+                    className="form-select"
+                    value={selectedCluster}
+                    onChange={handleClusterChange}
+                    disabled={!selectedRegion}
+                  >
+                    <option value="">All Clusters</option>
+                    {clusters.map(cluster => (
+                      <option key={cluster.id} value={cluster.id}>
+                        {cluster.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             
-            <div className="filter-row">
-              <div className="filter-group toggle-group">
-                <label>Has Port</label>
-                <div className="toggle-buttons">
-                  <button 
-                    className={filterHasPort === true ? 'active' : ''}
-                    onClick={() => handleFilterChange('port', filterHasPort === true ? null : true)}
-                  >
-                    Yes
-                  </button>
-                  <button 
-                    className={filterHasPort === false ? 'active' : ''}
-                    onClick={() => handleFilterChange('port', filterHasPort === false ? null : false)}
-                  >
-                    No
-                  </button>
-                  <button 
-                    className={filterHasPort === null ? 'active' : ''}
-                    onClick={() => handleFilterChange('port', null)}
-                  >
-                    Any
-                  </button>
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="form-group">
+                  <label className="form-label">Has Port</label>
+                  <div className="btn-group">
+                    <button 
+                      className={`btn btn-sm ${filterHasPort === true ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => handleFilterChange('port', filterHasPort === true ? null : true)}
+                    >
+                      Yes
+                    </button>
+                    <button 
+                      className={`btn btn-sm ${filterHasPort === false ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => handleFilterChange('port', filterHasPort === false ? null : false)}
+                    >
+                      No
+                    </button>
+                    <button 
+                      className={`btn btn-sm ${filterHasPort === null ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => handleFilterChange('port', null)}
+                    >
+                      Any
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">Has Planet</label>
+                  <div className="btn-group">
+                    <button 
+                      className={`btn btn-sm ${filterHasPlanet === true ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => handleFilterChange('planet', filterHasPlanet === true ? null : true)}
+                    >
+                      Yes
+                    </button>
+                    <button 
+                      className={`btn btn-sm ${filterHasPlanet === false ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => handleFilterChange('planet', filterHasPlanet === false ? null : false)}
+                    >
+                      No
+                    </button>
+                    <button 
+                      className={`btn btn-sm ${filterHasPlanet === null ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => handleFilterChange('planet', null)}
+                    >
+                      Any
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">Discovered</label>
+                  <div className="btn-group">
+                    <button 
+                      className={`btn btn-sm ${filterDiscovered === true ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => handleFilterChange('discovered', filterDiscovered === true ? null : true)}
+                    >
+                      Yes
+                    </button>
+                    <button 
+                      className={`btn btn-sm ${filterDiscovered === false ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => handleFilterChange('discovered', filterDiscovered === false ? null : false)}
+                    >
+                      No
+                    </button>
+                    <button 
+                      className={`btn btn-sm ${filterDiscovered === null ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => handleFilterChange('discovered', null)}
+                    >
+                      Any
+                    </button>
+                  </div>
                 </div>
               </div>
-              
-              <div className="filter-group toggle-group">
-                <label>Has Planet</label>
-                <div className="toggle-buttons">
-                  <button 
-                    className={filterHasPlanet === true ? 'active' : ''}
-                    onClick={() => handleFilterChange('planet', filterHasPlanet === true ? null : true)}
-                  >
-                    Yes
-                  </button>
-                  <button 
-                    className={filterHasPlanet === false ? 'active' : ''}
-                    onClick={() => handleFilterChange('planet', filterHasPlanet === false ? null : false)}
-                  >
-                    No
-                  </button>
-                  <button 
-                    className={filterHasPlanet === null ? 'active' : ''}
-                    onClick={() => handleFilterChange('planet', null)}
-                  >
-                    Any
-                  </button>
-                </div>
-              </div>
-              
-              <div className="filter-group toggle-group">
-                <label>Discovered</label>
-                <div className="toggle-buttons">
-                  <button 
-                    className={filterDiscovered === true ? 'active' : ''}
-                    onClick={() => handleFilterChange('discovered', filterDiscovered === true ? null : true)}
-                  >
-                    Yes
-                  </button>
-                  <button 
-                    className={filterDiscovered === false ? 'active' : ''}
-                    onClick={() => handleFilterChange('discovered', filterDiscovered === false ? null : false)}
-                  >
-                    No
-                  </button>
-                  <button 
-                    className={filterDiscovered === null ? 'active' : ''}
-                    onClick={() => handleFilterChange('discovered', null)}
-                  >
-                    Any
-                  </button>
-                </div>
-              </div>
-            </div>
             
-            <div className="filter-row">
-              <form className="search-form" onSubmit={handleSearchSubmit}>
-                <div className="filter-group search-group">
-                  <input
-                    type="text"
-                    placeholder="Search by sector name or ID..."
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                  />
-                  <button type="submit" className="search-button">Search</button>
-                </div>
-              </form>
-              
-              <button className="reset-filters-button" onClick={resetFilters}>
-                Reset Filters
-              </button>
+              <div className="flex gap-4">
+                <form className="flex-1" onSubmit={handleSearchSubmit}>
+                  <div className="form-group">
+                    <div className="input-group">
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Search by sector name or ID..."
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                      <button type="submit" className="btn btn-primary">Search</button>
+                    </div>
+                  </div>
+                </form>
+                
+                <button className="btn btn-secondary" onClick={resetFilters}>
+                  Reset Filters
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
         
-        <div className="sectors-content">
+        <section className="section">
           {isLoading || sectorLoading ? (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
+            <div className="loading-state">
+              <div className="spinner"></div>
               <p>Loading sectors data...</p>
             </div>
           ) : (
-            <div className="sectors-grid-container">
-              <div className="sectors-list">
-                <h3>Sectors ({sectors.length})</h3>
-                
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">Sectors ({sectors.length})</h3>
+              </div>
+              <div className="card-body">
                 {sectors.length === 0 ? (
-                  <div className="no-sectors-message">
+                  <div className="empty-state">
                     <p>No sectors found matching your criteria.</p>
                   </div>
                 ) : (
                   <>
-                    <div className="sectors-grid">
-                      {sectors.map(sector => {
-                        // Use region_name directly from backend
-                        const regionName = sector.region_name || 'Unknown';
-                        const clusterName = clusters.find(c => c.id === sector.cluster_id)?.name || 'Unknown';
-                        
-                        return (
-                          <div 
-                            key={sector.id} 
-                            className={`sectors-grid-row ${selectedSector?.id === sector.id ? 'selected' : ''}`}
-                            onClick={() => {
-                              handleSectorSelect(sector);
-                              handleEditSector(sector);
-                            }}
-                          >
-                            <div className="sector-identity">
-                              <div className="sector-name">{sector.name}</div>
-                              <div className="sector-id">#{sector.sector_id}</div>
-                            </div>
+                    <div className="table-container">
+                      <table className="table table-hover">
+                        <thead>
+                          <tr>
+                            <th>Sector</th>
+                            <th>Coordinates</th>
+                            <th>Features</th>
+                            <th>Location</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sectors.map(sector => {
+                            // Use region_name directly from backend
+                            const regionName = sector.region_name || 'Unknown';
+                            const clusterName = clusters.find(c => c.id === sector.cluster_id)?.name || 'Unknown';
                             
-                            <div className="sector-coordinates">
-                              {sector.x_coord},{sector.y_coord},{sector.z_coord}
-                            </div>
-                            
-                            <div className="sector-status-icons">
-                              {sector.has_port && <div className="status-badge badge-port" title="Trading Port"></div>}
-                              {sector.has_planet && <div className="status-badge badge-planet" title="Habitable Planet"></div>}
-                              {!sector.has_warp_tunnel && <div className="status-badge badge-no-warp" title="No Warp Tunnel"></div>}
-                              {sector.is_discovered && <div className="status-badge badge-discovered" title="Sector Mapped"></div>}
-                            </div>
-                            
-                            <div className="sector-location">
-                              {regionName} • {clusterName}
-                            </div>
-                            
-                            <div className="sector-actions">
-                              <button 
-                                className="edit-button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // Edit button is now redundant since row is clickable, but kept for clarity
+                            return (
+                              <tr 
+                                key={sector.id} 
+                                className={`cursor-pointer ${selectedSector?.id === sector.id ? 'table-row-selected' : ''}`}
+                                onClick={() => {
+                                  handleSectorSelect(sector);
+                                  handleEditSector(sector);
                                 }}
                               >
-                                Edit
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
+                                <td>
+                                  <div className="flex flex-col">
+                                    <span className="font-semibold text-primary">{sector.name}</span>
+                                    <span className="text-sm text-muted font-mono">#{sector.sector_id}</span>
+                                  </div>
+                                </td>
+                                
+                                <td>
+                                  <code className="text-sm">{sector.x_coord},{sector.y_coord},{sector.z_coord}</code>
+                                </td>
+                                
+                                <td>
+                                  <div className="flex gap-2 flex-wrap">
+                                    {sector.has_port && <span className="badge badge-info" title="Trading Port">Port</span>}
+                                    {sector.has_planet && <span className="badge badge-success" title="Habitable Planet">Planet</span>}
+                                    {!sector.has_warp_tunnel && <span className="badge badge-warning" title="No Warp Tunnel">No Warp</span>}
+                                    {sector.is_discovered && <span className="badge badge-success" title="Sector Mapped">Mapped</span>}
+                                  </div>
+                                </td>
+                                
+                                <td className="text-sm text-muted">
+                                  {regionName} • {clusterName}
+                                </td>
+                                
+                                <td>
+                                  <button 
+                                    className="btn btn-sm btn-primary"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditSector(sector);
+                                    }}
+                                  >
+                                    Edit
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                     
-                    <div className="pagination">
+                    <div className="flex justify-between items-center mt-6">
                       <button 
+                        className="btn btn-secondary"
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                       >
                         Previous
                       </button>
-                      <span className="page-info">Page {currentPage}</span>
+                      <span className="text-sm text-muted">Page {currentPage}</span>
                       <button 
+                        className="btn btn-secondary"
                         disabled={sectors.length < itemsPerPage}
                         onClick={() => setCurrentPage(prev => prev + 1)}
                       >
@@ -439,11 +467,9 @@ const SectorsManager: React.FC = () => {
                   </>
                 )}
               </div>
-              
-              {/* Details panel removed for full-width efficiency - use modal or expandable rows for details */}
             </div>
           )}
-        </div>
+        </section>
         
         {/* Sector Edit Modal */}
         <SectorEditModal
@@ -452,6 +478,7 @@ const SectorsManager: React.FC = () => {
           onClose={handleCloseEditModal}
           onSave={handleSaveSector}
         />
+      </div>
     </div>
   );
 };
