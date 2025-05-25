@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../ui/PageHeader';
 import { api } from '../../utils/auth';
-import './team-management.css';
 
 interface Team {
   id: string;
@@ -240,55 +239,78 @@ const TeamManagement: React.FC = () => {
   }
 
   return (
-    <div className="team-management">
+    <div className="page-container">
       <PageHeader 
         title="Team Management" 
         subtitle="Manage teams, factions, and diplomatic relations"
       />
       
-      {/* Team Statistics */}
-      {teamStats && (
-        <div className="team-stats-grid">
-          <div className="stat-card">
-            <h3>Total Teams</h3>
-            <div className="stat-value">{teamStats.total_teams}</div>
-            <div className="stat-label">All teams in system</div>
-          </div>
-          <div className="stat-card">
-            <h3>Active Teams</h3>
-            <div className="stat-value">{teamStats.active_teams}</div>
-            <div className="stat-label">Currently active</div>
-          </div>
-          <div className="stat-card">
-            <h3>Total Members</h3>
-            <div className="stat-value">{teamStats.total_members}</div>
-            <div className="stat-label">Players in teams</div>
-          </div>
-          <div className="stat-card">
-            <h3>Average Size</h3>
-            <div className="stat-value">{teamStats.average_team_size}</div>
-            <div className="stat-label">Members per team</div>
-          </div>
-          <div className="stat-card">
-            <h3>Largest Team</h3>
-            <div className="stat-value">{teamStats.largest_team_size}</div>
-            <div className="stat-label">Max team size</div>
-          </div>
-        </div>
-      )}
+      <div className="page-content">
+        {/* Team Statistics */}
+        {teamStats && (
+          <section className="section">
+            <div className="grid grid-auto-fit gap-6 mb-6">
+              <div className="dashboard-stat-card">
+                <div className="dashboard-stat-header">
+                  <span className="dashboard-stat-icon">🏢</span>
+                  <h4 className="dashboard-stat-title">Total Teams</h4>
+                </div>
+                <div className="dashboard-stat-value">{teamStats.total_teams}</div>
+                <div className="dashboard-stat-subtitle">All teams in system</div>
+              </div>
+              <div className="dashboard-stat-card dashboard-stat-card-success">
+                <div className="dashboard-stat-header">
+                  <span className="dashboard-stat-icon">✅</span>
+                  <h4 className="dashboard-stat-title">Active Teams</h4>
+                </div>
+                <div className="dashboard-stat-value">{teamStats.active_teams}</div>
+                <div className="dashboard-stat-subtitle">Currently active</div>
+              </div>
+              <div className="dashboard-stat-card">
+                <div className="dashboard-stat-header">
+                  <span className="dashboard-stat-icon">👥</span>
+                  <h4 className="dashboard-stat-title">Total Members</h4>
+                </div>
+                <div className="dashboard-stat-value">{teamStats.total_members}</div>
+                <div className="dashboard-stat-subtitle">Players in teams</div>
+              </div>
+              <div className="dashboard-stat-card">
+                <div className="dashboard-stat-header">
+                  <span className="dashboard-stat-icon">📊</span>
+                  <h4 className="dashboard-stat-title">Average Size</h4>
+                </div>
+                <div className="dashboard-stat-value">{teamStats.average_team_size}</div>
+                <div className="dashboard-stat-subtitle">Members per team</div>
+              </div>
+              <div className="dashboard-stat-card">
+                <div className="dashboard-stat-header">
+                  <span className="dashboard-stat-icon">🏆</span>
+                  <h4 className="dashboard-stat-title">Largest Team</h4>
+                </div>
+                <div className="dashboard-stat-value">{teamStats.largest_team_size}</div>
+                <div className="dashboard-stat-subtitle">Max team size</div>
+              </div>
+            </div>
+          </section>
+        )}
 
-      <div className="teams-content">
-        {/* Teams List */}
-        <div className="teams-list-section">
-          <div className="team-controls">
-            <div className="search-filter-group">
-              <input
-                type="text"
-                placeholder="Search teams by name or leader..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-              />
+        <section className="section">
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">Teams Management</h3>
+            </div>
+            <div className="card-body">
+              <div className="flex flex-wrap gap-4 mb-6">
+                <div className="form-group">
+                  <label className="form-label sr-only">Search teams</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Search teams by name or leader..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
               
               <select 
                 value={statusFilter} 
