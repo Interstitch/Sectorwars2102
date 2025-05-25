@@ -47,9 +47,9 @@ const SectorsManager: React.FC = () => {
   const [filterDiscovered, setFilterDiscovered] = useState<boolean | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   
-  // Pagination
+  // Pagination - Optimized for 1,000+ sectors
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage] = useState<number>(20);
+  const [itemsPerPage] = useState<number>(50); // Increased from 20 to 50
   
   // Load galaxy info on component mount
   useEffect(() => {
@@ -341,15 +341,6 @@ const SectorsManager: React.FC = () => {
                 ) : (
                   <>
                     <div className="sectors-grid">
-                      <div className="sectors-grid-header">
-                        <div className="grid-cell">Name</div>
-                        <div className="grid-cell">Coordinates</div>
-                        <div className="grid-cell">Region</div>
-                        <div className="grid-cell">Cluster</div>
-                        <div className="grid-cell">Status</div>
-                        <div className="grid-cell">Actions</div>
-                      </div>
-                      
                       {sectors.map(sector => {
                         // Use region_name directly from backend
                         const regionName = sector.region_name || 'Unknown';
@@ -361,28 +352,34 @@ const SectorsManager: React.FC = () => {
                             className={`sectors-grid-row ${selectedSector?.id === sector.id ? 'selected' : ''}`}
                             onClick={() => handleSectorSelect(sector)}
                           >
-                            <div className="grid-cell">
-                              <div className="sector-name">{sector.name}</div>
-                              <div className="sector-id">ID: {sector.sector_id}</div>
-                            </div>
-                            <div className="grid-cell coordinates">
-                              {sector.x_coord}, {sector.y_coord}, {sector.z_coord}
-                            </div>
-                            <div className="grid-cell">{regionName}</div>
-                            <div className="grid-cell">{clusterName}</div>
-                            <div className="grid-cell">
+                            <div className="sector-main-info">
+                              <div className="sector-identity">
+                                <div className="sector-name">{sector.name}</div>
+                                <div className="sector-id">#{sector.sector_id}</div>
+                              </div>
+                              
+                              <div className="sector-coordinates">
+                                <span>({sector.x_coord}, {sector.y_coord}, {sector.z_coord})</span>
+                              </div>
+                              
+                              <div className="sector-location">
+                                <div className="region-name">{regionName}</div>
+                                <div className="cluster-name">{clusterName}</div>
+                              </div>
+                              
                               <div className="sector-features">
                                 {sector.has_port && <span className="feature-tag port-tag">Port</span>}
                                 {sector.has_planet && <span className="feature-tag planet-tag">Planet</span>}
                                 {sector.has_warp_tunnel && <span className="feature-tag warp-tag">Warp</span>}
                                 {sector.is_discovered ? (
-                                  <span className="feature-tag discovered-tag">Discovered</span>
+                                  <span className="feature-tag discovered-tag">Disc</span>
                                 ) : (
-                                  <span className="feature-tag undiscovered-tag">Undiscovered</span>
+                                  <span className="feature-tag undiscovered-tag">Hidden</span>
                                 )}
                               </div>
                             </div>
-                            <div className="grid-cell">
+                            
+                            <div className="sector-actions">
                               <button className="view-button">View</button>
                               <button className="edit-button">Edit</button>
                             </div>
