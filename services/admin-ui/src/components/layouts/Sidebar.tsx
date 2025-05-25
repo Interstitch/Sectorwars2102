@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import LogoutButton from '../auth/LogoutButton';
 import GameServerStatus from '../ui/GameServerStatus';
+import AIHealthStatus from '../ui/AIHealthStatus';
 import './layouts.css';
 
 const Sidebar: React.FC = () => {
@@ -117,6 +118,7 @@ const Sidebar: React.FC = () => {
       </nav>
       
       <div className="sidebar-footer">
+        <AIHealthStatus />
         <GameServerStatus />
         <LogoutButton />
       </div>

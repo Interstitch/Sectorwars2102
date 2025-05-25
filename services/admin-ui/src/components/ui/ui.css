@@ -327,6 +327,187 @@ input:checked + .slider:before {
   margin-top: 0.25rem;
 }
 
+/* AI Health Status Component */
+.ai-health-status {
+  background-color: var(--card-bg, white);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.ai-health-status.loading {
+  opacity: 0.8;
+}
+
+.ai-health-status.error {
+  border-color: var(--danger-border, #ffcdd2);
+  background-color: var(--danger-bg, #ffebee);
+}
+
+.ai-health-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.ai-health-header.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.ai-health-header.clickable:hover {
+  background-color: var(--secondary-bg, #f5f5f5);
+  margin: -0.25rem;
+  padding: 0.25rem;
+  border-radius: 4px;
+}
+
+.ai-health-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-color, #333);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-icon {
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.status-icon.error {
+  color: var(--danger-color, #e53935);
+}
+
+.expand-icon {
+  color: var(--subtitle-color, #666);
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+  color: var(--primary-color, #4a6cf7);
+}
+
+.ai-health-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.overall-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.status-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.summary-text {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-color, #333);
+}
+
+.response-time {
+  font-size: 0.75rem;
+  color: var(--subtitle-color, #666);
+  font-weight: 500;
+}
+
+.providers-detail {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.provider-status {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background-color: var(--secondary-bg, #f8f9fa);
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e0e0e0);
+}
+
+.provider-status:last-child {
+  margin-bottom: 0;
+}
+
+.provider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.provider-name {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-color, #333);
+}
+
+.provider-indicators {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.status-indicator,
+.config-indicator,
+.network-indicator {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.provider-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+}
+
+.detail-row.error {
+  color: var(--danger-color, #e53935);
+}
+
+.detail-label {
+  color: var(--subtitle-color, #666);
+  font-weight: 500;
+}
+
+.detail-value {
+  font-weight: 600;
+  color: var(--text-color, #333);
+}
+
+.detail-value.error-text {
+  color: var(--danger-color, #e53935);
+  font-size: 0.65rem;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   :root {
