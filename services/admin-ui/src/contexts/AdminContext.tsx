@@ -197,6 +197,10 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   
   // Load admin stats
   const loadAdminStats = async () => {
+    console.log('loadAdminStats: Checking user state:', user);
+    console.log('loadAdminStats: User is_admin:', user?.is_admin);
+    console.log('loadAdminStats: Token available:', !!token);
+    
     if (!user || !user.is_admin) {
       console.log('loadAdminStats: No admin user, returning');
       return;
@@ -208,38 +212,28 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     try {
       console.log('loadAdminStats: Making API request...');
+      console.log('loadAdminStats: Using token:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
       const response = await api.get<AdminStats>('/api/v1/admin/stats');
-      console.log('loadAdminStats: Got response:', response.data);
+      console.log('loadAdminStats: Response status:', response.status);
+      console.log('loadAdminStats: Response headers:', response.headers);
+      console.log('loadAdminStats: Response data type:', typeof response.data);
+      console.log('loadAdminStats: Response data:', JSON.stringify(response.data, null, 2));
       
-      // Check if response is valid and has expected data
       if (response.data && typeof response.data === 'object') {
+        console.log('loadAdminStats: Setting admin stats with valid data');
         setAdminStats(response.data);
       } else {
-        console.error('Invalid response format:', response.data);
-        // For debugging - set fallback data if API response is malformed
-        setAdminStats({
-          totalUsers: 88,
-          activePlayers: 28,
-          totalSectors: 20,
-          totalPlanets: 2,
-          totalShips: 28,
-          playerSessions: 0
-        });
+        console.error('loadAdminStats: Invalid response data format');
+        setAdminStats(null);
       }
     } catch (error) {
       console.error('Error loading admin stats:', error);
+      if (error.response) {
+        console.error('Error response status:', error.response.status);
+        console.error('Error response data:', error.response.data);
+      }
       setError('Failed to load admin statistics');
-      
-      // For debugging - set fallback data on API error
-      console.log('Setting fallback admin stats data for debugging...');
-      setAdminStats({
-        totalUsers: 88,
-        activePlayers: 28,
-        totalSectors: 20,
-        totalPlanets: 2,
-        totalShips: 28,
-        playerSessions: 0
-      });
+      setAdminStats(null);
     } finally {
       setIsLoading(false);
     }
@@ -272,22 +266,6 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const galaxyData = response.data as GalaxyState;
         console.log('loadGalaxyInfo: Galaxy found, setting state:', galaxyData.name);
         console.log('loadGalaxyInfo: Galaxy statistics:', galaxyData.statistics);
-        
-        // Ensure statistics exist and have reasonable values
-        if (!galaxyData.statistics || galaxyData.statistics.total_sectors === 0) {
-          console.warn('Galaxy statistics missing or zero, using fallback values');
-          galaxyData.statistics = {
-            total_sectors: 20,
-            discovered_sectors: 10,
-            port_count: 5,
-            planet_count: 2,
-            player_count: 28,
-            team_count: 0,
-            warp_tunnel_count: 5,
-            genesis_count: 0
-          };
-        }
-        
         setGalaxyState(galaxyData);
       } else {
         // Unexpected format
