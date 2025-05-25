@@ -49,8 +49,8 @@ This implementation plan follows the CLAUDE methodology (Phase 0→1→2→3→4
 **CLAUDE Phase 0 Actions**:
 ```bash
 # Run comprehensive health check
-python claude-quality-system.py --quick
-python claude-quality-system.py --analyze
+python claude-system.py --quick
+python claude-system.py --analyze
 
 # Verify development environment
 docker-compose ps

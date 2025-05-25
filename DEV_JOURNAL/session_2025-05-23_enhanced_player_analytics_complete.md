@@ -48,7 +48,7 @@ Successfully completed Week 1 of Enhanced Player Analytics implementation follow
 
 ### Phase 0: System Health Check ✅
 - **Duration**: 10 minutes
-- **Quality System**: Ran `python claude-quality-system.py --quick` 
+- **Quality System**: Ran `python claude-system.py --quick` 
 - **Docker Services**: Verified all 3 services running (admin-ui, gameserver, player-client)
 - **Build Validation**: Confirmed TypeScript compilation working
 - **Outcome**: System healthy, ready for development
@@ -92,7 +92,7 @@ Successfully completed Week 1 of Enhanced Player Analytics implementation follow
 
 ### Phase 6: Review & Reflection ✅ (Current)
 - **Duration**: 15 minutes
-- **Quality Analysis**: Ran claude-quality-system.py analysis
+- **Quality Analysis**: Ran claude-system.py analysis
 - **Metrics Collection**: Comprehensive implementation statistics
 - **Retrospective**: This document
 - **CLAUDE.md Updates**: Process improvements identified

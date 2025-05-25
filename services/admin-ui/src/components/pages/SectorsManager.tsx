@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAdmin } from '../../contexts/AdminContext';
 import { api } from '../../utils/auth';
+import SectorEditModal from '../universe/SectorEditModal';
 import './sectors-manager.css';
 
 interface Sector {
@@ -38,6 +39,10 @@ const SectorsManager: React.FC = () => {
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [selectedSector, setSelectedSector] = useState<Sector | null>(null);
   const [sectorLoading, setSectorLoading] = useState<boolean>(false);
+  
+  // Modal state
+  const [editingSector, setEditingSector] = useState<Sector | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   
   // Filters
   const [selectedRegion, setSelectedRegion] = useState<string>('');
@@ -175,6 +180,31 @@ const SectorsManager: React.FC = () => {
   // Handle sector selection
   const handleSectorSelect = (sector: Sector) => {
     setSelectedSector(sector);
+  };
+  
+  // Handle edit modal
+  const handleEditSector = (sector: Sector) => {
+    setEditingSector(sector);
+    setIsEditModalOpen(true);
+  };
+  
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingSector(null);
+  };
+  
+  const handleSaveSector = (updatedSector: Sector) => {
+    // Update the sector in the list
+    setSectors(prevSectors => 
+      prevSectors.map(s => s.id === updatedSector.id ? updatedSector : s)
+    );
+    
+    // Update selected sector if it was the one being edited
+    if (selectedSector?.id === updatedSector.id) {
+      setSelectedSector(updatedSector);
+    }
+    
+    console.log('Sector updated successfully:', updatedSector.name);
   };
   
   return (
@@ -377,8 +407,7 @@ const SectorsManager: React.FC = () => {
                                 className="edit-button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  // TODO: Open edit modal/page for sector
-                                  console.log('Edit sector:', sector.name);
+                                  handleEditSector(sector);
                                 }}
                               >
                                 Edit
@@ -412,6 +441,14 @@ const SectorsManager: React.FC = () => {
             </div>
           )}
         </div>
+        
+        {/* Sector Edit Modal */}
+        <SectorEditModal
+          sector={editingSector}
+          isOpen={isEditModalOpen}
+          onClose={handleCloseEditModal}
+          onSave={handleSaveSector}
+        />
     </div>
   );
 };

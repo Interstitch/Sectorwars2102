@@ -109,7 +109,7 @@ Successfully implemented the revolutionary AI Trading Intelligence System (ARIA)
 #### **Phase 0 Enhancement**
 - **Improvement**: Added quality system integration from the start
 - **Benefit**: Caught structural issues early in development
-- **Implementation**: Always run `python claude-quality-system.py --quick` first
+- **Implementation**: Always run `python claude-system.py --quick` first
 
 #### **Phase 1 Innovation**
 - **Improvement**: Created detailed brainstorming document with scoring matrix
