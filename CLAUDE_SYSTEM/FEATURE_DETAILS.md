@@ -108,8 +108,8 @@ The modular system has **100% feature parity** with the monolithic version:
 
 ### Monolithic (3700+ lines)
 ```bash
-python claude-quality-system.py --quick     # 30-120s
-python claude-quality-system.py --analyze   # 60-300s
+python claude-quality-system.py --quick     # 30-120s (deprecated)
+python claude-quality-system.py --analyze   # 60-300s (deprecated)
 ```
 
 ### Modular (12 focused modules)

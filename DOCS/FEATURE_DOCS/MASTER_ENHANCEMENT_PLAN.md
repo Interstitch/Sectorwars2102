@@ -240,7 +240,7 @@ We have significantly accelerated development and exceeded initial projections:
 - **E2E testing framework** with Playwright (ready for expansion)
 - **Docker containerization** with unified development scripts
 - **TypeScript strict mode** enforced across all services
-- **Automated quality system** with `claude-quality-system.py`
+- **Automated quality system** with CLAUDE_SYSTEM analysis tools
 
 ### Revised Timeline Projection
 
