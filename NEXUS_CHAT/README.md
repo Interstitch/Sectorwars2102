@@ -665,6 +665,319 @@ class CommunicationTracker:
                 response_times.append(delta.total_seconds())
         
         return sum(response_times) / len(response_times) if response_times else None
+
+class SQLiteDatabase:
+    """
+    Auto-initializing SQLite database for NEXUS data persistence
+    
+    Features:
+    - Automatic database creation and schema setup
+    - Agent communication history storage
+    - Task execution tracking
+    - Session state persistence
+    """
+    
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+    
+    async def initialize(self):
+        """Create database and tables if they don't exist"""
+        async with aiosqlite.connect(self.db_path) as db:
+            # Communication history table
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS communication_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    agent_id TEXT NOT NULL,
+                    timestamp TEXT NOT NULL,
+                    direction TEXT NOT NULL,
+                    message_type TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    response_time_seconds REAL
+                )
+            """)
+            
+            # Agent status table
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS agent_status (
+                    agent_id TEXT PRIMARY KEY,
+                    status TEXT NOT NULL,
+                    session_id TEXT,
+                    current_task TEXT,
+                    last_update TEXT NOT NULL
+                )
+            """)
+            
+            # Task execution table
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS task_execution (
+                    task_id TEXT PRIMARY KEY,
+                    task_title TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    assigned_agents TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    completed_at TEXT,
+                    quality_score REAL
+                )
+            """)
+            
+            await db.commit()
+            print(f"✅ SQLite database initialized: {self.db_path}")
+    
+    async def store_communication(self, agent_id: str, direction: str, 
+                                message_type: str, content: str, 
+                                response_time: float = None):
+        """Store communication message in database"""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT INTO communication_history 
+                (agent_id, timestamp, direction, message_type, content, response_time_seconds)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                agent_id,
+                datetime.utcnow().isoformat(),
+                direction,
+                message_type,
+                content[:500],  # Truncate long messages
+                response_time
+            ))
+            await db.commit()
+    
+    async def update_agent_status(self, agent_id: str, status: str, 
+                                session_id: str = None, current_task: str = None):
+        """Update agent status in database"""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("""
+                INSERT OR REPLACE INTO agent_status 
+                (agent_id, status, session_id, current_task, last_update)
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                agent_id,
+                status,
+                session_id,
+                current_task,
+                datetime.utcnow().isoformat()
+            ))
+            await db.commit()
+
+#### **6. Terminal User Interface**
+```python
+from textual.app import App, ComposeResult
+from textual.containers import Container, Vertical, Horizontal
+from textual.widgets import Header, Footer, Static, Input, Log, DataTable
+from textual.reactive import reactive
+from rich.console import RenderableType
+from rich.table import Table
+from rich.panel import Panel
+from rich.text import Text
+
+class NexusTerminalUI(App):
+    """
+    Real-time terminal interface for NEXUS Multi-Agent Orchestrator
+    
+    Features:
+    - Live Agent Activity Monitor 
+    - User input box for new tasks
+    - Real-time communication tracking
+    - SQLite-backed data persistence
+    """
+    
+    CSS = """
+    .agent-monitor {
+        border: thick $accent;
+        height: 15;
+    }
+    
+    .input-container {
+        height: 5;
+        border: thick $primary;
+    }
+    
+    .communication-log {
+        height: 1fr;
+        border: thick $secondary;
+    }
+    """
+    
+    def __init__(self, orchestrator: NexusOrchestrator):
+        super().__init__()
+        self.orchestrator = orchestrator
+        self.agent_status = {}
+        self.communication_count = 0
+    
+    def compose(self) -> ComposeResult:
+        """Create the terminal UI layout"""
+        yield Header()
+        
+        with Vertical():
+            # Agent Activity Monitor
+            yield Static(
+                self.render_agent_monitor(), 
+                id="agent-monitor",
+                classes="agent-monitor"
+            )
+            
+            # Communication Log
+            yield Log(
+                id="communication-log",
+                classes="communication-log"
+            )
+            
+            # User Input Box
+            with Container(classes="input-container"):
+                yield Static("💬 Enter your task for NEXUS:")
+                yield Input(
+                    placeholder="Type your request here (e.g., 'Build a secure login system')",
+                    id="user-input"
+                )
+        
+        yield Footer()
+    
+    def render_agent_monitor(self) -> RenderableType:
+        """Render the Agent Activity Monitor"""
+        table = Table(title="🧠 NEXUS Multi-Agent Dashboard", show_header=True)
+        table.add_column("Agent", style="cyan", width=20)
+        table.add_column("Status", width=12)
+        table.add_column("Current Task", width=30)
+        table.add_column("Response Time", width=12)
+        table.add_column("Messages", width=8)
+        
+        # System status row
+        table.add_row(
+            "🎯 NEXUS Prime",
+            "[green]● ACTIVE[/green]",
+            f"Orchestrating {len(self.agent_status)} agents",
+            "1.2s avg",
+            str(self.communication_count)
+        )
+        
+        # Individual agent rows
+        agents = [
+            ("🧭 Aria (Coordinator)", "aria_coordinator"),
+            ("💻 Code (Developer)", "code_developer"), 
+            ("🧪 Alpha (Test Creator)", "alpha_test_creator"),
+            ("🛡️ Beta (Test Validator)", "beta_test_validator")
+        ]
+        
+        for display_name, agent_id in agents:
+            status = self.agent_status.get(agent_id, {})
+            
+            status_text = self._format_status(status.get('status', 'IDLE'))
+            current_task = status.get('current_task', 'No active task')[:25] + "..." if len(status.get('current_task', '')) > 25 else status.get('current_task', 'No active task')
+            response_time = f"{status.get('avg_response_time', 0):.1f}s"
+            message_count = str(status.get('message_count', 0))
+            
+            table.add_row(
+                display_name,
+                status_text,
+                current_task,
+                response_time,
+                message_count
+            )
+        
+        return Panel(table, border_style="bright_blue")
+    
+    def _format_status(self, status: str) -> str:
+        """Format agent status with colors"""
+        status_map = {
+            'ACTIVE': '[green]● ACTIVE[/green]',
+            'IDLE': '[yellow]○ IDLE[/yellow]',
+            'EXECUTING': '[blue]◐ EXECUTING[/blue]',
+            'ERROR': '[red]✗ ERROR[/red]',
+            'WAITING': '[orange]⏳ WAITING[/orange]'
+        }
+        return status_map.get(status.upper(), f'[dim]{status}[/dim]')
+    
+    async def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle user input submission"""
+        if event.input.id == "user-input":
+            user_request = event.value.strip()
+            
+            if user_request:
+                # Log the user request
+                comm_log = self.query_one("#communication-log", Log)
+                comm_log.write_line(f"[bold blue]👤 User:[/bold blue] {user_request}")
+                
+                # Clear input
+                event.input.value = ""
+                
+                # Process the request through orchestrator
+                await self.process_user_request(user_request)
+    
+    async def process_user_request(self, request: str):
+        """Process user request through the orchestrator"""
+        try:
+            comm_log = self.query_one("#communication-log", Log)
+            comm_log.write_line(f"[green]🧠 NEXUS:[/green] Processing request...")
+            
+            # Create and distribute task
+            plan = await self.orchestrator.distribute_task(request)
+            comm_log.write_line(f"[green]🧠 NEXUS:[/green] Task plan created with {len(plan.tasks)} tasks")
+            
+            # Execute with real-time updates
+            result = await self.orchestrator.coordinate_execution(plan)
+            
+            # Show completion
+            comm_log.write_line(f"[green]✅ NEXUS:[/green] Task completed! Quality score: {result.quality_score}/10")
+            
+        except Exception as e:
+            comm_log = self.query_one("#communication-log", Log)
+            comm_log.write_line(f"[red]❌ ERROR:[/red] {str(e)}")
+    
+    async def update_agent_status(self, agent_id: str, status_data: dict):
+        """Update agent status and refresh display"""
+        self.agent_status[agent_id] = status_data
+        self.communication_count += 1
+        
+        # Update the agent monitor display
+        monitor = self.query_one("#agent-monitor")
+        monitor.update(self.render_agent_monitor())
+        
+        # Log the status change
+        comm_log = self.query_one("#communication-log", Log)
+        comm_log.write_line(
+            f"[cyan]{agent_id}:[/cyan] {status_data.get('status', 'unknown')}"
+        )
+    
+    def run_nexus_chat(self):
+        """Main entry point for nexus-chat command"""
+        self.run()
+
+async def start_nexus_chat():
+    """
+    Main entry point for the nexus-chat terminal application
+    
+    Usage: python -m nexus.chat
+    or: nexus-chat (if installed as CLI tool)
+    """
+    try:
+        # Initialize environment and orchestrator
+        env_manager = EnvironmentManager()
+        workspace_config = env_manager.get_workspace_config()
+        
+        print(f"🧬 Starting NEXUS Chat Interface...")
+        print(f"📁 Workspace: {workspace_config['workspace_path']}")
+        print(f"🤖 Model: {workspace_config['openai_model']}")
+        
+        # Initialize database
+        database = SQLiteDatabase(workspace_config['database_path'])
+        await database.initialize()
+        
+        # Create orchestrator
+        orchestrator = NexusOrchestrator(OrchestratorConfig(), workspace_config['workspace_path'])
+        await orchestrator.start_orchestration()
+        
+        # Start terminal UI
+        app = NexusTerminalUI(orchestrator)
+        app.run_nexus_chat()
+        
+    except Exception as e:
+        print(f"❌ Failed to start NEXUS Chat: {e}")
+        print("Please check your .env file and ensure Claude Code CLI is installed")
+
+# CLI entry point
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(start_nexus_chat())
 ```
 
 ### JSON Message Schema
@@ -1075,11 +1388,11 @@ sequenceDiagram
 # Python 3.9+ with asyncio support
 pip install openai>=1.0.0 pydantic>=2.0.0 websockets>=11.0.0 python-dotenv>=1.0.0
 
+# Terminal UI and database
+pip install rich>=13.0.0 textual>=0.40.0 aiosqlite>=0.19.0
+
 # Claude Code CLI installation 
 # (Follow Anthropic's official installation guide)
-
-# Message queue (Redis for production, in-memory for development)
-pip install redis>=4.0.0
 
 # Environment configuration
 cp .env.example .env
@@ -1136,15 +1449,21 @@ class EnvironmentManager:
         
         return api_key
     
+    def get_openai_model(self) -> str:
+        """Get OpenAI model from environment with default fallback"""
+        return os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview')
+    
     def get_workspace_config(self) -> dict:
         """Get complete workspace configuration"""
         return {
             'workspace_path': str(self.workspace_path),
             'env_file': str(self.env_file),
             'openai_api_key': self.get_openai_api_key(),
+            'openai_model': self.get_openai_model(),
             'scratchpad_path': str(self.workspace_path / 'scratchpads'),
             'sessions_path': str(self.workspace_path / 'sessions'),
-            'logs_path': str(self.workspace_path / 'logs')
+            'logs_path': str(self.workspace_path / 'logs'),
+            'database_path': str(self.workspace_path / 'nexus.db')
         }
 ```
 
@@ -1171,8 +1490,9 @@ class NexusOrchestrator:
         self.env_manager = EnvironmentManager(workspace_path)
         workspace_config = self.env_manager.get_workspace_config()
         
-        # Initialize OpenAI client with API key from .env
+        # Initialize OpenAI client with API key and model from .env
         self.openai_client = AsyncOpenAI(api_key=workspace_config['openai_api_key'])
+        self.openai_model = workspace_config['openai_model']
         
         # Core components
         self.agents: Dict[str, ClaudeCodeAgent] = {}
@@ -1181,7 +1501,8 @@ class NexusOrchestrator:
         self.health_monitor = HealthMonitor()
         self.session_manager = SessionManager()
         self.scratchpad_manager = ScratchpadManager(workspace_config['scratchpad_path'])
-        self.feedback_loop = OrchestrationFeedbackLoop(self.openai_client)
+        self.feedback_loop = OrchestrationFeedbackLoop(self.openai_client, self.openai_model)
+        self.database = SQLiteDatabase(workspace_config['database_path'])
         
         # Session and communication tracking
         self.active_sessions: Dict[str, str] = {}  # agent_id -> session_id
@@ -1235,7 +1556,7 @@ class NexusOrchestrator:
         """
         
         response = await self.openai_client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model=self.openai_model,
             messages=[{"role": "user", "content": distribution_prompt}],
             response_format={"type": "json_object"}
         )
@@ -1918,23 +2239,54 @@ pip install -r requirements.txt
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env with your OpenAI API key:
+# Edit .env with your OpenAI API key and model:
 # OPENAI_API_KEY=sk-your-api-key-here
+# OPENAI_MODEL=gpt-4-turbo-preview
 
 # 3. Install Claude Code CLI (required for agents)
 # Follow Anthropic's official installation guide
 
-# 4. Start the system (automatically loads WORKSPACE/.env)
-python -m nexus.orchestrator start
+# 4. Start NEXUS Chat Interface (automatically loads WORKSPACE/.env)
+nexus-chat
+# or: python -m nexus.chat
 
-# 5. Test with simple task (system handles session management automatically)
-curl -X POST http://localhost:8080/api/tasks \
-  -H "Content-Type: application/json" \
-  -d '{"request": "Create a simple hello world function"}'
+# 5. Use the terminal interface to interact with your AI team
+# Type tasks in the input box and watch agents collaborate in real-time!
+```
 
-# 6. Monitor agent sessions and communication in real-time
-curl http://localhost:8080/api/sessions
-curl http://localhost:8080/api/communication
+### **Terminal Interface Overview**
+When you run `nexus-chat`, you'll see:
+
+```
+🧠 NEXUS Multi-Agent Dashboard
+┌─────────────────────────────────────────────────────────────┐
+│ Agent                │ Status       │ Current Task        │...│
+├─────────────────────────────────────────────────────────────┤
+│ 🎯 NEXUS Prime       │ ● ACTIVE     │ Orchestrating 4...  │...│
+│ 🧭 Aria (Coordinator)│ ○ IDLE       │ No active task      │...│
+│ 💻 Code (Developer)  │ ○ IDLE       │ No active task      │...│
+│ 🧪 Alpha (Test Creat)│ ○ IDLE       │ No active task      │...│
+│ 🛡️ Beta (Test Valid) │ ○ IDLE       │ No active task      │...│
+└─────────────────────────────────────────────────────────────┘
+
+Communication Log:
+[19:45:30] System initialized successfully
+[19:45:31] All agents ready for collaboration
+
+💬 Enter your task for NEXUS:
+> Type your request here (e.g., 'Build a secure login system')_
+```
+
+**Example Interaction:**
+```
+👤 User: Build a secure login system
+🧠 NEXUS: Processing request...
+🧠 NEXUS: Task plan created with 4 tasks
+🧭 aria_coordinator: EXECUTING - Analyzing security requirements
+💻 code_developer: WAITING - Ready for implementation specs
+🧪 alpha_test_creator: IDLE - Waiting for code to test
+🛡️ beta_test_validator: IDLE - Ready for validation
+✅ NEXUS: Task completed! Quality score: 9.2/10
 ```
 
 **Example .env file:**
@@ -1944,6 +2296,9 @@ curl http://localhost:8080/api/communication
 
 # OpenAI API Key (required for orchestrator)
 OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# OpenAI Model (customize based on your needs)
+OPENAI_MODEL=gpt-4-turbo-preview
 
 # Optional: Custom workspace paths
 # SCRATCHPAD_PATH=./scratchpads
