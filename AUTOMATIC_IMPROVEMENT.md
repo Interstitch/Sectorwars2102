@@ -26,7 +26,7 @@ Automated checks before phase begins:
 # Phase-specific entry gates
 case $PHASE in
   "0") command -v docker >/dev/null 2>&1 || exit 1 ;;
-  "1") [ -f "claude-quality-system.py" ] || exit 1 ;;
+  "1") [ -f "CLAUDE_SYSTEM/claude-system.py" ] || exit 1 ;;
   "3") [ -n "$TODO_LIST" ] || exit 1 ;;
   "4") [ -f "package.json" ] && npm test >/dev/null || exit 1 ;;
 esac

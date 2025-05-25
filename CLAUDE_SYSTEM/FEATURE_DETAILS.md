@@ -2,7 +2,7 @@
 
 ## ✅ **Implemented Features**
 
-### Core System (claude-quality-system.py → CLAUDE_SYSTEM/)
+### Core System (CLAUDE_SYSTEM/claude-system.py)
 
 1. **✅ Data Structures** - All dataclasses implemented
    - `Severity` enum

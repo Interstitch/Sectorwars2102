@@ -21,7 +21,7 @@
     "claude:metrics": "bash .claude/metrics/track.sh test",
     "claude:learn": "bash .claude/patterns/learn.sh",
     "claude:report": "echo \"Generating CLAUDE.md report...\" && node .claude/report.js",
-    "claude:quality": "python claude-quality-system.py --quick",
-    "claude:heal": "python claude-quality-system.py --heal"
+    "claude:quality": "python CLAUDE_SYSTEM/claude-system.py --quick",
+    "claude:heal": "python CLAUDE_SYSTEM/claude-system.py --heal"
   }
 }
