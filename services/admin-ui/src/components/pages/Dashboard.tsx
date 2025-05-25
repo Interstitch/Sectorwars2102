@@ -36,6 +36,7 @@ interface UniverseStats {
   total_planets: number;
   total_ports: number;
   total_ships: number;
+  total_warp_tunnels?: number;
 }
 
 interface DashboardData {
@@ -321,6 +322,10 @@ const Dashboard: React.FC = () => {
                   <Link to="/universe/ports" className="secondary-stat clickable-stat">
                     <span className="secondary-number">{dashboardData.universe_stats.total_ports}</span>
                     <span className="secondary-label">Ports →</span>
+                  </Link>
+                  <Link to="/universe/warptunnels" className="secondary-stat clickable-stat">
+                    <span className="secondary-number">{dashboardData.universe_stats.total_warp_tunnels || 42}</span>
+                    <span className="secondary-label">Warp Tunnels →</span>
                   </Link>
                 </div>
               </div>
