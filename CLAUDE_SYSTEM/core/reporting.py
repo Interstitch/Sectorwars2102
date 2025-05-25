@@ -26,7 +26,7 @@ class ReportGenerator:
         
         report = {
             "timestamp": datetime.now().isoformat(),
-            "version": "3.0.1",
+            "version": "4.0.0",
             "metrics": metrics,
             "opportunities": len(opportunities),
             "patterns": len(patterns),

@@ -47,7 +47,7 @@ class GitHooksHealer:
         self.project_root = Path(project_root)
         self.git_dir = self.project_root / ".git"
         self.hooks_dir = self.git_dir / "hooks"
-        self.system_version = "3.1.0"
+        self.system_version = "4.0.0"
         
     def diagnose(self) -> Dict[str, Any]:
         """Diagnose git hooks status"""

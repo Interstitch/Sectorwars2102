@@ -43,7 +43,7 @@ class CLAUDEQualitySystem:
     
     def __init__(self, project_root: Path):
         self.project_root = project_root
-        self.version = "3.1.0"
+        self.version = "4.0.0"
         
         # Initialize core components
         self.detector = ProjectDetector(project_root)
