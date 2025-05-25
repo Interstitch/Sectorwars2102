@@ -149,9 +149,12 @@ class DevelopmentIntelligence:
         
         decision = self._generate_decision(decision_type, context, relevant_patterns)
         
-        # Log decision
+        # Log decision (convert enums to strings for JSON)
+        decision_data = asdict(decision)
+        decision_data['decision_type'] = decision_data['decision_type'].value if hasattr(decision_data['decision_type'], 'value') else str(decision_data['decision_type'])
+        
         with open(self.decisions_file, 'a') as f:
-            f.write(json.dumps(asdict(decision)) + '\n')
+            f.write(json.dumps(decision_data, default=str) + '\n')
         
         return decision
     
@@ -372,7 +375,13 @@ class DevelopmentIntelligence:
     def _save_experiments(self) -> None:
         """Save experiments to storage"""
         with open(self.experiments_file, 'w') as f:
-            json.dump([asdict(e) for e in self.active_experiments], f, indent=2)
+            # Convert experiments to dicts with enum handling
+            experiment_data = []
+            for e in self.active_experiments:
+                exp_dict = asdict(e)
+                exp_dict['status'] = exp_dict['status'].value if hasattr(exp_dict['status'], 'value') else str(exp_dict['status'])
+                experiment_data.append(exp_dict)
+            json.dump(experiment_data, f, indent=2, default=str)
     
     def _load_decisions(self) -> List[Decision]:
         """Load decisions from storage"""
