@@ -72,37 +72,274 @@ async def get_all_players(
     db: Session = Depends(get_db)
 ):
     """Get all player accounts for admin panel"""
-    players = db.query(Player).all()
-    
-    # Map to response model with real counts
-    player_list = []
-    for player in players:
-        # Get real ship count for this player
-        try:
-            from src.models.ship import Ship
-            ships_count = db.query(Ship).filter(Ship.owner_id == player.id).count()
-        except Exception:
-            ships_count = 0
-            
-        # Get real planet count for this player
-        try:
-            planets_count = db.query(Planet).filter(Planet.owner_id == player.id).count()
-        except Exception:
-            planets_count = 0
+    try:
+        players = db.query(Player).all()
         
-        player_list.append({
-            "id": str(player.id),
-            "user_id": str(player.user_id),
-            "username": player.user.username,
-            "credits": player.credits,
-            "turns": player.turns,
-            "last_game_login": player.last_game_login.isoformat() if player.last_game_login else None,
-            "current_sector_id": player.current_sector_id,
-            "ships_count": ships_count,
-            "planets_count": planets_count
+        # Map to response model with real counts
+        player_list = []
+        for player in players:
+            try:
+                # Get username safely - handle case where user relationship might be missing
+                username = "Unknown"
+                try:
+                    if player.user:
+                        username = player.user.username
+                    else:
+                        # Try to load user separately if relationship is lazy-loaded
+                        user = db.query(User).filter(User.id == player.user_id).first()
+                        if user:
+                            username = user.username
+                except Exception:
+                    username = f"User-{player.user_id}"
+                
+                # Get real ship count for this player
+                try:
+                    from src.models.ship import Ship
+                    ships_count = db.query(Ship).filter(Ship.owner_id == player.id).count()
+                except Exception:
+                    ships_count = 0
+                    
+                # Get real planet count for this player
+                try:
+                    planets_count = db.query(Planet).filter(Planet.owner_id == player.id).count()
+                except Exception:
+                    planets_count = 0
+                
+                # Get team info safely
+                team_id = None
+                try:
+                    team_id = str(player.team_id) if player.team_id else None
+                except Exception:
+                    pass
+                
+                player_list.append({
+                    "id": str(player.id),
+                    "user_id": str(player.user_id),
+                    "username": username,
+                    "credits": getattr(player, 'credits', 0),
+                    "turns": getattr(player, 'turns', 0),
+                    "last_game_login": player.last_game_login.isoformat() if getattr(player, 'last_game_login', None) else None,
+                    "current_sector_id": getattr(player, 'current_sector_id', 1),
+                    "ships_count": ships_count,
+                    "planets_count": planets_count,
+                    "team_id": team_id
+                })
+            except Exception as e:
+                logger.error(f"Error processing player {player.id}: {e}")
+                # Add minimal player info even if detailed processing fails
+                player_list.append({
+                    "id": str(player.id),
+                    "user_id": str(getattr(player, 'user_id', 'unknown')),
+                    "username": f"Player-{player.id}",
+                    "credits": 0,
+                    "turns": 0,
+                    "last_game_login": None,
+                    "current_sector_id": 1,
+                    "ships_count": 0,
+                    "planets_count": 0,
+                    "team_id": None
+                })
+        
+        return {"players": player_list}
+        
+    except Exception as e:
+        logger.error(f"Error getting all players: {e}")
+        # Return empty list if query fails completely
+        return {"players": []}
+
+@router.get("/colonies", response_model=dict)
+async def get_all_colonies(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get all colonies (planets) for admin panel"""
+    planets = db.query(Planet).all()
+    
+    # Map to colonies response format
+    colonies_list = []
+    for planet in planets:
+        # Get owner information if planet is colonized
+        owner_name = None
+        if planet.owner_id:
+            try:
+                owner = db.query(Player).filter(Player.id == planet.owner_id).first()
+                if owner:
+                    owner_name = owner.user.username
+            except Exception:
+                owner_name = "Unknown"
+        
+        colonies_list.append({
+            "id": str(planet.id),
+            "name": planet.name,
+            "sector_id": planet.sector_id,
+            "type": planet.type.value if planet.type else "UNKNOWN",
+            "status": planet.status.value if planet.status else "UNKNOWN",
+            "owner_id": str(planet.owner_id) if planet.owner_id else None,
+            "owner_name": owner_name if planet.owner_id else "Uncolonized",
+            "population": planet.population,
+            "max_population": planet.max_population,
+            "habitability_score": planet.habitability_score,
+            "resource_richness": planet.resource_richness,
+            "defense_level": planet.defense_level,
+            "colonized_at": planet.colonized_at.isoformat() if planet.colonized_at else None,
+            "fuel_ore": getattr(planet, 'fuel_ore', 0),
+            "organics": getattr(planet, 'organics', 0),
+            "equipment": getattr(planet, 'equipment', 0),
+            "fighters": getattr(planet, 'fighters', 0),
+            "factory_level": getattr(planet, 'factory_level', 0),
+            "farm_level": getattr(planet, 'farm_level', 0),
+            "mine_level": getattr(planet, 'mine_level', 0),
+            "research_level": getattr(planet, 'research_level', 0),
+            "under_siege": getattr(planet, 'under_siege', False),
+            "siege_attacker_id": str(getattr(planet, 'siege_attacker_id', None)) if getattr(planet, 'siege_attacker_id', None) else None
         })
     
-    return {"players": player_list}
+    return {"colonies": colonies_list}
+
+@router.get("/teams", response_model=dict)
+async def get_all_teams(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get all teams for admin panel"""
+    try:
+        teams = db.query(Team).all()
+        
+        # Build teams response
+        teams_list = []
+        for team in teams:
+            try:
+                # Get team statistics with error handling
+                members = db.query(Player).filter(Player.team_id == team.id).all()
+                member_count = len(members)
+                total_credits = sum(member.credits for member in members)
+                
+                # Get leader info with error handling
+                leader_name = "Unknown"
+                try:
+                    leader = db.query(Player).join(User).filter(Player.id == team.leader_id).first()
+                    if leader and leader.user:
+                        leader_name = leader.user.username
+                except Exception:
+                    pass
+                
+                teams_list.append({
+                    "id": str(team.id),
+                    "name": team.name,
+                    "leader_id": str(team.leader_id) if team.leader_id else None,
+                    "leader_name": leader_name,
+                    "member_count": member_count,
+                    "total_credits": total_credits,
+                    "created_at": team.created_at.isoformat() if team.created_at else None,
+                    "is_active": getattr(team, 'is_active', True)
+                })
+            except Exception as e:
+                logger.error(f"Error processing team {team.id}: {e}")
+                # Add basic team info even if detailed stats fail
+                teams_list.append({
+                    "id": str(team.id),
+                    "name": team.name,
+                    "leader_id": str(team.leader_id) if team.leader_id else None,
+                    "leader_name": "Unknown",
+                    "member_count": 0,
+                    "total_credits": 0,
+                    "created_at": team.created_at.isoformat() if team.created_at else None,
+                    "is_active": True
+                })
+        
+        return {"teams": teams_list}
+        
+    except Exception as e:
+        logger.error(f"Error getting teams: {e}")
+        # Return empty list if query fails
+        return {"teams": []}
+
+@router.get("/teams/analytics", response_model=dict)
+async def get_teams_analytics(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get team analytics for admin dashboard"""
+    try:
+        # Get all teams
+        teams = db.query(Team).all()
+        total_teams = len(teams)
+        active_teams = sum(1 for team in teams if getattr(team, 'is_active', True))
+        
+        # Calculate total members across all teams
+        total_members = 0
+        most_powerful_team = None
+        largest_team = None
+        max_combat_rating = 0
+        max_member_count = 0
+        
+        for team in teams:
+            try:
+                # Get member count for this team
+                members = db.query(Player).filter(Player.team_id == team.id).all()
+                member_count = len(members)
+                total_members += member_count
+                
+                # Track largest team
+                if member_count > max_member_count:
+                    max_member_count = member_count
+                    largest_team = {
+                        "id": str(team.id),
+                        "name": team.name,
+                        "memberCount": member_count
+                    }
+                
+                # Calculate combat rating (simplified)
+                try:
+                    total_combat_rating = sum(getattr(member, 'combat_rating', 0) for member in members)
+                    if total_combat_rating > max_combat_rating:
+                        max_combat_rating = total_combat_rating
+                        most_powerful_team = {
+                            "id": str(team.id),
+                            "name": team.name,
+                            "totalCombatRating": total_combat_rating
+                        }
+                except Exception:
+                    pass
+                    
+            except Exception as e:
+                logger.error(f"Error processing team {team.id}: {e}")
+                continue
+        
+        # Calculate average team size
+        average_team_size = total_members / total_teams if total_teams > 0 else 0
+        
+        # Get alliance count (if alliance table exists)
+        total_alliances = 0
+        try:
+            # Try to get alliance count - this might fail if the table doesn't exist
+            from src.models.alliance import Alliance
+            total_alliances = db.query(Alliance).count()
+        except Exception:
+            total_alliances = 0
+        
+        return {
+            "totalTeams": total_teams,
+            "activeTeams": active_teams,
+            "totalMembers": total_members,
+            "averageTeamSize": round(average_team_size, 1),
+            "totalAlliances": total_alliances,
+            "mostPowerfulTeam": most_powerful_team,
+            "largestTeam": largest_team
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting team analytics: {e}")
+        # Return empty analytics if query fails
+        return {
+            "totalTeams": 0,
+            "activeTeams": 0,
+            "totalMembers": 0,
+            "averageTeamSize": 0,
+            "totalAlliances": 0,
+            "mostPowerfulTeam": None,
+            "largestTeam": None
+        }
 
 @router.get("/stats", response_model=dict)
 async def get_admin_stats(
@@ -791,274 +1028,43 @@ async def get_sector_ships(
     
     return {"ships": ship_list}
 
-
-async def generate_galaxy_structure(db: Session, galaxy: Galaxy, total_sectors: int, config: dict):
-    """Generate the complete galaxy structure with regions, clusters, and sectors"""
-    
-    # Import enum types
-    from src.models.galaxy import RegionType
-    from src.models.cluster import ClusterType  
-    from src.models.sector import SectorType
-    
-    # Calculate region distribution (based on galaxy config)
-    federation_pct = config.get("faction_territory_size", 25)
-    border_pct = 35
-    frontier_pct = 100 - federation_pct - border_pct
-    
-    # Create regions
-    regions = []
-    
-    # Federation region
-    federation_sectors = int(total_sectors * federation_pct / 100)
-    federation_region = Region(
-        name="Federation Space",
-        type=RegionType.FEDERATION,
-        galaxy_id=galaxy.id,
-        total_sectors=federation_sectors,
-        sector_count=0,  # Will be updated as sectors are created
-        discover_difficulty=1,
-        security={
-            "overall_level": 80,
-            "faction_patrols": {"terran_federation": 90},
-            "pirate_activity": 10,
-            "player_pvp_restrictions": {
-                "is_unrestricted": False,
-                "reputation_threshold": 75,
-                "combat_penalties": ["reputation_loss", "faction_standing"]
-            }
-        },
-        faction_control={
-            "controlling_factions": {"terran_federation": 85},
-            "contested_level": 5,
-            "player_influence_cap": 20
-        },
-        resources={
-            "overall_abundance": 40,
-            "resource_types": {"technology": 35, "equipment": 30, "medical_supplies": 25}
-        },
-        development={
-            "port_density": 80,
-            "infrastructure_level": 90,
-            "warp_tunnel_density": 20
-        },
-        controlling_faction="terran_federation",
-        security_level=0.8,
-        resource_richness=0.4
-    )
-    regions.append(federation_region)
-    
-    # Border region
-    border_sectors = int(total_sectors * border_pct / 100)
-    border_region = Region(
-        name="Border Zone",
-        type=RegionType.BORDER,
-        galaxy_id=galaxy.id,
-        total_sectors=border_sectors,
-        sector_count=0,
-        discover_difficulty=3,
-        security={
-            "overall_level": 50,
-            "faction_patrols": {"mercantile_guild": 60, "terran_federation": 30},
-            "pirate_activity": 40,
-            "player_pvp_restrictions": {
-                "is_unrestricted": False,
-                "reputation_threshold": 25
-            }
-        },
-        faction_control={
-            "controlling_factions": {"mercantile_guild": 45, "contested": 35},
-            "contested_level": 60,
-            "player_influence_cap": 50
-        },
-        resources={
-            "overall_abundance": 65,
-            "resource_types": {"ore": 40, "organics": 35, "luxury_goods": 25}
-        },
-        development={
-            "port_density": 50,
-            "infrastructure_level": 60,
-            "warp_tunnel_density": 35
-        },
-        controlling_faction="mercantile_guild",
-        security_level=0.5,
-        resource_richness=0.65
-    )
-    regions.append(border_region)
-    
-    # Frontier region
-    frontier_sectors = total_sectors - federation_sectors - border_sectors
-    frontier_region = Region(
-        name="Frontier",
-        type=RegionType.FRONTIER,
-        galaxy_id=galaxy.id,
-        total_sectors=frontier_sectors,
-        sector_count=0,
-        discover_difficulty=7,
-        security={
-            "overall_level": 20,
-            "faction_patrols": {"frontier_coalition": 25},
-            "pirate_activity": 70,
-            "player_pvp_restrictions": {
-                "is_unrestricted": True
-            }
-        },
-        faction_control={
-            "controlling_factions": {"contested": 60, "frontier_coalition": 25},
-            "contested_level": 80,
-            "player_influence_cap": 90
-        },
-        resources={
-            "overall_abundance": 85,
-            "resource_types": {"ore": 50, "radioactives": 40, "precious_metals": 35}
-        },
-        development={
-            "port_density": 15,
-            "infrastructure_level": 25,
-            "warp_tunnel_density": 60
-        },
-        controlling_faction=None,
-        security_level=0.2,
-        resource_richness=0.85
-    )
-    regions.append(frontier_region)
-    
-    # Add regions to database
-    for region in regions:
-        db.add(region)
-    db.commit()
-    
-    # Generate clusters for each region
-    sector_counter = 1
-    for region in regions:
-        # Determine number of clusters based on region size
-        num_clusters = max(1, region.total_sectors // 15)  # ~15 sectors per cluster average
-        
-        for i in range(num_clusters):
-            cluster_sectors = region.total_sectors // num_clusters
-            if i == num_clusters - 1:  # Last cluster gets remainder
-                cluster_sectors = region.total_sectors - (cluster_sectors * i)
+@router.get("/alliances", response_model=dict)
+async def get_all_alliances(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get all alliances for admin panel"""
+    try:
+        # Try to get alliances - this might fail if the table doesn't exist
+        try:
+            from src.models.alliance import Alliance
+            alliances = db.query(Alliance).all()
             
-            # Choose cluster type based on region
-            if region.type == RegionType.FEDERATION:
-                cluster_types = [ClusterType.TRADE_HUB, ClusterType.POPULATION_CENTER, ClusterType.STANDARD]
-                cluster_type = random.choice(cluster_types)
-            elif region.type == RegionType.BORDER:
-                cluster_types = [ClusterType.RESOURCE_RICH, ClusterType.MILITARY_ZONE, ClusterType.CONTESTED]
-                cluster_type = random.choice(cluster_types)
-            else:  # FRONTIER
-                cluster_types = [ClusterType.FRONTIER_OUTPOST, ClusterType.RESOURCE_RICH, ClusterType.CONTESTED]
-                cluster_type = random.choice(cluster_types)
+            alliances_list = []
+            for alliance in alliances:
+                try:
+                    alliances_list.append({
+                        "id": str(alliance.id),
+                        "name": getattr(alliance, 'name', f"Alliance {alliance.id}"),
+                        "type": getattr(alliance, 'type', 'unknown'),
+                        "team1Id": str(getattr(alliance, 'team1_id', '')),
+                        "team2Id": str(getattr(alliance, 'team2_id', '')),
+                        "status": getattr(alliance, 'status', 'active'),
+                        "created_at": alliance.created_at.isoformat() if hasattr(alliance, 'created_at') and alliance.created_at else None
+                    })
+                except Exception as e:
+                    logger.error(f"Error processing alliance {alliance.id}: {e}")
+                    continue
             
-            cluster = Cluster(
-                name=f"{region.name} Cluster {i+1}",
-                type=cluster_type,
-                region_id=region.id,
-                sector_count=cluster_sectors,
-                is_discovered=region.type == RegionType.FEDERATION,  # Federation clusters start discovered
-                discovery_requirement=region.discover_difficulty,
-                stats={
-                    "total_sectors": cluster_sectors,
-                    "populated_sectors": random.randint(1, max(1, cluster_sectors // 3)),
-                    "resource_value": random.randint(30, 90),
-                    "danger_level": random.randint(10, 80),
-                    "development_index": random.randint(20, 85)
-                },
-                resources={
-                    "primary_resources": list(region.resources["resource_types"].keys())[:2],
-                    "resource_distribution": region.resources["resource_types"]
-                },
-                economic_value=random.randint(1000, 10000),
-                faction_influence=region.faction_control["controlling_factions"],
-                nav_hazards={
-                    "asteroid_fields": random.randint(0, 3),
-                    "gravity_wells": random.randint(0, 2),
-                    "radiation_zones": random.randint(0, 2)
-                },
-                recommended_ship_class="light_freighter" if region.type == RegionType.FEDERATION else "armed_freighter",
-                x_coord=random.randint(-100, 100),
-                y_coord=random.randint(-100, 100),
-                z_coord=random.randint(-10, 10),
-                is_hidden=False,
-                special_features=[],
-                description=f"A {cluster_type.value.lower().replace('_', ' ')} in {region.name}",
-                warp_stability=random.uniform(0.7, 1.0),
-                controlling_faction=region.controlling_faction
-            )
+            return {"alliances": alliances_list}
             
-            db.add(cluster)
-            db.commit()
-            db.refresh(cluster)
+        except Exception as e:
+            logger.warning(f"Alliance table not available: {e}")
+            return {"alliances": []}
             
-            # Generate sectors for this cluster
-            for j in range(cluster_sectors):
-                # Choose sector type
-                if random.random() < 0.1:  # 10% special sectors
-                    sector_types = [SectorType.NEBULA, SectorType.ASTEROID_FIELD, SectorType.BLACK_HOLE]
-                    sector_type = random.choice(sector_types)
-                else:
-                    sector_type = SectorType.STANDARD
-                
-                sector = Sector(
-                    sector_id=sector_counter,
-                    name=f"Sector {sector_counter}",
-                    type=sector_type,
-                    cluster_id=cluster.id,
-                    x_coord=cluster.x_coord + random.randint(-5, 5),
-                    y_coord=cluster.y_coord + random.randint(-5, 5),
-                    z_coord=cluster.z_coord + random.randint(-1, 1),
-                    hazard_level=random.randint(1, 9),
-                    is_discovered=cluster.is_discovered,
-                    resources={
-                        "has_asteroids": random.choice([True, False]),
-                        "asteroid_yield": {
-                            "ore": random.randint(0, 100),
-                            "precious_metals": random.randint(0, 50),
-                            "radioactives": random.randint(0, 25)
-                        },
-                        "gas_clouds": [],
-                        "has_scanned": False
-                    },
-                    controlling_faction=region.controlling_faction
-                )
-                
-                db.add(sector)
-                sector_counter += 1
-            
-            # Update cluster sector count
-            region.sector_count += cluster_sectors
-    
-    # Update galaxy statistics
-    galaxy.statistics = {
-        "total_sectors": total_sectors,
-        "discovered_sectors": federation_sectors,  # Only federation sectors start discovered
-        "port_count": 0,
-        "planet_count": 0,
-        "player_count": 0,
-        "team_count": 0,
-        "warp_tunnel_count": 0,
-        "genesis_count": 0
-    }
-    
-    galaxy.region_distribution = {
-        "federation": federation_pct,
-        "border": border_pct,
-        "frontier": frontier_pct
-    }
-    
-    galaxy.state = {
-        "age_in_days": 0,
-        "resource_depletion": 0,
-        "economic_health": 100,
-        "exploration_percentage": (federation_sectors / total_sectors) * 100,
-        "player_wealth_distribution": {
-            "top_10_percent": 0,
-            "middle_40_percent": 0,
-            "bottom_50_percent": 0
-        }
-    }
-    
-    db.commit()
-
+    except Exception as e:
+        logger.error(f"Error getting alliances: {e}")
+        return {"alliances": []}
 
 @router.patch("/ports/{port_id}", response_model=dict)
 async def update_port(

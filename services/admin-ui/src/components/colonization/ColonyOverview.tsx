@@ -51,7 +51,7 @@ interface ColonyStats {
 }
 
 export const ColonyOverview: React.FC = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [colonies, setColonies] = useState<Colony[]>([]);
   const [stats, setStats] = useState<ColonyStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,34 +61,102 @@ export const ColonyOverview: React.FC = () => {
   const [sortBy, setSortBy] = useState<string>('population');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedColony, setSelectedColony] = useState<Colony | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
 
   useEffect(() => {
     loadColonies();
-    const interval = setInterval(loadColonies, 30000); // Refresh every 30 seconds
+    const interval = setInterval(() => {
+      // Only retry if we haven't exceeded max retries and not in error state
+      if (retryCount < maxRetries && !error) {
+        loadColonies();
+      }
+    }, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [retryCount, error]);
 
   const loadColonies = async () => {
     try {
-      const response = await fetch('/api/admin/colonies', {
+      const response = await fetch('/api/v1/admin/colonies', {
         headers: {
-          'Authorization': `Bearer ${user?.token}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load colonies');
+        throw new Error(`Failed to load colonies: ${response.status}`);
       }
 
       const data = await response.json();
-      setColonies(data.colonies);
-      setStats(data.stats);
+      
+      // Map colony data from our colonies endpoint
+      const mappedColonies = data.colonies.map((colony: any) => ({
+        id: colony.id,
+        name: colony.name,
+        planetId: colony.id,
+        planetName: colony.name,
+        sectorId: colony.sector_id.toString(),
+        sectorName: `Sector ${colony.sector_id}`,
+        playerId: colony.owner_id || '',
+        playerName: colony.owner_name || 'No Colony',
+        teamId: '',
+        teamName: '',
+        population: colony.population || 0,
+        maxPopulation: colony.max_population || 0,
+        morale: Math.min(100, colony.habitability_score || 50),
+        infrastructure: Math.min(100, (colony.defense_level || 0) * 10),
+        defenseRating: colony.defense_level || 0,
+        productionEfficiency: Math.min(100, colony.resource_richness * 100 || 50),
+        resources: {
+          energy: colony.fuel_ore || 0,
+          minerals: colony.equipment || 0,
+          food: colony.organics || 0,
+          water: Math.floor(colony.habitability_score * 100) || 0
+        },
+        buildings: {
+          residential: colony.farm_level || 0,
+          industrial: colony.factory_level || 0,
+          research: colony.research_level || 0,
+          defense: colony.mine_level || 0
+        },
+        status: colony.owner_id ? 'active' : 'abandoned',
+        foundedAt: colony.colonized_at || new Date().toISOString(),
+        lastActivity: colony.colonized_at || new Date().toISOString()
+      }));
+      
+      setColonies(mappedColonies);
+      
+      // Calculate stats from mapped data
+      const totalColonies = mappedColonies.length;
+      const activeColonies = mappedColonies.filter((c: any) => c.status === 'active').length;
+      const totalPopulation = mappedColonies.reduce((sum: number, c: any) => sum + c.population, 0);
+      const averageMorale = mappedColonies.length > 0 
+        ? mappedColonies.reduce((sum: number, c: any) => sum + c.morale, 0) / mappedColonies.length 
+        : 0;
+      const troubledColonies = mappedColonies.filter((c: any) => c.morale < 50).length;
+      
+      setStats({
+        totalColonies,
+        activeColonies,
+        totalPopulation,
+        totalProduction: {
+          energy: mappedColonies.reduce((sum: number, c: any) => sum + c.resources.energy, 0),
+          minerals: mappedColonies.reduce((sum: number, c: any) => sum + c.resources.minerals, 0),
+          food: mappedColonies.reduce((sum: number, c: any) => sum + c.resources.food, 0),
+          water: mappedColonies.reduce((sum: number, c: any) => sum + c.resources.water, 0)
+        },
+        averageMorale,
+        troubledColonies
+      });
+      
       setError(null);
+      setRetryCount(0); // Reset retry count on success
     } catch (err) {
       console.error('Error loading colonies:', err);
-      setError('Failed to load colonies');
+      setError('Failed to load colonies data');
       setColonies([]);
       setStats(null);
+      setRetryCount(prev => prev + 1); // Increment retry count
     } finally {
       setLoading(false);
     }

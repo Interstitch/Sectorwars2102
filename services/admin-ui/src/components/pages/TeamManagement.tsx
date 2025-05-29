@@ -5,6 +5,7 @@ import { AllianceNetwork } from '../teams/AllianceNetwork';
 import { TeamAdminPanel } from '../teams/TeamAdminPanel';
 import { api } from '../../utils/auth';
 import './team-management.css';
+import './team-management-override.css';
 
 interface Team {
   id: string;
@@ -71,7 +72,8 @@ export const TeamManagement: React.FC = () => {
       
       // Fetch teams
       const teamsResponse = await api.get(`/api/v1/admin/teams?${params}`);
-      setTeams(teamsResponse.data as Team[]);
+      const teamsData = teamsResponse.data as { teams: Team[] };
+      setTeams(teamsData.teams || []);
       
       // Fetch team statistics
       const statsResponse = await api.get('/api/v1/admin/teams/analytics');
@@ -79,10 +81,11 @@ export const TeamManagement: React.FC = () => {
       
       // Fetch alliances
       const alliancesResponse = await api.get('/api/v1/admin/alliances');
-      setAlliances(alliancesResponse.data as Alliance[]);
+      const alliancesData = alliancesResponse.data as { alliances: Alliance[] };
+      setAlliances(alliancesData.alliances || []);
 
-      if (teamsResponse.data.length > 0 && !selectedTeam) {
-        setSelectedTeam(teamsResponse.data[0]);
+      if (teamsData.teams && teamsData.teams.length > 0 && !selectedTeam) {
+        setSelectedTeam(teamsData.teams[0]);
       }
     } catch (error: any) {
       console.error('Failed to load team data:', error);
@@ -218,34 +221,46 @@ export const TeamManagement: React.FC = () => {
       {/* Main Content Area */}
       <div className="team-content">
         {loading ? (
-          <div className="loading-spinner">Loading team data...</div>
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p>Loading team data...</p>
+            <p>Please wait while we fetch team information from the server.</p>
+          </div>
         ) : (
           <>
             {activeTab === 'overview' && (
               <div className="team-overview">
                 <div className="team-list-section">
                   <h3>Teams ({teams.length})</h3>
-                  <div className="team-list">
-                    {teams.map((team) => (
-                      <div
-                        key={team.id}
-                        className={`team-card ${selectedTeam?.id === team.id ? 'selected' : ''}`}
-                        onClick={() => setSelectedTeam(team)}
-                      >
-                        <div className="team-header">
-                          <span className="team-name">{team.name}</span>
-                          <span className="team-tag">[{team.tag}]</span>
+                  {teams.length === 0 ? (
+                    <div className="empty-state">
+                      <h3>No Teams Found</h3>
+                      <p>There are currently no teams in the system.</p>
+                      <p>Teams will appear here once players create them in the game.</p>
+                    </div>
+                  ) : (
+                    <div className="team-list">
+                      {teams.map((team) => (
+                        <div
+                          key={team.id}
+                          className={`team-card ${selectedTeam?.id === team.id ? 'selected' : ''}`}
+                          onClick={() => setSelectedTeam(team)}
+                        >
+                          <div className="team-header">
+                            <span className="team-name">{team.name}</span>
+                            <span className="team-tag">[{team.tag}]</span>
+                          </div>
+                          <div className="team-info">
+                            <span>Members: {team.memberCount}/{team.maxMembers}</span>
+                            <span>Rep: {team.reputation}</span>
+                            <span className={`status ${team.isActive ? 'active' : 'inactive'}`}>
+                              {team.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
                         </div>
-                        <div className="team-info">
-                          <span>Members: {team.memberCount}/{team.maxMembers}</span>
-                          <span>Rep: {team.reputation}</span>
-                          <span className={`status ${team.isActive ? 'active' : 'inactive'}`}>
-                            {team.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="team-details-section">
@@ -276,7 +291,8 @@ export const TeamManagement: React.FC = () => {
                       </div>
 
                       <div className="team-strength-chart">
-                        <TeamStrengthChart teams={teams} selectedTeamId={selectedTeam.id} />
+                        {/* <TeamStrengthChart teams={teams} selectedTeamId={selectedTeam.id} /> */}
+                        <p>Team analytics chart placeholder</p>
                       </div>
                     </>
                   )}
@@ -286,16 +302,21 @@ export const TeamManagement: React.FC = () => {
 
             {activeTab === 'alliances' && (
               <div className="alliance-section">
-                <AllianceNetwork alliances={alliances} teams={teams} />
+                {/* <AllianceNetwork alliances={alliances} teams={teams} /> */}
+                <p>Alliance network visualization placeholder - {alliances.length} alliances found</p>
               </div>
             )}
 
             {activeTab === 'admin' && selectedTeam && (
               <div className="admin-section">
-                <TeamAdminPanel
+                {/* <TeamAdminPanel
                   team={selectedTeam}
                   onAction={handleTeamAction}
-                />
+                /> */}
+                <h3>Team Admin Actions</h3>
+                <p>Admin panel for team: {selectedTeam.name}</p>
+                <p>Team ID: {selectedTeam.id}</p>
+                <p>Leader: {selectedTeam.leaderName}</p>
               </div>
             )}
           </>

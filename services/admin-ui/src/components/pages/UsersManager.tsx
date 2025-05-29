@@ -189,8 +189,8 @@ const UsersManager: React.FC = () => {
     );
   });
 
-  // Use context error or local error
-  const displayError = error || contextError;
+  // Use context error or local error, but be more specific
+  const displayError = error || (contextError && users.length === 0 ? contextError : null);
   
   return (
     <div className="page-container">

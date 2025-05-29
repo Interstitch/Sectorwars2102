@@ -1,211 +1,283 @@
 /* Player Analytics Page Specific Overrides */
 
-/* Fix card styles for dark theme */
-.card {
-  background-color: var(--surface-primary);
-  border: 1px solid var(--border-light);
+/* Main page container */
+.player-analytics {
+  padding: 1.5rem;
+  background: var(--container-bg);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  margin: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  min-height: calc(100vh - 1rem);
+}
+
+/* Header Section */
+.player-analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.player-analytics-header h1 {
+  color: var(--primary-color);
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Enhanced card styles for dark theme */
+.card {
+  background: linear-gradient(135deg, var(--container-bg) 0%, var(--bg-color) 100%);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  margin: 0;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  border-color: var(--primary-color);
 }
 
 .card-body {
-  padding: var(--space-6);
+  padding: 1.5rem;
 }
 
-/* Fix section header backgrounds - ensure dark background instead of white */
-.section .section-header {
-  background-color: var(--surface-primary) !important;
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  margin-bottom: var(--space-4);
-}
-
-/* Ensure section containers have proper dark backgrounds */
+/* Enhanced section styling */
 .section {
-  background-color: var(--surface-primary) !important;
+  background: var(--container-bg);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-/* Compact metrics styling */
-.dashboard-stat-card.stat-primary {
-  background: linear-gradient(135deg, var(--color-primary-900) 0%, var(--color-primary-800) 100%);
-  border-color: var(--color-primary-600);
+.section .section-header {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  color: white;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 1.25rem 1.5rem;
+  margin: 0;
+  border-bottom: 3px solid var(--border-color);
 }
 
-.dashboard-stat-card.stat-warning {
-  background: linear-gradient(135deg, var(--color-warning-700) 0%, var(--color-warning-600) 100%);
-  border-color: var(--color-warning-500);
-}
-
-/* Ensure proper dark text colors in sections */
 .section .section-title {
-  color: var(--text-primary) !important;
+  color: white !important;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
 }
 
 .section .section-subtitle {
-  color: var(--text-tertiary) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 0.875rem;
+  margin: 0.25rem 0 0 0;
 }
 
-/* Dashboard stat value improvements */
+/* Enhanced dashboard stat cards */
+.dashboard-stat-card {
+  background: linear-gradient(135deg, var(--container-bg) 0%, var(--bg-color) 100%);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.dashboard-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+.dashboard-stat-card.stat-primary {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.dashboard-stat-card.stat-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: #f59e0b;
+  color: white;
+}
+
 .dashboard-stat-description {
-  color: var(--text-tertiary);
+  color: var(--text-color);
+  opacity: 0.8;
 }
 
-/* Table container improvements - remove all outer margins */
+/* Enhanced table container */
 .table-container {
-  background-color: var(--surface-primary);
-  border: 1px solid var(--border-light);
+  background: var(--container-bg);
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  margin: 0 !important; /* Force remove all margins */
-  padding: 0; /* Remove any padding */
+  margin: 0 !important;
+  padding: 0;
   width: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
+  margin: 0;
 }
 
 .table th {
-  background-color: var(--background-secondary);
-  color: var(--text-primary);
-  font-weight: var(--font-weight-semibold);
-  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  color: white;
+  font-weight: 600;
+  padding: 1rem 1.25rem;
   text-align: left;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 2px solid var(--border-color);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-/* Fix checkbox column width and padding */
 .table th:first-child,
 .table td:first-child {
-  width: 24px;
-  max-width: 24px;
-  padding: var(--space-2) var(--space-1); /* Minimal padding */
+  width: 40px;
+  max-width: 40px;
+  padding: 0.75rem 0.5rem;
   text-align: center;
 }
 
 .table td {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border-light);
-  color: var(--text-primary);
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-color);
+  transition: background-color 0.2s ease;
 }
 
 .table tbody tr:hover {
-  background-color: var(--background-secondary);
+  background: linear-gradient(135deg, var(--bg-color) 0%, var(--container-bg) 100%);
+  transform: scale(1.01);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Remove excess margins from card containers */
-.card {
-  margin: 0; /* Remove default card margins */
-}
-
-/* Tighten up the overall page container */
-.page-container {
-  padding: var(--space-4) var(--space-3); /* Reduce horizontal padding */
-}
-
-/* Enhanced Pagination styling */
+/* Enhanced pagination styling */
 .pagination {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  background-color: var(--surface-primary);
-  border-top: 1px solid var(--border-light);
+  gap: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--container-bg) 0%, var(--bg-color) 100%);
+  border-top: 2px solid var(--border-color);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
-/* Pagination buttons */
 .pagination .btn {
   margin: 0;
-  min-width: 32px;
-  height: 32px;
+  min-width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--container-bg);
+  color: var(--text-color);
+  transition: all 0.3s ease;
+}
+
+.pagination .btn:hover {
+  background: var(--primary-color);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .pagination .btn-xs {
-  min-width: 28px;
-  height: 28px;
+  min-width: 32px;
+  height: 32px;
   padding: 0;
-  font-size: var(--font-size-xs);
+  font-size: 0.75rem;
 }
 
-/* Page info text */
 .pagination .text-muted {
-  color: var(--text-tertiary);
-  font-size: var(--font-size-sm);
+  color: var(--text-color);
+  font-size: 0.875rem;
+  font-weight: 500;
   white-space: nowrap;
 }
 
-/* Form select in pagination */
 .pagination .form-select {
-  background-color: var(--surface-primary);
-  border: 1px solid var(--border-light);
-  color: var(--text-primary);
-  border-radius: var(--radius-base);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--font-size-sm);
+  background: var(--container-bg);
+  border: 2px solid var(--border-color);
+  color: var(--text-color);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
 }
 
-/* Responsive pagination */
-@media (max-width: 768px) {
-  .pagination {
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-  
-  .pagination > div {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .pagination .text-muted {
-    text-align: center;
-  }
+.pagination .form-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(var(--primary-color), 0.1);
 }
 
-/* Badge styling for dark theme */
+/* Enhanced badge styling */
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
   border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid transparent;
 }
 
 .badge-success {
-  background-color: var(--status-success-bg);
-  color: var(--status-success);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border-color: #10b981;
 }
 
 .badge-error {
-  background-color: var(--status-error-bg);
-  color: var(--status-error);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border-color: #ef4444;
 }
 
 .badge-secondary {
-  background-color: var(--background-tertiary);
-  color: var(--text-secondary);
+  background: linear-gradient(135deg, var(--bg-color) 0%, var(--container-bg) 100%);
+  color: var(--text-color);
+  border-color: var(--border-color);
 }
 
-/* Form checkbox styling improvements */
+/* Enhanced form elements */
 .form-checkbox {
   margin: 0;
   padding: 0;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  transition: all 0.3s ease;
 }
 
-/* Reduce section spacing overall */
-.section {
-  margin-bottom: var(--space-4) !important; /* Reduce from default spacing */
+.form-checkbox:checked {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
 }
 
-/* Column visibility dropdown */
+/* Enhanced dropdown styling */
 .dropdown {
   position: relative;
   display: inline-block;
@@ -216,33 +288,34 @@
 }
 
 .dropdown-menu {
-  display: none;
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background-color: var(--surface-primary);
-  border: 1px solid var(--border-light);
+  background: var(--container-bg);
+  border: 2px solid var(--border-color);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  z-index: var(--z-dropdown);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  padding: 0.75rem;
+  min-width: 200px;
+  z-index: 1000;
 }
 
 .dropdown-menu label {
-  cursor: pointer;
-  padding: var(--space-2);
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  border-radius: var(--radius-base);
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-color);
 }
 
 .dropdown-menu label:hover {
-  background-color: var(--background-secondary);
+  background: var(--primary-color);
+  color: white;
+  transform: translateX(2px);
 }
 
-/* Responsive table - hide columns on smaller screens */
+/* Responsive design improvements */
 @media (max-width: 1024px) {
-  /* On tablets, hide activity by default */
   .table th:nth-child(7), /* Activity */
   .table td:nth-child(7) {
     display: none;
@@ -250,33 +323,46 @@
 }
 
 @media (max-width: 768px) {
-  /* On mobile, only show essential columns */
+  .player-analytics {
+    padding: 1rem;
+    margin: 0.25rem;
+  }
+  
   .table th:nth-child(5), /* Assets */
   .table td:nth-child(5),
   .table th:nth-child(6), /* Location */
   .table td:nth-child(6) {
     display: none;
   }
+  
+  .pagination {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .pagination > div {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
-/* Make table rows more compact */
+/* Enhanced table row styling */
 .table tbody tr {
-  line-height: 1.3; /* Tighter line height */
+  transition: all 0.3s ease;
 }
 
-/* Reduce card body padding in this context */
+/* Enhanced section card body */
 .section .card .card-body {
-  padding: var(--space-4) !important;
+  padding: 1.5rem;
 }
 
-/* Remove margins from the card containing the table */
 .section .card {
-  margin: 0 !important;
-  padding: 0 !important;
+  margin: 0;
+  border: 2px solid var(--border-color);
 }
 
-/* Optimize table column widths */
-.table th:nth-child(1) { width: 24px; min-width: 24px; } /* Checkbox */
+/* Column width optimizations */
+.table th:nth-child(1) { width: 40px; min-width: 40px; } /* Checkbox */
 .table th:nth-child(2) { width: 20%; } /* Player */
 .table th:nth-child(3) { width: 8%; } /* Status */
 .table th:nth-child(4) { width: 12%; } /* Credits */
@@ -287,19 +373,19 @@
 .table th:nth-child(9) { width: 8%; } /* Turns */
 .table th:nth-child(10) { width: auto; } /* Actions */
 
-/* Ensure table cells respect the column widths */
-.table td:nth-child(1) { width: 24px; min-width: 24px; }
+/* Corresponding td widths */
+.table td:nth-child(1) { width: 40px; min-width: 40px; }
 .table td:nth-child(2) { width: 20%; }
 .table td:nth-child(3) { width: 8%; }
 .table td:nth-child(4) { width: 12%; }
 .table td:nth-child(5) { width: 15%; }
 .table td:nth-child(6) { width: 10%; }
 .table td:nth-child(7) { width: 10%; }
-.table td:nth-child(8) { width: 12%; white-space: nowrap; } /* Last Login - prevent wrapping */
+.table td:nth-child(8) { width: 12%; white-space: nowrap; }
 .table td:nth-child(9) { width: 8%; }
 .table td:nth-child(10) { width: auto; }
 
-/* Remove outer container margins */
+/* Remove excess margins from nested table containers */
 .card-body .table-container {
   margin: 0 !important;
 }

@@ -1,59 +1,74 @@
 /* Team Management Styles */
 .team-management {
-  padding: var(--space-3);
-  background: var(--bg-color, #0a0f1c);
-  color: var(--text-color, #e2e8f0);
-  min-height: 100vh;
+  padding: 1.5rem;
+  background: var(--container-bg);
+  border-radius: var(--radius-lg);
+  margin: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  min-height: calc(100vh - 1rem);
 }
 
 @media (min-width: 768px) {
   .team-management {
-    padding: var(--space-4);
+    padding: 2rem;
   }
 }
 
 /* Page Header */
 .page-header {
-  margin-bottom: var(--space-4);
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
 }
 
 .page-header h1 {
-  font-size: clamp(1.5rem, 4vw, 1.75rem);
+  color: var(--primary-color);
+  margin: 0;
+  font-size: 2rem;
   font-weight: 700;
-  margin: 0 0 var(--space-3) 0;
-  color: var(--text-color, #e2e8f0);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .header-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
 }
 
 @media (min-width: 768px) {
   .header-stats {
     display: flex;
-    gap: var(--space-4);
+    gap: 1.5rem;
   }
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.5rem;
+  background: var(--bg-color);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .stat-label {
-  font-size: 12px;
-  color: var(--text-secondary, #94a3b8);
+  font-size: 0.75rem;
+  color: var(--text-color);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  font-weight: 600;
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 700;
-  color: var(--primary-color, #3b82f6);
+  color: var(--primary-color);
 }
 
 /* Loading State */
@@ -63,14 +78,18 @@
   align-items: center;
   justify-content: center;
   min-height: 400px;
-  gap: 16px;
+  gap: 1rem;
+  background: var(--bg-color);
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--border-color);
+  padding: 2rem;
 }
 
 .loading-spinner {
   width: 48px;
   height: 48px;
-  border: 3px solid var(--border-color, #334155);
-  border-top-color: var(--primary-color, #3b82f6);
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary-color);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -82,123 +101,169 @@
 /* Tab Navigation */
 .tab-navigation {
   display: flex;
-  gap: 2px;
-  background: var(--bg-color, #0f172a);
-  padding: 4px;
-  border-radius: 8px;
-  margin-bottom: 24px;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 3px solid var(--border-color);
+  background: var(--bg-color);
+  padding: 1.5rem 2rem;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .tab-button {
-  padding: 10px 24px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary, #94a3b8);
-  font-size: 14px;
-  font-weight: 500;
+  background: var(--container-bg);
+  border: 3px solid var(--border-color);
+  padding: 1rem 1.75rem;
+  color: var(--text-color);
+  font-size: 0.875rem;
+  font-weight: 600;
   cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.2s;
+  border-radius: var(--radius-md);
+  transition: all 0.3s ease;
+  min-height: 65px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.tab-button:hover::before {
+  left: 100%;
 }
 
 .tab-button:hover {
-  color: var(--text-color, #e2e8f0);
-  background: rgba(51, 65, 85, 0.3);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  background: var(--bg-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .tab-button.active {
-  background: var(--surface-color, #1e293b);
-  color: var(--text-color, #e2e8f0);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-color));
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 /* Tab Content */
 .tab-content {
   animation: fadeIn 0.3s ease-in-out;
+  background: var(--container-bg);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  border: 2px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Chart Section */
 .chart-section {
-  background: var(--surface-color, #1e293b);
-  border: 1px solid var(--border-color, #334155);
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
+  background: var(--bg-color);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 1.25rem;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
 }
 
 .section-header h2 {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
-  color: var(--text-color, #e2e8f0);
+  color: var(--primary-color);
 }
 
 .metric-selector {
-  padding: 8px 12px;
-  border: 1px solid var(--border-color, #334155);
-  border-radius: 6px;
-  background: var(--bg-color, #0f172a);
-  color: var(--text-color, #e2e8f0);
-  font-size: 14px;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--container-bg);
+  color: var(--text-color);
+  font-size: 0.875rem;
   cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .metric-selector:focus {
   outline: none;
-  border-color: var(--primary-color, #3b82f6);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 /* Team List Section */
 .team-list-section {
-  background: var(--surface-color, #1e293b);
-  border: 1px solid var(--border-color, #334155);
-  border-radius: 12px;
-  padding: 24px;
+  background: var(--bg-color);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .list-controls {
   display: flex;
-  gap: 12px;
+  gap: 1rem;
   flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--container-bg);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-color);
 }
 
 .search-input {
   flex: 1;
   min-width: 200px;
-  padding: 8px 12px;
-  border: 1px solid var(--border-color, #334155);
-  border-radius: 6px;
-  background: var(--bg-color, #0f172a);
-  color: var(--text-color, #e2e8f0);
-  font-size: 14px;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: var(--primary-color, #3b82f6);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .sort-selector {
-  padding: 8px 12px;
-  border: 1px solid var(--border-color, #334155);
-  border-radius: 6px;
-  background: var(--bg-color, #0f172a);
-  color: var(--text-color, #e2e8f0);
-  font-size: 14px;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 0.875rem;
   cursor: pointer;
 }
 

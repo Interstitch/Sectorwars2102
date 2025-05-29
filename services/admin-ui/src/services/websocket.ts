@@ -62,7 +62,7 @@ class WebSocketService {
   constructor() {
     // Default configuration
     this.config = {
-      url: import.meta.env.VITE_WS_URL || 'http://localhost:8000',
+      url: import.meta.env.VITE_WS_URL || 'http://localhost:8080',
       path: '/ws/admin',
       reconnection: true,
       reconnectionAttempts: 5,

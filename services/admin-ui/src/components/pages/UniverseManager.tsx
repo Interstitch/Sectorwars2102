@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAdmin } from '../../contexts/AdminContext';
-import './universe-manager.css';
-
-// Import detail components
 import SectorDetail from '../universe/SectorDetail';
-import PortDetail from '../universe/PortDetail';
+import PortDetail from '../universe/PortDetail';  
 import PlanetDetail from '../universe/PlanetDetail';
+import './universe-manager.css';
 
 interface ViewState {
   type: 'overview' | 'sector' | 'port' | 'planet';
