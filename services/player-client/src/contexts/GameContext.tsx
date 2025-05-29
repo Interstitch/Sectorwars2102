@@ -175,9 +175,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const windowUrl = window.location.origin;
 
-    // For GitHub Codespaces, use proxy to avoid authentication issues with external URLs
+    // For GitHub Codespaces, use direct gameserver URL
     if (windowUrl.includes('.app.github.dev')) {
-      return '';  // Use proxy through Vite dev server
+      // Replace port 3000 with 8080 for gameserver
+      const gameserverUrl = windowUrl.replace('-3000.app.github.dev', '-8080.app.github.dev');
+      return gameserverUrl;
     }
 
     // Local development
@@ -185,8 +187,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return 'http://localhost:8080';
     }
 
-    // For other environments - use proxy
-    return '';
+    // For other environments - default to localhost
+    return 'http://localhost:8080';
   };
 
   // Set up axios with authorization header

@@ -66,6 +66,8 @@ class Planet(Base):
     size = Column(Integer, nullable=False, default=5)  # 1-10 scale
     position = Column(Integer, nullable=False, default=3)  # Position from star, affects conditions
     gravity = Column(Float, nullable=False, default=1.0)  # Earth g ratio
+    planet_type = Column(String(50), nullable=True)  # Simple string type for API compatibility
+    specialization = Column(String(50), nullable=True)
     
     # Habitability
     atmosphere = Column(String, nullable=True)  # Atmospheric composition
@@ -78,12 +80,21 @@ class Planet(Base):
     resource_richness = Column(Float, nullable=False, default=1.0)  # 0.0-3.0 multiplier
     resources = Column(JSONB, nullable=False, default={})  # Available resources
     special_resources = Column(ARRAY(String), nullable=False, default=[])  # Unique resources
+    fuel_ore = Column(Integer, nullable=False, default=0)
+    organics = Column(Integer, nullable=False, default=0)
+    equipment = Column(Integer, nullable=False, default=0)
+    fighters = Column(Integer, nullable=False, default=0)
     
     # Colonization 
     colonized_at = Column(DateTime(timezone=True), nullable=True)
     population = Column(Integer, nullable=False, default=0)  # Current population
     max_population = Column(Integer, nullable=False, default=0)  # Maximum sustainable population
     population_growth = Column(Float, nullable=False, default=0.0)  # Growth rate percentage
+    colonists = Column(Integer, nullable=False, default=0)
+    max_colonists = Column(Integer, nullable=False, default=10000)
+    fuel_allocation = Column(Integer, nullable=False, default=0)
+    organics_allocation = Column(Integer, nullable=False, default=0)
+    equipment_allocation = Column(Integer, nullable=False, default=0)
     
     # Economy and production
     economy = Column(JSONB, nullable=False, default={})  # Economic attributes
@@ -95,16 +106,30 @@ class Planet(Base):
     })
     production_efficiency = Column(Float, nullable=False, default=1.0)  # 0.0-2.0 multiplier
     
+    # Buildings
+    factory_level = Column(Integer, nullable=False, default=0)
+    farm_level = Column(Integer, nullable=False, default=0)
+    mine_level = Column(Integer, nullable=False, default=0)
+    research_level = Column(Integer, nullable=False, default=0)
+    
     # Defense
     defense_level = Column(Integer, nullable=False, default=0)  # 0-10 scale
     shields = Column(Integer, nullable=False, default=0)
     weapon_batteries = Column(Integer, nullable=False, default=0)
+    defense_turrets = Column(Integer, nullable=False, default=0)
+    defense_shields = Column(Integer, nullable=False, default=0)
+    defense_fighters = Column(Integer, nullable=False, default=0)
     
     # Status and events
     last_attacked = Column(DateTime(timezone=True), nullable=True)
     last_production = Column(DateTime(timezone=True), nullable=True)
     active_events = Column(JSONB, nullable=False, default=[])
     description = Column(String, nullable=True)
+    
+    # Siege information
+    under_siege = Column(Boolean, nullable=False, default=False)
+    siege_started_at = Column(DateTime(timezone=True), nullable=True)
+    siege_attacker_id = Column(UUID(as_uuid=True), nullable=True)
     
     # Genesis device information
     genesis_created = Column(Boolean, nullable=False, default=False)

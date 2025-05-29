@@ -115,9 +115,47 @@
   border-radius: 8px;
 }
 
+.user-profile-mfa-setup {
+  background: var(--bg-primary);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  min-width: 400px;
+}
+
 .user-info {
   display: flex;
   flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mfa-status {
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+}
+
+.mfa-status.mfa-enabled {
+  color: #a6e3a1;
+  background-color: rgba(166, 227, 161, 0.1);
+  border: 1px solid rgba(166, 227, 161, 0.3);
+}
+
+.btn-warning {
+  background-color: #f9e2af;
+  color: #1e1e2e;
+  border: none;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.btn-warning:hover {
+  background-color: #fab387;
 }
 
 .username {

@@ -118,6 +118,9 @@ class Sector(Base):
     ships = relationship("Ship", primaryjoin="Sector.sector_id==Ship.sector_id", foreign_keys="Ship.sector_id", overlaps="sector")
     discovered_by = relationship("Player", back_populates="discovered_sectors")
     controlling_team = relationship("Team", back_populates="controlled_sectors")
+    deployed_drones = relationship("Drone", back_populates="sector")
+    drone_deployments = relationship("DroneDeployment", back_populates="sector")
+    fleets = relationship("Fleet", back_populates="sector")
     
     # Warp connections
     outgoing_warps = relationship(

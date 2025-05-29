@@ -1,0 +1,234 @@
+.market-prediction-interface {
+  padding: 20px;
+}
+
+.prediction-controls {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.control-group label {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.control-group select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.prediction-grid {
+  display: grid;
+  gap: 30px;
+}
+
+/* Accuracy Stats */
+.accuracy-stats {
+  background: var(--bg-secondary);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.accuracy-stats h3 {
+  margin: 0 0 20px 0;
+  color: var(--text-primary);
+}
+
+.accuracy-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.accuracy-card {
+  background: var(--bg-primary);
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.accuracy-card h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.accuracy-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.metric-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.metric-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.accuracy-details {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Predictions List */
+.predictions-list {
+  background: var(--bg-secondary);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.predictions-list h3 {
+  margin: 0 0 20px 0;
+  color: var(--text-primary);
+}
+
+.predictions-table {
+  overflow-x: auto;
+}
+
+.predictions-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.predictions-table th,
+.predictions-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.predictions-table th {
+  background: var(--bg-primary);
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.predictions-table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+/* Price Change Classes */
+.price-up-strong {
+  color: var(--success-color);
+  font-weight: 600;
+}
+
+.price-up {
+  color: var(--success-color);
+}
+
+.price-stable {
+  color: var(--text-secondary);
+}
+
+.price-down {
+  color: var(--danger-color);
+}
+
+.price-down-strong {
+  color: var(--danger-color);
+  font-weight: 600;
+}
+
+/* Confidence Badge */
+.confidence-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.confidence-high {
+  background: var(--success-bg);
+  color: var(--success-color);
+}
+
+.confidence-medium {
+  background: var(--warning-bg);
+  color: var(--warning-color);
+}
+
+.confidence-low {
+  background: var(--danger-bg);
+  color: var(--danger-color);
+}
+
+/* Factors List */
+.factors-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.factors-list li {
+  padding: 2px 0;
+  color: var(--text-secondary);
+}
+
+.more-factors {
+  font-style: italic;
+  color: var(--primary-color);
+  cursor: pointer;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 767px) {
+  .prediction-controls {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .control-group {
+    width: 100%;
+  }
+
+  .control-group select {
+    flex: 1;
+  }
+
+  .accuracy-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .predictions-table {
+    font-size: 12px;
+  }
+
+  .predictions-table th,
+  .predictions-table td {
+    padding: 8px;
+  }
+
+  .metric-value {
+    font-size: 24px;
+  }
+}

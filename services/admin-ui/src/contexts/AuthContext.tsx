@@ -8,6 +8,7 @@ export interface User {
   is_admin: boolean;
   is_active: boolean;
   last_login: string | null;
+  mfaEnabled?: boolean;
 }
 
 interface AuthContextType {
@@ -15,9 +16,12 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<{ requiresMFA: boolean; sessionToken?: string }>;
+  verifyMFA: (code: string, sessionToken: string) => Promise<void>;
   logout: () => void;
   refreshToken: () => Promise<void>;
+  enableMFA: () => Promise<{ secret: string; qrCodeUrl: string; backupCodes: string[] }>;
+  confirmMFASetup: (code: string, secret: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,6 +34,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [mfaSessionToken, setMfaSessionToken] = useState<string | null>(null);
   
   // Get API URL based on environment
   const getApiUrl = () => {
@@ -223,8 +228,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
   
-  // Login function
-  const login = async (username: string, password: string) => {
+  // Login function with MFA support
+  const login = async (username: string, password: string): Promise<{ requiresMFA: boolean; sessionToken?: string }> => {
     setIsLoading(true);
     
     try {
@@ -279,6 +284,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           throw new Error(`Invalid JSON response: ${responseText.substring(0, 50)}...`);
         }
         
+        // Check if MFA is required
+        if (data.requires_mfa && data.session_token) {
+          console.log('MFA required for user');
+          setMfaSessionToken(data.session_token);
+          return { requiresMFA: true, sessionToken: data.session_token };
+        }
+
         // Destructure with default empty values to prevent undefined errors
         const { access_token = '', refresh_token = '', user_id = '' } = data || {};
 
@@ -330,7 +342,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
           }
         }
-        return;
+        return { requiresMFA: false };
       } catch (error) {
         console.error('Login attempt failed:', error);
         throw error;
@@ -341,6 +353,118 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw error;
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // MFA verification function
+  const verifyMFA = async (code: string, sessionToken: string) => {
+    setIsLoading(true);
+    
+    try {
+      const directApiUrl = import.meta.env.VITE_API_URL || '';
+      
+      const response = await fetch(`${directApiUrl}/api/v1/auth/mfa/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          code,
+          session_token: sessionToken
+        })
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Invalid MFA code');
+        } else {
+          const errorText = await response.text();
+          throw new Error(`Server error (${response.status}): ${errorText}`);
+        }
+      }
+      
+      const data = await response.json();
+      
+      // Store tokens
+      localStorage.setItem('accessToken', data.access_token);
+      localStorage.setItem('refreshToken', data.refresh_token);
+      setToken(data.access_token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
+      
+      // Get user data
+      const userResponse = await fetch(`${directApiUrl}/api/v1/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${data.access_token}`,
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setUser(userData);
+      }
+      
+      // Clear MFA session token
+      setMfaSessionToken(null);
+    } catch (error) {
+      console.error('MFA verification failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Enable MFA for current user
+  const enableMFA = async () => {
+    const directApiUrl = import.meta.env.VITE_API_URL || '';
+    
+    const response = await fetch(`${directApiUrl}/api/v1/auth/mfa/generate`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to generate MFA secret');
+    }
+    
+    const data = await response.json();
+    return {
+      secret: data.secret,
+      qrCodeUrl: data.qr_code_url,
+      backupCodes: data.backup_codes
+    };
+  };
+  
+  // Confirm MFA setup
+  const confirmMFASetup = async (code: string, secret: string) => {
+    const directApiUrl = import.meta.env.VITE_API_URL || '';
+    
+    const response = await fetch(`${directApiUrl}/api/v1/auth/mfa/confirm`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        code,
+        secret
+      })
+    });
+    
+    if (!response.ok) {
+      if (response.status === 400) {
+        throw new Error('Invalid MFA code');
+      }
+      throw new Error('Failed to confirm MFA setup');
+    }
+    
+    // Update user to reflect MFA is enabled
+    if (user) {
+      setUser({ ...user, mfaEnabled: true });
     }
   };
   
@@ -373,8 +497,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: !!user,
     isLoading,
     login,
+    verifyMFA,
     logout,
     refreshToken,
+    enableMFA,
+    confirmMFASetup,
   };
   
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

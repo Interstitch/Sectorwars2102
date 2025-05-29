@@ -11,6 +11,7 @@ from src.core.database import Base
 if TYPE_CHECKING:
     from src.models.player import Player
     from src.models.team import Team
+    from src.models.faction import Faction
 
 
 class ReputationLevel(enum.Enum):
@@ -38,7 +39,7 @@ class Reputation(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     player_id = Column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), nullable=False)
-    faction_id = Column(String(50), nullable=False)
+    faction_id = Column(UUID(as_uuid=True), ForeignKey("factions.id", ondelete="CASCADE"), nullable=False)
     current_value = Column(Integer, nullable=False, default=0)
     current_level = Column(Enum(ReputationLevel, name="reputation_level"), nullable=False, default=ReputationLevel.NEUTRAL)
     title = Column(String(50), nullable=False, default="Neutral")
@@ -60,6 +61,7 @@ class Reputation(Base):
 
     # Relationships
     player = relationship("Player", back_populates="faction_reputations")
+    faction = relationship("Faction", back_populates="reputation_records")
 
     __table_args__ = (
         # Ensure player can only have one reputation per faction

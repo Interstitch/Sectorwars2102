@@ -221,8 +221,8 @@ async def get_players_comprehensive(
     search: Optional[str] = None,
     filter_active: Optional[bool] = None,
     filter_team: Optional[str] = None,
-    sort_by: str = Query("created_at", regex="^(username|credits|turns|created_at|last_login)$"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$"),
+    sort_by: str = Query("created_at", pattern="^(username|credits|turns|created_at|last_login)$"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):

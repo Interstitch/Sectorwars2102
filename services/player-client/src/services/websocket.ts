@@ -86,19 +86,20 @@ class WebSocketService {
     
     // Check for GitHub Codespaces environment
     if (host.includes('.app.github.dev')) {
-      console.log('WebSocket: GitHub Codespaces detected - using proxy for WebSocket');
-      // Use proxy through Vite dev server which handles the routing to gameserver
-      return `${protocol}//${host}/api/v1/ws/connect`;
+      console.log('WebSocket: GitHub Codespaces detected - using direct gameserver WebSocket');
+      // Replace port 3000 with 8080 for gameserver
+      const gameserverHost = host.replace('-3000.app.github.dev', '-8080.app.github.dev');
+      return `${protocol}//${gameserverHost}/api/v1/ws/connect`;
     }
     
-    // Check if we're in development with proxy
+    // Check if we're in development
     if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
-      // Use the proxy path for development
-      return `${protocol}//${host}/api/v1/ws/connect`;
+      // Use direct gameserver URL
+      return `ws://localhost:8080/api/v1/ws/connect`;
     }
     
-    // For production environments
-    return `${protocol}//${host}/api/v1/ws/connect`;
+    // For other environments - default to localhost gameserver
+    return `ws://localhost:8080/api/v1/ws/connect`;
   }
 
   connect(token?: string): void {

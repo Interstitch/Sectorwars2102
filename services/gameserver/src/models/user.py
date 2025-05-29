@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from src.models.admin_credentials import AdminCredentials
     from src.models.player_credentials import PlayerCredentials
     from src.models.player import Player
+    from src.models.mfa import MFASecret, MFAAttempt
 
 
 class User(Base):
@@ -34,6 +35,8 @@ class User(Base):
     admin_credentials = relationship("AdminCredentials", back_populates="user", cascade="all, delete-orphan", uselist=False)
     player_credentials = relationship("PlayerCredentials", back_populates="user", cascade="all, delete-orphan", uselist=False)
     player = relationship("Player", back_populates="user", cascade="all, delete-orphan", uselist=False)
+    mfa_secret = relationship("MFASecret", back_populates="user", cascade="all, delete-orphan", uselist=False)
+    mfa_attempts = relationship("MFAAttempt", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User {self.username}>"

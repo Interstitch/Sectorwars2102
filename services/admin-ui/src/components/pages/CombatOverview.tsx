@@ -1,394 +1,356 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../ui/PageHeader';
+import { CombatActivityChart } from '../charts/CombatActivityChart';
+import { CombatFeed } from '../combat/CombatFeed';
+import { DisputePanel } from '../combat/DisputePanel';
 import { api } from '../../utils/auth';
+import { useCombatUpdates } from '../../contexts/WebSocketContext';
 import './combat-overview.css';
 
-interface CombatLog {
-  combat_id: string;
+interface CombatEvent {
+  id: string;
   timestamp: string;
-  attacker: {
-    username: string;
-    ship_type: string;
-    ship_name: string;
-    fighters: number;
-  };
-  defender: {
-    username: string;
-    ship_type: string;
-    ship_name: string;
-    fighters: number;
-  };
-  location: {
-    sector_name: string;
-    sector_id: string;
-  };
-  outcome: 'attacker_win' | 'defender_win' | 'draw';
-  damage_dealt: {
-    attacker_damage: number;
-    defender_damage: number;
-  };
-  loot: {
-    credits: number;
-    cargo: any[];
-  };
-  combat_duration: number;
+  type: 'player_vs_player' | 'player_vs_npc' | 'fleet_battle';
+  attacker: string;
+  defender: string;
+  winner?: string;
+  damageDealt: number;
+  disputed?: boolean;
+  sector: string;
 }
 
 interface CombatStats {
-  total_combats_today: number;
-  total_ships_destroyed: number;
-  total_credits_looted: number;
-  average_combat_duration: number;
-  most_active_combatant: string;
-  deadliest_ship_type: string;
+  totalBattles: number;
+  battlesLast24h: number;
+  totalDamageDealt: number;
+  totalShipsDestroyed: number;
+  averageBattleDuration: number;
+  mostActiveSector?: string;
+  mostActivePlayer?: string;
 }
 
-interface BalanceMetrics {
-  ship_type_effectiveness: { [key: string]: number };
-  fighter_effectiveness: number;
-  average_damage_per_fighter: number;
-  combat_balance_score: number;
+interface CombatRanking {
+  playerId: string;
+  playerName: string;
+  kills: number;
+  deaths: number;
+  kdRatio: number;
+  damageDealt: number;
+  rank?: number;
+  faction?: string;
+  winRate?: number;
+  totalDamage: number;
 }
 
-const CombatOverview: React.FC = () => {
-  const [combatLogs, setCombatLogs] = useState<CombatLog[]>([]);
-  const [stats, setStats] = useState<CombatStats | null>(null);
-  const [balanceMetrics, setBalanceMetrics] = useState<BalanceMetrics | null>(null);
-  const [selectedCombat, setSelectedCombat] = useState<CombatLog | null>(null);
-  const [timeFilter, setTimeFilter] = useState<string>('24h');
-  const [outcomeFilter, setOutcomeFilter] = useState<string>('all');
-  const [loading, setLoading] = useState(true);
+interface CombatDispute {
+  id: string;
+  combatEventId: string;
+  reporterId: string;
+  reporterName: string;
+  reason: string;
+  status: 'pending' | 'resolved' | 'rejected';
+  createdAt: string;
+}
 
-  useEffect(() => {
-    fetchCombatData();
-  }, [timeFilter, outcomeFilter]);
+export const CombatOverview: React.FC = () => {
+  const [combatEvents, setCombatEvents] = useState<CombatEvent[]>([]);
+  const [combatStats, setCombatStats] = useState<CombatStats | null>(null);
+  const [rankings, setRankings] = useState<CombatRanking[]>([]);
+  const [disputes, setDisputes] = useState<CombatDispute[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedView, setSelectedView] = useState<'feed' | 'disputes' | 'rankings'>('feed');
+  const [showInterventionModal, setShowInterventionModal] = useState(false);
+  const [selectedCombatId, setSelectedCombatId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  const fetchCombatData = async () => {
+  // WebSocket handlers
+  const handleNewCombatEvent = useCallback((data: any) => {
+    console.log('New combat event received:', data);
+    setCombatEvents(prev => [data, ...prev].slice(0, 100)); // Keep last 100 events
+    setLastUpdate(new Date());
+  }, []);
+
+  const handleDisputeFiled = useCallback((data: any) => {
+    console.log('New dispute filed:', data);
+    setDisputes(prev => [data, ...prev]);
+    setLastUpdate(new Date());
+  }, []);
+
+  const handleStatsUpdate = useCallback((data: any) => {
+    console.log('Combat stats updated:', data);
+    setCombatStats(data);
+    setLastUpdate(new Date());
+  }, []);
+
+  // Subscribe to WebSocket events
+  useCombatUpdates(handleNewCombatEvent, handleDisputeFiled, handleStatsUpdate);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      setLoading(true);
+      // Fetch combat events
+      const eventsResponse = await api.get('/api/v1/admin/combat/live');
+      setCombatEvents(eventsResponse.data as CombatEvent[]);
       
-      // Fetch combat logs with current filters
-      const logsResponse = await api.get('/api/v1/admin/combat/logs', {
-        params: {
-          time_filter: timeFilter,
-          outcome_filter: outcomeFilter || undefined,
-          limit: 100,
-          offset: 0
-        }
-      });
-      setCombatLogs(logsResponse.data as CombatLog[]);
+      // Fetch combat statistics  
+      const statsResponse = await api.get('/api/v1/admin/combat/balance');
+      setCombatStats(statsResponse.data as CombatStats);
       
-      // Fetch combat statistics
-      const statsResponse = await api.get('/api/v1/admin/combat/stats', {
-        params: { time_filter: timeFilter }
-      });
-      setStats(statsResponse.data as CombatStats);
+      // Fetch combat rankings (from balance endpoint)
+      const rankingsResponse = await api.get('/api/v1/admin/combat/balance');
+      setRankings(rankingsResponse.data.topPlayers || []);
       
-      // Fetch balance metrics
-      const balanceResponse = await api.get('/api/v1/admin/combat/balance', {
-        params: { time_filter: timeFilter }
-      });
-      setBalanceMetrics(balanceResponse.data as BalanceMetrics);
-      
-    } catch (error) {
-      console.error('Failed to fetch combat data:', error);
-      // Set fallback data on error
-      setCombatLogs([]);
-      setStats({
-        total_combats_today: 0,
-        total_ships_destroyed: 0,
-        total_credits_looted: 0,
-        average_combat_duration: 0,
-        most_active_combatant: 'None',
-        deadliest_ship_type: 'None'
-      });
-      setBalanceMetrics({
-        ship_type_effectiveness: {},
-        fighter_effectiveness: 1.0,
-        average_damage_per_fighter: 0,
-        combat_balance_score: 0.5
-      });
+      // Fetch combat disputes
+      const disputesResponse = await api.get('/api/v1/admin/combat/disputes');
+      setDisputes(disputesResponse.data as CombatDispute[]);
+    } catch (error: any) {
+      console.error('Failed to load combat data:', error);
+      setError(error.response?.data?.detail || 'Failed to load combat data. Please check if the gameserver is running.');
+      // Clear data on error
+      setCombatEvents([]);
+      setCombatStats(null);
+      setRankings([]);
+      setDisputes([]);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const resolveCombatDispute = async (combatId: string, resolution: string) => {
-    try {
-      await api.post(`/api/v1/admin/combat/${combatId}/resolve`, { resolution });
-      fetchCombatData();
-    } catch (error) {
-      console.error('Combat resolution failed:', error);
+  // Load initial data
+  useEffect(() => {
+    loadData();
+    
+    // Refresh data every 30 seconds
+    const interval = setInterval(loadData, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleDisputeClick = (_eventId: string) => {
+    setSelectedView('disputes');
+  };
+
+  const handleInterventionClick = (eventId: string) => {
+    setSelectedCombatId(eventId);
+    setShowInterventionModal(true);
+  };
+
+  const handleIntervention = async (action: string) => {
+    if (selectedCombatId) {
+      try {
+        await api.post(`/api/v1/admin/combat/${selectedCombatId}/intervene`, {
+          action: action
+        });
+        setShowInterventionModal(false);
+        setSelectedCombatId(null);
+        // Refresh data
+        await loadData();
+      } catch (error: any) {
+        console.error('Failed to intervene:', error);
+        alert(error.response?.data?.detail || 'Failed to intervene in combat');
+      }
     }
   };
 
-  const openCombatDetail = (combat: CombatLog) => {
-    setSelectedCombat(combat);
-  };
-
-  const closeCombatDetail = () => {
-    setSelectedCombat(null);
-  };
-
-  const getOutcomeIcon = (outcome: string) => {
-    switch (outcome) {
-      case 'attacker_win': return '⚔️';
-      case 'defender_win': return '🛡️';
-      case 'draw': return '🤝';
-      default: return '❓';
-    }
-  };
-
-  const getOutcomeColor = (outcome: string) => {
-    switch (outcome) {
-      case 'attacker_win': return 'attacker-win';
-      case 'defender_win': return 'defender-win';
-      case 'draw': return 'draw';
-      default: return '';
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="combat-overview loading">
+        <PageHeader title="Combat Overview" />
+        <div className="loading-spinner">Loading combat data...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="combat-overview">
-      <PageHeader 
-        title="Combat Overview" 
-        subtitle="Monitor combat activity and balance"
-      />
+      <PageHeader title="Combat Overview" />
       
-      {loading ? (
-        <div className="loading-spinner">Loading combat data...</div>
-      ) : (
-        <>
-          {/* Combat Statistics */}
-          <div className="stats-grid">
-            {stats && (
-              <>
-                <div className="stat-card">
-                  <h3>Combats Today</h3>
-                  <span className="stat-value">{stats.total_combats_today}</span>
-                  <span className="stat-label">Total Engagements</span>
-                </div>
-                <div className="stat-card">
-                  <h3>Ships Destroyed</h3>
-                  <span className="stat-value">{stats.total_ships_destroyed}</span>
-                  <span className="stat-label">Total Losses</span>
-                </div>
-                <div className="stat-card">
-                  <h3>Credits Looted</h3>
-                  <span className="stat-value">{stats.total_credits_looted.toLocaleString()}</span>
-                  <span className="stat-label">Total Value</span>
-                </div>
-                <div className="stat-card">
-                  <h3>Avg Duration</h3>
-                  <span className="stat-value">{stats.average_combat_duration.toFixed(1)}</span>
-                  <span className="stat-label">Minutes</span>
-                </div>
-              </>
-            )}
+      {/* Real-time update indicator */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'flex-end', 
+        marginBottom: '16px',
+        fontSize: '12px',
+        color: 'var(--text-secondary)'
+      }}>
+        <span>Last updated: {lastUpdate.toLocaleTimeString()}</span>
+      </div>
+      
+      {/* Error Notice */}
+      {error && (
+        <div className="alert error" style={{ marginBottom: '20px' }}>
+          <span className="alert-icon">❌</span>
+          <span className="alert-message">
+            {error}
+          </span>
+        </div>
+      )}
+      
+      {/* Combat Statistics Dashboard */}
+      <div className="combat-stats-grid">
+        <div className="stat-card primary">
+          <h3>Total Battles</h3>
+          <div className="stat-value">{combatStats?.totalBattles.toLocaleString() || 0}</div>
+          <div className="stat-change">+{combatStats?.battlesLast24h || 0} today</div>
+        </div>
+        
+        <div className="stat-card">
+          <h3>Total Damage</h3>
+          <div className="stat-value">{combatStats?.totalDamageDealt.toLocaleString() || 0}</div>
+          <div className="stat-label">damage dealt</div>
+        </div>
+        
+        <div className="stat-card">
+          <h3>Ships Destroyed</h3>
+          <div className="stat-value">{combatStats?.totalShipsDestroyed.toLocaleString() || 0}</div>
+          <div className="stat-label">total losses</div>
+        </div>
+        
+        <div className="stat-card">
+          <h3>Avg Battle Duration</h3>
+          <div className="stat-value">{Math.floor((combatStats?.averageBattleDuration || 0) / 60)}m</div>
+          <div className="stat-label">average time</div>
+        </div>
+        
+        <div className="stat-card highlight">
+          <h3>Most Active Sector</h3>
+          <div className="stat-value">{combatStats?.mostActiveSector || 'N/A'}</div>
+          <div className="stat-label">hotspot</div>
+        </div>
+        
+        <div className="stat-card highlight">
+          <h3>Most Active Player</h3>
+          <div className="stat-value">{combatStats?.mostActivePlayer || 'N/A'}</div>
+          <div className="stat-label">combat leader</div>
+        </div>
+      </div>
+
+      {/* Combat Activity Chart */}
+      <div className="combat-chart-section">
+        <CombatActivityChart events={combatEvents} width={1200} height={300} />
+      </div>
+
+      {/* View Selector */}
+      <div className="view-selector">
+        <button 
+          className={`view-btn ${selectedView === 'feed' ? 'active' : ''}`}
+          onClick={() => setSelectedView('feed')}
+        >
+          Live Feed
+        </button>
+        <button 
+          className={`view-btn ${selectedView === 'disputes' ? 'active' : ''}`}
+          onClick={() => setSelectedView('disputes')}
+        >
+          Disputes ({disputes.filter(d => d.status === 'pending').length})
+        </button>
+        <button 
+          className={`view-btn ${selectedView === 'rankings' ? 'active' : ''}`}
+          onClick={() => setSelectedView('rankings')}
+        >
+          Rankings
+        </button>
+      </div>
+
+      {/* Content Area */}
+      <div className="combat-content">
+        {selectedView === 'feed' && (
+          <CombatFeed 
+            events={combatEvents}
+            onDisputeClick={handleDisputeClick}
+            onInterventionClick={handleInterventionClick}
+          />
+        )}
+        
+        {selectedView === 'disputes' && (
+          <DisputePanel 
+            disputes={disputes}
+            onResolve={loadData}
+          />
+        )}
+        
+        {selectedView === 'rankings' && (
+          <div className="combat-rankings">
+            <h3>Combat Rankings</h3>
+            <table className="rankings-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Player</th>
+                  <th>Faction</th>
+                  <th>Kills</th>
+                  <th>Deaths</th>
+                  <th>K/D Ratio</th>
+                  <th>Win Rate</th>
+                  <th>Total Damage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rankings.map((player: CombatRanking, index: number) => (
+                  <tr key={player.playerId}>
+                    <td className="rank">#{index + 1}</td>
+                    <td className="player-name">{player.playerName}</td>
+                    <td className="faction">{player.faction || 'Unknown'}</td>
+                    <td className="kills">{player.kills}</td>
+                    <td className="deaths">{player.deaths}</td>
+                    <td className="kd-ratio">{player.kdRatio.toFixed(2)}</td>
+                    <td className="win-rate">{player.winRate || 0}%</td>
+                    <td className="damage">{player.totalDamage.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+        )}
+      </div>
 
-          {/* Balance Metrics */}
-          {balanceMetrics && (
-            <div className="balance-section">
-              <h3>Combat Balance Analysis</h3>
-              <div className="balance-grid">
-                <div className="balance-card">
-                  <h4>Ship Type Effectiveness</h4>
-                  <div className="effectiveness-list">
-                    {Object.entries(balanceMetrics.ship_type_effectiveness).map(([shipType, effectiveness]) => (
-                      <div key={shipType} className="effectiveness-item">
-                        <span className="ship-type">{shipType}</span>
-                        <div className="effectiveness-bar">
-                          <div 
-                            className="effectiveness-fill" 
-                            style={{ width: `${effectiveness}%` }}
-                          ></div>
-                        </div>
-                        <span className="effectiveness-value">{effectiveness.toFixed(1)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="balance-card">
-                  <h4>Combat Balance Score</h4>
-                  <div className="balance-score">
-                    <div className={`score-circle ${balanceMetrics.combat_balance_score > 70 ? 'good' : 'warning'}`}>
-                      <span>{balanceMetrics.combat_balance_score.toFixed(0)}%</span>
-                    </div>
-                    <p>System Balance Health</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Combat Controls */}
-          <div className="combat-controls">
-            <div className="filter-controls">
-              <select 
-                value={timeFilter} 
-                onChange={(e) => setTimeFilter(e.target.value)}
-                className="time-filter"
+      {/* Intervention Modal */}
+      {showInterventionModal && (
+        <div className="modal-overlay" onClick={() => setShowInterventionModal(false)}>
+          <div className="intervention-modal" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <h3>Combat Intervention</h3>
+            <p>Select intervention action for combat: {selectedCombatId}</p>
+            
+            <div className="intervention-options">
+              <button 
+                className="btn btn-warning"
+                onClick={() => handleIntervention('pause')}
               >
-                <option value="1h">Last Hour</option>
-                <option value="24h">Last 24 Hours</option>
-                <option value="7d">Last 7 Days</option>
-                <option value="30d">Last 30 Days</option>
-              </select>
+                Pause Combat
+              </button>
               
-              <select 
-                value={outcomeFilter} 
-                onChange={(e) => setOutcomeFilter(e.target.value)}
-                className="outcome-filter"
+              <button 
+                className="btn btn-danger"
+                onClick={() => handleIntervention('end')}
               >
-                <option value="all">All Outcomes</option>
-                <option value="attacker_win">Attacker Wins</option>
-                <option value="defender_win">Defender Wins</option>
-                <option value="draw">Draws</option>
-              </select>
+                Force End Combat
+              </button>
+              
+              <button 
+                className="btn btn-info"
+                onClick={() => handleIntervention('reset')}
+              >
+                Reset Combat State
+              </button>
+              
+              <button 
+                className="btn btn-success"
+                onClick={() => handleIntervention('restore')}
+              >
+                Restore Ships
+              </button>
             </div>
             
-            <button onClick={fetchCombatData} className="refresh-btn">
-              🔄 Refresh
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setShowInterventionModal(false)}
+            >
+              Cancel
             </button>
           </div>
-
-          {/* Combat Logs */}
-          <div className="combat-logs-section">
-            <h3>Recent Combat Logs</h3>
-            <div className="combat-logs-container">
-              {combatLogs.map((combat) => (
-                <div 
-                  key={combat.combat_id} 
-                  className="combat-log-card"
-                  onClick={() => openCombatDetail(combat)}
-                >
-                  <div className="combat-header">
-                    <span className={`outcome-badge ${getOutcomeColor(combat.outcome)}`}>
-                      {getOutcomeIcon(combat.outcome)} {combat.outcome.replace('_', ' ')}
-                    </span>
-                    <span className="combat-time">
-                      {new Date(combat.timestamp).toLocaleString()}
-                    </span>
-                  </div>
-                  
-                  <div className="combat-participants">
-                    <div className="participant attacker">
-                      <h4>Attacker</h4>
-                      <p className="player-name">{combat.attacker.username}</p>
-                      <p className="ship-info">{combat.attacker.ship_type} "{combat.attacker.ship_name}"</p>
-                      <p className="fighters">⚡ {combat.attacker.fighters} fighters</p>
-                    </div>
-                    
-                    <div className="vs-indicator">VS</div>
-                    
-                    <div className="participant defender">
-                      <h4>Defender</h4>
-                      <p className="player-name">{combat.defender.username}</p>
-                      <p className="ship-info">{combat.defender.ship_type} "{combat.defender.ship_name}"</p>
-                      <p className="fighters">🛡️ {combat.defender.fighters} fighters</p>
-                    </div>
-                  </div>
-                  
-                  <div className="combat-footer">
-                    <span className="location">📍 {combat.location.sector_name}</span>
-                    <span className="duration">⏱️ {combat.combat_duration}s</span>
-                    <span className="loot">💰 {combat.loot.credits.toLocaleString()}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Combat Detail Modal */}
-          {selectedCombat && (
-            <div className="modal-overlay" onClick={closeCombatDetail}>
-              <div className="combat-detail-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h3>Combat Details</h3>
-                  <button className="close-btn" onClick={closeCombatDetail}>×</button>
-                </div>
-                
-                <div className="modal-content">
-                  <div className="combat-summary">
-                    <div className="summary-header">
-                      <span className={`outcome-badge large ${getOutcomeColor(selectedCombat.outcome)}`}>
-                        {getOutcomeIcon(selectedCombat.outcome)} {selectedCombat.outcome.replace('_', ' ')}
-                      </span>
-                      <div className="combat-meta">
-                        <p>Combat ID: {selectedCombat.combat_id}</p>
-                        <p>Time: {new Date(selectedCombat.timestamp).toLocaleString()}</p>
-                        <p>Location: {selectedCombat.location.sector_name}</p>
-                        <p>Duration: {selectedCombat.combat_duration} seconds</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="participants-detail">
-                    <div className="participant-card attacker">
-                      <h4>Attacker</h4>
-                      <div className="participant-info">
-                        <p><strong>Player:</strong> {selectedCombat.attacker.username}</p>
-                        <p><strong>Ship:</strong> {selectedCombat.attacker.ship_type} "{selectedCombat.attacker.ship_name}"</p>
-                        <p><strong>Fighters:</strong> {selectedCombat.attacker.fighters}</p>
-                        <p><strong>Damage Dealt:</strong> {selectedCombat.damage_dealt.attacker_damage}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="participant-card defender">
-                      <h4>Defender</h4>
-                      <div className="participant-info">
-                        <p><strong>Player:</strong> {selectedCombat.defender.username}</p>
-                        <p><strong>Ship:</strong> {selectedCombat.defender.ship_type} "{selectedCombat.defender.ship_name}"</p>
-                        <p><strong>Fighters:</strong> {selectedCombat.defender.fighters}</p>
-                        <p><strong>Damage Dealt:</strong> {selectedCombat.damage_dealt.defender_damage}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="loot-section">
-                    <h4>Combat Loot</h4>
-                    <div className="loot-details">
-                      <p><strong>Credits:</strong> {selectedCombat.loot.credits.toLocaleString()}</p>
-                      {selectedCombat.loot.cargo.length > 0 && (
-                        <div className="cargo-loot">
-                          <p><strong>Cargo:</strong></p>
-                          <ul>
-                            {selectedCombat.loot.cargo.map((item, index) => (
-                              <li key={index}>{item.quantity} {item.type}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="admin-actions">
-                    <button 
-                      className="action-btn reverse"
-                      onClick={() => resolveCombatDispute(selectedCombat.combat_id, 'reverse')}
-                    >
-                      🔄 Reverse Combat
-                    </button>
-                    <button 
-                      className="action-btn compensate"
-                      onClick={() => resolveCombatDispute(selectedCombat.combat_id, 'compensate')}
-                    >
-                      💰 Compensate Loser
-                    </button>
-                    <button 
-                      className="action-btn investigate"
-                      onClick={() => resolveCombatDispute(selectedCombat.combat_id, 'investigate')}
-                    >
-                      🔍 Mark for Investigation
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
+        </div>
       )}
     </div>
   );

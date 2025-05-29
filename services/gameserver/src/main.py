@@ -14,6 +14,7 @@ from src.api.api import api_router
 from src.core.config import settings
 from src.core.database import get_db
 from src.auth.admin import create_default_admin, create_default_player
+from src.api.middleware.security import setup_security_middleware
 
 # Configure logging
 logging.basicConfig(
@@ -123,6 +124,10 @@ app.add_middleware(
     expose_headers=["*"],
     max_age=86400,  # 24 hours
 )
+
+# Setup comprehensive security middleware
+setup_security_middleware(app)
+logger.info("Security middleware initialized with OWASP compliance")
 
 # Root endpoint for discoverability - kept at app level for easy access
 @app.get("/")

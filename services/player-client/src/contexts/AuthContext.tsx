@@ -38,7 +38,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
-  // Use direct URL for gameserver in Codespaces
+  // Use direct URL for gameserver
   const getApiUrl = () => {
     // If an environment variable is explicitly set, use it
     if (import.meta.env.VITE_API_URL) {
@@ -49,21 +49,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
     const windowUrl = window.location.origin;
     console.log('Current window URL:', windowUrl);
 
-    // For GitHub Codespaces, use proxy to avoid authentication issues with external URLs
+    // For GitHub Codespaces, use direct gameserver URL
     if (windowUrl.includes('.app.github.dev')) {
-      console.log('GitHub Codespaces detected - using proxy for API calls');
-      return '';  // Use proxy through Vite dev server
+      console.log('GitHub Codespaces detected - using direct gameserver URL');
+      // Replace port 3000 with 8080 for gameserver
+      const gameserverUrl = windowUrl.replace('-3000.app.github.dev', '-8080.app.github.dev');
+      console.log('Using gameserver URL:', gameserverUrl);
+      return gameserverUrl;
     }
 
-    // Local development - still use direct URL to avoid Docker network issues
+    // Local development - use direct URL
     if (windowUrl.includes('localhost')) {
       console.log('Using direct localhost API URL');
       return 'http://localhost:8080';
     }
 
-    // For other environments (Replit, etc.) - use proxy
-    console.log('Using proxy API URL for', windowUrl);
-    return '';  // Empty string means use relative URL with proxy
+    // For other environments - default to localhost
+    console.log('Using default localhost API URL');
+    return 'http://localhost:8080';
   };
   
   // Initialize axios with API URL

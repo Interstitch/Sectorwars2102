@@ -38,6 +38,7 @@ class Player(Base):
     attack_drones = Column(Integer, nullable=False, default=0)
     defense_drones = Column(Integer, nullable=False, default=0)
     mines = Column(Integer, nullable=False, default=0)
+    genesis_devices = Column(Integer, nullable=False, default=0)
     insurance = Column(JSONB, nullable=True)
     last_game_login = Column(DateTime(timezone=True), nullable=True)  # Renamed from last_login to avoid confusion
     turn_reset_at = Column(DateTime(timezone=True), nullable=True)
@@ -48,9 +49,12 @@ class Player(Base):
 
     # Relationships
     user = relationship("User", back_populates="player")
+    drones = relationship("Drone", back_populates="player", cascade="all, delete-orphan")
+    drone_deployments = relationship("DroneDeployment", back_populates="player")
     current_ship = relationship("Ship", foreign_keys=[current_ship_id], post_update=True)
     ships = relationship("Ship", back_populates="owner", foreign_keys="Ship.owner_id")
     team = relationship("Team", back_populates="members")
+    team_membership = relationship("TeamMember", back_populates="player", uselist=False, cascade="all, delete-orphan")
     faction_reputations = relationship("Reputation", back_populates="player", cascade="all, delete-orphan")
     
     # Many-to-many relationships
@@ -75,6 +79,10 @@ class Player(Base):
     # AI Trading System relationships
     trading_profile = relationship("PlayerTradingProfile", back_populates="player", uselist=False, cascade="all, delete-orphan")
     ai_recommendations = relationship("AIRecommendation", back_populates="player", cascade="all, delete-orphan")
+    
+    # Fleet relationships
+    commanded_fleets = relationship("Fleet", back_populates="commander", foreign_keys="Fleet.commander_id")
+    fleet_memberships = relationship("FleetMember", back_populates="player", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Player {self.id} (User: {self.user_id})>"

@@ -16,6 +16,7 @@ from src.core.config import settings
 from src.models.refresh_token import RefreshToken
 from src.schemas.auth import Token, RefreshToken as RefreshTokenSchema, AuthResponse, LoginForm
 from src.services.user_service import authenticate_admin, authenticate_player, update_user_last_login
+from src.services.mfa_service import MFAService
 
 router = APIRouter()
 
@@ -33,8 +34,13 @@ async def login(
     username = form_data.username
     password = form_data.password
 
-    # Authenticate user
+    # Try to authenticate as admin first, then as player
     user = authenticate_admin(db, username, password)
+    if not user:
+        # Try player authentication
+        from src.services.user_service import authenticate_player
+        user = authenticate_player(db, username, password)
+        
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -83,10 +89,15 @@ async def login_json(
         elif settings.DEBUG:
             logging.debug(f"Admin user '{username}' not found in database")
     
-    # Authenticate user
+    # Try to authenticate as admin first, then as player
     user = authenticate_admin(db, username, password)
     if not user:
-        logging.error("Authentication failed for admin user")
+        # Try player authentication
+        from src.services.user_service import authenticate_player
+        user = authenticate_player(db, username, password)
+        
+    if not user:
+        logging.error("Authentication failed")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -126,33 +137,83 @@ async def options_login():
 @router.post("/login/direct", response_model=AuthResponse)
 async def login_direct(
     json_data: LoginForm,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
-    Direct authentication endpoint that doesn't require preflight CORS.
-    This is a simplified endpoint for environments with CORS issues.
-    Accepts JSON body with username and password.
+    Direct authentication endpoint with MFA support.
+    This endpoint supports both regular login and MFA verification.
+    Accepts JSON body with username, password, and optional MFA code.
     """
     # Get credentials from JSON data
     username = json_data.username
     password = json_data.password
+    mfa_code = json_data.mfa_code
     
-    # Authenticate user
+    # Try to authenticate as admin first, then as player
     user = authenticate_admin(db, username, password)
+    if not user:
+        # Try player authentication
+        from src.services.user_service import authenticate_player
+        user = authenticate_player(db, username, password)
+        
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
 
-    # Create new tokens
+    # Check if MFA is enabled for this user
+    try:
+        mfa_service = MFAService(db)
+        mfa_enabled = mfa_service.is_mfa_enabled(str(user.id))
+    except Exception as e:
+        # MFA table might not exist yet, disable MFA for now
+        print(f"MFA service error (table may not exist): {e}")
+        # Rollback the current transaction to avoid transaction errors
+        db.rollback()
+        mfa_enabled = False
+    
+    if mfa_enabled:
+        # MFA is enabled, check if code was provided
+        if not mfa_code:
+            # Return response indicating MFA is required
+            return {
+                "access_token": "",
+                "refresh_token": "",
+                "token_type": "bearer",
+                "user_id": str(user.id),
+                "requires_mfa": True,
+                "mfa_enabled": True
+            }
+        
+        # Verify MFA code
+        ip_address = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+        
+        mfa_valid = mfa_service.verify_code(
+            str(user.id), 
+            mfa_code,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+        
+        if not mfa_valid:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid MFA code",
+            )
+
+    # Authentication successful (with or without MFA)
     access_token, refresh_token = create_tokens(user.id, db)
 
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
-        "user_id": str(user.id)
+        "user_id": str(user.id),
+        "requires_mfa": False,
+        "mfa_enabled": mfa_enabled
     }
 
 
@@ -271,11 +332,11 @@ async def register_user(
 
     # Create new user
     from src.core.security import get_password_hash
+    from src.models.player_credentials import PlayerCredentials
 
     new_user = User(
         username=username,
         email=email,
-        hashed_password=get_password_hash(password),
         is_active=True,
         is_admin=False
     )
@@ -283,6 +344,25 @@ async def register_user(
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # Create player credentials
+    player_creds = PlayerCredentials(
+        user_id=new_user.id,
+        password_hash=get_password_hash(password)
+    )
+    db.add(player_creds)
+    db.commit()
+    
+    # Also create a Player record
+    from src.models.player import Player
+    player = Player(
+        user_id=new_user.id,
+        nickname=username,
+        current_sector_id=1,  # Default starting sector
+        credits=10000  # Starting credits
+    )
+    db.add(player)
+    db.commit()
 
     return {
         "id": str(new_user.id),

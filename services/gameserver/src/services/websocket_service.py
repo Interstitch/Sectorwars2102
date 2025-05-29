@@ -180,6 +180,115 @@ class ConnectionManager:
         for user_id in disconnect_users:
             await self.disconnect(user_id)
     
+    # Real-time game event methods requested by UI teams
+    
+    async def send_combat_update(self, combat_id: str, combat_data: Dict[str, Any], participants: List[str] = None):
+        """Send combat update to participants or global if no participants specified"""
+        message = {
+            "type": "combat_update",
+            "combat_id": combat_id,
+            "timestamp": datetime.now(UTC).isoformat(),
+            **combat_data
+        }
+        
+        if participants:
+            # Send to specific participants
+            for user_id in participants:
+                await self.send_personal_message(user_id, message)
+        else:
+            # Broadcast globally for major events
+            await self.broadcast_global(message)
+    
+    async def send_new_message_notification(self, recipient_user_id: str, message_data: Dict[str, Any]):
+        """Send new message notification to a specific user"""
+        notification = {
+            "type": "new_message",
+            "timestamp": datetime.now(UTC).isoformat(),
+            **message_data
+        }
+        await self.send_personal_message(recipient_user_id, notification)
+    
+    async def send_ship_status_change(self, user_id: str, ship_data: Dict[str, Any]):
+        """Send ship status change to ship owner"""
+        message = {
+            "type": "ship_status_change",
+            "timestamp": datetime.now(UTC).isoformat(),
+            **ship_data
+        }
+        await self.send_personal_message(user_id, message)
+    
+    async def send_economy_alert(self, alert_data: Dict[str, Any], admin_only: bool = True):
+        """Send economy alert to admins or all users"""
+        message = {
+            "type": "economy_alert",
+            "timestamp": datetime.now(UTC).isoformat(),
+            **alert_data
+        }
+        
+        if admin_only:
+            # Send to admin users only
+            for user_id, metadata in self.connection_metadata.items():
+                user_data = metadata.get("user_data", {})
+                if user_data.get("is_admin"):
+                    await self.send_personal_message(user_id, message)
+        else:
+            # Broadcast to all users
+            await self.broadcast_global(message)
+    
+    async def send_fleet_update(self, fleet_id: str, fleet_data: Dict[str, Any], team_id: str = None):
+        """Send fleet update to team members or global"""
+        message = {
+            "type": "fleet_update",
+            "fleet_id": fleet_id,
+            "timestamp": datetime.now(UTC).isoformat(),
+            **fleet_data
+        }
+        
+        if team_id:
+            await self.broadcast_to_team(team_id, message)
+        else:
+            await self.broadcast_global(message)
+    
+    async def send_market_update(self, market_data: Dict[str, Any], sector_id: int = None):
+        """Send market/trading update to sector or global"""
+        message = {
+            "type": "market_update",
+            "timestamp": datetime.now(UTC).isoformat(),
+            **market_data
+        }
+        
+        if sector_id:
+            await self.broadcast_to_sector(sector_id, message)
+        else:
+            await self.broadcast_global(message)
+    
+    async def send_planetary_update(self, planet_data: Dict[str, Any], owner_user_id: str = None, sector_id: int = None):
+        """Send planetary update to planet owner or sector"""
+        message = {
+            "type": "planetary_update",
+            "timestamp": datetime.now(UTC).isoformat(),
+            **planet_data
+        }
+        
+        if owner_user_id:
+            await self.send_personal_message(owner_user_id, message)
+        elif sector_id:
+            await self.broadcast_to_sector(sector_id, message)
+    
+    async def send_admin_intervention_alert(self, intervention_data: Dict[str, Any]):
+        """Send admin intervention alert to all admins"""
+        message = {
+            "type": "admin_intervention",
+            "timestamp": datetime.now(UTC).isoformat(),
+            **intervention_data
+        }
+        
+        # Send to admin users only
+        for user_id, metadata in self.connection_metadata.items():
+            user_data = metadata.get("user_data", {})
+            if user_data.get("is_admin"):
+                await self.send_personal_message(user_id, message)
+    
     async def update_user_location(self, user_id: str, new_sector_id: int):
         """Update a user's sector location and notify relevant players"""
         if user_id not in self.connection_metadata:

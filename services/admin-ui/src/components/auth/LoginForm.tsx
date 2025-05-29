@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { MFAVerification } from './MFAVerification';
 
 interface LoginFormProps {
   onLoginSuccess?: () => void;
@@ -11,8 +12,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [debug, setDebug] = useState<string>('');
+  const [showMFA, setShowMFA] = useState(false);
+  const [mfaSessionToken, setMfaSessionToken] = useState<string | null>(null);
   
-  const { login } = useAuth();
+  const { login, verifyMFA } = useAuth();
   
   // Add debug information about the API connection
   useEffect(() => {
@@ -96,10 +99,17 @@ Redirecting to dashboard...`);
     setIsSubmitting(true);
     
     try {
-      await login(username, password);
+      const result = await login(username, password);
       
-      if (onLoginSuccess) {
-        onLoginSuccess();
+      if (result.requiresMFA && result.sessionToken) {
+        // Show MFA verification
+        setShowMFA(true);
+        setMfaSessionToken(result.sessionToken);
+      } else {
+        // Login successful without MFA
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        }
       }
     } catch (err: any) {
       console.error('Login failed:', err);
@@ -121,7 +131,35 @@ Redirecting to dashboard...`);
     }
   };
   
+  const handleMFAVerify = async (code: string) => {
+    if (!mfaSessionToken) {
+      throw new Error('No MFA session token');
+    }
+    
+    await verifyMFA(code, mfaSessionToken);
+    
+    if (onLoginSuccess) {
+      onLoginSuccess();
+    }
+  };
+  
+  const handleMFACancel = () => {
+    setShowMFA(false);
+    setMfaSessionToken(null);
+    setError(null);
+  };
+  
   // No environment check needed - OAuth works properly
+  
+  if (showMFA) {
+    return (
+      <MFAVerification
+        onVerify={handleMFAVerify}
+        onCancel={handleMFACancel}
+        error={error}
+      />
+    );
+  }
   
   return (
     <div>

@@ -1,0 +1,235 @@
+/* Chart Component Styles */
+
+.price-chart-widget {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--background-surface, #1a1a1a);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.price-chart-widget svg {
+  min-width: 800px;
+}
+
+/* D3 Chart Styles */
+.axis {
+  font-size: 12px;
+}
+
+.axis-x text {
+  fill: var(--text-secondary, #888);
+}
+
+.axis-y text {
+  fill: var(--text-secondary, #888);
+}
+
+.axis path,
+.axis line {
+  stroke: var(--border-color, #333);
+}
+
+/* Chart Tooltip */
+.chart-tooltip {
+  position: absolute;
+  text-align: center;
+  padding: 8px;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  border: 1px solid #555;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* Market Health Indicator */
+.market-health-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.health-status {
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Fleet Health Report */
+.fleet-health-report {
+  background: var(--background-surface, #1a1a1a);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.report-header {
+  margin-bottom: 1.5rem;
+}
+
+.report-header h3 {
+  margin: 0 0 1rem 0;
+  color: var(--text-primary, #fff);
+}
+
+.report-summary {
+  display: flex;
+  gap: 2rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.summary-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #888);
+}
+
+.summary-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--primary-color, #4ECDC4);
+}
+
+.summary-value.warning {
+  color: #F7DC6F;
+}
+
+.summary-value.critical {
+  color: #FF6B6B;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.chart-container {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.chart-container h4 {
+  margin: 0 0 1rem 0;
+  color: var(--text-primary, #fff);
+  font-size: 1rem;
+}
+
+/* Critical Issues */
+.critical-issues {
+  margin-top: 2rem;
+}
+
+.critical-issues h4 {
+  margin: 0 0 1rem 0;
+  color: var(--text-primary, #fff);
+}
+
+.issues-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.issue-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 1rem;
+  border-left: 3px solid;
+}
+
+.issue-card.severity-critical {
+  border-color: #FF6B6B;
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.issue-card.severity-high {
+  border-color: #FF8C42;
+  background: rgba(255, 140, 66, 0.1);
+}
+
+.issue-card.severity-medium {
+  border-color: #F7DC6F;
+  background: rgba(247, 220, 111, 0.1);
+}
+
+.issue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.ship-name {
+  font-weight: bold;
+  color: var(--text-primary, #fff);
+}
+
+.severity-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.severity-badge.critical {
+  background: #FF6B6B;
+  color: white;
+}
+
+.severity-badge.high {
+  background: #FF8C42;
+  color: white;
+}
+
+.severity-badge.medium {
+  background: #F7DC6F;
+  color: #333;
+}
+
+.issue-description {
+  color: var(--text-secondary, #888);
+  margin-bottom: 0.5rem;
+}
+
+.recommended-action {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #888);
+}
+
+.recommended-action strong {
+  color: var(--text-primary, #fff);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .price-chart-widget {
+    padding: 0.5rem;
+  }
+  
+  .price-chart-widget svg {
+    min-width: 600px;
+  }
+  
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .report-summary {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}

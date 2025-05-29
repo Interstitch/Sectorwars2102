@@ -1,0 +1,548 @@
+/* Maintenance Manager Styles */
+.maintenance-manager {
+  background: var(--card-bg, #1a1a2e);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Manager Header */
+.maintenance-manager .manager-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, #2a2a3e 0%, #1a1a2e 100%);
+  border-bottom: 1px solid var(--border-color, #333);
+}
+
+.maintenance-manager .manager-header h3 {
+  margin: 0;
+  color: var(--primary-color, #4a9eff);
+  font-size: 1.25rem;
+}
+
+.maintenance-manager .ship-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.maintenance-manager .ship-name {
+  color: var(--text-primary, #fff);
+  font-weight: 500;
+}
+
+.maintenance-manager .ship-type {
+  color: var(--text-secondary, #999);
+  font-size: 0.875rem;
+}
+
+/* Maintenance Overview */
+.maintenance-manager .maintenance-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.maintenance-manager .overview-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.maintenance-manager .overview-card h4 {
+  margin: 0 0 0.75rem 0;
+  color: var(--text-secondary, #999);
+  font-size: 0.875rem;
+  font-weight: normal;
+}
+
+.maintenance-manager .condition-meter {
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.maintenance-manager .condition-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+.maintenance-manager .condition-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--text-primary, #fff);
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.maintenance-manager .maintenance-count,
+.maintenance-manager .cost-estimate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.maintenance-manager .count-value,
+.maintenance-manager .cost-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--primary-color, #4a9eff);
+}
+
+.maintenance-manager .count-label,
+.maintenance-manager .cost-label {
+  color: var(--text-secondary, #999);
+  font-size: 0.875rem;
+}
+
+/* Maintenance Items */
+.maintenance-manager .maintenance-items {
+  padding: 1rem;
+}
+
+.maintenance-manager .items-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.maintenance-manager .items-header h4 {
+  margin: 0;
+  color: var(--text-primary, #fff);
+  font-size: 1.1rem;
+}
+
+.maintenance-manager .select-critical-btn {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 68, 68, 0.2);
+  border: 1px solid #ff4444;
+  color: #ff4444;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.maintenance-manager .select-critical-btn:hover {
+  background: rgba(255, 68, 68, 0.3);
+}
+
+.maintenance-manager .items-list {
+  display: grid;
+  gap: 0.75rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.maintenance-manager .maintenance-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.maintenance-manager .maintenance-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(2px);
+}
+
+.maintenance-manager .maintenance-item.selected {
+  background: rgba(74, 158, 255, 0.1);
+  border-color: var(--primary-color, #4a9eff);
+}
+
+.maintenance-manager .item-checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.maintenance-manager .item-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.maintenance-manager .item-info {
+  flex: 1;
+}
+
+.maintenance-manager .item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.maintenance-manager .item-header h5 {
+  margin: 0;
+  color: var(--text-primary, #fff);
+  font-size: 1rem;
+}
+
+.maintenance-manager .item-priority {
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.maintenance-manager .item-description {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-secondary, #999);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.maintenance-manager .item-stats {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.maintenance-manager .stat-item {
+  display: flex;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.maintenance-manager .stat-label {
+  color: var(--text-secondary, #999);
+}
+
+.maintenance-manager .stat-value {
+  color: var(--text-primary, #fff);
+  font-weight: 500;
+}
+
+.maintenance-manager .item-condition {
+  display: flex;
+  align-items: center;
+}
+
+.maintenance-manager .condition-bar {
+  width: 40px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+}
+
+.maintenance-manager .condition-bar-fill {
+  width: 100%;
+  transition: height 0.3s ease;
+}
+
+/* Repair Summary */
+.maintenance-manager .repair-summary {
+  margin: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+}
+
+.maintenance-manager .repair-summary h4 {
+  margin: 0 0 1rem 0;
+  color: var(--text-primary, #fff);
+  font-size: 1rem;
+}
+
+.maintenance-manager .summary-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.maintenance-manager .summary-item {
+  text-align: center;
+}
+
+.maintenance-manager .summary-label {
+  display: block;
+  color: var(--text-secondary, #999);
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.maintenance-manager .summary-value {
+  color: var(--primary-color, #4a9eff);
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.maintenance-manager .repair-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.maintenance-manager .repair-btn {
+  flex: 1;
+  padding: 0.75rem;
+  background: var(--success-color, #44ff44);
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.maintenance-manager .repair-btn:hover:not(:disabled) {
+  background: var(--success-hover, #33dd33);
+}
+
+.maintenance-manager .repair-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.maintenance-manager .clear-btn {
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-primary, #fff);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.maintenance-manager .clear-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.maintenance-manager .insufficient-funds {
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: rgba(255, 68, 68, 0.1);
+  border: 1px solid #ff4444;
+  border-radius: 4px;
+  color: #ff4444;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+/* Maintenance Options */
+.maintenance-manager .maintenance-options {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0 1rem 1rem;
+}
+
+.maintenance-manager .schedule-btn,
+.maintenance-manager .emergency-btn {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.maintenance-manager .schedule-btn {
+  background: var(--primary-color, #4a9eff);
+  color: white;
+}
+
+.maintenance-manager .schedule-btn:hover {
+  background: var(--primary-hover, #357abd);
+}
+
+.maintenance-manager .emergency-btn {
+  background: rgba(255, 68, 68, 0.2);
+  border: 1px solid #ff4444;
+  color: #ff4444;
+}
+
+.maintenance-manager .emergency-btn:hover {
+  background: rgba(255, 68, 68, 0.3);
+}
+
+/* Maintenance Scheduler */
+.maintenance-manager .maintenance-scheduler {
+  margin: 0 1rem 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+}
+
+.maintenance-manager .maintenance-scheduler h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary, #fff);
+  font-size: 1rem;
+}
+
+.maintenance-manager .maintenance-scheduler p {
+  margin: 0 0 1rem 0;
+  color: var(--text-secondary, #999);
+  font-size: 0.875rem;
+}
+
+.maintenance-manager .scheduler-options label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary, #999);
+  font-size: 0.875rem;
+}
+
+.maintenance-manager .interval-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.maintenance-manager .interval-selector input[type="range"] {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.maintenance-manager .interval-selector input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--primary-color, #4a9eff);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.maintenance-manager .interval-value {
+  color: var(--primary-color, #4a9eff);
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.maintenance-manager .schedule-cost {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.maintenance-manager .schedule-cost .cost-label {
+  color: var(--text-secondary, #999);
+}
+
+.maintenance-manager .schedule-cost .cost-value {
+  color: var(--primary-color, #4a9eff);
+  font-weight: bold;
+}
+
+.maintenance-manager .schedule-benefits {
+  margin-bottom: 1rem;
+}
+
+.maintenance-manager .schedule-benefits h5 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary, #fff);
+  font-size: 0.875rem;
+}
+
+.maintenance-manager .schedule-benefits ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: var(--text-secondary, #999);
+  font-size: 0.875rem;
+}
+
+.maintenance-manager .schedule-benefits li {
+  margin-bottom: 0.25rem;
+}
+
+.maintenance-manager .confirm-schedule-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--primary-color, #4a9eff);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.maintenance-manager .confirm-schedule-btn:hover:not(:disabled) {
+  background: var(--primary-hover, #357abd);
+}
+
+.maintenance-manager .confirm-schedule-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Scrollbar Styling */
+.maintenance-manager .items-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.maintenance-manager .items-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.maintenance-manager .items-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.maintenance-manager .items-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .maintenance-manager .manager-header {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+  
+  .maintenance-manager .maintenance-overview {
+    grid-template-columns: 1fr;
+  }
+  
+  .maintenance-manager .summary-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .maintenance-manager .repair-actions {
+    flex-direction: column;
+  }
+  
+  .maintenance-manager .maintenance-options {
+    flex-direction: column;
+  }
+}

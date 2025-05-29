@@ -66,8 +66,8 @@ const Sidebar: React.FC = () => {
           to="/colonies" 
           className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
         >
-          <span className="sidebar-nav-icon">🪐</span>
-          <span>Colonies</span>
+          <span className="sidebar-nav-icon">🏙️</span>
+          <span>Colonization</span>
         </NavLink>
         
         <NavLink 
@@ -92,6 +92,30 @@ const Sidebar: React.FC = () => {
         >
           <span className="sidebar-nav-icon">📈</span>
           <span>Analytics</span>
+        </NavLink>
+        
+        <NavLink 
+          to="/ai-trading" 
+          className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+        >
+          <span className="sidebar-nav-icon">🤖</span>
+          <span>AI Trading</span>
+        </NavLink>
+        
+        <NavLink 
+          to="/security" 
+          className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+        >
+          <span className="sidebar-nav-icon">🔒</span>
+          <span>Security</span>
+        </NavLink>
+        
+        <NavLink 
+          to="/permissions" 
+          className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+        >
+          <span className="sidebar-nav-icon">🔑</span>
+          <span>Permissions</span>
         </NavLink>
       </nav>
       

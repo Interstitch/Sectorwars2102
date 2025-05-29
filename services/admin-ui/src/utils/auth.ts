@@ -102,3 +102,6 @@ export const getTokenTimeRemaining = (token?: string): number => {
   
   return Math.max(0, Math.floor(timeRemaining / 1000));
 };
+
+// Default export for backwards compatibility
+export default api;

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../ui/PageHeader';
 import { api } from '../../utils/auth';
+import { useEconomyUpdates } from '../../contexts/WebSocketContext';
 import './economy-dashboard.css';
 
 interface MarketData {
@@ -28,18 +29,59 @@ const EconomyDashboard: React.FC = () => {
   const [selectedCommodity, setSelectedCommodity] = useState<string>('all');
   const [priceAlerts, setPriceAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  const commodities = ['Food', 'Tech', 'Ore', 'Fuel'];
+  const commodities = ['Food', 'Tech', 'Ore', 'Fuel', 'Minerals', 'Electronics', 'Weapons', 'Medical'];
+
+  // WebSocket handlers
+  const handleMarketUpdate = useCallback((data: any) => {
+    console.log('Market update received:', data);
+    setMarketData(prevData => {
+      // Update or add the new market data
+      const index = prevData.findIndex(item => 
+        item.port_id === data.port_id && item.commodity === data.commodity
+      );
+      
+      if (index >= 0) {
+        const newData = [...prevData];
+        newData[index] = { ...newData[index], ...data };
+        return newData;
+      } else {
+        return [...prevData, data];
+      }
+    });
+    setLastUpdate(new Date());
+  }, []);
+
+  const handlePriceChange = useCallback((data: any) => {
+    console.log('Price change alert:', data);
+    setPriceAlerts(prev => [data, ...prev].slice(0, 10)); // Keep last 10 alerts
+  }, []);
+
+  const handleIntervention = useCallback((data: any) => {
+    console.log('Market intervention:', data);
+    // Refresh market data after intervention
+    fetchEconomicData();
+  }, []);
+
+  // Subscribe to WebSocket events
+  useEconomyUpdates(handleMarketUpdate, handlePriceChange, handleIntervention);
 
   useEffect(() => {
     fetchEconomicData();
-    const interval = setInterval(fetchEconomicData, 30000); // Update every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
+    const interval = setInterval(fetchEconomicData, 60000); // Update every 60 seconds as backup
+    
+    return () => {
+      clearInterval(interval);
+    };
+  }, [selectedCommodity]);
+
 
   const fetchEconomicData = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       // Fetch market data
       const marketResponse = await api.get('/api/v1/admin/economy/market-data', {
@@ -60,17 +102,12 @@ const EconomyDashboard: React.FC = () => {
       const alertsResponse = await api.get('/api/v1/admin/economy/price-alerts');
       setPriceAlerts(Array.isArray(alertsResponse.data) ? alertsResponse.data : []);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch economic data:', error);
-      // Set fallback data on error
+      setError(error.response?.data?.detail || 'Failed to load economic data. Please check if the gameserver is running.');
+      // Clear data on error
       setMarketData([]);
-      setMetrics({
-        total_trade_volume: 0,
-        total_credits_in_circulation: 0,
-        average_profit_margin: 0,
-        most_traded_commodity: 'Food',
-        economic_health_score: 0.5
-      });
+      setMetrics(null);
       setPriceAlerts([]);
     } finally {
       setLoading(false);
@@ -101,10 +138,31 @@ const EconomyDashboard: React.FC = () => {
         subtitle="Monitor and manage the galactic economy"
       />
       
+      {/* Real-time update indicator */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'flex-end', 
+        marginBottom: '16px',
+        fontSize: '12px',
+        color: 'var(--text-secondary)'
+      }}>
+        <span>Last updated: {lastUpdate.toLocaleTimeString()}</span>
+      </div>
+      
       {loading ? (
         <div className="loading-spinner">Loading economic data...</div>
       ) : (
         <>
+          {/* Error Notice */}
+          {error && (
+            <div className="alert error" style={{ marginBottom: '20px' }}>
+              <span className="alert-icon">❌</span>
+              <span className="alert-message">
+                {error}
+              </span>
+            </div>
+          )}
+          
           {/* Economic Health Metrics */}
           <div className="metrics-grid">
             {metrics && (
@@ -195,21 +253,21 @@ const EconomyDashboard: React.FC = () => {
                     const profitMargin = ((item.sell_price - item.buy_price) / item.buy_price * 100);
                     return (
                       <tr key={index}>
-                        <td>{item.port_name}</td>
-                        <td>{item.sector_name}</td>
-                        <td>
+                        <td data-label="Port">{item.port_name}</td>
+                        <td data-label="Sector">{item.sector_name}</td>
+                        <td data-label="Commodity">
                           <span className={`commodity-badge ${item.commodity.toLowerCase()}`}>
                             {item.commodity}
                           </span>
                         </td>
-                        <td className="price">{item.buy_price.toLocaleString()}</td>
-                        <td className="price">{item.sell_price.toLocaleString()}</td>
-                        <td>{item.quantity.toLocaleString()}</td>
-                        <td className={`profit-margin ${profitMargin > 20 ? 'high' : profitMargin > 10 ? 'medium' : 'low'}`}>
+                        <td data-label="Buy Price" className="price">{item.buy_price.toLocaleString()}</td>
+                        <td data-label="Sell Price" className="price">{item.sell_price.toLocaleString()}</td>
+                        <td data-label="Quantity">{item.quantity.toLocaleString()}</td>
+                        <td data-label="Profit Margin" className={`profit-margin ${profitMargin > 20 ? 'high' : profitMargin > 10 ? 'medium' : 'low'}`}>
                           {profitMargin.toFixed(1)}%
                         </td>
-                        <td>{new Date(item.last_updated).toLocaleTimeString()}</td>
-                        <td>
+                        <td data-label="Last Updated">{new Date(item.last_updated).toLocaleTimeString()}</td>
+                        <td data-label="Actions">
                           <button 
                             className="action-btn intervention"
                             onClick={() => {

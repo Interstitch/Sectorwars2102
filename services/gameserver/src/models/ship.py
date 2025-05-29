@@ -50,6 +50,14 @@ class InsuranceType(enum.Enum):
     PREMIUM = "PREMIUM"
 
 
+class ShipStatus(enum.Enum):
+    DOCKED = "DOCKED"
+    IN_SPACE = "IN_SPACE"
+    IN_COMBAT = "IN_COMBAT"
+    DESTROYED = "DESTROYED"
+    MAINTENANCE = "MAINTENANCE"
+
+
 class Ship(Base):
     __tablename__ = "ships"
 
@@ -69,6 +77,7 @@ class Ship(Base):
     
     # Operational status
     is_active = Column(Boolean, nullable=False, default=True)
+    status = Column(Enum(ShipStatus, name="ship_status"), nullable=False, default=ShipStatus.DOCKED)
     maintenance = Column(JSONB, nullable=False)
     
     # Cargo & special equipment
@@ -102,6 +111,7 @@ class Ship(Base):
     
     # New relationships
     genesis_device_objects = relationship("GenesisDevice", back_populates="ship")
+    fleet_membership = relationship("FleetMember", back_populates="ship", uselist=False)
 
     def __repr__(self):
         return f"<Ship {self.name} ({self.type.name}) - Owner: {self.owner_id}>"

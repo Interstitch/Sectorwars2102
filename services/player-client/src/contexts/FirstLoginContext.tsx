@@ -97,9 +97,34 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
   const [exchangeId, setExchangeId] = useState<string | null>(null);
   const [dialogueOutcome, setDialogueOutcome] = useState<DialogueAnalysis['outcome'] | null>(null);
   
+  // Get API URL using the same logic as other contexts
+  const getApiUrl = () => {
+    // If an environment variable is explicitly set, use it
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+
+    const windowUrl = window.location.origin;
+
+    // For GitHub Codespaces, use direct gameserver URL
+    if (windowUrl.includes('.app.github.dev')) {
+      // Replace port 3000 with 8080 for gameserver
+      const gameserverUrl = windowUrl.replace('-3000.app.github.dev', '-8080.app.github.dev');
+      return gameserverUrl;
+    }
+
+    // Local development
+    if (windowUrl.includes('localhost')) {
+      return 'http://localhost:8080';
+    }
+
+    // For other environments - default to localhost
+    return 'http://localhost:8080';
+  };
+
   // Set up axios with authorization header
   const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || '',
+    baseURL: getApiUrl(),
   });
   
   // Use token from localStorage directly instead of from context
@@ -111,12 +136,20 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
     return config;
   });
   
+  // Rate limiting state
+  const [lastCheckTime, setLastCheckTime] = useState<number>(0);
+  const CHECK_COOLDOWN = 5000; // 5 seconds between checks
+
   // Check if first login is required when user logs in
   useEffect(() => {
     if (isAuthenticated && user) {
-      checkFirstLoginStatus();
+      const now = Date.now();
+      if (now - lastCheckTime > CHECK_COOLDOWN) {
+        setLastCheckTime(now);
+        checkFirstLoginStatus();
+      }
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, lastCheckTime]);
   
   // Check if the player needs to go through first login
   const checkFirstLoginStatus = async () => {
@@ -154,9 +187,19 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
       
       // Initialize dialogue history with the first NPC prompt
       setDialogueHistory([{ npc: response.data.npc_prompt, player: '' }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error starting first login session:', error);
-      setError('Failed to start first login session.');
+      
+      // Handle specific error types
+      if (error.response?.status === 429) {
+        setError('Too many requests. Please wait a moment before trying again.');
+        // Don't retry automatically on 429
+        return;
+      } else if (error.response?.status === 500) {
+        setError('Server error. Please try again in a few moments.');
+      } else {
+        setError('Failed to start first login session.');
+      }
     } finally {
       setIsLoading(false);
     }

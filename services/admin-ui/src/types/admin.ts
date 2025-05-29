@@ -318,6 +318,18 @@ export interface TeamManagementData {
   recruitment_open: boolean;
 }
 
+export interface Team {
+  id: string;
+  name: string;
+  tag: string;
+  leader_id: string;
+  leader_name: string;
+  member_count: number;
+  total_score: number;
+  created_at: string;
+  description?: string;
+}
+
 // Market & Economy Types
 export interface MarketData {
   port_id: string;

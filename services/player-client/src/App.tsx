@@ -21,6 +21,13 @@ import DebugPage from './components/pages/DebugPage'
 import TestAuthPage from './components/pages/TestAuthPage'
 import { FirstLoginContainer } from './components/first-login'
 
+interface ApiResponse {
+  message?: string;
+  environment?: string;
+  version?: string;
+  ping?: number;
+}
+
 function MainApp() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<any>(null);
@@ -30,7 +37,7 @@ function MainApp() {
   const [authMode, setAuthMode] = useState<'none' | 'login' | 'register'>('none');
   const navigate = useNavigate();
   
-  // Get API URL - prioritize proxy for all environments
+  // Get API URL - use gameserver directly
   const getApiUrl = () => {
     // If an environment variable is explicitly set, use it as override
     if (import.meta.env.VITE_API_URL) {
@@ -38,14 +45,23 @@ function MainApp() {
       return import.meta.env.VITE_API_URL;
     }
 
-    // IMPORTANT CHANGE: In all environments, we'll now use the Vite proxy by default
-    // This solves container name resolution and CORS issues
-    console.log('Using Vite proxy for API requests (empty baseUrl)');
+    const windowUrl = window.location.origin;
+    console.log('Current window URL:', windowUrl);
+
+    // For GitHub Codespaces, use direct gameserver URL
+    if (windowUrl.includes('.app.github.dev')) {
+      console.log('GitHub Codespaces detected - using direct gameserver URL');
+      // Replace port 3000 with 8080 for gameserver
+      const gameserverUrl = windowUrl.replace('-3000.app.github.dev', '-8080.app.github.dev');
+      console.log('Using gameserver URL:', gameserverUrl);
+      return gameserverUrl;
+    }
+
+    // Use direct gameserver URL - port 8080 for the gameserver
+    console.log('Using direct gameserver URL for API requests');
     
-    // Empty string enables Vite proxy which routes /api to the gameserver
-    // This works better than direct URLs when running in Docker or any environment
-    // The proxy is configured in vite.config.ts to handle the routing
-    return '';
+    // Point directly to the gameserver at port 8080
+    return 'http://localhost:8080';
   };
   
   // Get full API URL for display purposes, showing the complete endpoint
@@ -184,7 +200,7 @@ function MainApp() {
             // For Codespaces, handle redirects ourselves to prevent port doubling
             const isCodespaces = window.location.hostname.includes('.app.github.dev');
             const options = {
-              maxRedirects: isCodespaces ? 0 : 5, // Disable auto-redirects in Codespaces
+              // Disable auto-redirects in Codespaces
               validateStatus: function (status) {
                 return status < 500; // Accept any status code less than 500
               },
@@ -227,15 +243,15 @@ function MainApp() {
                   console.log(`Following redirect to: ${fixedLocation}`);
                   const redirectResponse = await axiosToUse.get(fixedLocation, {
                     ...options,
-                    maxRedirects: 0 // Still no auto-redirects
+                    // Still no auto-redirects
                   });
                   
                   // If we get a successful response, use it
                   if (redirectResponse.status >= 200 && redirectResponse.status < 300) {
                     console.log(`Redirect successful:`, redirectResponse.data);
                     setApiStatus('Connected');
-                    setApiMessage(redirectResponse.data.message || `Game API Server is operational (redirected)`);
-                    setApiEnvironment(redirectResponse.data.environment || 'gameserver');
+                    setApiMessage((redirectResponse.data as ApiResponse).message || `Game API Server is operational (redirected)`);
+                    setApiEnvironment((redirectResponse.data as ApiResponse).environment || 'gameserver');
                     return;
                   } else if (redirectResponse.status >= 300 && redirectResponse.status < 400) {
                     // Try one more level of redirection
@@ -249,14 +265,14 @@ function MainApp() {
                     try {
                       const nestedResponse = await axiosToUse.get(nestedFixedLocation, {
                         ...options,
-                        maxRedirects: 0
+                        // No auto-redirects
                       });
                       
                       if (nestedResponse.status >= 200 && nestedResponse.status < 300) {
                         console.log(`Final redirect successful:`, nestedResponse.data);
                         setApiStatus('Connected');
-                        setApiMessage(nestedResponse.data.message || `Game API Server operational`);
-                        setApiEnvironment(nestedResponse.data.environment || 'gameserver');
+                        setApiMessage((nestedResponse.data as ApiResponse).message || `Game API Server operational`);
+                        setApiEnvironment((nestedResponse.data as ApiResponse).environment || 'gameserver');
                         return;
                       }
                     } catch (nestedError) {
@@ -282,14 +298,14 @@ function MainApp() {
               
               // Extract message and environment based on endpoint
               if (endpoint.path.includes('version')) {
-                setApiMessage(`Game API Server v${response.data.version || '0.1.0'}`);
+                setApiMessage(`Game API Server v${(response.data as ApiResponse).version || '0.1.0'}`);
               } else if (endpoint.path.includes('ping')) {
-                setApiMessage(`Game API Server is operational (ping: ${response.data.ping})`);
+                setApiMessage(`Game API Server is operational (ping: ${(response.data as ApiResponse).ping})`);
               } else {
-                setApiMessage(response.data.message || 'Game API Server is operational');
+                setApiMessage((response.data as ApiResponse).message || 'Game API Server is operational');
               }
               
-              setApiEnvironment(response.data.environment || 'gameserver');
+              setApiEnvironment((response.data as ApiResponse).environment || 'gameserver');
               
               // Log success for debugging
               console.log(`SUCCESS: Connected to API via ${endpoint.name}`);
@@ -298,20 +314,21 @@ function MainApp() {
           } catch (endpointError) {
             // More detailed error logging
             console.warn(`${endpoint.name} endpoint failed:`, endpointError);
-            if (endpointError.response) {
+            const err = endpointError as any;
+            if (err.response) {
               // The request was made and the server responded with a status code
               // that falls out of the range of 2xx
-              console.error('Error response data:', endpointError.response.data);
-              console.error('Error response status:', endpointError.response.status);
-              console.error('Error response headers:', endpointError.response.headers);
-            } else if (endpointError.request) {
+              console.error('Error response data:', err.response.data);
+              console.error('Error response status:', err.response.status);
+              console.error('Error response headers:', err.response.headers);
+            } else if (err.request) {
               // The request was made but no response was received
-              console.error('Error request (no response received):', endpointError.request);
+              console.error('Error request (no response received):', err.request);
             } else {
               // Something happened in setting up the request that triggered an Error
-              console.error('Error message:', endpointError.message);
+              console.error('Error message:', err.message);
             }
-            console.error('Error config:', endpointError.config);
+            console.error('Error config:', err.config);
           }
         }
         
@@ -366,7 +383,7 @@ function MainApp() {
           }
         } catch (error) {
           console.error('Failed to verify authentication:', error);
-          console.error('Error details:', error.response?.data || error.message);
+          console.error('Error details:', (error as any).response?.data || (error as any).message);
           // Clear tokens on auth failure
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');

@@ -1,0 +1,658 @@
+/* Siege Status Monitor Styles */
+
+.siege-status-monitor {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  background: var(--surface-primary);
+  border: 2px solid var(--error-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(255, 59, 48, 0.3);
+  animation: siegeAlert 2s ease-in-out infinite;
+}
+
+@keyframes siegeAlert {
+  0%, 100% { 
+    box-shadow: 0 4px 20px rgba(255, 59, 48, 0.3);
+  }
+  50% { 
+    box-shadow: 0 4px 30px rgba(255, 59, 48, 0.5);
+  }
+}
+
+/* Header */
+.monitor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-lg);
+  background: rgba(255, 59, 48, 0.1);
+  border-bottom: 1px solid var(--error-color);
+}
+
+.monitor-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--error-color);
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.close-button {
+  padding: var(--space-xs) var(--space-sm);
+  background: transparent;
+  border: 1px solid var(--error-color);
+  border-radius: var(--radius-sm);
+  color: var(--error-color);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.close-button:hover {
+  background: var(--error-color);
+  color: white;
+}
+
+/* Content */
+.monitor-content {
+  padding: var(--space-lg);
+}
+
+/* No Siege State */
+.no-siege {
+  text-align: center;
+  padding: var(--space-xl);
+}
+
+.peace-icon {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: var(--space-lg);
+}
+
+.no-siege h4 {
+  margin: 0 0 var(--space-sm) 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+.no-siege p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+/* Siege Alert */
+.siege-alert {
+  margin-bottom: var(--space-lg);
+  padding: var(--space-lg);
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid var(--error-color);
+  border-radius: var(--radius-md);
+}
+
+.alert-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.alert-icon {
+  font-size: 3rem;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.alert-text h4 {
+  margin: 0 0 var(--space-xs) 0;
+  font-size: 1.25rem;
+  color: var(--error-color);
+}
+
+.alert-text p {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+/* Siege Overview */
+.siege-overview {
+  margin-bottom: var(--space-xl);
+}
+
+.overview-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.stat-item {
+  padding: var(--space-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-sm);
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.stat-value.phase {
+  color: var(--warning-color);
+}
+
+.stat-value.timer {
+  color: var(--error-color);
+  font-family: monospace;
+}
+
+.stat-value.effectiveness.excellent {
+  color: #00ff00;
+}
+
+.stat-value.effectiveness.good {
+  color: var(--success-color);
+}
+
+.stat-value.effectiveness.fair {
+  color: var(--warning-color);
+}
+
+.stat-value.effectiveness.poor {
+  color: #ff9800;
+}
+
+.stat-value.effectiveness.critical {
+  color: var(--error-color);
+}
+
+/* Phase Progress */
+.phase-progress {
+  padding: var(--space-lg);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.progress-track {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+}
+
+.progress-track::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--border-secondary);
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+.phase-marker {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--surface-primary);
+  border-radius: var(--radius-md);
+  opacity: 0.5;
+  transition: all 0.3s;
+}
+
+.phase-marker.active {
+  opacity: 1;
+}
+
+.phase-marker.current {
+  background: var(--error-color);
+  color: white;
+  animation: currentPhase 2s ease-in-out infinite;
+}
+
+@keyframes currentPhase {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.phase-icon {
+  font-size: 2rem;
+}
+
+.phase-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Phase Details */
+.phase-details {
+  margin-bottom: var(--space-xl);
+}
+
+.phase-header {
+  display: flex;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  padding: var(--space-lg);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.phase-icon-large {
+  font-size: 4rem;
+  flex-shrink: 0;
+}
+
+.phase-info h4 {
+  margin: 0 0 var(--space-sm) 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+.phase-info p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Phase Effects */
+.phase-effects {
+  margin-bottom: var(--space-lg);
+  padding: var(--space-lg);
+  background: rgba(255, 59, 48, 0.05);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: var(--radius-md);
+}
+
+.phase-effects h5 {
+  margin: 0 0 var(--space-md) 0;
+  font-size: 1rem;
+  color: var(--error-color);
+}
+
+.phase-effects ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
+}
+
+.effect-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.effect-icon {
+  color: var(--warning-color);
+}
+
+/* Defense Options */
+.defense-options {
+  margin-bottom: var(--space-lg);
+}
+
+.defense-options h5 {
+  margin: 0 0 var(--space-md) 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.defense-option {
+  padding: var(--space-md);
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.defense-option:hover:not(:disabled) {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  border-color: var(--accent-primary);
+  transform: translateY(-2px);
+}
+
+.defense-option.selected {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  border-color: var(--accent-primary);
+}
+
+.defense-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.option-icon {
+  font-size: 1.5rem;
+}
+
+.option-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.action-feedback {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-md);
+  color: var(--accent-primary);
+  animation: executing 1s ease-in-out infinite;
+}
+
+@keyframes executing {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.executing-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Casualties Report */
+.casualties-report {
+  margin-bottom: var(--space-lg);
+  padding: var(--space-lg);
+  background: rgba(255, 59, 48, 0.05);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: var(--radius-md);
+}
+
+.casualties-report h5 {
+  margin: 0 0 var(--space-md) 0;
+  font-size: 1rem;
+  color: var(--error-color);
+}
+
+.casualties-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-md);
+}
+
+.casualty-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--surface-primary);
+  border-radius: var(--radius-sm);
+}
+
+.casualty-icon {
+  font-size: 1.5rem;
+}
+
+.casualty-label {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.casualty-value {
+  font-weight: 600;
+  color: var(--error-color);
+}
+
+/* Defense Status */
+.defense-status {
+  margin-bottom: var(--space-lg);
+}
+
+.defense-status h5 {
+  margin: 0 0 var(--space-md) 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.defense-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.defense-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.defense-label {
+  flex: 0 0 100px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.status-bar {
+  flex: 1;
+  height: 20px;
+  background: var(--surface-secondary);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.status-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.status-fill.turrets {
+  background: linear-gradient(90deg, #ff6b6b, #ff5252);
+}
+
+.status-fill.shields {
+  background: linear-gradient(90deg, #339af0, #228be6);
+}
+
+.status-fill.fighters {
+  background: linear-gradient(90deg, #f59f00, #f08c00);
+}
+
+.status-text {
+  position: absolute;
+  right: var(--space-sm);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Siege Recommendations */
+.siege-recommendations {
+  margin-bottom: var(--space-lg);
+}
+
+.siege-recommendations h5 {
+  margin: 0 0 var(--space-md) 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.recommendations-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.recommendation {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+}
+
+.recommendation.critical {
+  background: rgba(255, 59, 48, 0.1);
+  border-color: var(--error-color);
+}
+
+.rec-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.recommendation p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.recommendation.critical p {
+  color: var(--error-color);
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+}
+
+.button {
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+  font-size: 1rem;
+}
+
+.button.emergency {
+  background: var(--error-color);
+  color: white;
+  border-color: var(--error-color);
+}
+
+.button.emergency:hover {
+  background: transparent;
+  color: var(--error-color);
+  transform: scale(1.05);
+}
+
+.button.surrender {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-secondary);
+}
+
+.button.surrender:hover {
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .siege-status-monitor {
+    max-width: 100%;
+    border-radius: 0;
+  }
+
+  .overview-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .phase-effects ul {
+    grid-template-columns: 1fr;
+  }
+
+  .options-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .casualties-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .button {
+    width: 100%;
+  }
+
+  .progress-track {
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .progress-track::before {
+    display: none;
+  }
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.siege-status-monitor {
+  animation: slideIn 0.3s ease-out;
+}

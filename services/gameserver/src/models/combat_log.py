@@ -1,12 +1,22 @@
 import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any
+from enum import Enum
 from sqlalchemy import Column, DateTime, String, Integer, Float, ForeignKey, Text, JSON, Boolean
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy import func
 
 from src.core.database import Base
+
+
+class CombatOutcome(str, Enum):
+    """Combat outcome enumeration."""
+    ONGOING = "ongoing"
+    ATTACKER_WIN = "attacker_win"
+    DEFENDER_WIN = "defender_win"
+    DRAW = "draw"
+    ESCAPED = "escaped"
 
 
 class CombatLog(Base):

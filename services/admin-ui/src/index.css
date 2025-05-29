@@ -1,3 +1,6 @@
+/* Import responsive utilities */
+@import './styles/responsive.css';
+
 :root {
   --bg-color: #0f172a;
   --text-color: #e2e8f0;
@@ -8,6 +11,19 @@
   --container-bg: #1e293b;
   --button-color: #4f46e5;
   --button-hover: #4338ca;
+  
+  /* Spacing variables for responsive design */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2rem;
+  --space-6: 3rem;
+  
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
 }
 
 * {

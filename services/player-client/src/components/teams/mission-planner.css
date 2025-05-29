@@ -1,0 +1,570 @@
+/* Mission Planner Styles */
+.mission-planner {
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--primary-green);
+  border-radius: 8px;
+  padding: 20px;
+  color: var(--text-primary);
+}
+
+.mission-planner.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+
+/* Planner Header */
+.planner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.planner-header h3 {
+  color: var(--primary-green);
+  margin: 0;
+}
+
+.create-mission-btn {
+  padding: 8px 16px;
+  background: rgba(0, 255, 157, 0.1);
+  border: 1px solid var(--primary-green);
+  color: var(--primary-green);
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.create-mission-btn:hover {
+  background: rgba(0, 255, 157, 0.2);
+}
+
+/* Create Mission Form */
+.create-mission-form {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+  padding: 20px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.create-mission-form h4 {
+  color: var(--primary-green);
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+  color: var(--text-primary);
+  padding: 10px;
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary-green);
+}
+
+/* Objectives Section */
+.objectives-section {
+  margin-bottom: 20px;
+}
+
+.objectives-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.objectives-header label {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.add-objective-btn {
+  padding: 5px 12px;
+  background: rgba(0, 255, 157, 0.1);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+  color: var(--primary-green);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.objective-input {
+  display: grid;
+  grid-template-columns: 1fr 150px auto;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.objective-input input {
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+  color: var(--text-primary);
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.objective-input select {
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+  color: var(--text-primary);
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.remove-btn {
+  width: 30px;
+  height: 30px;
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+  color: #ff6b6b;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.form-actions {
+  display: flex;
+  gap: 15px;
+}
+
+.form-actions button {
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.form-actions button:first-child {
+  background: rgba(0, 255, 157, 0.2);
+  border: 1px solid var(--primary-green);
+  color: var(--primary-green);
+}
+
+.cancel-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--text-secondary);
+}
+
+/* Missions Container */
+.missions-container {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+  min-height: 400px;
+}
+
+/* Missions List */
+.missions-list {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 15px;
+  border-radius: 4px;
+}
+
+.missions-list h4 {
+  color: var(--primary-green);
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.no-missions {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 40px 20px;
+}
+
+.no-missions .hint {
+  font-size: 12px;
+  margin-top: 10px;
+  opacity: 0.7;
+}
+
+.mission-item {
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(0, 255, 157, 0.2);
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mission-item:hover {
+  background: rgba(0, 255, 157, 0.1);
+  border-color: var(--primary-green);
+}
+
+.mission-item.selected {
+  background: rgba(0, 255, 157, 0.2);
+  border-color: var(--primary-green);
+}
+
+.mission-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.mission-icon {
+  font-size: 16px;
+}
+
+.mission-name {
+  font-weight: bold;
+  flex: 1;
+}
+
+.mission-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.status {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.status.planning {
+  background: rgba(255, 255, 0, 0.2);
+  color: yellow;
+}
+
+.status.active {
+  background: rgba(0, 255, 0, 0.2);
+  color: #00ff00;
+}
+
+.status.completed {
+  background: rgba(0, 162, 255, 0.2);
+  color: #00a2ff;
+}
+
+.status.failed {
+  background: rgba(255, 0, 0, 0.2);
+  color: #ff6b6b;
+}
+
+/* Mission Details */
+.mission-details {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 20px;
+  border-radius: 4px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(0, 255, 157, 0.3);
+}
+
+.detail-header h4 {
+  color: var(--primary-green);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mission-status {
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.mission-status.planning {
+  background: rgba(255, 255, 0, 0.2);
+  color: yellow;
+}
+
+.mission-status.active {
+  background: rgba(0, 255, 0, 0.2);
+  color: #00ff00;
+}
+
+.mission-status.completed {
+  background: rgba(0, 162, 255, 0.2);
+  color: #00a2ff;
+}
+
+.mission-status.failed {
+  background: rgba(255, 0, 0, 0.2);
+  color: #ff6b6b;
+}
+
+/* Detail Content */
+.mission-description {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.mission-description p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.mission-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.info-item label {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.info-item value {
+  color: var(--primary-green);
+  font-weight: bold;
+}
+
+/* Mission Objectives */
+.mission-objectives {
+  margin-bottom: 25px;
+}
+
+.mission-objectives h5 {
+  color: var(--primary-green);
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.no-objectives {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.objectives-list {
+  display: grid;
+  gap: 10px;
+}
+
+.objective {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 255, 157, 0.2);
+}
+
+.objective.completed {
+  opacity: 0.7;
+  border-color: rgba(0, 255, 0, 0.3);
+}
+
+.objective-check {
+  color: var(--primary-green);
+  font-size: 18px;
+}
+
+.objective.completed .objective-check {
+  color: #00ff00;
+}
+
+.objective-text {
+  color: var(--text-primary);
+}
+
+.objective.completed .objective-text {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+.objective-progress {
+  color: var(--primary-green);
+  font-weight: bold;
+  font-size: 13px;
+}
+
+/* Mission Participants */
+.mission-participants {
+  margin-bottom: 25px;
+}
+
+.mission-participants h5 {
+  color: var(--primary-green);
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.participants-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.participant {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 255, 157, 0.2);
+}
+
+.participant-name {
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.participant-name.offline {
+  opacity: 0.6;
+}
+
+.online-dot {
+  color: #00ff00;
+  font-size: 8px;
+}
+
+.participant-role {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+/* Mission Rewards */
+.mission-rewards {
+  background: rgba(0, 255, 157, 0.05);
+  padding: 15px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 255, 157, 0.2);
+  margin-bottom: 20px;
+}
+
+.mission-rewards h5 {
+  color: var(--primary-green);
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.rewards-list {
+  display: flex;
+  gap: 20px;
+}
+
+.reward-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reward-item span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.reward-item value {
+  color: gold;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* Mission Actions */
+.mission-actions {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.join-btn,
+.leave-btn,
+.start-btn {
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.join-btn {
+  background: rgba(0, 255, 157, 0.2);
+  border: 1px solid var(--primary-green);
+  color: var(--primary-green);
+}
+
+.leave-btn {
+  background: rgba(255, 255, 0, 0.1);
+  border: 1px solid rgba(255, 255, 0, 0.5);
+  color: #ffff88;
+}
+
+.start-btn {
+  background: rgba(0, 255, 0, 0.2);
+  border: 1px solid rgba(0, 255, 0, 0.5);
+  color: #00ff00;
+}
+
+.active-hint {
+  color: var(--primary-green);
+  font-style: italic;
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .missions-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .objective-input {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  
+  .participants-list {
+    grid-template-columns: 1fr;
+  }
+}

@@ -3,6 +3,13 @@
  */
 
 /**
+ * Get authentication token from localStorage
+ */
+export const getAuthToken = (): string | null => {
+  return localStorage.getItem('accessToken');
+};
+
+/**
  * Decode a JWT token to get payload without validation
  */
 export const decodeToken = (token: string): any => {

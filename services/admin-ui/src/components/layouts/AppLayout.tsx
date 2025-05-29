@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useWebSocket } from '../../contexts/WebSocketContext';
 import Sidebar from './Sidebar';
 
 const AppLayout: React.FC = () => {
   const { isLoading, isAuthenticated } = useAuth();
+  const { isConnected } = useWebSocket();
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [loadingTimeout, setLoadingTimeout] = useState<boolean>(false);
@@ -120,6 +122,34 @@ const AppLayout: React.FC = () => {
       )}
 
       <main className="main-content">
+        {/* WebSocket connection status */}
+        {isAuthenticated && !isLoginPage && (
+          <div className="connection-status" style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            padding: '8px 16px',
+            borderRadius: '4px',
+            background: isConnected ? 'var(--success)' : 'var(--error)',
+            color: 'white',
+            fontSize: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            zIndex: 1000,
+            opacity: 0.9
+          }}>
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: 'currentColor',
+              display: 'inline-block',
+              animation: isConnected ? 'pulse 2s infinite' : 'none'
+            }}></span>
+            {isConnected ? 'Live Updates Active' : 'Reconnecting...'}
+          </div>
+        )}
         <Outlet />
       </main>
     </div>
