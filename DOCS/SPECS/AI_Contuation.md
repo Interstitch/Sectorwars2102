@@ -1,4 +1,8 @@
-This session is being continued from a previous conversation that ran out of context. The conversation is summarized below:
+Please provide a comprehensive analysis and summary of our entire conversation for continuation in a new chat session. Use the exact format below:
+
+---
+
+> This session is being continued from a previous conversation that ran out of context. The conversation is summarized below:
 
 Analysis:
 I need to chronologically analyze this conversation to capture all technical details, user requests, and my implementation work. Let me go through each section:
