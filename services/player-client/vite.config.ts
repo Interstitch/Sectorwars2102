@@ -8,18 +8,18 @@ dns.setDefaultResultOrder('ipv4first')
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    // Completely disable HMR ping functionality
+    __VITE_HMR_PING_TIMEOUT__: 0,
+    __VITE_HMR_DISABLE_PING__: true
+  },
   server: {
     host: true, // Listen on all addresses
     port: 3000,
     strictPort: true,
 
-    // Fix HMR for GitHub Codespaces
-    hmr: {
-      port: 443,
-      host: process.env.CODESPACE_NAME 
-        ? `${process.env.CODESPACE_NAME}-3000.app.github.dev`
-        : 'localhost'
-    },
+    // Completely disable HMR to prevent any ping attempts
+    hmr: false,
 
     // Direct configuration to allow any host
     cors: true,

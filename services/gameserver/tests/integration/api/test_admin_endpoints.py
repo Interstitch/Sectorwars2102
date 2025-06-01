@@ -45,8 +45,8 @@ class TestAdminEndpoints:
         assert response.status_code == 200
         data = response.json()
         
-        # Verify required statistics fields
-        required_stats = ["totalUsers", "activePlayers", "totalSectors", "totalPlanets", "totalShips"]
+        # Verify required statistics fields (snake_case as returned by API)
+        required_stats = ["total_users", "total_players", "total_sectors", "total_planets", "total_ships"]
         for stat in required_stats:
             assert stat in data
             assert isinstance(data[stat], int)

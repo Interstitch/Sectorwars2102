@@ -207,7 +207,7 @@ const SectorsManager: React.FC = () => {
   };
   
   return (
-    <div className="page-container">
+    <div className="page-container sectors-manager">
       <div className="page-header">
         <h1 className="page-title">Sectors Management</h1>
         <p className="page-subtitle">View and manage all sectors in the game universe.</p>

@@ -3,13 +3,8 @@ from typing import Optional
 from pydantic import PostgresDsn, Field
 from pydantic_settings import BaseSettings
 
-# Set default database URL if not provided in environment
-DEFAULT_DB_URL = "postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
-
-# Ensure DATABASE_URL is set in environment
-if not os.environ.get("DATABASE_URL"):
-    os.environ["DATABASE_URL"] = DEFAULT_DB_URL
-    print(f"DATABASE_URL not found in environment, using default: {DEFAULT_DB_URL}")
+# Note: DATABASE_URL validation will happen in the Settings class below
+# which properly loads from .env files using Pydantic
 
 
 class Settings(BaseSettings):
@@ -66,10 +61,11 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: PostgresDsn = Field(
-        default="postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
+        description="PostgreSQL database URL"
     )
     DATABASE_TEST_URL: Optional[PostgresDsn] = Field(
-        default="postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
+        default=None,
+        description="PostgreSQL test database URL (optional)"
     )
     DATABASE_URL_PROD: Optional[PostgresDsn] = None
     SQLALCHEMY_POOL_SIZE: int = 10
@@ -169,16 +165,43 @@ class Settings(BaseSettings):
         """Get the appropriate database URL based on environment."""
         # Ensure correct type casting for Pydantic DSNs
         if self.ENVIRONMENT == "testing" and self.DATABASE_TEST_URL:
-            return str(self.DATABASE_TEST_URL)
-        if self.ENVIRONMENT == "production" and self.DATABASE_URL_PROD:
-            return str(self.DATABASE_URL_PROD)
-        return str(self.DATABASE_URL)
+            db_url = str(self.DATABASE_TEST_URL)
+        elif self.ENVIRONMENT == "production" and self.DATABASE_URL_PROD:
+            db_url = str(self.DATABASE_URL_PROD)
+        else:
+            db_url = str(self.DATABASE_URL)
+        
+        # Add endpoint parameter for Neon databases if not already present
+        if "neon.tech" in db_url and "options=endpoint" not in db_url:
+            # Extract the endpoint ID from the host
+            import re
+            match = re.search(r'@(ep-[a-z0-9-]+)', db_url)
+            if match:
+                endpoint_id = match.group(1)
+                # Add or append to existing parameters
+                if "?" in db_url:
+                    db_url += f"&options=endpoint%3D{endpoint_id}"
+                else:
+                    db_url += f"?options=endpoint%3D{endpoint_id}"
+        
+        return db_url
 
     # Using model_config for newer Pydantic versions
     model_config = {
-        "env_file": ".env",
+        "env_file": ["../../.env", ".env"],  # Look in parent directory first, then current
         "env_file_encoding": "utf-8",
         "extra": "ignore",  # Ignore extra fields from .env
     }
 
+# Load .env file if DATABASE_URL not in environment
+if not os.environ.get("DATABASE_URL"):
+    import pathlib
+    from dotenv import load_dotenv
+    
+    # Try to load from parent directory .env file
+    env_path = pathlib.Path(__file__).parent.parent.parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+
+# Create settings instance
 settings = Settings()

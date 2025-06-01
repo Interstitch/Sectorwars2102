@@ -259,7 +259,7 @@ async def get_balance_metrics(
     avg_damage_per_fighter = 0
     fighter_effectiveness = 1.0
     
-    if fighter_damage_query and fighter_damage_query.total_fighters > 0:
+    if fighter_damage_query and fighter_damage_query.total_fighters and fighter_damage_query.total_fighters > 0:
         avg_damage_per_fighter = fighter_damage_query.total_damage / fighter_damage_query.total_fighters
         # Normalize to 0-2 range where 1.0 is balanced
         fighter_effectiveness = min(2.0, max(0.1, avg_damage_per_fighter / 100))

@@ -35,53 +35,21 @@ authTest.beforeAll(async ({ browser }) => {
 authTest.describe('Admin UI - User Management', () => {
   // Setup - navigate to user management page
   authTest.beforeEach(async ({ page, adminCredentials }) => {
-    try {
-      // Login before each test using the shared admin account
-      await loginAsAdmin(page, adminCredentials);
-      
-      // Handle case where login failed but we want to continue
-      if (!page.url().includes('/dashboard')) {
-        console.log('Login may have failed, navigating directly to dashboard');
-        await page.goto('/dashboard', { waitUntil: 'domcontentloaded', timeout: 5000 });
-      }
-    } catch (error) {
-      console.error('Login failed but continuing with test:', error);
-      // Navigate to dashboard directly as fallback
-      try {
-        await page.goto('/dashboard', { waitUntil: 'domcontentloaded', timeout: 5000 });
-      } catch (navError) {
-        console.error('Failed to navigate to dashboard:', navError);
-      }
-    }
+    // Login before each test using the shared admin account
+    await loginAsAdmin(page, adminCredentials);
     
-    // Navigate to the Users Management page - try different approaches
-    try {
-      console.log('Navigating to users management page...');
-      
-      // First try to click the users link directly
-      try {
-        await page.click('a[href="/users"], a:has-text("Users"), nav >> text=Users', { timeout: 3000 });
-      } catch (clickError) {
-        console.warn('Could not find Users link, navigating directly');
-        // If link not found, navigate directly as fallback
-        await page.goto('/users', { waitUntil: 'domcontentloaded', timeout: 5000 });
-      }
-      
-      // Wait for any content to appear
-      await page.waitForSelector('body', { state: 'attached', timeout: 5000 });
-      
-      // Take a screenshot to see where we are
-      await page.screenshot({ path: `user-management-nav-${Date.now()}.png` });
-    } catch (error) {
-      console.error('Failed to navigate to users page:', error);
-      
-      // Try one more time with basic navigation
-      try {
-        await page.goto('/users', { timeout: 5000 });
-      } catch (navError) {
-        console.error('All navigation to users page failed:', navError);
-      }
-    }
+    // Wait for dashboard to load
+    await page.waitForLoadState('networkidle');
+    
+    // Navigate to the Users Management page via sidebar
+    console.log('Navigating to users management page...');
+    
+    // Click on User Management in the sidebar
+    await page.click('text=👥 User Management');
+    
+    // Wait for the users page to load
+    await page.waitForSelector('.page-container', { timeout: 10000 });
+    console.log('Users management page loaded');
   });
   
   // Helper function to bypass overlay click issues with better error handling
@@ -138,23 +106,21 @@ authTest.describe('Admin UI - User Management', () => {
   // Test 1: Display the User Management page
   authTest('should display the User Management page with users grid', async ({ page }) => {
     // Verify the page has the correct heading
-    await expect(page.locator('.users-header h2')).toBeVisible();
+    await expect(page.locator('.page-header h1')).toContainText('User Management');
     
     // Verify no error message is displayed
-    const errorLocator = page.locator('.error-message');
+    const errorLocator = page.locator('.alert-error');
     const errorCount = await errorLocator.count();
     if (errorCount > 0) {
       const errorText = await errorLocator.textContent();
       console.log(`Error message displayed: ${errorText}`);
-      // Click dismiss button if present
-      await safeClick(page, '.error-message button');
     }
     
-    // Verify the users grid is visible
-    await expect(page.locator('.users-grid')).toBeVisible();
+    // Verify the users table is visible
+    await expect(page.locator('.table')).toBeVisible();
     
     // Verify create user button exists
-    await expect(page.locator('.create-user-button')).toBeVisible();
+    await expect(page.locator('button').filter({ hasText: 'Create User' })).toBeVisible();
   });
   
   // Test 2: Create a user via the Create User button
@@ -165,29 +131,10 @@ authTest.describe('Admin UI - User Management', () => {
     await page.screenshot({ path: 'before-create-user.png' });
     
     // Find and click the create user button
-    const createButtonClicked = await safeClick(page, '.create-user-button');
-    
-    // Skip test if button not found or could not be clicked
-    if (!createButtonClicked) {
-      console.log('Could not click Create User button, skipping this test');
-      test.skip();
-      return;
-    }
+    await page.click('button:has-text("Create User")');
     
     // Wait for the creation modal to appear
-    const modalVisible = await page.waitForSelector('.modal-container', { 
-      state: 'visible', 
-      timeout: 5000 
-    }).catch(e => {
-      console.log('Modal not appearing after clicking create button:', e);
-      return false;
-    });
-    
-    if (!modalVisible) {
-      console.log('Create user modal did not appear, skipping test');
-      test.skip();
-      return;
-    }
+    await expect(page.locator('.modal')).toBeVisible({ timeout: 5000 });
     
     // Take a screenshot of the form before submitting
     await page.screenshot({ path: 'create-user-form.png' });

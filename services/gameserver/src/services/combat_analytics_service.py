@@ -31,12 +31,13 @@ class CombatAnalyticsService:
         query = self.db.query(CombatLog)
         
         if active_only:
-            query = query.filter(CombatLog.status.in_(['in_progress', 'active']))
+            # For active combats, look for those that haven't ended yet
+            query = query.filter(CombatLog.ended_at.is_(None))
         else:
             # Include recent completed combats
             query = query.filter(
                 or_(
-                    CombatLog.status.in_(['in_progress', 'active']),
+                    CombatLog.ended_at.is_(None),
                     CombatLog.started_at >= datetime.utcnow() - timedelta(minutes=30)
                 )
             )
@@ -45,7 +46,7 @@ class CombatAnalyticsService:
             query = query.filter(CombatLog.combat_type == combat_type)
         
         if sector_id:
-            query = query.filter(CombatLog.sector_id == sector_id)
+            query = query.filter(CombatLog.sector_uuid == sector_id)
         
         # Order by most recent first
         combats = query.order_by(desc(CombatLog.started_at)).limit(limit).all()
@@ -53,17 +54,30 @@ class CombatAnalyticsService:
         # Format combat data
         combat_feed = []
         for combat in combats:
-            # Get participant details
-            attacker = self._get_participant_info(combat.attacker_id, combat.attacker_type)
-            defender = self._get_participant_info(combat.defender_id, combat.defender_type)
+            # Get participant details (assuming both are players for now)
+            attacker = self._get_participant_info(combat.attacker_id, "player")
+            defender = self._get_participant_info(combat.defender_id, "player")
             
             # Get sector info
-            sector = self.db.query(Sector).filter(Sector.id == combat.sector_id).first()
+            sector = self.db.query(Sector).filter(Sector.id == combat.sector_uuid).first()
+            
+            # Determine status based on ended_at and outcome
+            if combat.ended_at is None:
+                status = "in_progress"
+            else:
+                status = "completed"
+            
+            # Determine victor from outcome
+            victor_id = None
+            if combat.outcome == "attacker_win":
+                victor_id = combat.attacker_id
+            elif combat.outcome == "defender_win":
+                victor_id = combat.defender_id
             
             combat_data = {
                 "id": str(combat.id),
                 "combat_type": combat.combat_type,
-                "status": combat.status,
+                "status": status,
                 "started_at": combat.started_at.isoformat(),
                 "ended_at": combat.ended_at.isoformat() if combat.ended_at else None,
                 "duration_seconds": (
@@ -71,7 +85,7 @@ class CombatAnalyticsService:
                     if combat.ended_at else 
                     (datetime.utcnow() - combat.started_at).total_seconds()
                 ),
-                "current_round": combat.current_round,
+                "current_round": combat.rounds,
                 "sector": {
                     "id": str(sector.id) if sector else None,
                     "coordinates": f"[{sector.x},{sector.y},{sector.z}]" if sector else "Unknown",
@@ -82,13 +96,13 @@ class CombatAnalyticsService:
                 "combat_stats": {
                     "attacker_damage_dealt": combat.attacker_damage_dealt,
                     "defender_damage_dealt": combat.defender_damage_dealt,
-                    "attacker_shields_remaining": combat.attacker_shields,
-                    "defender_shields_remaining": combat.defender_shields,
-                    "attacker_armor_remaining": combat.attacker_armor,
-                    "defender_armor_remaining": combat.defender_armor
+                    "attacker_fighters_lost": combat.attacker_fighters_lost,
+                    "defender_fighters_lost": combat.defender_fighters_lost,
+                    "attacker_fighters": combat.attacker_fighters,
+                    "defender_fighters": combat.defender_fighters
                 },
-                "victor_id": str(combat.victor_id) if combat.victor_id else None,
-                "is_active": combat.status in ['in_progress', 'active'],
+                "victor_id": str(victor_id) if victor_id else None,
+                "is_active": status == "in_progress",
                 "needs_intervention": self._check_intervention_needed(combat)
             }
             
@@ -97,17 +111,30 @@ class CombatAnalyticsService:
         # Also check for fleet battles
         fleet_battles = (
             self.db.query(FleetBattle)
-            .filter(FleetBattle.status == 'active')
+            .filter(FleetBattle.ended_at.is_(None))  # Active battles have no end time
             .order_by(desc(FleetBattle.started_at))
             .limit(10)
             .all()
         )
         
         for battle in fleet_battles:
+            # Determine status from phase and ended_at
+            if battle.ended_at is None:
+                status = "in_progress"
+            else:
+                status = "completed"
+                
+            # Determine victor
+            victor_id = None
+            if battle.winner == "attacker":
+                victor_id = battle.attacker_fleet_id
+            elif battle.winner == "defender":
+                victor_id = battle.defender_fleet_id
+                
             combat_feed.append({
                 "id": str(battle.id),
                 "combat_type": "fleet_battle",
-                "status": battle.status,
+                "status": status,
                 "started_at": battle.started_at.isoformat(),
                 "ended_at": battle.ended_at.isoformat() if battle.ended_at else None,
                 "duration_seconds": (
@@ -115,17 +142,19 @@ class CombatAnalyticsService:
                     if battle.ended_at else 
                     (datetime.utcnow() - battle.started_at).total_seconds()
                 ),
-                "current_round": battle.current_phase,
-                "sector": {"id": None, "coordinates": "Fleet Space", "name": "Fleet Battle Zone"},
-                "attacker": {"id": str(battle.attacker_fleet_id), "type": "fleet", "name": "Attacking Fleet"},
-                "defender": {"id": str(battle.defender_fleet_id), "type": "fleet", "name": "Defending Fleet"},
+                "current_round": 0,  # Fleet battles don't have rounds, just phases
+                "sector": {"id": str(battle.sector_id) if battle.sector_id else None, "coordinates": "Fleet Space", "name": "Fleet Battle Zone"},
+                "attacker": {"id": str(battle.attacker_fleet_id) if battle.attacker_fleet_id else None, "type": "fleet", "name": "Attacking Fleet"},
+                "defender": {"id": str(battle.defender_fleet_id) if battle.defender_fleet_id else None, "type": "fleet", "name": "Defending Fleet"},
                 "combat_stats": {
-                    "attacker_casualties": battle.attacker_casualties,
-                    "defender_casualties": battle.defender_casualties,
-                    "ships_destroyed": (battle.attacker_casualties or 0) + (battle.defender_casualties or 0)
+                    "attacker_ships_destroyed": battle.attacker_ships_destroyed,
+                    "defender_ships_destroyed": battle.defender_ships_destroyed,
+                    "attacker_ships_retreated": battle.attacker_ships_retreated,
+                    "defender_ships_retreated": battle.defender_ships_retreated,
+                    "total_damage": battle.total_damage_dealt
                 },
-                "victor_id": str(battle.victor_fleet_id) if battle.victor_fleet_id else None,
-                "is_active": battle.status == 'active',
+                "victor_id": str(victor_id) if victor_id else None,
+                "is_active": status == "in_progress",
                 "needs_intervention": False
             })
         
@@ -143,7 +172,8 @@ class CombatAnalyticsService:
         if not combat:
             raise ValueError(f"Combat {combat_id} not found")
         
-        if combat.status not in ['in_progress', 'active']:
+        # Check if combat is still active (no ended_at)
+        if combat.ended_at is not None:
             raise ValueError("Can only intervene in active combat")
         
         intervention_id = uuid.uuid4()
@@ -212,11 +242,11 @@ class CombatAnalyticsService:
         hours = self._parse_timeframe(timeframe)
         start_time = datetime.utcnow() - timedelta(hours=hours)
         
-        # Get completed combats
+        # Get completed combats (those with ended_at)
         combats = (
             self.db.query(CombatLog)
             .filter(
-                CombatLog.status == 'completed',
+                CombatLog.ended_at.isnot(None),
                 CombatLog.ended_at >= start_time
             )
             .all()
@@ -264,7 +294,7 @@ class CombatAnalyticsService:
         disparity_issues = (
             self.db.query(CombatLog)
             .filter(
-                CombatLog.status == 'completed',
+                CombatLog.ended_at.isnot(None),
                 CombatLog.ended_at >= datetime.utcnow() - timedelta(days=1)
             )
             .all()
@@ -353,17 +383,17 @@ class CombatAnalyticsService:
     def _check_intervention_needed(self, combat: CombatLog) -> bool:
         """Check if combat needs admin intervention"""
         # Long-running combat
-        if combat.current_round > 100:
+        if combat.rounds > 100:
             return True
         
         # Stalemate detection
-        if combat.current_round > 20:
+        if combat.rounds > 20:
             if (combat.attacker_damage_dealt < 100 and 
                 combat.defender_damage_dealt < 100):
                 return True
         
         # One-sided combat lasting too long
-        if combat.current_round > 50:
+        if combat.rounds > 50:
             total_damage = combat.attacker_damage_dealt + combat.defender_damage_dealt
             if total_damage > 0:
                 attacker_ratio = combat.attacker_damage_dealt / total_damage
@@ -385,9 +415,8 @@ class CombatAnalyticsService:
     
     def _stop_combat(self, combat: CombatLog, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Stop an ongoing combat"""
-        combat.status = 'cancelled'
+        combat.outcome = "draw"  # Set to draw as admin stopped it
         combat.ended_at = datetime.utcnow()
-        combat.victor_id = None
         
         # Return remaining resources to participants
         # This would need to restore ships/resources as appropriate
@@ -419,30 +448,27 @@ class CombatAnalyticsService:
         target = parameters.get('target', 'both')  # 'attacker', 'defender', or 'both'
         shield_percent = parameters.get('shield_percent', 50)
         
-        if target in ['attacker', 'both']:
-            # Would need to get max shields from ship/entity
-            combat.attacker_shields = shield_percent  # Simplified
-        
-        if target in ['defender', 'both']:
-            combat.defender_shields = shield_percent  # Simplified
+        # Note: The CombatLog model doesn't track shields directly
+        # This would need to update the actual Ship models
+        # For now, we can log the action
         
         return {
             "action": "shields_restored",
             "target": target,
-            "shield_percent": shield_percent
+            "shield_percent": shield_percent,
+            "note": "Shield restoration would be applied to ship models"
         }
     
     def _declare_winner(self, combat: CombatLog, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Manually declare a combat winner"""
         winner = parameters.get('winner')  # 'attacker' or 'defender'
         
-        combat.status = 'completed'
         combat.ended_at = datetime.utcnow()
         
         if winner == 'attacker':
-            combat.victor_id = combat.attacker_id
+            combat.outcome = "attacker_win"
         elif winner == 'defender':
-            combat.victor_id = combat.defender_id
+            combat.outcome = "defender_win"
         
         return {
             "action": "winner_declared",
@@ -455,8 +481,9 @@ class CombatAnalyticsService:
         ship_stats = {}
         
         for combat in combats:
-            if combat.attacker_type == 'ship':
-                ship = self.db.query(Ship).filter(Ship.id == combat.attacker_id).first()
+            # Get attacker ship
+            if combat.attacker_ship_id:
+                ship = self.db.query(Ship).filter(Ship.id == combat.attacker_ship_id).first()
                 if ship:
                     ship_type = ship.ship_type
                     if ship_type not in ship_stats:
@@ -469,7 +496,7 @@ class CombatAnalyticsService:
                     ship_stats[ship_type]['damage_dealt'] += combat.attacker_damage_dealt
                     ship_stats[ship_type]['damage_taken'] += combat.defender_damage_dealt
                     
-                    if combat.victor_id == combat.attacker_id:
+                    if combat.outcome == "attacker_win":
                         ship_stats[ship_type]['wins'] += 1
                     else:
                         ship_stats[ship_type]['losses'] += 1
@@ -498,13 +525,14 @@ class CombatAnalyticsService:
         } for bracket in level_brackets}
         
         for combat in combats:
-            if combat.attacker_type == 'player':
+            # Analyze attacker player level
+            if combat.attacker_id:
                 player = self.db.query(Player).filter(Player.id == combat.attacker_id).first()
                 if player:
                     for bracket, (min_lvl, max_lvl) in level_brackets.items():
                         if min_lvl <= player.experience_level <= max_lvl:
                             level_stats[bracket]['total'] += 1
-                            if combat.victor_id == combat.attacker_id:
+                            if combat.outcome == "attacker_win":
                                 level_stats[bracket]['wins'] += 1
                             else:
                                 level_stats[bracket]['losses'] += 1
@@ -537,7 +565,7 @@ class CombatAnalyticsService:
                 duration = (combat.ended_at - combat.started_at).total_seconds()
                 type_stats[ctype]['avg_duration'] += duration
             
-            type_stats[ctype]['avg_rounds'] += combat.current_round
+            type_stats[ctype]['avg_rounds'] += combat.rounds
             type_stats[ctype]['total_damage'] += (
                 combat.attacker_damage_dealt + combat.defender_damage_dealt
             )
@@ -557,16 +585,17 @@ class CombatAnalyticsService:
         
         return {
             'total_combats': total,
-            'by_status': {
-                'completed': len([c for c in combats if c.status == 'completed']),
-                'cancelled': len([c for c in combats if c.status == 'cancelled']),
-                'timeout': len([c for c in combats if c.status == 'timeout'])
+            'by_outcome': {
+                'attacker_win': len([c for c in combats if c.outcome == 'attacker_win']),
+                'defender_win': len([c for c in combats if c.outcome == 'defender_win']),
+                'draw': len([c for c in combats if c.outcome == 'draw']),
+                'escaped': len([c for c in combats if c.outcome == 'escaped'])
             },
             'avg_duration': sum(
                 (c.ended_at - c.started_at).total_seconds() 
                 for c in combats if c.ended_at
             ) / total if total > 0 else 0,
-            'avg_rounds': sum(c.current_round for c in combats) / total if total > 0 else 0
+            'avg_rounds': sum(c.rounds for c in combats) / total if total > 0 else 0
         }
     
     def _calculate_balance_metrics(self, analytics: Dict[str, Any]) -> Dict[str, Any]:
@@ -662,8 +691,8 @@ class CombatAnalyticsService:
             )
             .filter(
                 CombatLog.started_at >= one_hour_ago,
-                CombatLog.attacker_type == 'player',
-                CombatLog.defender_type == 'player'
+                CombatLog.attacker_id.isnot(None),
+                CombatLog.defender_id.isnot(None)
             )
             .group_by(CombatLog.attacker_id, CombatLog.defender_id)
             .having(func.count(CombatLog.id) > 5)

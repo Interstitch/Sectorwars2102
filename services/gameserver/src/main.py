@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError, OperationalError
 from src.api.api import api_router
 from src.core.config import settings
 from src.core.database import get_db
-from src.auth.admin import create_default_admin, create_default_player
+from src.auth.admin import create_default_admin, create_default_player, create_default_factions
 from src.api.middleware.security import setup_security_middleware
 
 # Configure logging
@@ -53,6 +53,7 @@ async def lifespan(app: FastAPI):
             logger.info("Checking for default admin user...")
             create_default_admin(db)
             create_default_player(db)
+            create_default_factions(db)
             logger.info("Database initialization complete")
         except OperationalError as e:
             logger.error(f"Failed to connect to database during startup: {str(e)}")
@@ -112,21 +113,57 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS to work across all environments (Replit, Codespaces, Docker)
+# Setup comprehensive security middleware first
+setup_security_middleware(app)
+
+# Configure CORS for GitHub Codespaces environment AFTER security middleware
+# Detect current environment and set appropriate origins
+import re
+
+def get_allowed_origins():
+    origins = [
+        "http://localhost:3000",
+        "http://localhost:8080", 
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8080"
+    ]
+    
+    # For GitHub Codespaces, detect the dynamic URL
+    api_base_url = settings.get_api_base_url()
+    frontend_url = settings.FRONTEND_URL
+    
+    if api_base_url and "app.github.dev" in api_base_url:
+        origins.append(api_base_url)
+        # Extract the codespace URL pattern and add port 3000 variant
+        if match := re.search(r'(https://[^-]+-[^-]+-[^-]+-[^-]+)', api_base_url):
+            base_url = match.group(1)
+            origins.extend([
+                f"{base_url}-3000.app.github.dev",
+                f"{base_url}-8080.app.github.dev"
+            ])
+    
+    if frontend_url and frontend_url not in origins:
+        origins.append(frontend_url)
+    
+    return list(set(origins))  # Remove duplicates
+
+codespace_urls = get_allowed_origins()
+
+# For development, use a permissive CORS policy
+# In production, this should be more restrictive
 app.add_middleware(
     CORSMiddleware,
-    # Must use wildcard for Replit, Codespaces, and local development
-    allow_origins=["*"],
-    # Must be False when using "*" as origin
-    allow_credentials=False,
-    allow_methods=["*"],
+    allow_origins=["*"],  # Allow all origins for development
+    allow_credentials=False,  # Must be False when using "*"
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
     max_age=86400,  # 24 hours
 )
 
-# Setup comprehensive security middleware
-setup_security_middleware(app)
+# Log CORS configuration for debugging
+logger.info(f"CORS configured with origins: {codespace_urls}")
+logger.info("CORS allow_credentials: True")
 logger.info("Security middleware initialized with OWASP compliance")
 
 # Root endpoint for discoverability - kept at app level for easy access

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGame } from '../../contexts/GameContext';
 // import { useTheme } from '../../themes/ThemeProvider'; // Available for future use
 import UserProfile from '../auth/UserProfile';
+import LogoutButton from '../auth/LogoutButton';
 import './game-layout.css';
 import '../../styles/themes/cockpit-animations.css';
 import '../../styles/themes/cockpit-components.css';
@@ -13,9 +15,17 @@ interface GameLayoutProps {
 
 const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
   const { user } = useAuth();
-  const { playerState, currentShip, currentSector, isLoading } = useGame();
+  const { playerState, currentShip, currentSector, isLoading, refreshPlayerState } = useGame();
   // const { currentTheme } = useTheme(); // Available for future use
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  
+  // Try to refresh player state on mount if we don't have it
+  React.useEffect(() => {
+    if (user && !playerState && !isLoading) {
+      console.log('GameLayout: No player state detected, refreshing...');
+      refreshPlayerState();
+    }
+  }, [user, playerState, isLoading, refreshPlayerState]);
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -50,6 +60,15 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
             <div className="cockpit-card player-info">
               <div className="cockpit-card-header">
                 <h3 className="cockpit-card-title">COMMANDER</h3>
+                {!playerState && !isLoading && (
+                  <button 
+                    onClick={refreshPlayerState}
+                    className="refresh-btn"
+                    style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem', marginLeft: 'auto' }}
+                  >
+                    Refresh
+                  </button>
+                )}
               </div>
               <div className="commander-name">{user?.username}</div>
               <div className="player-stats">
@@ -105,7 +124,7 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
               </div>
               {currentSector ? (
                 <div className="current-sector">
-                  <div className="sector-name">SECTOR {currentSector.id || 'UNKNOWN'}</div>
+                  <div className="sector-name">SECTOR {playerState?.current_sector_id || currentSector.id || 'UNKNOWN'}</div>
                   <div className="sector-designation">{currentSector.name || 'UNCHARTED'}</div>
                   <div className="sector-type">{currentSector.type?.toUpperCase() || 'UNKNOWN'}</div>
                   {(currentSector.hazard_level || 0) > 0 && (
@@ -115,6 +134,11 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
                     </div>
                   )}
                 </div>
+              ) : playerState?.current_sector_id ? (
+                <div className="current-sector">
+                  <div className="sector-name">SECTOR {playerState.current_sector_id}</div>
+                  <div className="unknown-sector">LOADING SECTOR DATA...</div>
+                </div>
               ) : (
                 <div className="unknown-sector">COORDINATES UNKNOWN</div>
               )}
@@ -123,14 +147,17 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
             <nav className="game-nav">
               <div className="nav-header">SHIP SYSTEMS</div>
               <ul className="nav-list">
-                <li><a href="/game" className="nav-link cockpit-btn">🚀 COMMAND</a></li>
-                <li><a href="/game/map" className="nav-link cockpit-btn">🗺️ NAV CHART</a></li>
-                <li><a href="/game/ships" className="nav-link cockpit-btn">🛸 HANGAR</a></li>
-                <li><a href="/game/trading" className="nav-link cockpit-btn">💹 TRADE</a></li>
-                <li><a href="/game/planets" className="nav-link cockpit-btn">🪐 COLONIES</a></li>
-                <li><a href="/game/combat" className="nav-link cockpit-btn">⚔️ WEAPONS</a></li>
-                <li><a href="/game/team" className="nav-link cockpit-btn">👥 CREW</a></li>
+                <li><Link to="/game" className="nav-link cockpit-btn">🚀 COMMAND</Link></li>
+                <li><Link to="/game/map" className="nav-link cockpit-btn">🗺️ NAV CHART</Link></li>
+                <li><Link to="/game/ships" className="nav-link cockpit-btn">🛸 HANGAR</Link></li>
+                <li><Link to="/game/trading" className="nav-link cockpit-btn">💹 TRADE</Link></li>
+                <li><Link to="/game/planets" className="nav-link cockpit-btn">🪐 COLONIES</Link></li>
+                <li><Link to="/game/combat" className="nav-link cockpit-btn">⚔️ WEAPONS</Link></li>
+                <li><Link to="/game/team" className="nav-link cockpit-btn">👥 CREW</Link></li>
               </ul>
+              <div className="nav-footer">
+                <LogoutButton className="nav-link cockpit-btn logout-btn" />
+              </div>
             </nav>
           </aside>
         

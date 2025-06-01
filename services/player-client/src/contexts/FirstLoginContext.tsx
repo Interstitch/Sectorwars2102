@@ -2,6 +2,21 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import axios from 'axios';
 import { useAuth } from './AuthContext';
 
+// Create an axios instance that uses the Vite proxy
+const api = axios.create({
+  baseURL: '', // Empty baseURL to use current origin and proxy
+  withCredentials: false
+});
+
+// Add interceptor to include auth token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Types for first login state
 export interface FirstLoginSession {
   session_id: string;
@@ -67,6 +82,7 @@ interface FirstLoginContextType {
   
   // Ship selection
   availableShips: string[];
+  sessionLoaded: boolean;
   claimShip: (shipType: string, response: string) => Promise<void>;
   
   // Dialogue interaction
@@ -78,6 +94,7 @@ interface FirstLoginContextType {
   
   // UI state helpers
   resetError: () => void;
+  resetSession: () => void;
 }
 
 const FirstLoginContext = createContext<FirstLoginContextType | undefined>(undefined);
@@ -97,48 +114,13 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
   const [exchangeId, setExchangeId] = useState<string | null>(null);
   const [dialogueOutcome, setDialogueOutcome] = useState<DialogueAnalysis['outcome'] | null>(null);
   
-  // Get API URL using the same logic as other contexts
-  const getApiUrl = () => {
-    // If an environment variable is explicitly set, use it
-    if (import.meta.env.VITE_API_URL) {
-      return import.meta.env.VITE_API_URL;
-    }
-
-    const windowUrl = window.location.origin;
-
-    // For GitHub Codespaces, use direct gameserver URL
-    if (windowUrl.includes('.app.github.dev')) {
-      // Replace port 3000 with 8080 for gameserver
-      const gameserverUrl = windowUrl.replace('-3000.app.github.dev', '-8080.app.github.dev');
-      return gameserverUrl;
-    }
-
-    // Local development
-    if (windowUrl.includes('localhost')) {
-      return 'http://localhost:8080';
-    }
-
-    // For other environments - default to localhost
-    return 'http://localhost:8080';
-  };
-
-  // Set up axios with authorization header
-  const api = axios.create({
-    baseURL: getApiUrl(),
-  });
-  
-  // Use token from localStorage directly instead of from context
-  api.interceptors.request.use(config => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  });
+  // Use the axios instance configured at the top of the file (with proxy)
   
   // Rate limiting state
   const [lastCheckTime, setLastCheckTime] = useState<number>(0);
+  const [lastSessionTime, setLastSessionTime] = useState<number>(0);
   const CHECK_COOLDOWN = 5000; // 5 seconds between checks
+  const SESSION_COOLDOWN = 5000; // 5 seconds between session starts
 
   // Check if first login is required when user logs in
   useEffect(() => {
@@ -158,10 +140,10 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
     
     try {
       const response = await api.get('/api/v1/first-login/status');
-      setRequiresFirstLogin(response.data.requires_first_login);
+      setRequiresFirstLogin((response.data as any).requires_first_login);
       
       // If first login is required and there's an active session, load it
-      if (response.data.requires_first_login && response.data.session_id) {
+      if ((response.data as any).requires_first_login && (response.data as any).session_id) {
         await startSession();
       }
     } catch (error) {
@@ -174,26 +156,40 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
   
   // Start or resume a first login session
   const startSession = async () => {
+    // Rate limiting check
+    const now = Date.now();
+    if (now - lastSessionTime < SESSION_COOLDOWN) {
+      console.log('FirstLoginContext: Skipping startSession due to rate limiting');
+      return;
+    }
+    setLastSessionTime(now);
+    
     setIsLoading(true);
     setError(null);
     
     try {
       const response = await api.post('/api/v1/first-login/session');
-      setSession(response.data);
+      console.log('FirstLogin: Session response:', response.data);
+      setSession(response.data as FirstLoginSession);
       
       // Set initial prompt and exchange ID
-      setCurrentPrompt(response.data.npc_prompt);
-      setExchangeId(response.data.exchange_id || null);
+      setCurrentPrompt((response.data as any).npc_prompt);
+      setExchangeId((response.data as any).exchange_id || null);
       
       // Initialize dialogue history with the first NPC prompt
-      setDialogueHistory([{ npc: response.data.npc_prompt, player: '' }]);
+      setDialogueHistory([{ npc: (response.data as any).npc_prompt, player: '' }]);
     } catch (error: any) {
       console.error('Error starting first login session:', error);
       
       // Handle specific error types
       if (error.response?.status === 429) {
-        setError('Too many requests. Please wait a moment before trying again.');
-        // Don't retry automatically on 429
+        console.log('FirstLoginContext: Rate limited, will retry in 10 seconds');
+        setError('Too many requests. Please wait a moment.');
+        // Retry after a longer delay for rate limiting
+        setTimeout(() => {
+          console.log('FirstLoginContext: Retrying after rate limit');
+          startSession();
+        }, 10000); // 10 seconds
         return;
       } else if (error.response?.status === 500) {
         setError('Server error. Please try again in a few moments.');
@@ -210,11 +206,18 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
     setIsLoading(true);
     setError(null);
     
+    console.log('FirstLogin: Claiming ship:', shipType);
+    console.log('FirstLogin: Dialogue response:', response);
+    console.log('FirstLogin: Current session:', session);
+    
     try {
-      const result = await api.post('/api/v1/first-login/claim-ship', {
+      const payload = {
         ship_type: shipType,
         dialogue_response: response
-      });
+      };
+      console.log('FirstLogin: Sending payload:', payload);
+      
+      const result = await api.post('/api/v1/first-login/claim-ship', payload);
       
       setSession(result.data);
       
@@ -228,9 +231,26 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
       // Set new prompt and exchange ID
       setCurrentPrompt(result.data.npc_prompt);
       setExchangeId(result.data.exchange_id || null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error claiming ship:', error);
-      setError('Failed to claim ship.');
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error response status:', error.response?.status);
+      console.error('Error response headers:', error.response?.headers);
+      
+      // More specific error messages
+      if (error.response?.status === 401) {
+        setError('Authentication failed. Please log in again.');
+      } else if (error.response?.status === 400) {
+        setError(error.response?.data?.detail || 'Invalid ship selection or response.');
+      } else if (error.response?.status === 500) {
+        console.error('500 Error details:', error.response?.data);
+        setError('Server error. Please try again later.');
+      } else if (error.code === 'ERR_NETWORK') {
+        setError('Network error. Please check your connection.');
+      } else {
+        setError('Failed to claim ship. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -314,6 +334,25 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
   // Reset error state
   const resetError = () => setError(null);
   
+  const resetSession = async () => {
+    try {
+      // Clear frontend state first
+      setSession(null);
+      setDialogueHistory([]);
+      setCurrentPrompt('');
+      setExchangeId(null);
+      setDialogueOutcome(null);
+      setError(null);
+      
+      // Try to reset server-side session
+      await api.delete('/api/v1/first-login/session');
+      console.log('FirstLogin: Server session reset successfully');
+    } catch (error) {
+      console.log('FirstLogin: Could not reset server session (this is okay):', error);
+      // Don't show error to user as this is just a cleanup attempt
+    }
+  };
+  
   // Context value
   const value = {
     requiresFirstLogin,
@@ -328,6 +367,7 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
     dialogueHistory,
     
     availableShips: session?.available_ships || [],
+    sessionLoaded: !!session,
     claimShip,
     
     submitResponse,
@@ -335,7 +375,8 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
     dialogueOutcome,
     completeFirstLogin,
     
-    resetError
+    resetError,
+    resetSession
   };
   
   return <FirstLoginContext.Provider value={value}>{children}</FirstLoginContext.Provider>;

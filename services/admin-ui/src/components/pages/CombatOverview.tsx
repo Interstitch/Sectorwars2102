@@ -20,13 +20,29 @@ interface CombatEvent {
 }
 
 interface CombatStats {
-  totalBattles: number;
-  battlesLast24h: number;
-  totalDamageDealt: number;
-  totalShipsDestroyed: number;
-  averageBattleDuration: number;
-  mostActiveSector?: string;
-  mostActivePlayer?: string;
+  timestamp: string | null;
+  active_combats: {
+    total: number;
+    by_type: Record<string, number>;
+    needing_intervention: number;
+  };
+  balance_summary: {
+    score: number;
+    total_combats_24h: number;
+    outliers_count: number;
+    top_recommendation: string;
+  };
+  dispute_summary: {
+    total_disputes: number;
+    by_severity: {
+      critical: number;
+      high: number;
+      medium: number;
+      low: number;
+    };
+    critical_disputes: any[];
+  };
+  recent_combats: any[];
 }
 
 interface CombatRanking {
@@ -90,17 +106,17 @@ export const CombatOverview: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch combat events
+      // Fetch combat events (using live endpoint for real-time data)
       const eventsResponse = await api.get('/api/v1/admin/combat/live');
       setCombatEvents(eventsResponse.data as CombatEvent[]);
       
       // Fetch combat statistics  
-      const statsResponse = await api.get('/api/v1/admin/combat/balance');
+      const statsResponse = await api.get('/api/v1/admin/combat/dashboard-summary');
       setCombatStats(statsResponse.data as CombatStats);
       
-      // Fetch combat rankings (from balance endpoint)
-      const rankingsResponse = await api.get('/api/v1/admin/combat/balance');
-      setRankings(rankingsResponse.data.topPlayers || []);
+      // Fetch combat rankings - for now we'll use empty data
+      // TODO: Implement player rankings endpoint
+      setRankings([]);
       
       // Fetch combat disputes
       const disputesResponse = await api.get('/api/v1/admin/combat/disputes');
@@ -191,39 +207,39 @@ export const CombatOverview: React.FC = () => {
       {/* Combat Statistics Dashboard */}
       <div className="combat-stats-grid">
         <div className="stat-card primary">
-          <h3>Total Battles</h3>
-          <div className="stat-value">{combatStats?.totalBattles.toLocaleString() || 0}</div>
-          <div className="stat-change">+{combatStats?.battlesLast24h || 0} today</div>
+          <h3>Active Battles</h3>
+          <div className="stat-value">{combatStats?.active_combats?.total?.toLocaleString() || 0}</div>
+          <div className="stat-change">{combatStats?.active_combats?.needing_intervention || 0} need intervention</div>
         </div>
         
         <div className="stat-card">
-          <h3>Total Damage</h3>
-          <div className="stat-value">{combatStats?.totalDamageDealt.toLocaleString() || 0}</div>
-          <div className="stat-label">damage dealt</div>
+          <h3>24h Battles</h3>
+          <div className="stat-value">{combatStats?.balance_summary?.total_combats_24h?.toLocaleString() || 0}</div>
+          <div className="stat-label">battles today</div>
         </div>
         
         <div className="stat-card">
-          <h3>Ships Destroyed</h3>
-          <div className="stat-value">{combatStats?.totalShipsDestroyed.toLocaleString() || 0}</div>
-          <div className="stat-label">total losses</div>
+          <h3>Balance Score</h3>
+          <div className="stat-value">{combatStats?.balance_summary?.score?.toFixed(0) || 0}%</div>
+          <div className="stat-label">system balance</div>
         </div>
         
         <div className="stat-card">
-          <h3>Avg Battle Duration</h3>
-          <div className="stat-value">{Math.floor((combatStats?.averageBattleDuration || 0) / 60)}m</div>
-          <div className="stat-label">average time</div>
+          <h3>Total Disputes</h3>
+          <div className="stat-value">{combatStats?.dispute_summary?.total_disputes?.toLocaleString() || 0}</div>
+          <div className="stat-label">pending review</div>
         </div>
         
         <div className="stat-card highlight">
-          <h3>Most Active Sector</h3>
-          <div className="stat-value">{combatStats?.mostActiveSector || 'N/A'}</div>
-          <div className="stat-label">hotspot</div>
+          <h3>Critical Disputes</h3>
+          <div className="stat-value">{combatStats?.dispute_summary?.by_severity?.critical || 0}</div>
+          <div className="stat-label">need attention</div>
         </div>
         
         <div className="stat-card highlight">
-          <h3>Most Active Player</h3>
-          <div className="stat-value">{combatStats?.mostActivePlayer || 'N/A'}</div>
-          <div className="stat-label">combat leader</div>
+          <h3>Balance Outliers</h3>
+          <div className="stat-value">{combatStats?.balance_summary?.outliers_count || 0}</div>
+          <div className="stat-label">imbalanced</div>
         </div>
       </div>
 

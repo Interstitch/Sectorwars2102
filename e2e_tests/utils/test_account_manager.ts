@@ -66,7 +66,7 @@ export function initTestAccountManager() {
 function getDatabaseConfig() {
   // Read from environment variable
   const dbUrl = process.env.DATABASE_URL || 
-    'postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-lingering-grass-a494zxxb-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require';
+    'postgresql://neondb_owner:npg_TNK1MA9qHdXu@ep-bold-bird-a4pfn64a-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require';
   
   // Check if it's SQLite
   if (dbUrl.startsWith('sqlite://')) {
@@ -103,12 +103,6 @@ function getDatabaseConfig() {
  * Note: Currently disabled to use mock accounts for stable E2E testing
  */
 function executeSql(sql: string): string {
-  // Always use mock SQL execution for stable E2E testing
-  // This prevents authentication failures and ensures tests are not dependent on database access
-  console.log('Using mock SQL execution for E2E testing environment');
-  return 'MOCK SQL EXECUTION';
-  
-  /* Database execution temporarily disabled for stable testing
   try {
     const { username, password, host, database } = getDatabaseConfig();
     
@@ -131,13 +125,13 @@ function executeSql(sql: string): string {
     }
     
     const command = `PGPASSWORD='${password}' psql "${connectionString}" -c "${sql}"`;
+    console.log('Executing SQL command for test account creation...');
     return execSync(command).toString();
   } catch (error: any) {
     console.error('Failed to execute SQL:', error.message);
     console.log('Using mock SQL execution result');
     return 'MOCK SQL EXECUTION';
   }
-  */
 }
 
 /**
@@ -146,105 +140,20 @@ function executeSql(sql: string): string {
  * @returns {TestAccount} The created admin account
  */
 export function createTestAdmin(): TestAccount {
-  // Generate unique identifier
-  const uniqueId = uuidv4().substring(0, 8);
-  const username = `test_admin_${uniqueId}`;
-  const password = `testpass_${uniqueId}`;
-  const email = `${username}@test.com`;
-  const userId = uuidv4();
+  // Always use the default admin account that exists in the database
+  console.log('Using default admin account for E2E tests');
   
-  try {
-    // Check if we can execute SQL
-    try {
-      // Try to execute a simple SQL command to test the connection
-      executeSql('SELECT 1');
-    } catch (sqlError) {
-      console.warn('SQL execution failed, using mock admin account for tests');
-      
-      // Create a mock admin account
-      const admin: TestAccount = {
-        id: userId,
-        username,
-        password,
-        email,
-        isAdmin: true
-      };
-      
-      // Store in global registry
-      TEST_ACCOUNTS.admin = admin;
-      return admin;
-    }
-    
-    // If SQL execution works, proceed with normal account creation
-    // Hash the password using the same algorithm as the backend
-    // In PostgreSQL we can use the pgcrypto extension functions
-    const sqlCreateUser = `
-      -- Create user record
-      INSERT INTO users (
-        id, username, email, is_active, is_admin, created_at, updated_at, deleted
-      ) VALUES (
-        '${userId}'::uuid, 
-        '${username}', 
-        '${email}', 
-        true, 
-        true, 
-        NOW(), 
-        NOW(), 
-        false
-      ) RETURNING id;
-    `;
-    
-    const result = executeSql(sqlCreateUser);
-    console.log('User creation result:', result);
-    
-    // Now create admin credentials with hashed password
-    // Using pgcrypto's crypt function with bf (blowfish) algorithm to match FastAPI's password hashing
-    const sqlCreateCredentials = `
-      -- Create admin credentials with hashed password
-      INSERT INTO admin_credentials (
-        user_id, password_hash, last_password_change
-      ) VALUES (
-        '${userId}'::uuid,
-        crypt('${password}', gen_salt('bf', 12)),
-        NOW()
-      );
-    `;
-    
-    executeSql(sqlCreateCredentials);
-    
-    console.log(`Created test admin account: ${username}`);
-    
-    // Return the account details
-    const admin: TestAccount = {
-      id: userId,
-      username,
-      password,
-      email,
-      isAdmin: true
-    };
-    
-    // Store in global registry
-    TEST_ACCOUNTS.admin = admin;
-    
-    return admin;
-  } catch (error) {
-    console.error('Failed to create test admin:', error);
-    
-    // Create a fallback mock admin account
-    console.log('Creating fallback mock admin account');
-    const admin: TestAccount = {
-      id: userId,
-      username,
-      password,
-      email,
-      isAdmin: true
-    };
-    
-    // Store in global registry
-    TEST_ACCOUNTS.admin = admin;
-    
-    return admin;
-  }
+  const admin: TestAccount = {
+    id: '588ad65d-7cf4-4634-a3be-be2bcbb89e46', // Known admin ID from database
+    username: 'admin',
+    password: 'admin',
+    email: 'admin@example.com',
+    isAdmin: true
+  };
+  
+  // Store in global registry
+  TEST_ACCOUNTS.admin = admin;
+  return admin;
 }
 
 /**

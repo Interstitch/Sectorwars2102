@@ -9,6 +9,7 @@ from src.models.player import Player
 from src.models.ship import Ship
 from src.models.sector import Sector
 from src.models.warp_tunnel import WarpTunnel
+from src.services.movement_service import MovementService
 
 router = APIRouter(
     prefix="/player",
@@ -60,6 +61,8 @@ class MoveResponse(BaseModel):
     success: bool
     message: str
     new_sector_id: int = None
+    turn_cost: int = 0
+    turns_remaining: int = 0
 
 class MoveOption(BaseModel):
     sector_id: int
@@ -190,29 +193,23 @@ async def move_to_sector(
     db: Session = Depends(get_db)
 ):
     """Move the player to a specified sector"""
-    # Basic validation - check if sector exists
-    target_sector = db.query(Sector).filter(Sector.sector_id == sector_id).first()
-    if not target_sector:
+    # Use MovementService to handle movement properly
+    movement_service = MovementService(db)
+    result = movement_service.move_player_to_sector(player.id, sector_id)
+    
+    if not result["success"]:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Target sector not found"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["message"]
         )
     
-    # For now, allow movement to any sector (TODO: Add movement validation)
-    player.current_sector_id = sector_id
-    
-    # Update ship location if player has a ship
-    if player.current_ship_id:
-        ship = db.query(Ship).filter(Ship.id == player.current_ship_id).first()
-        if ship:
-            ship.sector_id = sector_id
-    
-    db.commit()
-    
+    # Return the movement response with turn cost and remaining turns
     return MoveResponse(
         success=True,
-        message=f"Successfully moved to sector {sector_id}",
-        new_sector_id=sector_id
+        message=result["message"],
+        new_sector_id=sector_id,
+        turn_cost=result.get("turn_cost", 0),
+        turns_remaining=result.get("turns_remaining", player.turns)
     )
 
 @router.get("/available-moves", response_model=AvailableMovesResponse)
@@ -221,61 +218,34 @@ async def get_available_moves(
     db: Session = Depends(get_db)
 ):
     """Get available movement options from the player's current sector"""
-    current_sector = db.query(Sector).filter(Sector.sector_id == player.current_sector_id).first()
-    if not current_sector:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Current sector not found"
-        )
+    # Use MovementService to get properly calculated moves
+    movement_service = MovementService(db)
+    available_moves = movement_service.get_available_moves(player.id)
     
+    # Convert the response to match our model
     warps = []
     tunnels = []
     
-    # Find regular warp connections (adjacent sectors)
-    # For now, let's create a simple adjacent sector system
-    adjacent_sectors = db.query(Sector).filter(
-        Sector.sector_id.in_([
-            player.current_sector_id + 1,
-            player.current_sector_id - 1,
-            player.current_sector_id + 10,  # "up" in sector grid
-            player.current_sector_id - 10   # "down" in sector grid
-        ])
-    ).all()
+    # Process direct warps
+    for warp in available_moves.get("warps", []):
+        warps.append(MoveOption(
+            sector_id=warp["sector_id"],
+            name=warp["name"],
+            type=warp["type"],
+            turn_cost=warp["turn_cost"],
+            can_afford=warp["can_afford"]
+        ))
     
-    for sector in adjacent_sectors:
-        if sector.sector_id != player.current_sector_id:
-            warps.append(MoveOption(
-                sector_id=sector.sector_id,
-                name=sector.name,
-                type="warp",
-                turn_cost=1,
-                can_afford=player.turns >= 1
-            ))
-    
-    # Find warp tunnel connections
-    # First get current sector UUID
-    current_sector_uuid = db.query(Sector.id).filter(Sector.sector_id == player.current_sector_id).scalar()
-    
-    if current_sector_uuid:
-        tunnel_connections = db.query(WarpTunnel).filter(
-            (WarpTunnel.origin_sector_id == current_sector_uuid) |
-            (WarpTunnel.destination_sector_id == current_sector_uuid)
-        ).all()
-        
-        for tunnel in tunnel_connections:
-            target_sector_uuid = tunnel.destination_sector_id if tunnel.origin_sector_id == current_sector_uuid else tunnel.origin_sector_id
-            target_sector = db.query(Sector).filter(Sector.id == target_sector_uuid).first()
-            
-            if target_sector:
-                turn_cost = tunnel.properties.get("traversal_cost", 1) if tunnel.properties else 1
-                tunnels.append(MoveOption(
-                    sector_id=target_sector.sector_id,
-                    name=target_sector.name,
-                    type="tunnel",
-                    turn_cost=turn_cost,
-                    can_afford=player.turns >= turn_cost,
-                    tunnel_type=tunnel.type.value if hasattr(tunnel.type, 'value') else str(tunnel.type),
-                    stability=tunnel.stability
-                ))
+    # Process warp tunnels
+    for tunnel in available_moves.get("tunnels", []):
+        tunnels.append(MoveOption(
+            sector_id=tunnel["sector_id"],
+            name=tunnel["name"],
+            type=tunnel["type"],
+            turn_cost=tunnel["turn_cost"],
+            can_afford=tunnel["can_afford"],
+            tunnel_type=tunnel.get("tunnel_type"),
+            stability=tunnel.get("stability")
+        ))
     
     return AvailableMovesResponse(warps=warps, tunnels=tunnels)

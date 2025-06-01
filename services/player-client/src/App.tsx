@@ -21,6 +21,13 @@ import DebugPage from './components/pages/DebugPage'
 import TestAuthPage from './components/pages/TestAuthPage'
 import { FirstLoginContainer } from './components/first-login'
 
+// Import game feature components
+import { TeamManager } from './components/teams'
+import { CombatInterface } from './components/combat'
+import { PlanetManager } from './components/planetary'
+import { ShipSelector } from './components/ships'
+import { TradingInterface } from './components/trading'
+
 interface ApiResponse {
   message?: string;
   environment?: string;
@@ -809,6 +816,31 @@ function App() {
               <Route path="/game/map" element={
                 <ProtectedRoute>
                   <GalaxyMap />
+                </ProtectedRoute>
+              } />
+              <Route path="/game/team" element={
+                <ProtectedRoute>
+                  <TeamManager />
+                </ProtectedRoute>
+              } />
+              <Route path="/game/combat" element={
+                <ProtectedRoute>
+                  <CombatInterface />
+                </ProtectedRoute>
+              } />
+              <Route path="/game/planets" element={
+                <ProtectedRoute>
+                  <PlanetManager />
+                </ProtectedRoute>
+              } />
+              <Route path="/game/ships" element={
+                <ProtectedRoute>
+                  <ShipSelector />
+                </ProtectedRoute>
+              } />
+              <Route path="/game/trading" element={
+                <ProtectedRoute>
+                  <TradingInterface />
                 </ProtectedRoute>
               } />
               <Route path="*" element={<MainApp />} />

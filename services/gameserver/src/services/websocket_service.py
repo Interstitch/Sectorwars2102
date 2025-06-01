@@ -21,6 +21,9 @@ class ConnectionManager:
         self.sector_connections: Dict[int, Set[str]] = {}
         # Store connections by team for team-based communication
         self.team_connections: Dict[str, Set[str]] = {}
+        # Store admin connections separately
+        self.admin_connections: Dict[str, WebSocket] = {}
+        self.admin_metadata: Dict[str, Dict[str, Any]] = {}
         
     async def connect(self, websocket: WebSocket, user_id: str, user_data: Dict[str, Any]):
         """Accept a new WebSocket connection"""
@@ -220,17 +223,14 @@ class ConnectionManager:
     async def send_economy_alert(self, alert_data: Dict[str, Any], admin_only: bool = True):
         """Send economy alert to admins or all users"""
         message = {
-            "type": "economy_alert",
+            "type": "economy:alert",
             "timestamp": datetime.now(UTC).isoformat(),
             **alert_data
         }
         
         if admin_only:
-            # Send to admin users only
-            for user_id, metadata in self.connection_metadata.items():
-                user_data = metadata.get("user_data", {})
-                if user_data.get("is_admin"):
-                    await self.send_personal_message(user_id, message)
+            # Send to all connected admins
+            await self.broadcast_to_admins(message)
         else:
             # Broadcast to all users
             await self.broadcast_global(message)
@@ -275,6 +275,74 @@ class ConnectionManager:
         elif sector_id:
             await self.broadcast_to_sector(sector_id, message)
     
+    async def connect_admin(self, websocket: WebSocket, admin_id: str, admin_data: Dict[str, Any]):
+        """Accept a new admin WebSocket connection"""
+        await websocket.accept()
+        
+        # If admin already connected, disconnect old connection
+        if admin_id in self.admin_connections:
+            try:
+                await self.admin_connections[admin_id].close()
+            except Exception as e:
+                logger.warning(f"Error closing existing admin connection for {admin_id}: {e}")
+        
+        # Store new admin connection
+        self.admin_connections[admin_id] = websocket
+        self.admin_metadata[admin_id] = {
+            "connected_at": datetime.now(UTC),
+            "admin_data": admin_data,
+            "last_heartbeat": datetime.now(UTC),
+            "subscriptions": set()  # Track what events this admin wants
+        }
+        
+        logger.info(f"Admin {admin_id} ({admin_data.get('username')}) connected via WebSocket")
+        
+        # Send initial stats
+        await self.send_admin_message(admin_id, {
+            "type": "connection_established",
+            "stats": self.get_connection_stats(),
+            "timestamp": datetime.now(UTC).isoformat()
+        })
+    
+    async def disconnect_admin(self, admin_id: str):
+        """Remove an admin WebSocket connection"""
+        if admin_id not in self.admin_connections:
+            return
+        
+        # Remove from active connections
+        del self.admin_connections[admin_id]
+        del self.admin_metadata[admin_id]
+        
+        logger.info(f"Admin {admin_id} disconnected from WebSocket")
+    
+    async def send_admin_message(self, admin_id: str, message: Dict[str, Any]):
+        """Send a message to a specific admin"""
+        if admin_id in self.admin_connections:
+            try:
+                await self.admin_connections[admin_id].send_text(json.dumps(message))
+                return True
+            except Exception as e:
+                logger.error(f"Error sending message to admin {admin_id}: {e}")
+                await self.disconnect_admin(admin_id)
+        return False
+    
+    async def broadcast_to_admins(self, message: Dict[str, Any], exclude_admin: Optional[str] = None):
+        """Broadcast a message to all connected admins"""
+        disconnect_admins = []
+        for admin_id in list(self.admin_connections.keys()):
+            if exclude_admin and admin_id == exclude_admin:
+                continue
+            
+            try:
+                await self.admin_connections[admin_id].send_text(json.dumps(message))
+            except Exception as e:
+                logger.error(f"Error broadcasting to admin {admin_id}: {e}")
+                disconnect_admins.append(admin_id)
+        
+        # Clean up failed connections
+        for admin_id in disconnect_admins:
+            await self.disconnect_admin(admin_id)
+    
     async def send_admin_intervention_alert(self, intervention_data: Dict[str, Any]):
         """Send admin intervention alert to all admins"""
         message = {
@@ -283,11 +351,28 @@ class ConnectionManager:
             **intervention_data
         }
         
-        # Send to admin users only
-        for user_id, metadata in self.connection_metadata.items():
-            user_data = metadata.get("user_data", {})
-            if user_data.get("is_admin"):
-                await self.send_personal_message(user_id, message)
+        # Send to all connected admins
+        await self.broadcast_to_admins(message)
+    
+    async def send_real_time_update(self, event_type: str, event_data: Dict[str, Any], target_admins: bool = True):
+        """Send real-time updates with proper event type formatting"""
+        # Convert event type to colon-separated format for admin UI
+        # e.g., "combat_new_event" -> "combat:new-event"
+        formatted_type = event_type.replace('_', ':').replace(':', '-', 1).replace('-', ':')
+        
+        message = {
+            "type": formatted_type,
+            "timestamp": datetime.now(UTC).isoformat(),
+            **event_data
+        }
+        
+        # Send to admins if requested
+        if target_admins:
+            await self.broadcast_to_admins(message)
+        
+        # Also send to regular users for certain events
+        if event_type in ['combat_update', 'economy_update', 'fleet_update']:
+            await self.broadcast_global(message)
     
     async def update_user_location(self, user_id: str, new_sector_id: int):
         """Update a user's sector location and notify relevant players"""
@@ -393,6 +478,7 @@ class ConnectionManager:
         """Get statistics about current connections"""
         return {
             "total_connections": len(self.active_connections),
+            "total_admin_connections": len(self.admin_connections),
             "sectors_with_players": len(self.sector_connections),
             "teams_with_players": len(self.team_connections),
             "connections_by_sector": {
@@ -402,6 +488,17 @@ class ConnectionManager:
                 team_id: len(users) for team_id, users in self.team_connections.items()
             }
         }
+    
+    async def handle_admin_heartbeat(self, admin_id: str):
+        """Update last heartbeat for an admin"""
+        if admin_id in self.admin_metadata:
+            self.admin_metadata[admin_id]["last_heartbeat"] = datetime.now(UTC)
+    
+    async def update_admin_subscriptions(self, admin_id: str, event_types: List[str]):
+        """Update which events an admin wants to receive"""
+        if admin_id in self.admin_metadata:
+            self.admin_metadata[admin_id]["subscriptions"] = set(event_types)
+            logger.info(f"Admin {admin_id} subscribed to events: {event_types}")
 
 
 # Global connection manager instance
@@ -480,3 +577,58 @@ async def handle_websocket_message(user_id: str, message_data: Dict[str, Any]):
     
     else:
         logger.warning(f"Unknown WebSocket message type: {message_type} from user {user_id}")
+
+
+async def handle_admin_websocket_message(admin_id: str, message_data: Dict[str, Any]):
+    """Handle incoming WebSocket messages from admin clients"""
+    message_type = message_data.get("type")
+    
+    if message_type == "heartbeat":
+        await connection_manager.handle_admin_heartbeat(admin_id)
+        await connection_manager.send_admin_message(admin_id, {
+            "type": "pong",
+            "timestamp": datetime.now(UTC).isoformat()
+        })
+    
+    elif message_type == "subscribe":
+        # Admin subscribing to specific event types
+        event_types = message_data.get("events", [])
+        await connection_manager.update_admin_subscriptions(admin_id, event_types)
+        await connection_manager.send_admin_message(admin_id, {
+            "type": "subscription_confirmed",
+            "events": event_types,
+            "timestamp": datetime.now(UTC).isoformat()
+        })
+    
+    elif message_type == "request_stats":
+        # Send current connection stats
+        stats = connection_manager.get_connection_stats()
+        await connection_manager.send_admin_message(admin_id, {
+            "type": "system:stats",
+            "data": stats,
+            "timestamp": datetime.now(UTC).isoformat()
+        })
+    
+    elif message_type == "broadcast":
+        # Admin broadcasting a message
+        content = message_data.get("content", "")
+        target = message_data.get("target", "global")
+        
+        broadcast_msg = {
+            "type": "system:announcement",
+            "content": content,
+            "from": "System Administrator",
+            "timestamp": datetime.now(UTC).isoformat()
+        }
+        
+        if target == "global":
+            await connection_manager.broadcast_global(broadcast_msg)
+        
+        await connection_manager.send_admin_message(admin_id, {
+            "type": "broadcast_sent",
+            "target": target,
+            "timestamp": datetime.now(UTC).isoformat()
+        })
+    
+    else:
+        logger.warning(f"Unknown admin WebSocket message type: {message_type} from admin {admin_id}")

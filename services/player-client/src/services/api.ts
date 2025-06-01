@@ -1,7 +1,7 @@
 // Real API service for gameserver endpoints
 import { getAuthToken } from '../utils/auth';
 
-const API_BASE_URL = process.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 // Helper function for API requests
 async function apiRequest(

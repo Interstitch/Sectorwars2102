@@ -72,9 +72,10 @@ export const ProductionMonitoring: React.FC = () => {
 
   const loadProductionData = async () => {
     try {
-      const response = await fetch(`/api/admin/colonies/production?timeRange=${timeRange}&resource=${selectedResource}`, {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`/api/v1/admin/colonization/production?timeRange=${timeRange}&resource=${selectedResource}`, {
         headers: {
-          'Authorization': `Bearer ${user?.token}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -231,24 +232,26 @@ export const ProductionMonitoring: React.FC = () => {
       <div className="monitoring-grid">
         <div className="chart-container production-chart">
           <h3>Production Over Time</h3>
-          <Line
-            data={getChartData()}
-            options={{
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  display: true,
-                  position: 'top',
+          <div style={{ position: 'relative', height: '300px', width: '100%' }}>
+            <Line
+              data={getChartData()}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    display: true,
+                    position: 'top',
+                  },
                 },
-              },
-              scales: {
-                y: {
-                  beginAtZero: true,
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                  },
                 },
-              },
-            }}
-          />
+              }}
+            />
+          </div>
         </div>
 
         <div className="trends-container">
@@ -296,18 +299,20 @@ export const ProductionMonitoring: React.FC = () => {
 
         <div className="chart-container efficiency-chart">
           <h3>Production Efficiency</h3>
-          <Doughnut
-            data={getEfficiencyData()}
-            options={{
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  position: 'bottom',
+          <div style={{ position: 'relative', height: '250px', width: '100%' }}>
+            <Doughnut
+              data={getEfficiencyData()}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                  },
                 },
-              },
-            }}
-          />
+              }}
+            />
+          </div>
         </div>
 
         <div className="alerts-container">

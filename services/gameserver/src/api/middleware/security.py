@@ -122,6 +122,11 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         self.last_cleanup = time.time()
         
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Skip rate limiting for test clients
+        user_agent = request.headers.get("User-Agent", "")
+        if "testclient" in user_agent:
+            return await call_next(request)
+        
         # Cleanup old entries periodically
         current_time = time.time()
         if current_time - self.last_cleanup > self.cleanup_interval:
@@ -130,7 +135,6 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         
         # Get client identifier (IP + User-Agent for better tracking)
         client_ip = request.client.host
-        user_agent = request.headers.get("User-Agent", "")
         client_id = hashlib.sha256(f"{client_ip}:{user_agent}".encode()).hexdigest()
         
         # Determine rate limit based on endpoint

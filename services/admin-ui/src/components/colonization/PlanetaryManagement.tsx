@@ -93,9 +93,10 @@ export const PlanetaryManagement: React.FC = () => {
 
   const loadPlanetaryData = async () => {
     try {
-      const response = await fetch('/api/admin/planets', {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('/api/v1/admin/colonization/planets', {
         headers: {
-          'Authorization': `Bearer ${user?.token}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -109,113 +110,13 @@ export const PlanetaryManagement: React.FC = () => {
       setTerraformingProjects(data.terraformingProjects);
     } catch (err) {
       console.error('Error loading planetary data:', err);
-      // Use mock data for development
-      generateMockData();
+      // Don't use mock data - show real error state
+      setPlanets([]);
+      setStats(null);
+      setTerraformingProjects([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateMockData = () => {
-    const types: Planet['type'][] = ['Terran', 'Desert', 'Ice', 'Gas Giant', 'Volcanic', 'Ocean'];
-    const sizes: Planet['size'][] = ['Small', 'Medium', 'Large', 'Massive'];
-    const atmospheres: Planet['atmosphere'][] = ['None', 'Toxic', 'Thin', 'Breathable', 'Dense'];
-    
-    const mockPlanets: Planet[] = [];
-    for (let i = 1; i <= 100; i++) {
-      const type = types[Math.floor(Math.random() * types.length)];
-      const isColonized = Math.random() > 0.6;
-      const isDiscovered = isColonized || Math.random() > 0.3;
-      
-      mockPlanets.push({
-        id: `planet-${i}`,
-        name: `Planet ${i}`,
-        sectorId: `sector-${Math.floor(Math.random() * 20) + 1}`,
-        sectorName: `Sector ${Math.floor(Math.random() * 20) + 1}`,
-        type,
-        size: sizes[Math.floor(Math.random() * sizes.length)],
-        atmosphere: atmospheres[Math.floor(Math.random() * atmospheres.length)],
-        temperature: Math.floor(Math.random() * 200) - 100,
-        gravity: Math.random() * 2 + 0.1,
-        resources: {
-          energy: Math.floor(Math.random() * 100),
-          minerals: Math.floor(Math.random() * 100),
-          water: Math.floor(Math.random() * 100),
-          rareMaterials: Math.floor(Math.random() * 50),
-        },
-        habitability: type === 'Terran' ? Math.floor(Math.random() * 40) + 60 :
-          type === 'Gas Giant' ? 0 : Math.floor(Math.random() * 80),
-        population: isColonized ? Math.floor(Math.random() * 10000000) : 0,
-        maxPopulation: Math.floor(Math.random() * 50000000) + 1000000,
-        colonies: isColonized ? Math.floor(Math.random() * 10) + 1 : 0,
-        infrastructure: {
-          spaceports: isColonized ? Math.floor(Math.random() * 5) : 0,
-          defenses: isColonized ? Math.floor(Math.random() * 10) : 0,
-          factories: isColonized ? Math.floor(Math.random() * 20) : 0,
-          research: isColonized ? Math.floor(Math.random() * 5) : 0,
-        },
-        ownership: isColonized ? {
-          playerId: `player-${Math.floor(Math.random() * 50) + 1}`,
-          playerName: `Player ${Math.floor(Math.random() * 50) + 1}`,
-          teamId: Math.random() > 0.3 ? `team-${Math.floor(Math.random() * 10) + 1}` : undefined,
-          teamName: Math.random() > 0.3 ? `Team ${Math.floor(Math.random() * 10) + 1}` : undefined,
-          contested: Math.random() > 0.9,
-        } : {
-          contested: false,
-        },
-        discovered: isDiscovered,
-        colonizable: type !== 'Gas Giant' && !isColonized,
-        hasGenesisDevice: Math.random() > 0.95,
-      });
-    }
-    setPlanets(mockPlanets);
-
-    // Calculate stats
-    const discovered = mockPlanets.filter(p => p.discovered);
-    const colonized = mockPlanets.filter(p => p.colonies > 0);
-    const contested = mockPlanets.filter(p => p.ownership.contested);
-    
-    setStats({
-      totalPlanets: mockPlanets.length,
-      discoveredPlanets: discovered.length,
-      colonizedPlanets: colonized.length,
-      contestedPlanets: contested.length,
-      totalPopulation: colonized.reduce((sum, p) => sum + p.population, 0),
-      averageHabitability: discovered.reduce((sum, p) => sum + p.habitability, 0) / discovered.length,
-      resourceDistribution: {
-        energy: mockPlanets.reduce((sum, p) => sum + p.resources.energy, 0),
-        minerals: mockPlanets.reduce((sum, p) => sum + p.resources.minerals, 0),
-        water: mockPlanets.reduce((sum, p) => sum + p.resources.water, 0),
-        rareMaterials: mockPlanets.reduce((sum, p) => sum + p.resources.rareMaterials, 0),
-      },
-    });
-
-    // Generate terraforming projects
-    const projects: TerraformingProject[] = [];
-    const projectTypes: TerraformingProject['type'][] = ['atmosphere', 'temperature', 'water', 'soil'];
-    
-    for (let i = 0; i < 10; i++) {
-      const planet = colonized[Math.floor(Math.random() * colonized.length)];
-      if (planet) {
-        projects.push({
-          id: `project-${i}`,
-          planetId: planet.id,
-          planetName: planet.name,
-          type: projectTypes[Math.floor(Math.random() * projectTypes.length)],
-          progress: Math.floor(Math.random() * 100),
-          duration: Math.floor(Math.random() * 720) + 24,
-          cost: {
-            energy: Math.floor(Math.random() * 10000) + 1000,
-            minerals: Math.floor(Math.random() * 5000) + 500,
-          },
-          impact: {
-            habitability: Math.floor(Math.random() * 20) + 5,
-            resourceBonus: ['energy', 'minerals', 'water'][Math.floor(Math.random() * 3)],
-          },
-        });
-      }
-    }
-    setTerraformingProjects(projects);
   };
 
   const filteredPlanets = planets.filter(planet => {
@@ -471,21 +372,23 @@ export const PlanetaryManagement: React.FC = () => {
           </div>
         </div>
 
-        <div className="sidebar">
+        <div className="pm-sidebar">
           <div className="resource-chart">
             <h3>Resource Distribution</h3>
-            <Bar
-              data={getResourceChartData()}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    display: false,
+            <div style={{ position: 'relative', height: '250px', width: '100%' }}>
+              <Bar
+                data={getResourceChartData()}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      display: false,
+                    },
                   },
-                },
-              }}
-            />
+                }}
+              />
+            </div>
           </div>
 
           <div className="terraforming-section">

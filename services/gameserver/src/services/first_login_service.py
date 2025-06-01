@@ -151,7 +151,13 @@ class FirstLoginService:
         self.db = db
         self.ai_service = ai_service or AIDialogueService()
         # Use the enhanced AI provider service for better fallback support
-        self.ai_provider_service = get_ai_provider_service()
+        try:
+            from src.services.ai_provider_service import get_ai_provider_service
+            self.ai_provider_service = get_ai_provider_service()
+            logger.info("AI provider service initialized successfully")
+        except Exception as e:
+            logger.warning(f"Failed to initialize AI provider service: {e}. Using fallback only.")
+            self.ai_provider_service = None
     
     def initialize_ship_configs(self) -> None:
         """Initialize the default ship rarity configurations if they don't exist"""
@@ -320,10 +326,14 @@ class FirstLoginService:
         session = self.db.query(FirstLoginSession).filter_by(id=session_id).first()
         
         if not session:
-            raise ValueError("Invalid session ID")
+            raise ValueError(f"Invalid session ID: {session_id}")
         
         if session.completed_at:
-            raise ValueError("Session already completed")
+            raise ValueError(f"Session already completed at {session.completed_at}")
+        
+        # Check if ship already claimed
+        if session.ship_claimed:
+            logger.warning(f"Session {session_id} already has ship claimed: {session.ship_claimed}, updating to {claimed_ship}")
         
         # Update the session with the claimed ship
         session.ship_claimed = claimed_ship
@@ -353,8 +363,14 @@ class FirstLoginService:
         state = self.get_player_first_login_state(session.player_id)
         state.claimed_ship = True
         
-        self.db.commit()
-        self.db.refresh(session)
+        try:
+            self.db.commit()
+            self.db.refresh(session)
+        except Exception as e:
+            logger.error(f"Failed to commit ship claim for session {session_id}: {e}")
+            self.db.rollback()
+            raise ValueError(f"Database error while claiming ship: {str(e)}")
+        
         return session
     
     def _analyze_player_response(self, response: str) -> Dict[str, Any]:
@@ -433,21 +449,20 @@ class FirstLoginService:
         # Extract inconsistencies from previous analyses
         inconsistencies = []
         for exchange in exchanges:
-            if exchange.ai_analysis_data and isinstance(exchange.ai_analysis_data, dict):
-                detected = exchange.ai_analysis_data.get("detected_inconsistencies", [])
-                inconsistencies.extend(detected)
+            if exchange.detected_contradictions:
+                inconsistencies.extend(exchange.detected_contradictions)
         
         # Calculate negotiation skill level based on previous exchanges
         negotiation_scores = []
         for exchange in exchanges:
-            if exchange.ai_analysis_data and isinstance(exchange.ai_analysis_data, dict):
-                score = exchange.ai_analysis_data.get("negotiation_skill", 0.5)
-                negotiation_scores.append(score)
+            if exchange.persuasiveness is not None:
+                # Use persuasiveness as a proxy for negotiation skill
+                negotiation_scores.append(exchange.persuasiveness)
         
         avg_negotiation = sum(negotiation_scores) / len(negotiation_scores) if negotiation_scores else 0.5
         
         # Determine guard mood based on session progress
-        if session.outcome == DialogueOutcome.SUCCESSFUL_PERSUASION:
+        if session.outcome == DialogueOutcome.SUCCESS:
             guard_mood = GuardMood.CONVINCED
         elif len(inconsistencies) > 2:
             guard_mood = GuardMood.VERY_SUSPICIOUS
@@ -480,7 +495,15 @@ class FirstLoginService:
         session = self.db.query(FirstLoginSession).filter_by(id=session_id).first()
         
         if not session:
+            logger.error(f"Invalid session ID in generate_guard_question: {session_id}")
             raise ValueError("Invalid session ID")
+        
+        # Ensure we have the latest session data
+        try:
+            self.db.refresh(session)
+        except Exception as e:
+            logger.warning(f"Could not refresh session: {e}")
+            # Continue anyway, session might be detached
         
         # Get the current dialogue exchanges
         exchanges = self.db.query(DialogueExchange).filter_by(
@@ -492,42 +515,48 @@ class FirstLoginService:
         
         # Try AI-powered question generation with enhanced provider fallback
         question = None
-        topic = "ai_generated"
+        topic = "ai_generated"  # Default topic for AI-generated questions
         ai_used = False
         provider_used = None
         
-        try:
-            # Build context for AI service
-            context = self._build_dialogue_context(session, exchanges)
-            
-            # For AI generation, we need a mock analysis of the last response
-            # In real flow, this would come from the previous analysis step
-            from src.services.ai_dialogue_service import ResponseAnalysis
-            mock_analysis = ResponseAnalysis(
-                persuasiveness_score=0.5,
-                confidence_level=0.5,
-                consistency_score=0.5,
-                negotiation_skill=context.negotiation_skill_level,
-                detected_inconsistencies=context.inconsistencies,
-                extracted_claims=[],
-                overall_believability=0.5,
-                suggested_guard_mood=context.guard_mood
-            )
-            
-            # Use enhanced AI provider service
-            guard_response, provider_used = await self.ai_provider_service.generate_question(context, mock_analysis)
-            question = guard_response.dialogue_text
-            ai_used = provider_used != ProviderType.MANUAL
-            
-            # Update session flags
-            session.ai_service_used = ai_used
-            session.fallback_to_rules = not ai_used
-            
-            logger.info(f"Generated question using {provider_used.value} provider for session {session_id}")
-            
-        except Exception as e:
-            logger.error(f"All AI providers failed for question generation in session {session_id}: {e}")
-            # Fall back to rule-based generation
+        if self.ai_provider_service:
+            try:
+                # Build context for AI service
+                context = self._build_dialogue_context(session, exchanges)
+                
+                # For AI generation, we need a mock analysis of the last response
+                # In real flow, this would come from the previous analysis step
+                from src.services.ai_dialogue_service import ResponseAnalysis
+                mock_analysis = ResponseAnalysis(
+                    persuasiveness_score=0.5,
+                    confidence_level=0.5,
+                    consistency_score=0.5,
+                    negotiation_skill=context.negotiation_skill_level,
+                    detected_inconsistencies=context.inconsistencies,
+                    extracted_claims=[],
+                    overall_believability=0.5,
+                    suggested_guard_mood=context.guard_mood
+                )
+                
+                # Use enhanced AI provider service
+                guard_response, provider_used = await self.ai_provider_service.generate_question(context, mock_analysis)
+                question = guard_response.dialogue_text
+                ai_used = provider_used != ProviderType.MANUAL
+                
+                # Update session flags if we used AI
+                if ai_used:
+                    session.ai_service_used = True
+                    session.fallback_to_rules = False
+                else:
+                    session.fallback_to_rules = True
+                
+                logger.info(f"Generated question using {provider_used.value} provider for session {session_id}")
+                
+            except Exception as e:
+                logger.error(f"All AI providers failed for question generation in session {session_id}: {e}")
+                # Fall back to rule-based generation
+        else:
+            logger.info(f"No AI provider service available, using rule-based generation for session {session_id}")
         
         # Fallback to rule-based generation if AI failed or unavailable
         if not question:
@@ -545,23 +574,30 @@ class FirstLoginService:
                 session.fallback_to_rules = True
                 logger.info(f"Using rule-based question generation for session {session_id}")
         
+        # Ensure we have a question (final fallback)
+        if not question:
+            logger.error(f"No question generated for session {session_id}, using emergency fallback")
+            question = "Hold on, let me verify your credentials. What's your pilot registration number?"
+            topic = "identity_verification"
+        
         # Create a new dialogue exchange
         exchange = DialogueExchange(
             session_id=session_id,
             sequence_number=next_sequence,
             npc_prompt=question,
             player_response="",  # Player hasn't responded yet
-            topic=topic,
-            ai_service_used=ai_used,
-            fallback_to_rules=not ai_used
+            topic=topic
         )
         self.db.add(exchange)
         
-        # Update player's first login state
-        state = self.get_player_first_login_state(session.player_id)
-        
-        self.db.commit()
-        self.db.refresh(exchange)
+        # Commit the exchange to database
+        try:
+            self.db.commit()
+            self.db.refresh(exchange)
+        except Exception as e:
+            logger.error(f"Failed to commit dialogue exchange: {e}")
+            self.db.rollback()
+            raise
         
         return {
             "exchange_id": exchange.id,
@@ -609,11 +645,14 @@ class FirstLoginService:
         )
         self.db.add(exchange)
         
-        # Update player's first login state
-        state = self.get_player_first_login_state(session.player_id)
-        
-        self.db.commit()
-        self.db.refresh(exchange)
+        # Commit the exchange to database
+        try:
+            self.db.commit()
+            self.db.refresh(exchange)
+        except Exception as e:
+            logger.error(f"Failed to commit dialogue exchange: {e}")
+            self.db.rollback()
+            raise
         
         return {
             "exchange_id": exchange.id,
@@ -1180,3 +1219,32 @@ And don't try something like this again - you're now flagged in the system."
             "negotiation_bonus": session.negotiation_bonus_flag,
             "notoriety_penalty": session.notoriety_penalty
         }
+    
+    def reset_player_session(self, session_id: uuid.UUID) -> None:
+        """Reset a player's first login session, deleting all progress"""
+        session = self.db.query(FirstLoginSession).filter_by(id=session_id).first()
+        
+        if not session:
+            logger.warning(f"Attempted to reset non-existent session: {session_id}")
+            return
+        
+        # Get the player ID before deleting
+        player_id = session.player_id
+        
+        # Delete all dialogue exchanges for this session
+        self.db.query(DialogueExchange).filter_by(session_id=session_id).delete()
+        
+        # Delete the session itself
+        self.db.delete(session)
+        
+        # Reset the player's first login state
+        state = self.get_player_first_login_state(player_id)
+        state.current_session_id = None
+        state.claimed_ship = False
+        state.answered_questions = False
+        state.received_resources = False
+        state.tutorial_started = False
+        # Don't reset attempts - this tracks total attempts across resets
+        
+        self.db.commit()
+        logger.info(f"Reset first login session {session_id} for player {player_id}")

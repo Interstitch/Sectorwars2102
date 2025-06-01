@@ -139,13 +139,20 @@ engine = create_engine(TEST_DATABASE_URL)
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Global variable to store the current test session
+_current_test_session = None
+
 def override_get_db():
-    """Dependency override for get_db to use the test database."""
-    try:
-        db_session = TestingSessionLocal()
-        yield db_session
-    finally:
-        db_session.close()
+    """Dependency override for get_db to use the current test session."""
+    if _current_test_session is not None:
+        yield _current_test_session
+    else:
+        # Fallback to regular session if no test session is set
+        try:
+            db_session = TestingSessionLocal()
+            yield db_session
+        finally:
+            db_session.close()
 
 # Apply the dependency override to the actual_app
 actual_app.dependency_overrides[get_db] = override_get_db
@@ -157,10 +164,26 @@ def app_fixture() -> FastAPI:
 
 @pytest.fixture(scope="function")
 def db(app_fixture: FastAPI) -> Session:
-    Base.metadata.create_all(bind=engine)
-    db_session = TestingSessionLocal()
+    """
+    Create a database session with proper transaction isolation.
+    Each test gets a clean transaction that's rolled back after the test.
+    """
+    global _current_test_session
     
-    # Create a fresh admin user for tests
+    # Ensure tables exist
+    Base.metadata.create_all(bind=engine)
+    
+    # Create a connection and begin a transaction
+    connection = engine.connect()
+    transaction = connection.begin()
+    
+    # Create a session bound to the connection
+    db_session = sessionmaker(bind=connection, autoflush=False, autocommit=False)()
+    
+    # Set this as the current test session for dependency injection
+    _current_test_session = db_session
+    
+    # Ensure admin user exists for tests
     admin_exists = db_session.query(User).filter(User.username == settings.ADMIN_USERNAME).first()
     if not admin_exists:
         admin = User(
@@ -181,31 +204,16 @@ def db(app_fixture: FastAPI) -> Session:
         db_session.commit()
         print(f"Created test admin user {settings.ADMIN_USERNAME}")
     
-    # Track model IDs created during this test for clean up
-    test_data_ids = {}
-    
-    # Create a wrapper around session.add to track added models
-    original_add = db_session.add
-    
-    def add_with_tracking(obj):
-        original_add(obj)
-        
-        # After the object is added and before it's committed, track its ID
-        return obj
-    
-    # Save the original add method and replace it with our tracking version
-    db_session.add = add_with_tracking
-    
     try:
         yield db_session
     finally:
-        # Clean up test data
-        db_session.rollback()
-        db_session.close()
+        # Clear the global session reference
+        _current_test_session = None
         
-        # Skip table recreation for now to avoid circular dependency issues
-        # Base.metadata.drop_all(bind=engine)
-        # Base.metadata.create_all(bind=engine)
+        # Rollback the transaction to undo all changes made during the test
+        db_session.close()
+        transaction.rollback()
+        connection.close()
 
 @pytest.fixture(scope="function")
 def client(app_fixture: FastAPI, db: Session) -> TestClient:

@@ -372,8 +372,8 @@ async def get_admin_stats(
         total_ports = db.query(Port).count()
         
         # For active sessions, we'll count players with recent activity (last 24 hours)
-        from datetime import datetime, timedelta
-        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        from datetime import datetime, timedelta, timezone
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
         
         # Simplify the session query to avoid complex logic that might fail
         try:
@@ -385,7 +385,7 @@ async def get_admin_stats(
             active_sessions = 0
         
         # Get new players today
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         try:
             new_players_today = db.query(Player).filter(
                 Player.created_at >= today_start
@@ -394,7 +394,7 @@ async def get_admin_stats(
             new_players_today = 0
         
         # Get new players this week  
-        week_start = datetime.utcnow() - timedelta(days=7)
+        week_start = datetime.now(timezone.utc) - timedelta(days=7)
         try:
             new_players_week = db.query(Player).filter(
                 Player.created_at >= week_start

@@ -74,9 +74,10 @@ export const GenesisDeviceTracking: React.FC = () => {
 
   const loadGenesisData = async () => {
     try {
-      const response = await fetch('/api/admin/genesis-devices', {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('/api/v1/admin/colonization/genesis-devices', {
         headers: {
-          'Authorization': `Bearer ${user?.token}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -90,90 +91,13 @@ export const GenesisDeviceTracking: React.FC = () => {
       setAlerts(data.alerts);
     } catch (err) {
       console.error('Error loading Genesis data:', err);
-      // Use mock data for development
-      generateMockData();
+      // Don't use mock data - show real error state
+      setDevices([]);
+      setStats(null);
+      setAlerts([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateMockData = () => {
-    const statuses: GenesisDevice['status'][] = ['active', 'dormant', 'deployed', 'destroyed'];
-    const mockDevices: GenesisDevice[] = [];
-
-    for (let i = 1; i <= 30; i++) {
-      const status = statuses[Math.floor(Math.random() * statuses.length)];
-      mockDevices.push({
-        id: `genesis-${i}`,
-        name: `Genesis Device ${i}`,
-        status,
-        ownerId: `player-${Math.floor(Math.random() * 30) + 1}`,
-        ownerName: `Player ${Math.floor(Math.random() * 30) + 1}`,
-        teamId: Math.random() > 0.3 ? `team-${Math.floor(Math.random() * 5) + 1}` : undefined,
-        teamName: Math.random() > 0.3 ? `Team ${Math.floor(Math.random() * 5) + 1}` : undefined,
-        location: {
-          type: ['ship', 'planet', 'space'][Math.floor(Math.random() * 3)] as any,
-          id: `location-${Math.floor(Math.random() * 50) + 1}`,
-          name: `Location ${Math.floor(Math.random() * 50) + 1}`,
-          sectorId: `sector-${Math.floor(Math.random() * 10) + 1}`,
-          sectorName: `Sector ${Math.floor(Math.random() * 10) + 1}`,
-        },
-        powerLevel: status === 'destroyed' ? 0 : Math.floor(Math.random() * 100),
-        integrity: status === 'destroyed' ? 0 : Math.floor(Math.random() * 100),
-        chargeTime: status === 'active' ? 0 : Math.floor(Math.random() * 86400),
-        deploymentHistory: Array(Math.floor(Math.random() * 5)).fill(null).map((_, j) => ({
-          timestamp: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-          targetPlanetId: `planet-${Math.floor(Math.random() * 100) + 1}`,
-          targetPlanetName: `Planet ${Math.floor(Math.random() * 100) + 1}`,
-          result: ['success', 'failure', 'partial'][Math.floor(Math.random() * 3)] as any,
-          transformationType: ['Terraforming', 'Atmosphere', 'Biosphere', 'Complete'][Math.floor(Math.random() * 4)],
-        })),
-        createdAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-        lastActivity: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-      });
-    }
-    setDevices(mockDevices);
-
-    // Generate stats
-    const activeCount = mockDevices.filter(d => d.status === 'active').length;
-    const deployments = mockDevices.flatMap(d => d.deploymentHistory);
-    const recentDeployments = deployments.filter(d => 
-      new Date(d.timestamp) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    );
-    const successfulDeployments = deployments.filter(d => d.result === 'success');
-
-    setStats({
-      totalDevices: mockDevices.length,
-      activeDevices: activeCount,
-      deployedThisWeek: recentDeployments.length,
-      successRate: deployments.length > 0 ? (successfulDeployments.length / deployments.length) * 100 : 0,
-      averagePowerLevel: mockDevices.reduce((sum, d) => sum + d.powerLevel, 0) / mockDevices.length,
-      topUsers: Array(5).fill(null).map((_, i) => ({
-        playerId: `player-${i + 1}`,
-        playerName: `Player ${i + 1}`,
-        deviceCount: Math.floor(Math.random() * 5) + 1,
-        successfulDeployments: Math.floor(Math.random() * 10),
-      })),
-    });
-
-    // Generate alerts
-    const alertTypes: GenesisAlert['type'][] = ['security', 'malfunction', 'unauthorized', 'critical'];
-    const severities: GenesisAlert['severity'][] = ['low', 'medium', 'high', 'critical'];
-    const mockAlerts: GenesisAlert[] = [];
-
-    for (let i = 0; i < 8; i++) {
-      const device = mockDevices[Math.floor(Math.random() * mockDevices.length)];
-      mockAlerts.push({
-        id: `alert-${i}`,
-        deviceId: device.id,
-        deviceName: device.name,
-        type: alertTypes[Math.floor(Math.random() * alertTypes.length)],
-        message: 'Genesis device alert requiring attention',
-        timestamp: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString(),
-        severity: severities[Math.floor(Math.random() * severities.length)],
-      });
-    }
-    setAlerts(mockAlerts);
   };
 
   const filteredDevices = devices.filter(device => {
@@ -186,19 +110,19 @@ export const GenesisDeviceTracking: React.FC = () => {
 
   const getStatusColor = (status: GenesisDevice['status']) => {
     switch (status) {
-      case 'active': return 'var(--success-color)';
-      case 'dormant': return 'var(--warning-color)';
-      case 'deployed': return 'var(--info-color)';
-      case 'destroyed': return 'var(--error-color)';
+      case 'active': return 'var(--status-success)';
+      case 'dormant': return 'var(--status-warning)';
+      case 'deployed': return 'var(--status-info)';
+      case 'destroyed': return 'var(--status-error)';
       default: return 'var(--text-primary)';
     }
   };
 
   const getAlertColor = (severity: GenesisAlert['severity']) => {
     switch (severity) {
-      case 'critical': return 'var(--error-color)';
-      case 'high': return 'var(--warning-color)';
-      case 'medium': return 'var(--info-color)';
+      case 'critical': return 'var(--status-error)';
+      case 'high': return 'var(--status-warning)';
+      case 'medium': return 'var(--status-info)';
       case 'low': return 'var(--text-secondary)';
       default: return 'var(--text-primary)';
     }
@@ -343,8 +267,8 @@ export const GenesisDeviceTracking: React.FC = () => {
                     className="metric-fill power"
                     style={{
                       width: `${device.powerLevel}%`,
-                      backgroundColor: device.powerLevel > 70 ? 'var(--success-color)' :
-                        device.powerLevel > 30 ? 'var(--warning-color)' : 'var(--error-color)'
+                      backgroundColor: device.powerLevel > 70 ? 'var(--status-success)' :
+                        device.powerLevel > 30 ? 'var(--status-warning)' : 'var(--status-error)'
                     }}
                   />
                 </div>
@@ -356,8 +280,8 @@ export const GenesisDeviceTracking: React.FC = () => {
                     className="metric-fill integrity"
                     style={{
                       width: `${device.integrity}%`,
-                      backgroundColor: device.integrity > 70 ? 'var(--success-color)' :
-                        device.integrity > 30 ? 'var(--warning-color)' : 'var(--error-color)'
+                      backgroundColor: device.integrity > 70 ? 'var(--status-success)' :
+                        device.integrity > 30 ? 'var(--status-warning)' : 'var(--status-error)'
                     }}
                   />
                 </div>

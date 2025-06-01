@@ -10,7 +10,9 @@ from sqlalchemy import and_, or_
 from src.models.player import Player
 from src.models.ship import Ship, ShipType
 from src.models.sector import Sector
-from src.models.combat import CombatLog, CombatType, CombatResult, Drone, DroneDeployment
+from src.models.combat import CombatType, CombatResult
+from src.models.combat_log import CombatLog
+from src.models.drone import Drone, DroneDeployment
 from src.models.planet import Planet
 from src.models.port import Port
 from src.services.ship_service import ShipService

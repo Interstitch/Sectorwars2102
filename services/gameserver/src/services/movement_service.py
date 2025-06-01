@@ -9,7 +9,8 @@ from src.models.player import Player
 from src.models.ship import Ship, ShipType
 from src.models.sector import Sector, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelStatus
-from src.models.combat import CombatLog, CombatResult
+from src.models.combat import CombatResult
+from src.models.combat_log import CombatLog
 
 logger = logging.getLogger(__name__)
 

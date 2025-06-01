@@ -31,6 +31,7 @@ from src.api.routes.teams import router as teams_router
 from src.api.routes.admin_economy import router as admin_economy_router
 from src.api.routes.admin_combat import router as admin_combat_router
 from src.api.routes.admin_ships import router as admin_ships_router
+from src.api.routes.admin_colonization import router as admin_colonization_router
 from src.api.routes.mfa import router as mfa_router
 from src.core.config import settings
 
@@ -71,6 +72,7 @@ api_router.include_router(teams_router, tags=["teams"])
 api_router.include_router(admin_economy_router, tags=["admin-economy"])
 api_router.include_router(admin_combat_router, tags=["admin-combat"])
 api_router.include_router(admin_ships_router, tags=["admin-ships"])
+api_router.include_router(admin_colonization_router, prefix="/admin", tags=["admin-colonization"])
 api_router.include_router(mfa_router, tags=["mfa"])
 
 # Only include test routes in development/test environments

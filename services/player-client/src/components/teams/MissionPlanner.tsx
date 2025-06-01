@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { teamAPI } from '../../services/mocks/teamAPI';
+import { teamAPI } from '../../services/api';
 import type { TeamMission, MissionObjective, TeamMember } from '../../types/team';
 import './mission-planner.css';
 
@@ -83,7 +83,7 @@ export const MissionPlanner: React.FC<MissionPlannerProps> = ({
 
   const handleJoinMission = async (missionId: string) => {
     try {
-      await teamAPI.joinMission(missionId);
+      await teamAPI.joinMission(teamId, missionId);
       const updatedMission = missions.find(m => m.id === missionId);
       if (updatedMission && !updatedMission.participants.includes(playerId)) {
         updatedMission.participants.push(playerId);
@@ -96,7 +96,7 @@ export const MissionPlanner: React.FC<MissionPlannerProps> = ({
 
   const handleLeaveMission = async (missionId: string) => {
     try {
-      await teamAPI.leaveMission(missionId);
+      await teamAPI.leaveMission(teamId, missionId);
       const updatedMission = missions.find(m => m.id === missionId);
       if (updatedMission) {
         updatedMission.participants = updatedMission.participants.filter(p => p !== playerId);
@@ -114,7 +114,7 @@ export const MissionPlanner: React.FC<MissionPlannerProps> = ({
       const mission = missions.find(m => m.id === missionId);
       if (!mission) return;
       
-      const updatedMission = await teamAPI.updateMission(missionId, {
+      const updatedMission = await teamAPI.updateMission(teamId, missionId, {
         status: 'active',
         startTime: new Date().toISOString()
       });

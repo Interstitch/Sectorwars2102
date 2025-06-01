@@ -199,18 +199,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const response = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
         setUser(response.data);
         console.log('Auth successful - user loaded:', response.data);
-      } catch (error) {
+      } catch (error: any) {
+        // Check if it's a rate limit error (429)
+        if (error?.response?.status === 429) {
+          console.warn('Rate limit hit during auth check - will retry in a moment');
+          // Don't clear auth data on rate limit errors
+          setLoading(false);
+          return;
+        }
+        
         console.error('Initial auth check failed:', error);
         
-        // Try token refresh if initial check fails
-        try {
-          await refreshToken();
-          const userResponse = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
-          setUser(userResponse.data);
-          console.log('Auth successful after refresh');
-        } catch (refreshError) {
-          console.error('Refresh token failed:', refreshError);
-          clearAuthData();
+        // Try token refresh if initial check fails (but not for rate limits)
+        if (error?.response?.status !== 429) {
+          try {
+            await refreshToken();
+            const userResponse = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
+            setUser(userResponse.data);
+            console.log('Auth successful after refresh');
+          } catch (refreshError: any) {
+            if (refreshError?.response?.status === 429) {
+              console.warn('Rate limit hit during token refresh');
+            } else {
+              console.error('Refresh token failed:', refreshError);
+              clearAuthData();
+            }
+          }
         }
       } finally {
         clearTimeout(authTimeout);

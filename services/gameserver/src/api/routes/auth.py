@@ -97,7 +97,9 @@ async def login_json(
         user = authenticate_player(db, username, password)
         
     if not user:
-        logging.error("Authentication failed")
+        if settings.DEBUG:
+            import logging
+            logging.error("Authentication failed")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -630,7 +632,9 @@ async def github_callback(request: Request, code: str, register: bool = False, d
         update_user_last_login(db, str(user.id))
 
         # Get the frontend URL for the OAuth callback page
-        frontend_url = f"{settings.FRONTEND_URL}/oauth-callback?access_token={access_token}&refresh_token={refresh_token}&user_id={user.id}&is_new_user={is_new_user}"
+        # Use the get_frontend_url() method instead of the property directly
+        frontend_base = settings.get_frontend_url()
+        frontend_url = f"{frontend_base}/oauth-callback?access_token={access_token}&refresh_token={refresh_token}&user_id={user.id}&is_new_user={is_new_user}"
 
         # Debug information - more verbose
         print(f"==== OAuth Callback Debug ====")
@@ -762,7 +766,8 @@ async def google_callback(request: Request, code: str, register: bool = False, d
     update_user_last_login(db, str(user.id))
 
     # Use auto-detected frontend URL
-    frontend_url = f"{settings.FRONTEND_URL}/oauth-callback?access_token={access_token}&refresh_token={refresh_token}&user_id={user.id}&is_new_user={is_new_user}"
+    frontend_base = settings.get_frontend_url()
+    frontend_url = f"{frontend_base}/oauth-callback?access_token={access_token}&refresh_token={refresh_token}&user_id={user.id}&is_new_user={is_new_user}"
 
     # Debug information
     print(f"Redirecting to frontend URL: {frontend_url}")
@@ -821,7 +826,8 @@ async def steam_callback(request: Request, register: bool = False, db: Session =
     update_user_last_login(db, str(user.id))
 
     # Use auto-detected frontend URL
-    frontend_url = f"{settings.FRONTEND_URL}/oauth-callback?access_token={access_token}&refresh_token={refresh_token}&user_id={user.id}&is_new_user={is_new_user}"
+    frontend_base = settings.get_frontend_url()
+    frontend_url = f"{frontend_base}/oauth-callback?access_token={access_token}&refresh_token={refresh_token}&user_id={user.id}&is_new_user={is_new_user}"
 
     # Debug information
     print(f"Redirecting to frontend URL: {frontend_url}")

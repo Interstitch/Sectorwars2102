@@ -1,5 +1,6 @@
 import json
 import asyncio
+from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -9,7 +10,7 @@ from src.core.database import get_db
 from src.auth.dependencies import get_current_user_from_token, get_current_admin_user
 from src.models.user import User
 from src.models.player import Player
-from src.services.websocket_service import connection_manager, handle_websocket_message
+from src.services.websocket_service import connection_manager, handle_websocket_message, handle_admin_websocket_message
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,74 @@ async def websocket_endpoint(
             await websocket.close(code=4000, reason="Connection error")
         except:
             pass
+
+
+@router.websocket("/admin")
+async def admin_websocket_endpoint(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin WebSocket endpoint for real-time admin dashboard updates.
+    Requires admin authentication via token query parameter.
+    """
+    if not token:
+        await websocket.close(code=4001, reason="Authentication token required")
+        return
+    
+    try:
+        # Authenticate admin user from token
+        user = await get_current_user_from_token(token, db)
+        if not user or not user.is_admin:
+            await websocket.close(code=4001, reason="Admin authentication required")
+            return
+        
+        # Prepare admin data for connection
+        admin_data = {
+            "user_id": str(user.id),
+            "username": user.username,
+            "is_admin": True
+        }
+        
+        # Connect to WebSocket manager
+        await connection_manager.connect_admin(websocket, str(user.id), admin_data)
+        
+        try:
+            while True:
+                # Wait for messages from client
+                data = await websocket.receive_text()
+                
+                try:
+                    message_data = json.loads(data)
+                    await handle_admin_websocket_message(str(user.id), message_data)
+                except json.JSONDecodeError:
+                    logger.warning(f"Invalid JSON received from admin {user.id}: {data}")
+                    await connection_manager.send_admin_message(str(user.id), {
+                        "type": "error",
+                        "message": "Invalid message format",
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
+                except Exception as e:
+                    logger.error(f"Error handling admin WebSocket message from {user.id}: {e}")
+                    await connection_manager.send_admin_message(str(user.id), {
+                        "type": "error",
+                        "message": "Error processing message",
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
+        
+        except WebSocketDisconnect:
+            logger.info(f"Admin WebSocket disconnected for {user.id}")
+        except Exception as e:
+            logger.error(f"Admin WebSocket error for {user.id}: {e}")
+        finally:
+            await connection_manager.disconnect_admin(str(user.id))
+                
+    except Exception as e:
+        logger.error(f"Admin WebSocket connection error: {str(e)}")
+        await websocket.close(code=4003, reason=str(e))
+
+
 
 
 @router.get("/stats")

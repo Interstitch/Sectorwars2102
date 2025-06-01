@@ -285,6 +285,9 @@ async def dock_at_port(
 ):
     """Dock at a port"""
     
+    # Define docking turn cost
+    DOCKING_TURN_COST = 1
+    
     # Get the port
     port = db.query(Port).filter(Port.id == dock_request.port_id).first()
     if not port:
@@ -302,15 +305,27 @@ async def dock_at_port(
     if current_player.is_landed:
         raise HTTPException(status_code=400, detail="You must leave the planet before docking at a port")
     
+    # Check if player has enough turns
+    if current_player.turns < DOCKING_TURN_COST:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Insufficient turns. Need {DOCKING_TURN_COST} turn(s), have {current_player.turns}"
+        )
+    
     try:
         # Update player status
         current_player.is_ported = True
         current_player.current_port_id = dock_request.port_id
         
+        # Deduct turns for docking
+        current_player.turns -= DOCKING_TURN_COST
+        
         db.commit()
         
         return {
             "message": f"Successfully docked at {port.name}",
+            "turn_cost": DOCKING_TURN_COST,
+            "turns_remaining": current_player.turns,
             "port": {
                 "id": str(port.id),
                 "name": port.name,
@@ -333,18 +348,33 @@ async def undock_from_port(
 ):
     """Undock from current port"""
     
+    # Define undocking turn cost
+    UNDOCKING_TURN_COST = 1
+    
     if not current_player.is_ported:
         raise HTTPException(status_code=400, detail="You are not currently docked at a port")
+    
+    # Check if player has enough turns
+    if current_player.turns < UNDOCKING_TURN_COST:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Insufficient turns. Need {UNDOCKING_TURN_COST} turn(s), have {current_player.turns}"
+        )
     
     try:
         # Update player status
         current_player.is_ported = False
         current_player.current_port_id = None
         
+        # Deduct turns for undocking
+        current_player.turns -= UNDOCKING_TURN_COST
+        
         db.commit()
         
         return {
-            "message": "Successfully undocked from port"
+            "message": "Successfully undocked from port",
+            "turn_cost": UNDOCKING_TURN_COST,
+            "turns_remaining": current_player.turns
         }
         
     except Exception as e:

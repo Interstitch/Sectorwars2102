@@ -13,6 +13,10 @@ from src.services.first_login_service import FirstLoginService
 from src.services.ai_dialogue_service import get_ai_dialogue_service, AIDialogueService
 from src.services.ai_security_service import get_security_service, AISecurityService
 
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 router = APIRouter(
     tags=["first-login"],
     responses={404: {"description": "Not found"}},
@@ -138,44 +142,77 @@ async def claim_ship(
     ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Claim a ship and record the player's initial dialogue response"""
-    service = FirstLoginService(db, ai_service)
-    
-    # Get the current session
-    state = service.get_player_first_login_state(player.id)
-    if not state.current_session_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No active first login session"
-        )
-    
-    # Validate ship choice
     try:
-        ship_choice = ShipChoice[claim.ship_type]
-    except KeyError:
+        logger.info(f"Player {player.id} attempting to claim ship: {claim.ship_type}")
+        service = FirstLoginService(db, ai_service)
+        
+        # Get the current session
+        state = service.get_player_first_login_state(player.id)
+        logger.info(f"Player state - session_id: {state.current_session_id}")
+        
+        if not state.current_session_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No active first login session"
+            )
+        
+        # Validate ship choice
+        try:
+            ship_choice = ShipChoice[claim.ship_type]
+            logger.info(f"Valid ship choice: {ship_choice}")
+        except KeyError:
+            logger.error(f"Invalid ship type: {claim.ship_type}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid ship type: {claim.ship_type}"
+            )
+        
+        # Record the ship claim
+        logger.info(f"Recording ship claim for session: {state.current_session_id}")
+        try:
+            session = service.record_player_ship_claim(
+                state.current_session_id,
+                ship_choice,
+                claim.dialogue_response
+            )
+            logger.info(f"Ship claim recorded successfully")
+        except Exception as record_error:
+            logger.error(f"Failed to record ship claim: {str(record_error)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to record ship claim: {str(record_error)}"
+            )
+        
+        # Generate the next dialogue question
+        logger.info(f"Generating guard question for session: {session.id}")
+        try:
+            question_data = await service.generate_guard_question(session.id)
+            logger.info(f"Guard question generated: {question_data}")
+        except Exception as ai_error:
+            logger.error(f"AI question generation failed: {str(ai_error)}", exc_info=True)
+            # Use fallback sync method
+            question_data = service.generate_guard_question_sync(session.id)
+            logger.info(f"Fallback question generated: {question_data}")
+        
+        return {
+            "session_id": str(session.id),
+            "player_id": str(player.id),
+            "available_ships": session.ship_options.available_ships if session.ship_options else ["ESCAPE_POD"],
+            "current_step": "dialogue",
+            "npc_prompt": question_data["question"],
+            "exchange_id": str(question_data["exchange_id"]),
+            "sequence_number": question_data["sequence_number"]
+        }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in claim_ship: {str(e)}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid ship type: {claim.ship_type}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
         )
-    
-    # Record the ship claim
-    session = service.record_player_ship_claim(
-        state.current_session_id,
-        ship_choice,
-        claim.dialogue_response
-    )
-    
-    # Generate the next dialogue question
-    question_data = await service.generate_guard_question(session.id)
-    
-    return {
-        "session_id": str(session.id),
-        "player_id": str(player.id),
-        "available_ships": session.ship_options.available_ships if session.ship_options else ["ESCAPE_POD"],
-        "current_step": "dialogue",
-        "npc_prompt": question_data["question"],
-        "exchange_id": str(question_data["exchange_id"]),
-        "sequence_number": question_data["sequence_number"]
-    }
 
 
 @router.post("/dialogue/{exchange_id}", response_model=DialogueAnalysisResponse)
@@ -285,3 +322,67 @@ async def complete_first_login(
     result = service.complete_first_login(state.current_session_id)
     
     return result
+
+
+@router.get("/debug", include_in_schema=False)
+async def debug_first_login_state(
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+    ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
+):
+    """Debug endpoint to check player's first login state"""
+    service = FirstLoginService(db, ai_service)
+    
+    # Get all the player's state
+    state = service.get_player_first_login_state(player.id)
+    
+    # Get any active sessions
+    from src.models.first_login import FirstLoginSession, DialogueExchange
+    sessions = db.query(FirstLoginSession).filter_by(player_id=player.id).all()
+    
+    return {
+        "player_id": str(player.id),
+        "username": player.username,
+        "first_login_field": player.first_login,
+        "state": {
+            "has_completed_first_login": state.has_completed_first_login,
+            "current_session_id": str(state.current_session_id) if state.current_session_id else None,
+            "claimed_ship": state.claimed_ship,
+            "answered_questions": state.answered_questions,
+            "received_resources": state.received_resources,
+            "tutorial_started": state.tutorial_started,
+            "attempts": state.attempts
+        },
+        "sessions": [
+            {
+                "id": str(s.id),
+                "started_at": s.started_at.isoformat() if s.started_at else None,
+                "completed_at": s.completed_at.isoformat() if s.completed_at else None,
+                "ship_claimed": s.ship_claimed.name if s.ship_claimed else None,
+                "current_step": "dialogue" if s.ship_claimed else "ship_selection"
+            }
+            for s in sessions
+        ],
+        "should_show_first_login": service.should_show_first_login(player.id)
+    }
+
+
+@router.delete("/session")
+async def reset_first_login_session(
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+    ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
+):
+    """Reset the player's first login session to start fresh"""
+    service = FirstLoginService(db, ai_service)
+    
+    # Get the current session
+    state = service.get_player_first_login_state(player.id)
+    if not state.current_session_id:
+        # No session to reset, that's fine
+        return {"message": "No active session to reset"}
+    
+    # Delete the current session and all related data
+    service.reset_player_session(state.current_session_id)
+    
+    return {"message": "Session reset successfully"}

@@ -107,9 +107,11 @@ test.describe('Admin UI - Login', () => {
     
     // Verify error message is displayed or we're still on login page
     try {
-      // Check for visible error message
-      const errorLocator = page.locator('.error-message, .alert, .error, [role="alert"]');
-      if (await errorLocator.count() > 0) {
+      // Check specifically for the error alert
+      const errorLocator = page.locator('.alert-error').first();
+      const errorCount = await errorLocator.count();
+      
+      if (errorCount > 0) {
         await expect(errorLocator).toBeVisible();
         const errorText = await errorLocator.textContent() || '';
         console.log(`Error message: ${errorText}`);
@@ -121,8 +123,8 @@ test.describe('Admin UI - Login', () => {
         expect(currentUrl).toContain('/login');
         
         // And there should be login form elements visible
-        const loginForm = page.locator('.login-form, form, input[type="text"], input[type="password"]');
-        await expect(loginForm.first()).toBeVisible();
+        const loginForm = page.locator('form').first();
+        await expect(loginForm).toBeVisible();
       }
     } catch (error) {
       console.error('Error checking login error state:', error);

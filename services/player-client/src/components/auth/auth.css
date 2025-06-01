@@ -1,5 +1,27 @@
 /* Auth Components Styles */
 
+/* Logout Button */
+.logout-button {
+  background: transparent;
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  color: #ff6b6b;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.85rem;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+
+.logout-button:hover {
+  background: rgba(255, 68, 68, 0.1);
+  border-color: rgba(255, 68, 68, 0.5);
+  color: #ff4444;
+  box-shadow: 0 0 10px rgba(255, 68, 68, 0.4);
+}
+
 /* Login & Register Forms */
 .login-form-container,
 .register-form-container {

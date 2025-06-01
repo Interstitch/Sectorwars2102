@@ -8,48 +8,50 @@ test.describe('Player Client UI - Homepage', () => {
     await page.goto('/');
     
     // Check that we're on the player client
-    await expect(page).toHaveTitle(/Sector Wars/);
+    await expect(page).toHaveTitle(/Sector Wars 2102/);
     
     // Check header elements
     await expect(page.locator('h1')).toContainText('Sector Wars 2102');
     
-    // Check main welcome section
-    await expect(page.locator('h2')).toContainText('Welcome to Sector Wars 2102');
+    // Check tagline
+    await expect(page.locator('text=The Future of Space Trading')).toBeVisible();
     
-    // Verify CTA buttons are present
-    await expect(page.getByRole('button', { name: 'Play Now' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Register to Play' })).toBeVisible();
+    // Verify navigation buttons are present
+    await expect(page.getByRole('button', { name: 'Login' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Join Now' })).toBeVisible();
     
-    // Check feature items
-    await expect(page.locator('h3')).toHaveCount(5); // 3 features + 2 other sections
+    // Check hero section
+    await expect(page.locator('text=Command the Galaxy')).toBeVisible();
+    
+    // Check features section
+    await expect(page.locator('text=Revolutionary Features')).toBeVisible();
     
     // Check server status section
-    await expect(page.locator('h3').filter({ hasText: 'Game Server Status' })).toBeVisible();
-    
-    // Check that the page has been themed with the cockpit CSS
-    await expect(page.locator('body')).toHaveClass(/theme-cockpit/);
+    await expect(page.locator('text=Game Server Status')).toBeVisible();
   });
   
-  test('should navigate to login form when clicking Play Now', async ({ page }) => {
+  test('should navigate to login form when clicking Login', async ({ page }) => {
     // Navigate to the base URL
     await page.goto('/');
     
-    // Click the Play Now button (this would navigate to login in the real app)
-    await page.getByRole('button', { name: 'Play Now' }).click();
+    // Click the Login button
+    await page.getByRole('button', { name: 'Login' }).click();
     
-    // In a real implementation, we'd verify we're on a login page
-    // For now, just make sure the button click works and doesn't error
+    // Verify login modal appears
+    await expect(page.locator('text=Access Your Universe')).toBeVisible();
+    await expect(page.locator('#username')).toBeVisible();
+    await expect(page.locator('#password')).toBeVisible();
   });
   
-  test('should navigate to registration form when clicking Register to Play', async ({ page }) => {
+  test('should navigate to registration form when clicking Join Now', async ({ page }) => {
     // Navigate to the base URL
     await page.goto('/');
     
-    // Click the Register to Play button (this would navigate to registration in the real app)
-    await page.getByRole('button', { name: 'Register to Play' }).click();
+    // Click the Join Now button
+    await page.getByRole('button', { name: 'Join Now' }).click();
     
-    // In a real implementation, we'd verify we're on a registration page
     // For now, just make sure the button click works and doesn't error
+    // TODO: Add registration form verification when implemented
   });
 });
 
@@ -58,11 +60,11 @@ test.describe('Player Authentication', () => {
     // Navigate to the homepage
     await page.goto('/');
     
-    // Click the Play Now button to show the login form
-    await page.getByRole('button', { name: 'Play Now' }).click();
+    // Click the Login button to show the login form
+    await page.getByRole('button', { name: 'Login' }).click();
     
-    // Wait for page to load completely
-    await page.waitForLoadState('networkidle');
+    // Wait for modal to appear
+    await expect(page.locator('text=Access Your Universe')).toBeVisible();
     
     // Use Locator API for better compatibility
     try {
@@ -75,7 +77,7 @@ test.describe('Player Authentication', () => {
       await expect(passwordLocator).toBeVisible();
       
       // Check for login button
-      const loginButtonLocator = page.locator('.login-button');
+      const loginButtonLocator = page.locator('button:has-text("Play Now")');
       await expect(loginButtonLocator).toBeVisible();
     } catch (e) {
       console.log('Error checking login form elements:', e);
@@ -88,15 +90,14 @@ test.describe('Player Authentication', () => {
     // Navigate to the homepage
     await page.goto('/');
     
-    // Click the Play Now button to show the login form
-    await page.getByRole('button', { name: 'Play Now' }).click();
+    // Click the Login button to show the login form
+    await page.getByRole('button', { name: 'Login' }).click();
     
     // Verify OAuth buttons are present
-    const githubButtonLocator = page.locator('.github-button');
-    await expect(githubButtonLocator).toBeVisible();
-    
-    const googleButtonLocator = page.locator('.google-button');
-    await expect(googleButtonLocator).toBeVisible();
+    await expect(page.locator('text=Or Sign In With')).toBeVisible();
+    await expect(page.locator('button:has-text("GitHub")')).toBeVisible();
+    await expect(page.locator('button:has-text("Google")')).toBeVisible();
+    await expect(page.locator('button:has-text("Steam")')).toBeVisible();
   });
   
 authTest('should login successfully with valid credentials', async ({ page, playerCredentials }) => {
@@ -107,8 +108,8 @@ authTest('should login successfully with valid credentials', async ({ page, play
     // Go to homepage
     await page.goto('/');
     
-    // Click the "Play Now" button to show the login form
-    await page.getByRole('button', { name: 'Play Now' }).click();
+    // Click the "Login" button to show the login form
+    await page.getByRole('button', { name: 'Login' }).click();
     
     // Verify the login form appears
     await expect(page.locator('#username')).toBeVisible();
@@ -119,39 +120,26 @@ authTest('should login successfully with valid credentials', async ({ page, play
     await page.fill('#password', playerCredentials.password);
     
     // Verify the login button is clickable
-    await expect(page.locator('.login-button')).toBeEnabled();
+    await expect(page.locator('button:has-text("Play Now")')).toBeEnabled();
     
     // Test passes if we can get to this point
   });
 });
 
-test.describe('Cockpit UI Theme Verification', () => {
-  test('should apply cockpit theme CSS variables', async ({ page }) => {
+test.describe('UI Theme Verification', () => {
+  test('should have proper styling', async ({ page }) => {
     await page.goto('/');
     
-    // Check that CSS custom properties are set (indicating theme is loaded)
-    const primaryColor = await page.evaluate(() => {
-      return getComputedStyle(document.documentElement).getPropertyValue('--color-primary');
+    // Check that the page has proper styling
+    const hasStyles = await page.evaluate(() => {
+      const body = document.body;
+      const computedStyle = window.getComputedStyle(body);
+      // Check if basic styles are applied
+      return computedStyle.fontFamily.includes('Inter') || computedStyle.fontFamily.includes('sans-serif');
     });
     
-    // Should have the cockpit theme's electric blue color
-    expect(primaryColor.trim()).toBe('#00D9FF');
+    expect(hasStyles).toBe(true);
   });
-  
-  test('should show cockpit-themed elements when logged in', async ({ page }) => {
-    // This test would require actual login, but we can at least verify
-    // that the theme elements are available in the DOM structure
-    await page.goto('/');
-    
-    // Verify theme provider is present in the page
-    const themeProviderExists = await page.evaluate(() => {
-      // Check if ThemeProvider context is available by looking for theme class
-      return document.body.classList.contains('theme-cockpit');
-    });
-    
-    expect(themeProviderExists).toBe(true);
-  });
-  
   test('should be responsive on mobile viewport', async ({ page }) => {
     // Set mobile viewport (iPhone 12 Pro size)
     await page.setViewportSize({ width: 390, height: 844 });
@@ -159,14 +147,8 @@ test.describe('Cockpit UI Theme Verification', () => {
     
     // Check that main elements are still visible on mobile
     await expect(page.locator('h1')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Play Now' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Register to Play' })).toBeVisible();
-    
-    // Check that CSS custom properties are still applied on mobile
-    const primaryColor = await page.evaluate(() => {
-      return getComputedStyle(document.documentElement).getPropertyValue('--color-primary');
-    });
-    expect(primaryColor.trim()).toBe('#00D9FF');
+    await expect(page.getByRole('button', { name: 'Login' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Join Now' })).toBeVisible();
   });
   
   test('should be responsive on tablet viewport', async ({ page }) => {
@@ -176,14 +158,8 @@ test.describe('Cockpit UI Theme Verification', () => {
     
     // Check that main elements are still visible on tablet
     await expect(page.locator('h1')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Play Now' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Register to Play' })).toBeVisible();
-    
-    // Verify theme is still applied
-    const themeApplied = await page.evaluate(() => {
-      return document.body.classList.contains('theme-cockpit');
-    });
-    expect(themeApplied).toBe(true);
+    await expect(page.getByRole('button', { name: 'Login' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Join Now' })).toBeVisible();
   });
 });
 

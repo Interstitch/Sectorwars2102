@@ -99,6 +99,11 @@ interface GameContextType {
   playerState: PlayerState | null;
   refreshPlayerState: () => Promise<void>;
   
+  // First login status
+  needsFirstLogin: boolean;
+  checkFirstLoginStatus: () => Promise<boolean>;
+  onFirstLoginComplete: () => Promise<void>;
+  
   // Player ships
   ships: Ship[];
   currentShip: Ship | null;
@@ -149,6 +154,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   
   // Player state
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
+  const [needsFirstLogin, setNeedsFirstLogin] = useState<boolean>(false);
   
   // Ships
   const [ships, setShips] = useState<Ship[]>([]);
@@ -205,20 +211,52 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return config;
   });
   
+  // Check first login status
+  const checkFirstLoginStatus = async (): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      console.log('GameContext: Checking first login status');
+      const response = await api.get('/api/v1/first-login/status');
+      console.log('GameContext: First login status response:', response.data);
+      const needsFirstLogin = (response.data as any).requires_first_login;
+      setNeedsFirstLogin(needsFirstLogin);
+      return needsFirstLogin;
+    } catch (error) {
+      console.error('GameContext: Error checking first login status:', error);
+      setNeedsFirstLogin(false);
+      return false;
+    }
+  };
+
   // Initialize game state when user logs in
   useEffect(() => {
     console.log('GameContext: User changed:', user);
-    if (user) {
-      console.log('GameContext: Initializing for user:', user.username);
-      refreshPlayerState();
-      loadShips();
+    if (user && isAuthenticated) {
+      console.log('GameContext: Initializing for authenticated user:', user.username);
+      checkFirstLoginStatus().then((needsFirst) => {
+        console.log('GameContext: First login check result:', needsFirst);
+        if (!needsFirst) {
+          console.log('GameContext: No first login needed, loading game data');
+          refreshPlayerState();
+          loadShips();
+        } else {
+          console.log('GameContext: First login required, skipping game data load');
+        }
+      }).catch(error => {
+        console.error('GameContext: Error checking first login status:', error);
+        // On error, try to load player state anyway (might be a network issue)
+        refreshPlayerState();
+        loadShips();
+      });
     } else {
-      console.log('GameContext: No user, clearing state');
+      console.log('GameContext: No authenticated user, clearing state');
       setPlayerState(null);
       setCurrentShip(null);
       setShips([]);
+      setNeedsFirstLogin(false);
     }
-  }, [user]);
+  }, [user, isAuthenticated]);
   
   // Update current location info when sector changes
   useEffect(() => {
@@ -245,18 +283,45 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('GameContext: Calling /api/v1/player/state');
       const response = await api.get('/api/v1/player/state');
       console.log('GameContext: Player state response:', response.data);
-      setPlayerState(response.data);
+      setPlayerState(response.data as PlayerState);
       
       // If player has a current ship, load its details
-      if (response.data.current_ship_id) {
+      if ((response.data as any).current_ship_id) {
         console.log('GameContext: Loading current ship details');
-        const shipResponse = await api.get('/api/v1/player/current-ship');
-        console.log('GameContext: Current ship response:', shipResponse.data);
-        setCurrentShip(shipResponse.data);
+        try {
+          const shipResponse = await api.get('/api/v1/player/current-ship');
+          console.log('GameContext: Current ship response:', shipResponse.data);
+          setCurrentShip(shipResponse.data as Ship);
+        } catch (shipError) {
+          console.warn('GameContext: Failed to load current ship details:', shipError);
+          // Don't fail the whole state refresh if just ship loading fails
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('GameContext: Error fetching player state:', error);
-      setError('Failed to load player state');
+      
+      // Provide more detailed error messages
+      if (error.response?.status === 401) {
+        setError('Authentication required. Please log in again.');
+      } else if (error.response?.status === 404) {
+        // Check if this is because first login is needed
+        checkFirstLoginStatus().then(needsFirst => {
+          if (needsFirst) {
+            console.log('GameContext: 404 error resolved - first login needed');
+            setError(null); // Clear error since this is expected
+          } else {
+            setError('Player data not found. You may need to complete the first login process.');
+          }
+        }).catch(() => {
+          setError('Player data not found. You may need to complete the first login process.');
+        });
+      } else if (error.response?.data?.detail) {
+        setError(`Server error: ${error.response.data.detail}`);
+      } else if (error.message) {
+        setError(`Network error: ${error.message}`);
+      } else {
+        setError('Failed to load player state');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -267,10 +332,11 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user) return;
     
     setIsLoading(true);
-    setError(null);
     
     try {
+      console.log('GameContext: Loading player ships');
       const response = await api.get('/api/v1/player/ships');
+      console.log('GameContext: Ships response:', response.data);
       setShips(response.data || []);
       
       // If there's a current ship, update it
@@ -280,9 +346,16 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setCurrentShip(currentShip);
         }
       }
-    } catch (error) {
-      console.error('Error loading ships:', error);
-      setError('Failed to load ships');
+    } catch (error: any) {
+      console.error('GameContext: Error loading ships:', error);
+      
+      // Don't set a general error here as ships might not exist for new players
+      if (error.response?.status === 401) {
+        setError('Authentication required. Please log in again.');
+      } else {
+        console.warn('GameContext: Ships could not be loaded, this might be normal for new players');
+        setShips([]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -355,23 +428,42 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user || !playerState) return;
     
     setIsLoading(true);
-    setError(null);
     
     try {
+      console.log('GameContext: Exploring current location, sector:', playerState.current_sector_id);
+      
       // Get sector info
-      const sectorResponse = await api.get('/api/v1/player/current-sector');
-      setCurrentSector(sectorResponse.data);
+      try {
+        const sectorResponse = await api.get('/api/v1/player/current-sector');
+        console.log('GameContext: Current sector response:', sectorResponse.data);
+        setCurrentSector(sectorResponse.data);
+      } catch (sectorError) {
+        console.warn('GameContext: Failed to load current sector:', sectorError);
+        setCurrentSector(null);
+      }
       
       // Get planets in sector
-      const planetsResponse = await api.get(`/api/v1/sectors/${playerState.current_sector_id}/planets`);
-      setPlanetsInSector(planetsResponse.data.planets || []);
+      try {
+        const planetsResponse = await api.get(`/api/v1/sectors/${playerState.current_sector_id}/planets`);
+        console.log('GameContext: Planets response:', planetsResponse.data);
+        setPlanetsInSector(planetsResponse.data.planets || []);
+      } catch (planetsError) {
+        console.warn('GameContext: Failed to load planets:', planetsError);
+        setPlanetsInSector([]);
+      }
       
       // Get ports in sector
-      const portsResponse = await api.get(`/api/v1/sectors/${playerState.current_sector_id}/ports`);
-      setPortsInSector(portsResponse.data.ports || []);
+      try {
+        const portsResponse = await api.get(`/api/v1/sectors/${playerState.current_sector_id}/ports`);
+        console.log('GameContext: Ports response:', portsResponse.data);
+        setPortsInSector(portsResponse.data.ports || []);
+      } catch (portsError) {
+        console.warn('GameContext: Failed to load ports:', portsError);
+        setPortsInSector([]);
+      }
     } catch (error) {
-      console.error('Error exploring location:', error);
-      setError('Failed to explore current location');
+      console.error('GameContext: Error exploring location:', error);
+      // Don't set a general error here as this is not critical for basic UI
     } finally {
       setIsLoading(false);
     }
@@ -545,10 +637,25 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
   
+  // Handle first login completion - refresh all game data
+  const onFirstLoginComplete = async () => {
+    console.log('GameContext: First login completed, refreshing all game data');
+    setNeedsFirstLogin(false);
+    await Promise.all([
+      refreshPlayerState(),
+      loadShips()
+    ]);
+  };
+  
   const value = {
     // Player info
     playerState,
     refreshPlayerState,
+    
+    // First login status
+    needsFirstLogin,
+    checkFirstLoginStatus,
+    onFirstLoginComplete,
     
     // Player ships
     ships,

@@ -20,19 +20,10 @@ export const test = base.extend<{
 }>({
   // Use the shared admin account created during global setup
   adminCredentials: async ({}, use) => {
-    // Fall back to default credentials if no test account exists
-    if (!TEST_ACCOUNTS.admin) {
-      console.warn('No test admin account exists! Using default credentials');
-      await use({
-        username: 'admin',
-        password: 'admin',
-      });
-      return;
-    }
-    
+    // Always use the default admin credentials that exist in the database
     await use({
-      username: TEST_ACCOUNTS.admin.username,
-      password: TEST_ACCOUNTS.admin.password,
+      username: 'admin',
+      password: 'admin',
     });
   },
 

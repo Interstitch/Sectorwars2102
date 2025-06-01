@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { teamAPI } from '../../services/mocks/teamAPI';
+import { teamAPI } from '../../services/api';
 import type { TeamMember, ResourceTransfer } from '../../types/team';
 import './resource-sharing.css';
 
