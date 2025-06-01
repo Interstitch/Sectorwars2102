@@ -33,6 +33,7 @@ const ShipSelection: React.FC = () => {
   const {
     session,
     availableShips,
+    sessionLoaded,
     claimShip,
     currentPrompt,
     isLoading
@@ -49,28 +50,37 @@ const ShipSelection: React.FC = () => {
     }
   };
 
+  console.log('ShipSelection: Available ships:', availableShips);
+  console.log('ShipSelection: Session:', session);
+
   return (
-    <div className="dialogue-box">
-      <div className="game-title-header">
-        <h1 className="game-title">SECTOR WARS 2102</h1>
-        <h2 className="game-subtitle">Welcome to the Galaxy</h2>
-        <div className="location-context">Callisto Colony Shipyard</div>
-      </div>
+    <div className="ship-selection-content">
+      <div className="location-context">Callisto Colony Shipyard</div>
       
       <div className="dialogue-header">
         <div className="npc-avatar"></div>
         <div className="speaker-name">Security Guard</div>
+        {/* Debug indicator for ship selection prompt */}
+        {currentPrompt && currentPrompt.includes('[RULE-BASED]') && (
+          <div className="debug-indicator debug-fallback">🤖 FALLBACK</div>
+        )}
+        {currentPrompt && currentPrompt.includes('[AI-ANTHROPIC]') && (
+          <div className="debug-indicator debug-ai-anthropic">🧠 AI-CLAUDE</div>
+        )}
+        {currentPrompt && currentPrompt.includes('[AI-OPENAI]') && (
+          <div className="debug-indicator debug-ai-openai">🧠 AI-GPT</div>
+        )}
       </div>
       
       <div className="dialogue-text">
-        {currentPrompt || `The year is 2102. You find yourself in a bustling shipyard on the outskirts of the Callisto Colony. Your memory is hazy—a side effect of the cryo-sleep required for the journey here. A small orange cat darts between the landing gear of nearby ships, disappearing into the shadows. You're approaching what appears to be your escape pod when a stern-looking Security Guard blocks your path.
+        {currentPrompt?.replace(/\[(RULE-BASED|AI-ANTHROPIC|AI-OPENAI)\]\s*/, '') || `The year is 2102. You find yourself in a bustling shipyard on the outskirts of the Callisto Colony. Your memory is hazy—a side effect of the cryo-sleep required for the journey here. A small orange cat darts between the landing gear of nearby ships, disappearing into the shadows. You're approaching what appears to be your escape pod when a stern-looking Security Guard blocks your path.
 
 Guard: "Hold it right there! This area is restricted to registered pilots only. Which of these vessels belongs to you?"`}
       </div>
       
       {/* Ship selection grid */}
       <div className="ship-selection">
-        {availableShips.map(ship => (
+        {availableShips && availableShips.length > 0 ? availableShips.map(ship => (
           <div 
             key={ship}
             className={`ship-option ${selectedShip === ship ? 'selected' : ''}`}
@@ -82,7 +92,19 @@ Guard: "Hold it right there! This area is restricted to registered pilots only. 
             <div className="ship-name">{SHIP_NAMES[ship]}</div>
             <div className="ship-description">{SHIP_DESCRIPTIONS[ship]}</div>
           </div>
-        ))}
+        )) : (
+          <div className="no-ships-message">
+            {!sessionLoaded ? (
+              <p>Loading available ships...</p>
+            ) : (
+              <div>
+                <p>No ships available at this time.</p>
+                <p>Session: {session ? 'Loaded' : 'Not loaded'}</p>
+                <p>Available ships data: {JSON.stringify(availableShips)}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       <form onSubmit={handleSubmit} className="dialogue-response">

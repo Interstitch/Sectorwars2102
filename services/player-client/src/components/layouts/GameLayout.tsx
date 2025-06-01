@@ -55,15 +55,15 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
               <div className="player-stats">
                 <div className="stat-item">
                   <span className="stat-label">CREDITS</span>
-                  <span className="data-readout credits">{playerState?.credits.toLocaleString()}</span>
+                  <span className="data-readout credits">{playerState?.credits?.toLocaleString() || '0'}</span>
                 </div>
                 <div className="stat-item">
                   <span className="stat-label">TURNS</span>
-                  <span className="data-readout turns">{playerState?.turns.toLocaleString()}</span>
+                  <span className="data-readout turns">{playerState?.turns?.toLocaleString() || '0'}</span>
                 </div>
                 <div className="stat-item">
                   <span className="stat-label">DRONES</span>
-                  <span className="data-readout">{playerState?.defense_drones}</span>
+                  <span className="data-readout">{playerState?.defense_drones || '0'}</span>
                 </div>
               </div>
             </div>
@@ -74,16 +74,18 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
               </div>
               {currentShip ? (
                 <div className="current-ship">
-                  <div className="ship-name">{currentShip.name}</div>
-                  <div className="ship-type">{currentShip.type}</div>
+                  <div className="ship-name">{currentShip.name || 'UNNAMED VESSEL'}</div>
+                  <div className="ship-type">{currentShip.type || 'UNKNOWN CLASS'}</div>
                   <div className="ship-cargo">
                     <h4 className="cargo-header">CARGO BAY</h4>
-                    {Object.keys(currentShip.cargo || {}).length > 0 ? (
+                    {currentShip.cargo && Object.keys(currentShip.cargo).length > 0 ? (
                       <ul className="cargo-list">
                         {Object.entries(currentShip.cargo).map(([resource, amount]) => (
                           <li key={resource} className="cargo-item">
                             <span className="resource-name">{resource}</span>
-                            <span className="data-readout">{amount}</span>
+                            <span className="data-readout">
+                              {typeof amount === 'object' ? JSON.stringify(amount) : amount}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -103,13 +105,13 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
               </div>
               {currentSector ? (
                 <div className="current-sector">
-                  <div className="sector-name">SECTOR {currentSector.id}</div>
-                  <div className="sector-designation">{currentSector.name}</div>
-                  <div className="sector-type">{currentSector.type.toUpperCase()}</div>
-                  {currentSector.hazard_level > 0 && (
+                  <div className="sector-name">SECTOR {currentSector.id || 'UNKNOWN'}</div>
+                  <div className="sector-designation">{currentSector.name || 'UNCHARTED'}</div>
+                  <div className="sector-type">{currentSector.type?.toUpperCase() || 'UNKNOWN'}</div>
+                  {(currentSector.hazard_level || 0) > 0 && (
                     <div className="sector-hazard">
                       <span className="hazard-label">THREAT LEVEL:</span>
-                      <span className="data-readout hazard">{currentSector.hazard_level}</span>
+                      <span className="data-readout hazard">{currentSector.hazard_level || 0}</span>
                     </div>
                   )}
                 </div>

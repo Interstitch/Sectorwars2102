@@ -16,6 +16,7 @@ const FirstLoginContainer: React.FC = () => {
     session,
     startSession,
     resetError,
+    resetSession,
     requiresFirstLogin,
     dialogueOutcome
   } = useFirstLogin();
@@ -24,18 +25,23 @@ const FirstLoginContainer: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<'ship_selection' | 'dialogue' | 'completion'>(
     'ship_selection'
   );
+  
+  console.log('FirstLoginContainer: Current step:', currentStep);
+  console.log('FirstLoginContainer: Session:', session);
 
   // Initialize the first login session when the component mounts
   useEffect(() => {
-    if (requiresFirstLogin && !session) {
+    if (requiresFirstLogin && !session && !isLoading) {
+      console.log('FirstLoginContainer: Starting session');
       startSession();
     }
     
     // Update the current step based on the session state
     if (session) {
+      console.log('FirstLoginContainer: Updating step from session:', session.current_step);
       setCurrentStep(session.current_step);
     }
-  }, [requiresFirstLogin, session, startSession]);
+  }, [requiresFirstLogin, session, isLoading]); // Remove startSession from deps to prevent loops
 
   // If the player doesn't need first login, don't show this component
   if (!requiresFirstLogin) {
@@ -44,30 +50,58 @@ const FirstLoginContainer: React.FC = () => {
 
   return (
     <div className="first-login-container">
-      {isLoading && (
-        <div className="loading-overlay">
-          <div className="loading-spinner"></div>
+      {/* Always show some content so the container is visible */}
+      <div className="dialogue-box">
+        <div className="game-title-header">
+          <h1 className="game-title">SECTOR WARS 2102</h1>
+          <p className="game-subtitle">Welcome to the Galaxy - Security Registration</p>
+          <button onClick={resetSession} style={{padding: '5px 10px', margin: '10px', background: '#ff6b6b', color: 'white', border: 'none', borderRadius: '4px'}}>
+            Reset Session (Debug)
+          </button>
         </div>
-      )}
 
-      {error && (
-        <div className="error-message">
-          {error}
-          <button onClick={resetError}>Dismiss</button>
-        </div>
-      )}
+        {isLoading && (
+          <div className="loading-message">
+            <div className="loading-spinner"></div>
+            <p>Initializing security protocols...</p>
+          </div>
+        )}
 
-      {currentStep === 'ship_selection' && session && (
-        <ShipSelection />
-      )}
+        {error && (
+          <div className="error-message">
+            <p>{error}</p>
+            <button onClick={resetError}>Try Again</button>
+          </div>
+        )}
 
-      {currentStep === 'dialogue' && session && (
-        <DialogueExchange />
-      )}
+        {!isLoading && !error && !session && (
+          <div className="waiting-message">
+            <p>Preparing your arrival at the spaceport...</p>
+            <button onClick={startSession}>Begin Registration</button>
+          </div>
+        )}
 
-      {(currentStep === 'completion' || dialogueOutcome) && (
-        <OutcomeDisplay />
-      )}
+        {currentStep === 'ship_selection' && session && (
+          <>
+            {console.log('FirstLoginContainer: Rendering ShipSelection')}
+            <ShipSelection />
+          </>
+        )}
+
+        {currentStep === 'dialogue' && session && (
+          <>
+            {console.log('FirstLoginContainer: Rendering DialogueExchange')}
+            <DialogueExchange />
+          </>
+        )}
+
+        {(currentStep === 'completion' || dialogueOutcome) && (
+          <>
+            {console.log('FirstLoginContainer: Rendering OutcomeDisplay')}
+            <OutcomeDisplay />
+          </>
+        )}
+      </div>
     </div>
   );
 };

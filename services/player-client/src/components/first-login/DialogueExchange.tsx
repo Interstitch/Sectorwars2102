@@ -12,10 +12,15 @@ const DialogueExchange: React.FC = () => {
     dialogueHistory,
     submitResponse,
     isLoading,
-    dialogueOutcome
+    dialogueOutcome,
+    session
   } = useFirstLogin();
 
   const [response, setResponse] = useState('');
+  
+  console.log('DialogueExchange: Rendered with session:', session);
+  console.log('DialogueExchange: Current prompt:', currentPrompt);
+  console.log('DialogueExchange: Dialogue history:', dialogueHistory);
   const dialogueHistoryRef = useRef<HTMLDivElement>(null);
   
   // Auto-scroll to the bottom of the dialogue history when it updates
@@ -39,26 +44,44 @@ const DialogueExchange: React.FC = () => {
   };
 
   return (
-    <div className="dialogue-box">
+    <div className="dialogue-exchange-content">
       {/* Display dialogue history */}
       <div className="dialogue-history" ref={dialogueHistoryRef}>
-        {dialogueHistory.map((exchange, index) => (
-          <div key={index} className="history-item">
-            {exchange.npc && (
-              <div className="npc-message">
-                <div className="dialogue-header">
-                  <div className="speaker-name">Security Guard:</div>
+        {dialogueHistory && dialogueHistory.length > 0 ? (
+          dialogueHistory.map((exchange, index) => (
+            <div key={index} className="history-item">
+              {exchange.npc && (
+                <div className="npc-message">
+                  <div className="dialogue-header">
+                    <div className="speaker-name">Security Guard:</div>
+                    {/* Debug indicator */}
+                    {exchange.npc.includes('[RULE-BASED]') && (
+                      <div className="debug-indicator debug-fallback">🤖 FALLBACK</div>
+                    )}
+                    {exchange.npc.includes('[AI-ANTHROPIC]') && (
+                      <div className="debug-indicator debug-ai-anthropic">🧠 AI-CLAUDE</div>
+                    )}
+                    {exchange.npc.includes('[AI-OPENAI]') && (
+                      <div className="debug-indicator debug-ai-openai">🧠 AI-GPT</div>
+                    )}
+                  </div>
+                  <div className="dialogue-text">{exchange.npc.replace(/\[(RULE-BASED|AI-ANTHROPIC|AI-OPENAI)\]\s*/, '')}</div>
                 </div>
-                <div className="dialogue-text">{exchange.npc}</div>
-              </div>
-            )}
-            {exchange.player && (
-              <div className="player-message">
-                <div className="dialogue-text">{exchange.player}</div>
-              </div>
-            )}
+              )}
+              {exchange.player && (
+                <div className="player-message">
+                  <div className="dialogue-text">{exchange.player}</div>
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div className="loading-message">
+            <p>Loading dialogue history...</p>
+            <p>Current prompt: {currentPrompt || 'None'}</p>
+            <p>Session ID: {session?.session_id || 'None'}</p>
           </div>
-        ))}
+        )}
       </div>
 
       {/* Current prompt and response input */}

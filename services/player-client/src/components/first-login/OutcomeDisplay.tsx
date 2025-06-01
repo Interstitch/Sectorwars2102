@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFirstLogin } from '../../contexts/FirstLoginContext';
+import { useGame } from '../../contexts/GameContext';
 import { useNavigate } from 'react-router-dom';
 import './first-login.css';
 
@@ -24,6 +25,7 @@ const OutcomeDisplay: React.FC = () => {
     isLoading
   } = useFirstLogin();
   
+  const { onFirstLoginComplete } = useGame();
   const navigate = useNavigate();
   const [isCompleting, setIsCompleting] = useState(false);
   const [completionResult, setCompletionResult] = useState<any>(null);
@@ -40,6 +42,9 @@ const OutcomeDisplay: React.FC = () => {
     try {
       const result = await completeFirstLogin();
       setCompletionResult(result);
+      
+      // Refresh all game data in GameContext
+      await onFirstLoginComplete();
       
       // Redirect to the game dashboard after a short delay
       setTimeout(() => {
@@ -107,7 +112,22 @@ const OutcomeDisplay: React.FC = () => {
       </div>
       
       <div className="guard-final-message dialogue-text">
-        {dialogueOutcome.guard_response}
+        <div className="dialogue-header">
+          <div className="speaker-name">Security Guard:</div>
+          {/* Debug indicator for final response */}
+          {dialogueOutcome.guard_response.includes('[RULE-BASED]') && (
+            <div className="debug-indicator debug-fallback">🤖 FALLBACK</div>
+          )}
+          {dialogueOutcome.guard_response.includes('[AI-ANTHROPIC]') && (
+            <div className="debug-indicator debug-ai-anthropic">🧠 AI-CLAUDE</div>
+          )}
+          {dialogueOutcome.guard_response.includes('[AI-OPENAI]') && (
+            <div className="debug-indicator debug-ai-openai">🧠 AI-GPT</div>
+          )}
+        </div>
+        <div style={{marginTop: '10px'}}>
+          {dialogueOutcome.guard_response.replace(/\[(RULE-BASED|AI-ANTHROPIC|AI-OPENAI)\]\s*/, '')}
+        </div>
       </div>
       
       {error && <div className="error-message">{error}</div>}
