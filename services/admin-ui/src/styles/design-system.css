@@ -82,6 +82,7 @@
   --surface-secondary: var(--color-gray-50);
   --surface-elevated: white;
   --surface-overlay: white;
+  --surface-accent: rgba(59, 130, 246, 0.1);
 
   /* Border Colors */
   --border-light: var(--color-gray-200);

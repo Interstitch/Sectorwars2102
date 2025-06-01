@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAIUpdates } from '../../contexts/WebSocketContext';
+import { api } from '../../utils/auth';
 import './market-prediction-interface.css';
 
 interface PricePrediction {
@@ -68,18 +69,15 @@ export const MarketPredictionInterface: React.FC = () => {
         ...(selectedResource !== 'all' && { resource: selectedResource })
       });
       
-      const response = await fetch(`/api/ai/predictions?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch predictions');
-      
-      const data = await response.json();
-      setPredictions(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load predictions');
+      const response = await api.get(`/api/v1/admin/ai/predictions?${params}`);
+      setPredictions(response.data);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to load predictions';
+      if (err.response?.status === 401) {
+        setError('Authentication required. Please log in as an admin user.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -87,16 +85,8 @@ export const MarketPredictionInterface: React.FC = () => {
 
   const fetchAccuracyStats = async () => {
     try {
-      const response = await fetch('/api/ai/predictions/accuracy', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch accuracy stats');
-      
-      const data = await response.json();
-      setAccuracyStats(data);
+      const response = await api.get('/api/v1/admin/ai/predictions/accuracy');
+      setAccuracyStats(response.data);
     } catch (err) {
       console.error('Failed to load accuracy stats:', err);
     }
@@ -154,12 +144,12 @@ export const MarketPredictionInterface: React.FC = () => {
               <div key={stat.resourceId} className="accuracy-card">
                 <h4>{stat.resourceName}</h4>
                 <div className="accuracy-metric">
-                  <span className="metric-value">{stat.accuracy.toFixed(1)}%</span>
+                  <span className="metric-value">{(stat.accuracy || 0).toFixed(1)}%</span>
                   <span className="metric-label">Accuracy</span>
                 </div>
                 <div className="accuracy-details">
-                  <span>{stat.accurate}/{stat.predictions} correct</span>
-                  <span>±{stat.avgDeviation.toFixed(2)}% avg deviation</span>
+                  <span>{stat.accurate || 0}/{stat.predictions || 0} correct</span>
+                  <span>±{(stat.avgDeviation || 0).toFixed(2)}% avg deviation</span>
                 </div>
               </div>
             ))}

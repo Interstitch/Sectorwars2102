@@ -524,22 +524,43 @@ class FirstLoginService:
                 # Build context for AI service
                 context = self._build_dialogue_context(session, exchanges)
                 
-                # For AI generation, we need a mock analysis of the last response
-                # In real flow, this would come from the previous analysis step
-                from src.services.ai_dialogue_service import ResponseAnalysis
-                mock_analysis = ResponseAnalysis(
-                    persuasiveness_score=0.5,
-                    confidence_level=0.5,
-                    consistency_score=0.5,
-                    negotiation_skill=context.negotiation_skill_level,
-                    detected_inconsistencies=context.inconsistencies,
-                    extracted_claims=[],
-                    overall_believability=0.5,
-                    suggested_guard_mood=context.guard_mood
-                )
+                # Build analysis from the last response if available
+                from src.services.ai_dialogue_service import ResponseAnalysis, GuardMood
+                
+                # Get the most recent exchange with a response to base our analysis on
+                last_exchange_with_response = None
+                for exchange in reversed(exchanges):
+                    if exchange.player_response:
+                        last_exchange_with_response = exchange
+                        break
+                
+                if last_exchange_with_response:
+                    # Use actual analysis data from the last exchange
+                    last_analysis = ResponseAnalysis(
+                        persuasiveness_score=last_exchange_with_response.persuasiveness or 0.5,
+                        confidence_level=last_exchange_with_response.confidence or 0.5,
+                        consistency_score=last_exchange_with_response.consistency or 0.5,
+                        negotiation_skill=context.negotiation_skill_level,
+                        detected_inconsistencies=last_exchange_with_response.detected_contradictions or [],
+                        extracted_claims=last_exchange_with_response.key_extracted_info.get('claims', []) if last_exchange_with_response.key_extracted_info else [],
+                        overall_believability=(last_exchange_with_response.persuasiveness or 0.5 + last_exchange_with_response.confidence or 0.5) / 2,
+                        suggested_guard_mood=context.guard_mood
+                    )
+                else:
+                    # First question - use neutral baseline
+                    last_analysis = ResponseAnalysis(
+                        persuasiveness_score=0.5,
+                        confidence_level=0.5,
+                        consistency_score=1.0,  # No inconsistencies yet
+                        negotiation_skill=0.5,
+                        detected_inconsistencies=[],
+                        extracted_claims=[],
+                        overall_believability=0.5,
+                        suggested_guard_mood=GuardMood.NEUTRAL
+                    )
                 
                 # Use enhanced AI provider service
-                guard_response, provider_used = await self.ai_provider_service.generate_question(context, mock_analysis)
+                guard_response, provider_used = await self.ai_provider_service.generate_question(context, last_analysis)
                 question = guard_response.dialogue_text
                 ai_used = provider_used != ProviderType.MANUAL
                 

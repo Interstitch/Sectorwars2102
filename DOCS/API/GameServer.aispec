@@ -1,0 +1,312 @@
+OVERVIEW: Complete SectorWars 2102 GameServer REST API specification with 200+ endpoints for space trading MMO, supporting OAuth authentication, real-time multiplayer, AI trading intelligence, and comprehensive administrative tools.
+
+FACTS:
+* Base URL: http://localhost:8000/api/v1 (development), HTTPS in production
+* Authentication: JWT Bearer tokens, refresh token system, OAuth (GitHub/Google/Steam)
+* Authorization: Role-based (Player/Admin), team-based permissions
+* WebSocket: Real-time connections on /ws/connect, /ws/admin
+* CORS: Enabled for cross-origin requests with preflight support
+* Rate limiting: Applied to all endpoints
+* API versioning: v1 namespace
+* Response format: JSON with consistent error schema
+* Health monitoring: /status endpoints for service health
+* Multi-factor authentication: TOTP with backup codes
+* Audit logging: All admin actions tracked
+
+AUTHENTICATION:
+* POST /auth/login - Form-based login (username/password)
+* POST /auth/login/json - JSON login with MFA support
+* POST /auth/login/direct - Direct login bypassing form validation
+* POST /auth/player/login - Player-specific login endpoints
+* POST /auth/register - User registration
+* POST /auth/refresh - JWT token refresh
+* POST /auth/logout - Token revocation
+* GET /auth/me - Current user information
+* GET /auth/github - GitHub OAuth redirect
+* GET /auth/github/callback - OAuth callback handler
+* GET /auth/google - Google OAuth redirect  
+* GET /auth/google/callback - Google OAuth callback
+* GET /auth/steam - Steam OAuth redirect
+* GET /auth/steam/callback - Steam OAuth callback
+
+MFA_ENDPOINTS:
+* POST /auth/mfa/generate - Generate MFA secret with QR code
+* POST /auth/mfa/verify - Verify MFA setup
+* POST /auth/mfa/check - Validate MFA code during login
+* GET /auth/mfa/status - Check MFA configuration status
+* POST /auth/mfa/disable - Disable MFA for account
+* GET /auth/mfa/backup-codes - Retrieve backup codes
+* POST /auth/mfa/regenerate-backup-codes - Generate new backup codes
+* GET /auth/mfa/attempts - View authentication attempts
+
+PLAYER_GAMEPLAY:
+* GET /player/state - Current player state and statistics
+* GET /player/ships - All owned ships with specifications
+* GET /player/current-ship - Active ship details
+* GET /player/current-sector - Current sector information
+* POST /player/move/{sector_id} - Move to specified sector
+* GET /player/available-moves - Available movement destinations
+* GET /sectors/{sector_id}/planets - Planets in sector
+* GET /sectors/{sector_id}/ports - Trading ports in sector
+
+TRADING_ECONOMY:
+* POST /trading/buy - Purchase resources from port
+* POST /trading/sell - Sell resources to port
+* GET /trading/market/{port_id} - Market prices and availability
+* POST /trading/dock - Dock at trading port
+* POST /trading/undock - Leave trading port
+* GET /trading/history - Player trading transaction history
+
+FIRST_LOGIN:
+* GET /first-login/status - Check if first login flow required
+* POST /first-login/session - Start/resume first login session
+* POST /first-login/claim-ship - Claim starting ship
+* POST /first-login/dialogue/{exchange_id} - Submit dialogue response
+* POST /first-login/complete - Complete onboarding process
+* GET /first-login/debug - Debug session state
+* DELETE /first-login/session - Reset first login session
+
+PLANETARY_MANAGEMENT:
+* GET /api/planets/owned - Player-owned planets
+* GET /api/planets/{planetId} - Planet details and status
+* PUT /api/planets/{planetId}/allocate - Allocate colonists to tasks
+* POST /api/planets/{planetId}/buildings/upgrade - Upgrade structures
+* PUT /api/planets/{planetId}/defenses - Configure planetary defenses
+* POST /api/planets/genesis/deploy - Deploy genesis device
+* PUT /api/planets/{planetId}/specialize - Set planet specialization
+* GET /api/planets/{planetId}/siege-status - Check siege status
+
+TEAM_MANAGEMENT:
+* POST /teams/create - Create new team
+* GET /teams/{team_id} - Team information
+* PUT /teams/{team_id} - Update team settings
+* DELETE /teams/{team_id} - Disband team
+* GET /teams/{team_id}/members - Team member list
+* POST /teams/{team_id}/invite - Invite player to team
+* POST /teams/join - Join team by invitation
+* POST /teams/leave - Leave current team
+* DELETE /teams/{team_id}/members/{member_id} - Remove member
+* PUT /teams/{team_id}/members/{member_id}/role - Update member role
+* GET /teams/{team_id}/permissions - User permissions in team
+* POST /teams/{team_id}/transfer-leadership - Transfer team leadership
+
+TEAM_TREASURY:
+* POST /teams/{team_id}/treasury/deposit - Deposit funds
+* POST /teams/{team_id}/treasury/withdraw - Withdraw funds
+* POST /teams/{team_id}/treasury/transfer - Transfer to player
+* GET /teams/{team_id}/treasury - Treasury balance
+
+TEAM_COMMUNICATION:
+* GET /teams/{team_id}/messages - Team message history
+* POST /teams/{team_id}/messages - Send team message
+
+DRONE_MANAGEMENT:
+* POST /drones/ - Create new drone
+* GET /drones/ - Player's drone inventory
+* GET /drones/types - Available drone types
+* GET /drones/{drone_id} - Specific drone details
+* POST /drones/{drone_id}/deploy - Deploy drone to sector
+* POST /drones/{drone_id}/recall - Recall deployed drone
+* POST /drones/{drone_id}/repair - Repair damaged drone
+* POST /drones/{drone_id}/upgrade - Upgrade drone capabilities
+* POST /drones/combat/initiate - Start drone combat
+* GET /drones/deployments/ - Active deployments
+* GET /drones/sector/{sector_id} - Drones in sector
+* GET /drones/combat/history - Combat history
+* GET /drones/team/{team_id} - Team drone information
+
+FLEET_MANAGEMENT:
+* POST /api/fleets/create - Create new fleet
+* GET /api/fleets/ - Player fleet list
+* POST /api/fleets/{fleet_id}/ships/add - Add ship to fleet
+* DELETE /api/fleets/{fleet_id}/ships/{ship_id} - Remove ship from fleet
+* PUT /api/fleets/{fleet_id}/formation - Update fleet formation
+* POST /api/fleets/{fleet_id}/battle/initiate - Start fleet battle
+* GET /api/fleets/{fleet_id}/battle/status - Battle status
+
+COMBAT_SYSTEM:
+* POST /api/combat/engage - Initiate combat encounter
+* GET /api/combat/{combatId}/status - Combat status and results
+
+FACTION_SYSTEM:
+* GET /factions/ - All factions information
+* GET /factions/reputation - Player reputation with all factions
+* GET /factions/{faction_id}/reputation - Specific faction reputation
+* GET /factions/missions - Available faction missions
+* GET /factions/{faction_id}/missions - Faction-specific missions
+* POST /factions/{faction_id}/missions/accept - Accept faction mission
+* GET /factions/{faction_id}/territory - Faction controlled territory
+* GET /factions/{faction_id}/pricing-modifier - Faction pricing effects
+
+AI_TRADING_INTELLIGENCE:
+* GET /ai/recommendations - AI trading recommendations
+* GET /ai/recommendations/history - Recommendation history
+* POST /ai/recommendations/{recommendation_id}/feedback - Feedback on recommendations
+* GET /ai/market-analysis/{commodity_id} - Market analysis for commodity
+* POST /ai/optimize-route - Route optimization suggestions
+* GET /ai/profile - AI trading profile
+* PUT /ai/profile - Update AI preferences
+* POST /ai/profile/trade-update - Update trading behavior data
+* GET /ai/performance - AI performance metrics
+
+MESSAGING_SYSTEM:
+* POST /messages/send - Send message to player
+* GET /messages/inbox - Inbox messages
+* GET /messages/team/{team_id} - Team messages
+* PUT /messages/{message_id}/read - Mark message as read
+* DELETE /messages/{message_id} - Delete message
+* GET /messages/conversations - Conversation threads
+* POST /messages/{message_id}/flag - Flag inappropriate message
+
+WEBSOCKET_REAL_TIME:
+* WS /ws/connect?token={jwt} - Player WebSocket connection
+* WS /ws/admin?token={jwt} - Admin WebSocket connection
+* GET /ws/stats - Connection statistics (admin)
+* POST /ws/broadcast - Broadcast message (admin)
+* GET /ws/sector/{sector_id}/players - Players in sector (admin)
+* GET /ws/team/{team_id}/players - Team players online (admin)
+
+ADMIN_USER_MANAGEMENT:
+* GET /users/ - All user accounts
+* POST /users/ - Create user account
+* POST /users/admin - Create admin account
+* GET /users/{user_id} - Specific user details
+* PUT /users/{user_id} - Update user account
+* DELETE /users/{user_id} - Delete user account
+* PUT /users/{user_id}/password - Reset admin password
+
+ADMIN_DASHBOARD:
+* GET /admin/users - All users with statistics
+* GET /admin/players - All players with game data
+* GET /admin/colonies - All planetary colonies
+* GET /admin/teams - All teams and alliances
+* GET /admin/teams/analytics - Team performance analytics
+* GET /admin/stats - Administrative statistics dashboard
+* GET /admin/alliances - Alliance network data
+
+ADMIN_GALAXY_MANAGEMENT:
+* GET /admin/galaxy - Galaxy structure information
+* POST /admin/galaxy/generate - Generate new galaxy
+* GET /admin/galaxy/{galaxy_id}/regions - Galaxy regions
+* GET /admin/regions/{region_id}/clusters - Region clusters
+* GET /admin/clusters - All cluster data
+* GET /admin/sectors - All sector information
+* POST /admin/warp-tunnels/create - Create warp tunnel
+* DELETE /admin/galaxy/clear - Clear galaxy data
+* DELETE /admin/galaxy/{galaxy_id} - Delete specific galaxy
+
+ADMIN_DETAILED_MANAGEMENT:
+* GET /admin/sectors/{sector_id}/port - Sector port details
+* GET /admin/sectors/{sector_id}/planet - Sector planet details
+* GET /admin/sectors/{sector_id}/ships - Ships in sector
+* PATCH /admin/ports/{port_id} - Update port configuration
+
+ADMIN_ECONOMY_MANAGEMENT:
+* GET /admin/economy/market-data - Market data overview
+* GET /admin/economy/metrics - Economic health metrics
+* GET /admin/economy/price-alerts - Price alert system
+* GET /admin/economy/price-history/{commodity} - Commodity price history
+* POST /admin/economy/intervention - Economic intervention
+* GET /admin/economy/transactions - Recent transaction data
+* POST /admin/economy/create-alert - Create price alert
+* DELETE /admin/economy/alerts/{alert_id} - Delete price alert
+
+ADMIN_COMBAT_MANAGEMENT:
+* GET /admin/combat/logs - Combat log analysis
+* GET /admin/combat/stats - Combat statistics
+* GET /admin/combat/balance - Game balance metrics
+* POST /admin/combat/{combat_id}/resolve - Resolve combat dispute
+
+ADMIN_EVENT_MANAGEMENT:
+* GET /admin/events/ - Game events with filtering
+* GET /admin/events/stats - Event system statistics
+* GET /admin/events/templates - Event templates
+* POST /admin/events/ - Create new game event
+* PUT /admin/events/{event_id} - Update event configuration
+* POST /admin/events/{event_id}/activate - Activate event
+* POST /admin/events/{event_id}/deactivate - Deactivate event
+* DELETE /admin/events/{event_id} - Delete event
+
+ADMIN_AUDIT_SECURITY:
+* POST /admin/audit/log - Create audit log entry
+* GET /admin/audit/logs - Audit log query
+* GET /admin/audit/violations - Security violations
+* GET /admin/audit/users/{user_id}/activity - User activity audit
+
+STATUS_HEALTH_MONITORING:
+* GET /status/ - API status with debug information
+* GET /status/ping - Simple connectivity test
+* GET /status/version - API version information
+* GET /status/health - Comprehensive health check
+* GET /status/ai/providers - AI service provider status
+* GET /status/ai/openai - OpenAI API connectivity
+* GET /status/ai/anthropic - Anthropic API connectivity
+* GET /status/database - PostgreSQL database status
+
+TEST_ENDPOINTS:
+* GET /test/check-admin-exists - Check admin account exists (test only)
+* POST /test/create-admin - Create admin for testing (test only)
+
+SCHEMAS:
+* User: {id, username, email, created_at, is_admin, mfa_enabled}
+* Player: {user_id, current_ship_id, sector_id, credits, experience}
+* Ship: {id, name, type, health, cargo_capacity, current_cargo}
+* Sector: {id, name, x, y, z, planets[], ports[], warp_tunnels[]}
+* Team: {id, name, leader_id, members[], treasury_balance}
+* Drone: {id, type, health, deployment_status, owner_id}
+* Combat: {id, participants[], status, outcome, logs[]}
+
+ERROR_RESPONSES:
+* 400: Bad Request - Invalid input parameters
+* 401: Unauthorized - Missing or invalid authentication
+* 403: Forbidden - Insufficient permissions
+* 404: Not Found - Resource does not exist
+* 409: Conflict - Resource conflict (e.g., username taken)
+* 422: Unprocessable Entity - Validation errors
+* 429: Too Many Requests - Rate limit exceeded
+* 500: Internal Server Error - Server-side error
+
+RATE_LIMITS:
+* Authentication: 5 requests/minute per IP
+* Gameplay: 60 requests/minute per user
+* Trading: 30 requests/minute per user
+* Admin: 120 requests/minute per admin
+* WebSocket: 1 connection per user
+
+WEBSOCKET_EVENTS:
+* player_moved: Player changed sectors
+* combat_started: Combat encounter began
+* trade_completed: Trading transaction finished
+* team_message: New team message
+* system_announcement: Server announcement
+
+FILES:
+* services/gameserver/src/api/routes/auth.py:1-200
+* services/gameserver/src/api/routes/mfa.py:1-150
+* services/gameserver/src/api/routes/admin.py:1-500
+* services/gameserver/src/api/routes/player.py:1-200
+* services/gameserver/src/api/routes/trading.py:1-150
+* services/gameserver/src/api/routes/teams.py:1-300
+* services/gameserver/src/api/routes/drones.py:1-250
+* services/gameserver/src/api/routes/fleets.py:1-150
+* services/gameserver/src/api/routes/combat.py:1-100
+* services/gameserver/src/api/routes/factions.py:1-120
+* services/gameserver/src/api/routes/ai.py:1-180
+* services/gameserver/src/api/routes/messages.py:1-120
+* services/gameserver/src/api/routes/websocket.py:1-100
+* services/gameserver/src/api/routes/status.py:1-80
+* services/gameserver/src/auth/jwt.py:1-100
+* services/gameserver/src/auth/oauth.py:1-150
+
+EXAMPLES:
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"player1","password":"secret"}'
+
+curl -H "Authorization: Bearer TOKEN" \
+  http://localhost:8000/api/v1/player/state
+
+curl -X POST http://localhost:8000/api/v1/trading/buy \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"port_id":1,"commodity":"fuel","quantity":100}'

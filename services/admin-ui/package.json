@@ -30,6 +30,7 @@
   "scripts": {
     "dev": "vite",
     "dev:replit": "node disable-host-check.js",
+    "dev:watch": "node live-reload.js",
     "build": "tsc && vite build",
     "lint": "eslint src --ext ts,tsx",
     "preview": "vite preview",

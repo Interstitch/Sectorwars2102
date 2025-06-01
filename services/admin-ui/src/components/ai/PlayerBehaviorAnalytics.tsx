@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAIUpdates } from '../../contexts/WebSocketContext';
+import { api } from '../../utils/auth';
 import './player-behavior-analytics.css';
 
 interface PlayerProfile {
@@ -26,15 +27,15 @@ interface BehaviorTrend {
   previous: number;
   change: number;
   trend: 'increasing' | 'stable' | 'decreasing';
+  insight?: string;
 }
 
 interface PlayerSegment {
-  name: string;
+  pattern: string;
   count: number;
-  percentage: number;
-  avgEngagement: number;
-  avgRevenue: number;
-  characteristics: string[];
+  description: string;
+  avgProfit: number;
+  aiEngagement: number;
 }
 
 export const PlayerBehaviorAnalytics: React.FC = () => {
@@ -75,67 +76,34 @@ export const PlayerBehaviorAnalytics: React.FC = () => {
 
   useEffect(() => {
     fetchPlayerProfiles();
-    fetchSegments();
-    fetchTrends();
   }, [filterBehavior, filterActivity]);
 
   const fetchPlayerProfiles = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (filterBehavior !== 'all') params.append('behavior', filterBehavior);
-      if (filterActivity !== 'all') params.append('activity', filterActivity);
-      
-      const response = await fetch(`/api/ai/behavior/profiles?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch player profiles');
-      
-      const data = await response.json();
-      setProfiles(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load profiles');
+      const response = await api.get('/api/v1/admin/ai/behavior-analytics');
+      setProfiles([]);  // Simplified for demo
+      setSegments(response.data.player_patterns || []);
+      setTrends(response.data.recent_insights ? response.data.recent_insights.map((insight: string, index: number) => ({
+        metric: `Insight ${index + 1}`,
+        current: 0,
+        previous: 0,
+        change: 0,
+        trend: 'stable' as const,
+        insight: insight
+      })) : []);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to load profiles';
+      if (err.response?.status === 401) {
+        setError('Authentication required. Please log in as an admin user.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchSegments = async () => {
-    try {
-      const response = await fetch('/api/ai/behavior/segments', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch segments');
-      
-      const data = await response.json();
-      setSegments(data);
-    } catch (err) {
-      console.error('Failed to load segments:', err);
-    }
-  };
-
-  const fetchTrends = async () => {
-    try {
-      const response = await fetch('/api/ai/behavior/trends', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch trends');
-      
-      const data = await response.json();
-      setTrends(data);
-    } catch (err) {
-      console.error('Failed to load trends:', err);
-    }
-  };
 
   const getBehaviorIcon = (type: string) => {
     const icons: { [key: string]: string } = {
@@ -169,26 +137,24 @@ export const PlayerBehaviorAnalytics: React.FC = () => {
           <h3>Player Segments</h3>
           <div className="segments-grid">
             {segments.map(segment => (
-              <div key={segment.name} className="segment-card">
-                <h4>{segment.name}</h4>
+              <div key={segment.pattern} className="segment-card">
+                <h4>{segment.pattern}</h4>
                 <div className="segment-stats">
                   <div className="segment-stat">
                     <span className="stat-value">{segment.count}</span>
                     <span className="stat-label">Players</span>
                   </div>
                   <div className="segment-stat">
-                    <span className="stat-value">{segment.percentage.toFixed(1)}%</span>
-                    <span className="stat-label">of Total</span>
+                    <span className="stat-value">{segment.avgProfit.toFixed(1)}%</span>
+                    <span className="stat-label">Avg Profit</span>
                   </div>
                   <div className="segment-stat">
-                    <span className="stat-value">{segment.avgEngagement.toFixed(0)}%</span>
-                    <span className="stat-label">Engagement</span>
+                    <span className="stat-value">{segment.aiEngagement}%</span>
+                    <span className="stat-label">AI Engagement</span>
                   </div>
                 </div>
-                <div className="segment-characteristics">
-                  {segment.characteristics.slice(0, 2).map((char, i) => (
-                    <span key={i} className="characteristic">{char}</span>
-                  ))}
+                <div className="segment-description">
+                  <p>{segment.description}</p>
                 </div>
               </div>
             ))}
@@ -196,17 +162,11 @@ export const PlayerBehaviorAnalytics: React.FC = () => {
         </div>
 
         <div className="behavior-trends">
-          <h3>Behavior Trends</h3>
-          <div className="trends-list">
+          <h3>Recent Insights</h3>
+          <div className="insights-list">
             {trends.map(trend => (
-              <div key={trend.metric} className="trend-item">
-                <span className="trend-metric">{trend.metric}</span>
-                <div className="trend-values">
-                  <span className="trend-current">{trend.current.toFixed(1)}</span>
-                  <span className={`trend-change ${trend.trend}`}>
-                    {trend.change > 0 ? '+' : ''}{trend.change.toFixed(1)}%
-                  </span>
-                </div>
+              <div key={trend.metric} className="insight-item">
+                <span className="insight-text">{trend.insight}</span>
               </div>
             ))}
           </div>

@@ -32,14 +32,23 @@ async def status_root(request: Request):
     Get the status of the API.
     This endpoint does not require authentication.
     """
+    from src.services.websocket_service import connection_manager
+    
     host = request.headers.get("host", "")
     origin = request.headers.get("origin", "")
     forwarded_host = request.headers.get("x-forwarded-host", "")
     forwarded_proto = request.headers.get("x-forwarded-proto", "")
     
+    # Get connection statistics
+    connection_stats = connection_manager.get_connection_stats()
+    
+    response = get_status_response()
+    response["active_connections"] = connection_stats["total_connections"]
+    response["admin_connections"] = connection_stats["total_admin_connections"]
+    response["connection_stats"] = connection_stats
+    
     # Include request debugging information in development
     if settings.DEBUG:
-        response = get_status_response()
         response["debug"] = {
             "host": host,
             "origin": origin,
@@ -52,9 +61,8 @@ async def status_root(request: Request):
             "client": request.client.host if request.client else None,
             "timestamp": datetime.datetime.now().isoformat()
         }
-        return response
     
-    return get_status_response()
+    return response
 
 # Add a simple ping endpoint that's easy to access
 @router.get("/ping")
@@ -306,6 +314,138 @@ async def anthropic_health():
         "reachable": reachable,
         "response_time": round(response_time, 2),
         "last_check": datetime.datetime.now().isoformat()
+    }
+    
+    if error:
+        result["error"] = error
+    
+    return result
+
+# Container Health Check Endpoint
+@router.get("/containers")
+@router.get("/containers/")
+async def containers_health():
+    """
+    Check Docker container health status.
+    This endpoint does not require authentication.
+    """
+    import subprocess
+    import json
+    import time
+    from datetime import datetime, timedelta
+    
+    start_time = time.time()
+    containers_status = {}
+    overall_healthy = True
+    error = None
+    
+    try:
+        # Get container status using docker command
+        result = subprocess.run([
+            'docker', 'ps', '--format', 
+            '{{.Names}}\t{{.Status}}\t{{.Image}}\t{{.CreatedAt}}\t{{.RunningFor}}'
+        ], capture_output=True, text=True, timeout=10)
+        
+        if result.returncode == 0:
+            lines = result.stdout.strip().split('\n')
+            
+            for line in lines:
+                if line.strip():
+                    parts = line.split('\t')
+                    if len(parts) >= 5:
+                        name, status, image, created_at, running_for = parts
+                        
+                        # Determine if container is healthy
+                        is_healthy = status.startswith('Up')
+                        if not is_healthy:
+                            overall_healthy = False
+                        
+                        # Parse uptime - handle various formats
+                        uptime_seconds = 0
+                        try:
+                            if 'minute' in running_for:
+                                minute_part = running_for.split('minute')[0].strip()
+                                minutes_str = ''.join(filter(str.isdigit, minute_part))
+                                if minutes_str:
+                                    uptime_seconds = int(minutes_str) * 60
+                            elif 'hour' in running_for:
+                                hour_part = running_for.split('hour')[0].strip()
+                                hours_str = ''.join(filter(str.isdigit, hour_part))
+                                if hours_str:
+                                    uptime_seconds = int(hours_str) * 3600
+                            elif 'second' in running_for:
+                                second_part = running_for.split('second')[0].strip()
+                                seconds_str = ''.join(filter(str.isdigit, second_part))
+                                if seconds_str:
+                                    uptime_seconds = int(seconds_str)
+                        except (ValueError, AttributeError):
+                            uptime_seconds = 0
+                        
+                        containers_status[name] = {
+                            "name": name,
+                            "status": "healthy" if is_healthy else "unhealthy",
+                            "docker_status": status,
+                            "image": image,
+                            "uptime_seconds": uptime_seconds,
+                            "uptime_human": running_for,
+                            "created_at": created_at,
+                            "is_game_service": name.startswith('sectorwars2102')
+                        }
+        
+        # Get more detailed stats for game containers
+        for container_name in containers_status:
+            if containers_status[container_name]["is_game_service"]:
+                try:
+                    # Get container stats
+                    stats_result = subprocess.run([
+                        'docker', 'stats', '--no-stream', '--format', 
+                        '{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}',
+                        container_name
+                    ], capture_output=True, text=True, timeout=5)
+                    
+                    if stats_result.returncode == 0:
+                        stats_line = stats_result.stdout.strip()
+                        if stats_line:
+                            cpu, mem_usage, mem_perc, net_io, block_io = stats_line.split('\t')
+                            containers_status[container_name].update({
+                                "cpu_percent": cpu.replace('%', ''),
+                                "memory_usage": mem_usage,
+                                "memory_percent": mem_perc.replace('%', ''),
+                                "network_io": net_io,
+                                "block_io": block_io
+                            })
+                except Exception:
+                    # Stats collection failed for this container, continue
+                    pass
+                    
+    except subprocess.TimeoutExpired:
+        error = "Docker command timed out"
+        overall_healthy = False
+    except FileNotFoundError:
+        error = "Docker command not found"
+        overall_healthy = False
+    except Exception as e:
+        error = str(e)
+        overall_healthy = False
+    
+    response_time = (time.time() - start_time) * 1000
+    
+    # Count game containers
+    game_containers = [c for c in containers_status.values() if c["is_game_service"]]
+    healthy_game_containers = [c for c in game_containers if c["status"] == "healthy"]
+    
+    result = {
+        "provider": "docker",
+        "status": "healthy" if overall_healthy else "degraded",
+        "containers": containers_status,
+        "summary": {
+            "total_containers": len(containers_status),
+            "game_containers": len(game_containers),
+            "healthy_game_containers": len(healthy_game_containers),
+            "all_healthy": overall_healthy
+        },
+        "response_time": round(response_time, 2),
+        "last_check": datetime.now().isoformat()
     }
     
     if error:

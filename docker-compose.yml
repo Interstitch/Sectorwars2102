@@ -5,6 +5,7 @@ services:
       - "8080:8080"  # Also allow direct port 8080 access for Replit compatibility
     volumes:
       - ./services/gameserver:/app
+      - /var/run/docker.sock:/var/run/docker.sock  # Mount Docker socket for container monitoring
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - ENVIRONMENT=${ENVIRONMENT:-development}

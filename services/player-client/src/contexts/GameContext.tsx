@@ -172,29 +172,16 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Market
   const [marketInfo, setMarketInfo] = useState<MarketInfo | null>(null);
   
-  // Get API URL using the same logic as AuthContext
+  // Use Vite proxy for all API requests to avoid CORS issues
   const getApiUrl = () => {
     // If an environment variable is explicitly set, use it
     if (import.meta.env.VITE_API_URL) {
       return import.meta.env.VITE_API_URL;
     }
 
-    const windowUrl = window.location.origin;
-
-    // For GitHub Codespaces, use direct gameserver URL
-    if (windowUrl.includes('.app.github.dev')) {
-      // Replace port 3000 with 8080 for gameserver
-      const gameserverUrl = windowUrl.replace('-3000.app.github.dev', '-8080.app.github.dev');
-      return gameserverUrl;
-    }
-
-    // Local development
-    if (windowUrl.includes('localhost')) {
-      return 'http://localhost:8080';
-    }
-
-    // For other environments - default to localhost
-    return 'http://localhost:8080';
+    // Always use the current origin to leverage Vite proxy in Docker environments
+    // This ensures all API calls go through the Vite dev server proxy
+    return window.location.origin;  // Use current origin, which will use the proxy
   };
 
   // Set up axios with authorization header

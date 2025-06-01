@@ -6,19 +6,21 @@ import './pages.css';
 interface WarpTunnel {
   id: string;
   name: string;
-  source_sector_id: string;
-  target_sector_id: string;
-  source_sector_name?: string;
-  target_sector_name?: string;
-  stability: number;
-  energy_cost: number;
-  travel_time: number;
-  max_ship_size: string;
-  is_bidirectional: boolean;
-  is_active: boolean;
-  created_at: string;
-  last_maintenance: string;
-  usage_count: number;
+  origin_sector_id: number;
+  destination_sector_id: number;
+  origin_sector_name?: string;
+  destination_sector_name?: string;
+  type?: string;
+  status?: string;
+  stability?: number;
+  energy_cost?: number;
+  travel_time?: number;
+  turn_cost?: number;
+  max_ship_size?: string;
+  is_bidirectional?: boolean;
+  is_active?: boolean;
+  created_at?: string;
+  total_traversals?: number;
 }
 
 const WarpTunnelsManager: React.FC = () => {
@@ -50,8 +52,10 @@ const WarpTunnelsManager: React.FC = () => {
   // Filter and search logic
   const filteredWarpTunnels = warpTunnels.filter(tunnel => {
     const matchesSearch = tunnel.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tunnel.source_sector_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tunnel.target_sector_name?.toLowerCase().includes(searchTerm.toLowerCase());
+                         tunnel.origin_sector_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         tunnel.destination_sector_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         `Sector ${tunnel.origin_sector_id}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         `Sector ${tunnel.destination_sector_id}`.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesFilter = filterStatus === 'all' || 
                          (filterStatus === 'active' && tunnel.is_active) ||
@@ -153,21 +157,21 @@ const WarpTunnelsManager: React.FC = () => {
                 </td>
                 <td>
                   <div className="route-info">
-                    <span className="sector-name">{tunnel.source_sector_name || tunnel.source_sector_id}</span>
+                    <span className="sector-name">{tunnel.origin_sector_name || `Sector ${tunnel.origin_sector_id}`}</span>
                     <span className="route-arrow">{tunnel.is_bidirectional ? '↔' : '→'}</span>
-                    <span className="sector-name">{tunnel.target_sector_name || tunnel.target_sector_id}</span>
+                    <span className="sector-name">{tunnel.destination_sector_name || `Sector ${tunnel.destination_sector_id}`}</span>
                   </div>
                 </td>
                 <td>
-                  <span className={`stability ${getStabilityColor(tunnel.stability)}`}>
-                    {tunnel.stability}%
+                  <span className={`stability ${getStabilityColor(tunnel.stability || 0)}`}>
+                    {tunnel.stability || 0}%
                   </span>
                 </td>
-                <td>{tunnel.energy_cost.toLocaleString()} units</td>
-                <td>{tunnel.travel_time} turns</td>
+                <td>{(tunnel.energy_cost || 0).toLocaleString()} units</td>
+                <td>{tunnel.travel_time || 0} turns</td>
                 <td>
-                  <span className={`ship-size ${tunnel.max_ship_size.toLowerCase()}`}>
-                    {tunnel.max_ship_size}
+                  <span className={`ship-size ${tunnel.max_ship_size?.toLowerCase() || 'unknown'}`}>
+                    {tunnel.max_ship_size || 'Unknown'}
                   </span>
                 </td>
                 <td>
@@ -180,7 +184,7 @@ const WarpTunnelsManager: React.FC = () => {
                     {tunnel.is_active ? '✓ Active' : '✗ Inactive'}
                   </span>
                 </td>
-                <td>{tunnel.usage_count.toLocaleString()}</td>
+                <td>{(tunnel.total_traversals || 0).toLocaleString()}</td>
                 <td>
                   <div className="action-buttons">
                     <button className="view-btn" title="View Details">👁️</button>

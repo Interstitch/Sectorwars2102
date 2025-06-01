@@ -1,33 +1,25 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAIUpdates } from '../../contexts/WebSocketContext';
+import { api } from '../../utils/auth';
 import './route-optimization-display.css';
 
 interface OptimizedRoute {
   id: string;
   playerId: string;
   playerName: string;
-  shipId: string;
-  shipName: string;
-  currentSector: string;
-  targetSector: string;
-  purpose: 'trading' | 'combat' | 'exploration' | 'transport';
-  originalRoute: string[];
-  optimizedRoute: string[];
-  timeSaved: number; // in minutes
-  fuelSaved: number; // in units
-  profitIncrease: number; // percentage
-  hazards: string[];
-  recommendations: string[];
-  timestamp: string;
+  startSector: string;
+  route: string[];
+  estimatedProfit: number;
+  estimatedTime: number;
+  efficiency: number;
+  status: string;
 }
 
 interface RouteStats {
-  totalOptimizations: number;
-  avgTimeSaved: number;
-  avgFuelSaved: number;
-  avgProfitIncrease: number;
-  mostOptimizedRoute: string;
-  playersSaved: number;
+  total_routes_optimized: number;
+  avg_efficiency_improvement: number;
+  avg_profit_increase: number;
+  active_optimizations: number;
 }
 
 export const RouteOptimizationDisplay: React.FC = () => {
@@ -69,23 +61,15 @@ export const RouteOptimizationDisplay: React.FC = () => {
   const fetchActiveRoutes = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (filterPurpose !== 'all') {
-        params.append('purpose', filterPurpose);
+      const response = await api.get('/api/v1/admin/ai/route-optimization');
+      setActiveRoutes(response.data.active_optimizations || []);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to load routes';
+      if (err.response?.status === 401) {
+        setError('Authentication required. Please log in as an admin user.');
+      } else {
+        setError(errorMessage);
       }
-      
-      const response = await fetch(`/api/ai/routes/optimized?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch optimized routes');
-      
-      const data = await response.json();
-      setActiveRoutes(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load routes');
     } finally {
       setLoading(false);
     }
@@ -93,16 +77,8 @@ export const RouteOptimizationDisplay: React.FC = () => {
 
   const fetchRouteStats = async () => {
     try {
-      const response = await fetch('/api/ai/routes/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch route stats');
-      
-      const data = await response.json();
-      setRouteStats(data);
+      const response = await api.get('/api/v1/admin/ai/route-optimization');
+      setRouteStats(response.data.optimization_stats);
     } catch (err) {
       console.error('Failed to load route stats:', err);
     }
@@ -112,42 +88,29 @@ export const RouteOptimizationDisplay: React.FC = () => {
     // In a real implementation, this would render an actual map
     return (
       <div className="route-visualization">
-        <div className="route-comparison">
-          <div className="route-path original">
-            <h4>Original Route</h4>
-            <div className="route-nodes">
-              {route.originalRoute.map((sector, index) => (
-                <React.Fragment key={index}>
-                  <div className="route-node">{sector}</div>
-                  {index < route.originalRoute.length - 1 && <div className="route-connector">→</div>}
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-          <div className="route-path optimized">
-            <h4>Optimized Route</h4>
-            <div className="route-nodes">
-              {route.optimizedRoute.map((sector, index) => (
-                <React.Fragment key={index}>
-                  <div className="route-node optimized">{sector}</div>
-                  {index < route.optimizedRoute.length - 1 && <div className="route-connector">→</div>}
-                </React.Fragment>
-              ))}
-            </div>
+        <div className="route-path">
+          <h4>Optimized Route</h4>
+          <div className="route-nodes">
+            {route.route.map((sector, index) => (
+              <React.Fragment key={index}>
+                <div className="route-node optimized">{sector}</div>
+                {index < route.route.length - 1 && <div className="route-connector">→</div>}
+              </React.Fragment>
+            ))}
           </div>
         </div>
         <div className="route-benefits">
           <div className="benefit-item">
             <span className="benefit-icon">⏱️</span>
-            <span className="benefit-value">{route.timeSaved} min saved</span>
-          </div>
-          <div className="benefit-item">
-            <span className="benefit-icon">⛽</span>
-            <span className="benefit-value">{route.fuelSaved} fuel saved</span>
+            <span className="benefit-value">{route.estimatedTime.toFixed(1)} hours</span>
           </div>
           <div className="benefit-item">
             <span className="benefit-icon">💰</span>
-            <span className="benefit-value">+{route.profitIncrease}% profit</span>
+            <span className="benefit-value">{route.estimatedProfit.toLocaleString()} credits</span>
+          </div>
+          <div className="benefit-item">
+            <span className="benefit-icon">📊</span>
+            <span className="benefit-value">{route.efficiency}% efficiency</span>
           </div>
         </div>
       </div>
@@ -164,19 +127,19 @@ export const RouteOptimizationDisplay: React.FC = () => {
           {routeStats && (
             <>
               <div className="stat-item">
-                <span className="stat-value">{routeStats.totalOptimizations}</span>
+                <span className="stat-value">{routeStats.total_routes_optimized}</span>
                 <span className="stat-label">Routes Optimized</span>
               </div>
               <div className="stat-item">
-                <span className="stat-value">{routeStats.avgTimeSaved.toFixed(0)} min</span>
-                <span className="stat-label">Avg Time Saved</span>
+                <span className="stat-value">{routeStats.active_optimizations}</span>
+                <span className="stat-label">Active Optimizations</span>
               </div>
               <div className="stat-item">
-                <span className="stat-value">{routeStats.avgFuelSaved.toFixed(0)}</span>
-                <span className="stat-label">Avg Fuel Saved</span>
+                <span className="stat-value">+{routeStats.avg_efficiency_improvement.toFixed(1)}%</span>
+                <span className="stat-label">Avg Efficiency Gain</span>
               </div>
               <div className="stat-item">
-                <span className="stat-value">+{routeStats.avgProfitIncrease.toFixed(1)}%</span>
+                <span className="stat-value">+{routeStats.avg_profit_increase.toFixed(1)}%</span>
                 <span className="stat-label">Avg Profit Increase</span>
               </div>
             </>
@@ -202,11 +165,12 @@ export const RouteOptimizationDisplay: React.FC = () => {
               <thead>
                 <tr>
                   <th>Player</th>
-                  <th>Ship</th>
-                  <th>Purpose</th>
+                  <th>Start Sector</th>
                   <th>Route</th>
-                  <th>Savings</th>
-                  <th>Hazards</th>
+                  <th>Profit</th>
+                  <th>Time</th>
+                  <th>Efficiency</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -214,33 +178,31 @@ export const RouteOptimizationDisplay: React.FC = () => {
                 {activeRoutes.map(route => (
                   <tr key={route.id}>
                     <td>{route.playerName}</td>
-                    <td>{route.shipName}</td>
+                    <td>{route.startSector}</td>
                     <td>
-                      <span className={`purpose-badge ${route.purpose}`}>
-                        {route.purpose}
+                      <span className="route-summary">
+                        {route.route.length} sectors
                       </span>
                     </td>
                     <td>
-                      {route.currentSector} → {route.targetSector}
-                      <span className="route-hops">
-                        ({route.optimizedRoute.length} hops)
+                      <span className="profit-amount">
+                        {route.estimatedProfit.toLocaleString()} ₵
                       </span>
                     </td>
                     <td>
-                      <div className="savings-summary">
-                        <span>⏱️ {route.timeSaved}m</span>
-                        <span>⛽ {route.fuelSaved}</span>
-                        <span>💰 +{route.profitIncrease}%</span>
-                      </div>
+                      <span className="time-estimate">
+                        {route.estimatedTime.toFixed(1)}h
+                      </span>
                     </td>
                     <td>
-                      {route.hazards.length > 0 ? (
-                        <span className="hazard-count">
-                          ⚠️ {route.hazards.length}
-                        </span>
-                      ) : (
-                        <span className="safe">✓ Safe</span>
-                      )}
+                      <span className={`efficiency ${route.efficiency >= 80 ? 'high' : route.efficiency >= 60 ? 'medium' : 'low'}`}>
+                        {route.efficiency}%
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`status-badge ${route.status}`}>
+                        {route.status}
+                      </span>
                     </td>
                     <td>
                       <button 
@@ -272,33 +234,12 @@ export const RouteOptimizationDisplay: React.FC = () => {
               
               <div className="modal-body">
                 <div className="route-info">
-                  <h4>{selectedRoute.playerName} - {selectedRoute.shipName}</h4>
-                  <p>Purpose: {selectedRoute.purpose}</p>
+                  <h4>{selectedRoute.playerName}</h4>
+                  <p>Status: {selectedRoute.status}</p>
+                  <p>Efficiency: {selectedRoute.efficiency}%</p>
                 </div>
 
                 {renderRouteVisualization(selectedRoute)}
-
-                {selectedRoute.hazards.length > 0 && (
-                  <div className="hazards-section">
-                    <h4>⚠️ Hazards Detected</h4>
-                    <ul>
-                      {selectedRoute.hazards.map((hazard, index) => (
-                        <li key={index}>{hazard}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {selectedRoute.recommendations.length > 0 && (
-                  <div className="recommendations-section">
-                    <h4>💡 AI Recommendations</h4>
-                    <ul>
-                      {selectedRoute.recommendations.map((rec, index) => (
-                        <li key={index}>{rec}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
             </div>
           </div>

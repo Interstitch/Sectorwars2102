@@ -80,25 +80,19 @@ class WebSocketService {
   }
 
   private getWebSocketUrl(): string {
-    // Get the current protocol and host
+    // For Docker environments, always use localhost:8080 for WebSocket
+    // This works because the Docker ports are mapped to the host
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
     
-    // Check for GitHub Codespaces environment
-    if (host.includes('.app.github.dev')) {
-      console.log('WebSocket: GitHub Codespaces detected - using direct gameserver WebSocket');
-      // Replace port 3000 with 8080 for gameserver
-      const gameserverHost = host.replace('-3000.app.github.dev', '-8080.app.github.dev');
+    // In Docker/Codespaces, use the external port mapping
+    if (window.location.host.includes('.app.github.dev')) {
+      console.log('WebSocket: GitHub Codespaces detected - using external gameserver WebSocket');
+      // Use the external gameserver URL for WebSocket
+      const gameserverHost = window.location.host.replace('-3000.app.github.dev', '-8080.app.github.dev');
       return `${protocol}//${gameserverHost}/api/v1/ws/connect`;
     }
     
-    // Check if we're in development
-    if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
-      // Use direct gameserver URL
-      return `ws://localhost:8080/api/v1/ws/connect`;
-    }
-    
-    // For other environments - default to localhost gameserver
+    // For local development, use localhost
     return `ws://localhost:8080/api/v1/ws/connect`;
   }
 

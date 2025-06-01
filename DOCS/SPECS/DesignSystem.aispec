@@ -1,0 +1,196 @@
+OVERVIEW: Comprehensive design system specification for SectorWars 2102 Admin UI and Player Client, providing unified visual language, semantic design tokens, component patterns, and implementation guidelines for consistent user experience across both interfaces.
+
+FACTS:
+* Unified design system across Admin UI and Player Client with UI-specific customizations
+* CSS custom properties based architecture with semantic design tokens
+* Mobile-first responsive design with 4 breakpoints (mobile, tablet, desktop, large)
+* Full dark mode support via CSS custom properties and theme switching
+* Component library with 20+ reusable patterns and consistent naming conventions
+* Typography scale using Inter font with systematic sizing (xs to 4xl)
+* Color system with 50-900 scales and semantic tokens (primary, success, error, warning, info)
+* Spacing system using 4px increment scale (space-1 to space-20)
+* Accessibility compliant with proper contrast ratios and semantic structure
+* Performance optimized with minimal CSS bundle and efficient custom properties
+
+DESIGN_TOKENS:
+* Color tokens: --color-primary-500, --color-gray-100, --status-success, --status-error, --status-warning, --status-info
+* Typography tokens: --font-size-xs, --font-size-base, --font-size-lg, --font-weight-normal, --font-weight-semibold
+* Spacing tokens: --space-1 (0.25rem), --space-4 (1rem), --space-6 (1.5rem), --space-12 (3rem)
+* Border tokens: --border-radius-sm, --border-radius-md, --border-radius-lg
+* Shadow tokens: --shadow-sm, --shadow-md, --shadow-lg, --shadow-xl
+* Transition tokens: --transition-base, --transition-fast, --transition-slow
+
+SEMANTIC_COLORS:
+* Text: --text-primary, --text-secondary, --text-tertiary, --text-inverse
+* Background: --background-primary, --background-secondary, --surface-primary, --surface-secondary
+* Interactive: --interactive-primary, --interactive-secondary, --interactive-hover, --interactive-active
+* Status: --status-success, --status-error, --status-warning, --status-info
+* Border: --border-primary, --border-secondary, --border-accent
+
+COMPONENT_CLASSES:
+* Buttons: .btn, .btn-primary, .btn-secondary, .btn-ghost, .btn-danger, .btn-sm, .btn-lg
+* Cards: .card, .card-header, .card-body, .card-footer, .card-title, .card-subtitle
+* Forms: .form-input, .form-select, .form-textarea, .form-label, .form-error, .form-group
+* Layout: .page-container, .section-header, .grid, .grid-auto-fit, .flex, .items-center, .justify-between
+* Status: .badge, .badge-success, .badge-error, .status-dot, .status-dot.pulse
+* Tables: .table, .table-striped, .table-hover, .table-responsive
+* Typography: .text-xs, .text-base, .text-lg, .font-semibold, .text-primary, .text-secondary
+
+ADMIN_UI_SPECIFIC:
+* Theme: Professional, enterprise-grade interface with light/dark mode
+* Color scheme: Blue primary (#3b82f6), neutral grays, semantic status colors
+* Components: dashboard-stat-card, health-card, admin-table, system-metrics
+* Typography: Inter font, clear hierarchy, business-appropriate
+* Layout: Sidebar navigation, grid-based dashboards, modal overlays
+* Files: services/admin-ui/src/styles/design-system.css, components.css, layouts.css
+
+PLAYER_CLIENT_SPECIFIC:
+* Theme: Game-immersive cockpit interface with sci-fi aesthetics
+* Color scheme: Dark primary (#0f172a), blue accents, holographic effects
+* Components: cockpit-btn, hud-panel, game-card, resource-indicator
+* Typography: Inter font with game-appropriate styling, HUD elements
+* Layout: Game-first interface, responsive mobile design, touch-friendly
+* Special effects: Glow effects, animations, particle systems, 3D integration
+* Files: services/player-client/src/styles/design-system.css, themes/
+
+RESPONSIVE_BREAKPOINTS:
+* Mobile: 0-640px (single column, touch-optimized, collapsed navigation)
+* Tablet: 641-768px (2-column grids, adaptive layouts)
+* Desktop: 769-1024px (3-column grids, full navigation)
+* Large: 1025px+ (wide layouts, multiple columns, expanded content)
+
+COMPONENT_PATTERNS:
+```css
+/* Button Pattern */
+.btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--border-radius-md);
+  font-weight: var(--font-weight-semibold);
+  transition: var(--transition-base);
+}
+
+/* Card Pattern */
+.card {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Form Pattern */
+.form-input {
+  padding: var(--space-3);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--border-radius-md);
+  background: var(--background-primary);
+  color: var(--text-primary);
+}
+```
+
+DARK_MODE_IMPLEMENTATION:
+* Automatic detection: @media (prefers-color-scheme: dark)
+* Manual toggle: .dark class on document root
+* Token switching: CSS custom properties automatically adapt
+* Contrast preservation: All text/background combinations maintain accessibility
+* Component adaptation: All components automatically support both modes
+
+IMPLEMENTATION_RULES:
+* Always use semantic tokens instead of hardcoded values
+* Use .btn base class + modifier (.btn-primary) for all buttons
+* Apply .card pattern for all content containers
+* Use spacing tokens for all margins/padding (never hardcoded pixels)
+* Implement responsive patterns with utility classes
+* Maintain component modularity with consistent naming
+* Preserve accessibility with proper contrast ratios
+* Test dark mode for every component implementation
+
+MIGRATION_PATTERNS:
+* Replace hardcoded colors with semantic tokens
+* Convert custom CSS to design system classes
+* Remove individual CSS files after component conversion
+* Update imports to reference design system only
+* Maintain component functionality while updating styling
+* Test responsive behavior after conversion
+
+ADMIN_UI_CONVERSION:
+* Legacy classes: .health-card → .card, .stat-card → .dashboard-stat-card
+* Color updates: Use --text-primary instead of hardcoded #333
+* Button standardization: .btn-primary instead of custom button styles
+* Layout modernization: .grid .grid-auto-fit instead of custom grids
+* Form consistency: .form-input, .form-group patterns
+
+PLAYER_CLIENT_CONVERSION:
+* Preserve game aesthetics while adding consistency
+* Integrate with existing theme system (themes/types.ts)
+* Maintain cockpit theme visual effects
+* Convert fragmented CSS files to design system patterns
+* Enhance mobile experience with unified responsive system
+* Preserve Three.js integration and game-specific animations
+
+VALIDATION_CHECKLIST:
+* No hardcoded color values in components
+* All spacing uses design system tokens
+* Dark mode functions correctly
+* Mobile responsiveness maintained
+* Accessibility contrast ratios met
+* Component naming follows conventions
+* CSS file count reduced to design system files only
+* Performance maintained or improved
+
+ERROR_PREVENTION:
+* Never mix design system tokens with hardcoded values
+* Always test dark mode when implementing components
+* Maintain semantic meaning in token usage (primary for primary actions)
+* Avoid overriding design system variables in component CSS
+* Preserve existing functionality during styling updates
+* Test responsive behavior at all breakpoints
+
+PERFORMANCE_GUIDELINES:
+* Minimize CSS custom property usage per component
+* Use CSS cascade effectively with design tokens
+* Avoid deep nesting in component styles
+* Leverage browser caching with stable design system files
+* Optimize for critical rendering path
+* Bundle design system separately for caching
+
+FILES:
+* services/admin-ui/src/styles/design-system.css:1-500
+* services/admin-ui/src/styles/components.css:1-800
+* services/admin-ui/src/styles/layouts.css:1-400
+* services/player-client/src/styles/design-system.css:1-600
+* services/player-client/src/themes/types.ts:1-100
+* services/player-client/src/themes/ThemeProvider.tsx:1-150
+
+EXAMPLES:
+```tsx
+// Admin UI Component
+<div className="card">
+  <div className="card-header">
+    <h3 className="card-title">System Health</h3>
+  </div>
+  <div className="card-body">
+    <button className="btn btn-primary">Refresh</button>
+    <span className="badge badge-success">Online</span>
+  </div>
+</div>
+
+// Player Client Component
+<div className="card cockpit-panel">
+  <div className="card-body">
+    <button className="btn btn-primary cockpit-btn">Launch</button>
+    <div className="hud-indicator">
+      <span className="status-dot success pulse"></span>
+      Systems Online
+    </div>
+  </div>
+</div>
+
+// CSS Token Usage
+.custom-component {
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  padding: var(--space-4);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-sm);
+}
+```

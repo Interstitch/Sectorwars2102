@@ -695,33 +695,84 @@ class RouteOptimizer:
         min_profit_margin: float
     ) -> List[TradingOpportunity]:
         """Find arbitrage opportunities between two sectors"""
-        # Simplified implementation - would query actual market data
-        commodities = ["ore", "food", "tech", "fuel"]
+        # Real commodities from the Port model
+        commodities = ["ore", "organics", "equipment", "fuel", "luxury_goods", "gourmet_food", "exotic_technology"]
         opportunities = []
         
-        for commodity in commodities:
-            # Mock prices - real implementation would query database
-            buy_price = 100.0 + hash(f"{sector_a}{commodity}") % 50
-            sell_price = 120.0 + hash(f"{sector_b}{commodity}") % 40
+        try:
+            # Query ports in both sectors
+            from src.models.port import Port
+            from sqlalchemy import select
+            ports_a_query = select(Port).where(Port.sector_id == int(sector_a))
+            ports_b_query = select(Port).where(Port.sector_id == int(sector_b))
             
-            if sell_price > buy_price * (1 + min_profit_margin):
-                profit_per_unit = sell_price - buy_price
-                distance = await self._get_distance_between_sectors(db, sector_a, sector_b)
+            ports_a_result = await db.execute(ports_a_query)
+            ports_b_result = await db.execute(ports_b_query)
+            
+            ports_a = ports_a_result.scalars().all()
+            ports_b = ports_b_result.scalars().all()
+            
+            if not ports_a or not ports_b:
+                return opportunities
+            
+            # Check each commodity for trading opportunities
+            for commodity in commodities:
+                # Find best buy price in sector A (ports that sell this commodity)
+                best_buy_price = float('inf')
+                best_buy_port = None
+                for port in ports_a:
+                    commodity_data = port.commodities.get(commodity, {})
+                    if commodity_data.get('sells', False) and commodity_data.get('quantity', 0) > 0:
+                        current_price = commodity_data.get('current_price', commodity_data.get('base_price', 0))
+                        if current_price < best_buy_price:
+                            best_buy_price = current_price
+                            best_buy_port = port
                 
-                opportunity = TradingOpportunity(
-                    from_sector_id=sector_a,
-                    to_sector_id=sector_b,
-                    commodity_id=commodity,
-                    buy_price=buy_price,
-                    sell_price=sell_price,
-                    profit_per_unit=profit_per_unit,
-                    max_quantity=200,
-                    distance=distance,
-                    travel_time_hours=distance * self.time_per_distance,
-                    risk_factor=0.3,  # Mock risk
-                    confidence=0.8  # Mock confidence
-                )
-                opportunities.append(opportunity)
+                # Find best sell price in sector B (ports that buy this commodity)
+                best_sell_price = 0
+                best_sell_port = None
+                for port in ports_b:
+                    commodity_data = port.commodities.get(commodity, {})
+                    if commodity_data.get('buys', False):
+                        current_price = commodity_data.get('current_price', commodity_data.get('base_price', 0))
+                        if current_price > best_sell_price:
+                            best_sell_price = current_price
+                            best_sell_port = port
+                
+                # Check if profitable
+                if best_buy_port and best_sell_port and best_sell_price > best_buy_price * (1 + min_profit_margin):
+                    profit_per_unit = best_sell_price - best_buy_price
+                    distance = await self._get_distance_between_sectors(db, sector_a, sector_b)
+                    
+                    # Calculate risk factor based on sector conditions
+                    risk_factor = 0.1  # Base risk
+                    # Could add more risk calculations based on pirate activity, war zones, etc.
+                    
+                    # Calculate confidence based on market volatility
+                    avg_volatility = (best_buy_port.market_volatility + best_sell_port.market_volatility) / 2
+                    confidence = 1.0 - (avg_volatility / 100.0)  # Convert 0-100 to 0-1 scale
+                    
+                    opportunity = TradingOpportunity(
+                        from_sector_id=sector_a,
+                        to_sector_id=sector_b,
+                        commodity_id=commodity,
+                        buy_price=best_buy_price,
+                        sell_price=best_sell_price,
+                        profit_per_unit=profit_per_unit,
+                        max_quantity=min(
+                            best_buy_port.commodities[commodity].get('quantity', 0),
+                            best_sell_port.commodities[commodity].get('capacity', 0) - 
+                            best_sell_port.commodities[commodity].get('quantity', 0)
+                        ),
+                        distance=distance,
+                        travel_time_hours=distance * self.time_per_distance,
+                        risk_factor=risk_factor,
+                        confidence=confidence
+                    )
+                    opportunities.append(opportunity)
+                    
+        except Exception as e:
+            logger.error(f"Error finding arbitrage opportunities: {e}")
         
         return opportunities
     

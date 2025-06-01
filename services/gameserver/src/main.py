@@ -29,7 +29,6 @@ logger.info(f"Current directory: {os.getcwd()}")
 logger.info(f"sys.path: {sys.path}")
 logger.info(f"PYTHONPATH: {os.environ.get('PYTHONPATH', 'Not set')}")
 logger.info(f"CLIENT_ID_GITHUB: {os.environ.get('CLIENT_ID_GITHUB', 'Not set')}")
-logger.info(f"Is using mock GitHub: {settings.CLIENT_ID_GITHUB.startswith('mock_') if settings.CLIENT_ID_GITHUB else False}")
 
 # Define lifespan context manager for startup/shutdown events
 @asynccontextmanager
@@ -85,12 +84,11 @@ async def lifespan(app: FastAPI):
         logger.info(f"Database URL: ...@{hide_password(settings.get_db_url())}")
 
     # Print OAuth configuration
-    using_mock_github = settings.GITHUB_CLIENT_ID.startswith("mock_")
-    if using_mock_github:
-        logger.info("⚠️ WARNING: Using mock GitHub OAuth - simulating OAuth flow")
-        logger.info("To use real GitHub OAuth, set CLIENT_ID_GITHUB and CLIENT_SECRET_GITHUB environment variables")
+    if settings.GITHUB_CLIENT_ID:
+        logger.info("✅ GitHub OAuth credentials configured")
     else:
-        logger.info("✅ Using real GitHub OAuth credentials")
+        logger.info("⚠️ WARNING: No GitHub OAuth credentials configured")
+        logger.info("To enable GitHub OAuth, set CLIENT_ID_GITHUB and CLIENT_SECRET_GITHUB environment variables")
 
     # Print detected environment
     logger.info(f"Detected environment: {settings.detect_environment()}")
@@ -151,10 +149,18 @@ codespace_urls = get_allowed_origins()
 
 # For development, use a permissive CORS policy
 # In production, this should be more restrictive
+# Need to allow specific origins for credentials to work
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
-    allow_credentials=False,  # Must be False when using "*"
+    allow_origins=codespace_urls + [
+        "http://localhost:3000",
+        "http://localhost:8080", 
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8080",
+        "https://super-duper-carnival-qppjvq94q9vcxwqp-3000.app.github.dev",
+        "https://super-duper-carnival-qppjvq94q9vcxwqp-8080.app.github.dev"
+    ],
+    allow_credentials=True,  # Required for Authorization headers
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
@@ -223,9 +229,24 @@ async def add_cors_headers_and_fix_urls(request, call_next):
     # Continue with normal request processing
     response = await call_next(request)
 
-    # Add CORS headers to all responses
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Credentials"] = "false"
+    # Add CORS headers to all responses (let the middleware handle origins properly)
+    origin = request.headers.get("origin", "")
+    allowed_origins = codespace_urls + [
+        "http://localhost:3000",
+        "http://localhost:8080", 
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8080",
+        "https://super-duper-carnival-qppjvq94q9vcxwqp-3000.app.github.dev",
+        "https://super-duper-carnival-qppjvq94q9vcxwqp-8080.app.github.dev"
+    ]
+    
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    else:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Credentials"] = "false"
+    
     response.headers["Access-Control-Allow-Methods"] = "*"
     response.headers["Access-Control-Allow-Headers"] = "*"
     response.headers["Access-Control-Expose-Headers"] = "*"

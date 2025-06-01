@@ -428,11 +428,12 @@ class MovementService:
             })
         
         # Check for sector drones
-        if sector.drones_present > 0:
+        defense_drones = sector.defenses.get('defense_drones', 0) if sector.defenses else 0
+        if defense_drones > 0:
             encounters.append({
                 "type": "drones",
-                "count": sector.drones_present,
-                "threat_level": "low" if sector.drones_present < 10 else "medium"
+                "count": defense_drones,
+                "threat_level": "low" if defense_drones < 10 else "medium"
             })
         
         return encounters

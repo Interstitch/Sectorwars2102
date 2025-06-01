@@ -12,12 +12,10 @@ export default defineConfig({
     host: true, // Listen on all addresses
     port: 3001, // Restored to original port
     strictPort: true,
+    https: false, // Explicitly disable HTTPS
 
-    // Completely disable host checking in development mode
-    hmr: {
-      clientPort: 3001,
-      host: 'localhost'
-    },
+    // HMR configuration - disable in Codespaces due to port forwarding issues
+    hmr: process.env.CODESPACE_NAME ? false : true,
 
     // Direct configuration to allow any host
     cors: true,
@@ -73,6 +71,9 @@ export default defineConfig({
 
     watch: {
       usePolling: true,
+      // Enhanced file watching for Codespaces
+      interval: process.env.CODESPACE_NAME ? 1000 : 100, // Faster polling in Codespaces
+      binaryInterval: 1000,
     },
 
     // Disable FS restriction

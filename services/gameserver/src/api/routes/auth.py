@@ -695,7 +695,7 @@ async def github_callback(request: Request, code: str, register: bool = False, d
                 <li>Callback URL: <code>{callback_url}</code></li>
                 <li>Redirect URI: <code>{redirect_uri}</code></li>
                 <li>Frontend URL: <code>{settings.FRONTEND_URL}</code></li>
-                <li>Mock GitHub: <code>{"Yes" if settings.GITHUB_CLIENT_ID.startswith("mock_") else "No"}</code></li>
+                <li>GitHub OAuth: <code>{"Configured" if settings.GITHUB_CLIENT_ID else "Not configured"}</code></li>
             </ul>
             <p>Try going back to the <a href="{settings.FRONTEND_URL}">login page</a> and trying again.</p>
         </div>
