@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true, // Listen on all addresses
-    port: 3001, // Restored to original port
+    port: 3000, // Fixed to match Docker port mapping
     strictPort: true,
     https: false, // Explicitly disable HTTPS
 

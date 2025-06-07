@@ -42,6 +42,8 @@ const ColonizationManagement = lazy(() => import('./components/pages/Colonizatio
   default: module.ColonizationManagement
 })));
 const AITradingDashboard = lazy(() => import('./components/pages/AITradingDashboard'));
+const CentralNexusManager = lazy(() => import('./components/pages/CentralNexusManager'));
+const RegionalGovernorDashboard = lazy(() => import('./components/pages/RegionalGovernorDashboard'));
 
 // Helper component for protected lazy routes
 const ProtectedLazyRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => (
@@ -89,6 +91,10 @@ function App() {
                 <Route path="universe/planets" element={<ProtectedLazyRoute element={<PlanetsManager />} />} />
                 <Route path="universe/ports" element={<ProtectedLazyRoute element={<PortsManager />} />} />
                 <Route path="universe/warptunnels" element={<ProtectedLazyRoute element={<WarpTunnelsManager />} />} />
+                <Route path="nexus" element={<ProtectedLazyRoute element={<CentralNexusManager />} />} />
+
+                {/* Regional Governance Routes */}
+                <Route path="regional-governor" element={<ProtectedLazyRoute element={<RegionalGovernorDashboard />} />} />
 
                 {/* Redirect root to dashboard */}
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />

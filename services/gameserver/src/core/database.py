@@ -51,10 +51,10 @@ def get_db() -> Generator:
         db.close()
 
 
-# Async dependency to get DB session
-async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
+# Dependency to get async DB session
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """
-    Async dependency function that yields async db session and ensures
+    Dependency function that yields async db session and ensures
     it's closed after request is processed.
     """
     async with AsyncSessionLocal() as session:
@@ -62,3 +62,7 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
             yield session
         finally:
             await session.close()
+
+
+# Alias for consistency
+get_async_db = get_async_session

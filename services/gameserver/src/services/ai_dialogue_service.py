@@ -4,6 +4,8 @@ AI-Powered Dialogue Service for First Login Experience
 This service integrates with LLM APIs to provide dynamic, contextual guard dialogue
 during the first login shipyard scenario. It analyzes player responses and generates
 appropriate follow-up questions based on the guard's personality and security protocols.
+
+Enhanced with internationalization support for multilingual AI responses.
 """
 
 import asyncio
@@ -15,6 +17,8 @@ from dataclasses import dataclass
 from enum import Enum
 import os
 from datetime import datetime
+
+from src.services.translation_service import TranslationService
 
 logger = logging.getLogger(__name__)
 

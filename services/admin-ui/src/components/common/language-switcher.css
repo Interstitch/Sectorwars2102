@@ -1,0 +1,234 @@
+/* Language Switcher Styles */
+
+.language-switcher {
+  position: relative;
+  display: inline-block;
+}
+
+.language-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--background-secondary, #2a2a2a);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 0.375rem;
+  color: var(--text-primary, #ffffff);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  min-width: 120px;
+}
+
+.language-button:hover {
+  background: var(--background-hover, #3a3a3a);
+  border-color: var(--border-hover, #555);
+}
+
+.language-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.language-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.language-text {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-arrow {
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+.language-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--background-secondary, #2a2a2a);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  margin-top: 0.25rem;
+  overflow: hidden;
+  min-width: 280px;
+}
+
+.language-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  border: none;
+  color: var(--text-primary, #ffffff);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-align: left;
+}
+
+.language-option:hover {
+  background: var(--background-hover, #3a3a3a);
+}
+
+.language-option.active {
+  background: var(--primary-color, #4a9eff);
+  color: var(--primary-text, #ffffff);
+}
+
+.language-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.language-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.language-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.language-english {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-top: 0.125rem;
+}
+
+.completion-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  margin-left: 1rem;
+}
+
+.completion-bar {
+  width: 60px;
+  height: 4px;
+  background: var(--border-color, #444);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.completion-fill {
+  height: 100%;
+  background: var(--success-color, #22c55e);
+  transition: width 0.3s ease;
+}
+
+.completion-text {
+  font-size: 0.625rem;
+  opacity: 0.7;
+}
+
+.current-indicator {
+  color: var(--success-color, #22c55e);
+  font-weight: bold;
+  margin-left: 0.5rem;
+}
+
+.language-footer {
+  padding: 0.5rem 0.75rem;
+  background: var(--background-tertiary, #1a1a1a);
+  border-top: 1px solid var(--border-color, #444);
+  text-align: center;
+}
+
+.language-footer small {
+  color: var(--text-secondary, #aaa);
+  font-size: 0.75rem;
+}
+
+.language-loading {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1001;
+  background: var(--background-secondary, #2a2a2a);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  margin-top: 0.25rem;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.language-loading span {
+  color: var(--text-secondary, #aaa);
+  font-size: 0.875rem;
+}
+
+/* RTL Support */
+[dir="rtl"] .language-switcher {
+  direction: rtl;
+}
+
+[dir="rtl"] .language-dropdown {
+  left: auto;
+  right: 0;
+}
+
+[dir="rtl"] .language-text {
+  text-align: right;
+}
+
+[dir="rtl"] .completion-indicator {
+  margin-left: 0;
+  margin-right: 1rem;
+}
+
+[dir="rtl"] .current-indicator {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .language-button {
+    --background-secondary: #2a2a2a;
+    --background-hover: #3a3a3a;
+    --background-tertiary: #1a1a1a;
+    --border-color: #444;
+    --border-hover: #555;
+    --text-primary: #ffffff;
+    --text-secondary: #aaa;
+  }
+}
+
+/* Light theme adjustments */
+@media (prefers-color-scheme: light) {
+  .language-button {
+    --background-secondary: #f8f9fa;
+    --background-hover: #e9ecef;
+    --background-tertiary: #ffffff;
+    --border-color: #dee2e6;
+    --border-hover: #adb5bd;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+  }
+}

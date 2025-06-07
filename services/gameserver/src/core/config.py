@@ -18,13 +18,32 @@ class Settings(BaseSettings):
     TESTING: bool = os.environ.get("TESTING", "False").lower() == "true"
     DEVELOPMENT_MODE: bool = os.environ.get("ENVIRONMENT", "development").lower() == "development"
     
-    JWT_SECRET: str = os.environ.get("JWT_SECRET", "your-secret-key")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24 hours
-    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", "30"))  # 30 days
+    # Security Configuration - CRITICAL: These MUST be set in production
+    JWT_SECRET: str = os.environ.get("JWT_SECRET")  # No default - MUST be set
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))  # Reduced to 1 hour
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", "7"))  # Reduced to 7 days
 
-    # Admin credentials
-    ADMIN_USERNAME: str = os.environ.get("ADMIN_USERNAME", "admin")
-    ADMIN_PASSWORD: str = os.environ.get("ADMIN_PASSWORD", "admin")  # Changed from "adminpassword"
+    # Admin credentials - CRITICAL: These MUST be set in production
+    ADMIN_USERNAME: str = os.environ.get("ADMIN_USERNAME")  # No default - MUST be set
+    ADMIN_PASSWORD: str = os.environ.get("ADMIN_PASSWORD")  # No default - MUST be set
+    
+    def __init__(self, **kwargs):
+        """Initialize settings with security validation"""
+        super().__init__(**kwargs)
+        self._validate_security_config()
+    
+    def _validate_security_config(self):
+        """Validate critical security configuration"""
+        if not self.JWT_SECRET:
+            raise ValueError("JWT_SECRET environment variable is required for security")
+        if len(self.JWT_SECRET) < 32:
+            raise ValueError("JWT_SECRET must be at least 32 characters for security")
+        if not self.ADMIN_USERNAME:
+            raise ValueError("ADMIN_USERNAME environment variable is required")
+        if not self.ADMIN_PASSWORD:
+            raise ValueError("ADMIN_PASSWORD environment variable is required")
+        if len(self.ADMIN_PASSWORD) < 12:
+            raise ValueError("ADMIN_PASSWORD must be at least 12 characters for security")
     
     # AI Provider Configuration
     OPENAI_API_KEY: Optional[str] = os.environ.get("OPENAI_API_KEY")
@@ -37,6 +56,14 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = os.environ.get("OPENAI_MODEL", "gpt-3.5-turbo")
     ANTHROPIC_MODEL: str = os.environ.get("ANTHROPIC_MODEL", "claude-3-sonnet-20240229")
     AI_DIALOGUE_ENABLED: bool = os.environ.get("AI_DIALOGUE_ENABLED", "true").lower() == "true"
+
+    # PayPal Configuration
+    PAYPAL_CLIENT_ID: str = os.environ.get("PAYPAL_CLIENT_ID", "")
+    PAYPAL_CLIENT_SECRET: str = os.environ.get("PAYPAL_CLIENT_SECRET", "")
+    PAYPAL_GALACTIC_CITIZEN_PLAN_ID: str = os.environ.get("PAYPAL_GALACTIC_CITIZEN_PLAN_ID", "")
+    PAYPAL_REGIONAL_OWNER_PLAN_ID: str = os.environ.get("PAYPAL_REGIONAL_OWNER_PLAN_ID", "")
+    PAYPAL_NEXUS_PREMIUM_PLAN_ID: str = os.environ.get("PAYPAL_NEXUS_PREMIUM_PLAN_ID", "")
+    PAYPAL_WEBHOOK_ID: str = os.environ.get("PAYPAL_WEBHOOK_ID", "")
 
     # Development Environment Type
     DEV_ENVIRONMENT: str = os.environ.get("DEV_ENVIRONMENT", "")  # local, replit, codespaces
@@ -70,6 +97,11 @@ class Settings(BaseSettings):
     DATABASE_URL_PROD: Optional[PostgresDsn] = None
     SQLALCHEMY_POOL_SIZE: int = 10
     SQLALCHEMY_MAX_OVERFLOW: int = 20
+    
+    # Redis Configuration
+    REDIS_URL: str = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    REDIS_CACHE_TTL: int = int(os.environ.get("REDIS_CACHE_TTL", "3600"))  # 1 hour default
+    REDIS_SESSION_TTL: int = int(os.environ.get("REDIS_SESSION_TTL", "86400"))  # 24 hours default
 
     def detect_environment(self) -> str:
         """Detect the development environment type."""
@@ -205,3 +237,7 @@ if not os.environ.get("DATABASE_URL"):
 
 # Create settings instance
 settings = Settings()
+
+def get_config() -> Settings:
+    """Get the configuration settings instance."""
+    return settings

@@ -59,7 +59,7 @@ FEATURES/ → GUIDES/ → STATUS/
       ARCHIVE/ (all decisions flow here)
 ```
 
-## 📋 Directory Structure
+## 📋 Directory Structure (Updated 2025-06-07)
 
 ```
 DOCS/
@@ -67,32 +67,47 @@ DOCS/
 ├── SPECS/              # AISPEC format, AI-optimized
 │   ├── GameServer.aispec
 │   ├── Database.aispec
-│   └── ...
-├── API/                # Complete API documentation
+│   ├── Architecture.aispec
+│   ├── AuthSystem.aispec
+│   └── DesignSystem.aispec
+├── API/                # Complete API documentation  
 │   ├── GameServer.aispec
-│   ├── AdminUI.aispec
+│   ├── MULTI_REGIONAL_API_SPECIFICATION.md
 │   └── examples/
 ├── ARCHITECTURE/       # Technical system design
-│   ├── overview.md
-│   ├── database-design.md
+│   ├── DOCKER_ARCHITECTURE.md
+│   ├── data-models/ (comprehensive entity definitions)
 │   └── diagrams/
-├── FEATURES/           # Business requirements
-│   ├── combat-system.md
-│   ├── trading-system.md
-│   └── ...
+├── FEATURES/           # Business requirements & implementations
+│   ├── ADMIN_UI.md
+│   ├── AI_TRADING_INTELLIGENCE.md
+│   ├── MULTI_REGIONAL_RESTRUCTURING_IMPLEMENTATION.md
+│   ├── I18N_IMPLEMENTATION_COMPLETE.md
+│   └── [30+ feature specifications]
 ├── GUIDES/             # Implementation tutorials
-│   ├── getting-started.md
-│   ├── adding-features.md
-│   └── deployment.md
+│   ├── DOCKER_COMPOSE_GUIDE.md
+│   └── [deployment & setup guides]
 ├── STATUS/             # Live development tracking
-│   ├── current-sprint.md
-│   ├── blockers.md
-│   └── progress/
-└── ARCHIVE/            # Historical decisions
-    ├── 2025/
-    │   ├── 05/
-    │   └── 06/
-    └── decisions/
+│   ├── development/ (active development status)
+│   │   ├── multi-regional-restructuring/
+│   │   ├── design-system/
+│   │   └── enhanced-player-analytics/
+│   └── progress/ (milestone tracking)
+├── AUDIT/              # Security & quality audits
+│   ├── AUDIT_EXECUTIVE_SUMMARY.md
+│   ├── AUDIT_PLAN.md
+│   └── COMPREHENSIVE_AUDIT_REPORT.md
+└── ARCHIVE/            # Historical decisions & completed work
+    └── 2025/
+        └── 06/
+            ├── brainstorm.md
+            ├── ideas.md
+            ├── modern-patterns-research.md
+            ├── dev-journal/
+            ├── development-plans/
+            ├── implementations/
+            ├── retrospectives/
+            └── completed/
 ```
 
 ## 🎨 Document Templates
@@ -139,15 +154,16 @@ EXAMPLES: Minimal working examples
 - **STATUS/**: Updated daily by development team
 - **ARCHIVE/**: Append-only, never modified
 
-## 🚀 Migration Plan
+## ✅ Recent Organization Improvements (2025-06-07)
 
-1. **Phase 1**: Create new directory structure
-2. **Phase 2**: Migrate AISPEC files to SPECS/
-3. **Phase 3**: Consolidate API documentation to API/
-4. **Phase 4**: Move feature docs to FEATURES/
-5. **Phase 5**: Archive old development documentation
-6. **Phase 6**: Create implementation guides
-7. **Phase 7**: Set up maintenance automation
+**Root Directory Cleanup Completed**:
+- Moved `DOCKER_COMPOSE_GUIDE.md` to `GUIDES/`
+- Archived `ideas.md` and `modern-patterns-research.md` to `ARCHIVE/2025/06/`
+- Consolidated `development-plans/` into archive structure
+- Eliminated duplicate `ARCHIVE/archive/` directory
+- All loose files now properly categorized
+
+**Current Status**: Documentation structure fully organized and maintained according to the 7-layer architecture.
 
 ---
-*Documentation Architecture v1.0 - Created: 2025-06-01*
+*Documentation Architecture v1.1 - Updated: 2025-06-07*

@@ -67,6 +67,7 @@ async def get_current_admin_user(
 # Aliases for get_current_admin_user to match naming convention in admin routes
 get_current_admin = get_current_admin_user
 require_admin = get_current_admin_user
+require_auth = get_current_user  # Alias for authentication requirement
 
 # Allow both OPTIONS and other methods
 # This is needed for CORS preflight requests in GitHub Codespaces

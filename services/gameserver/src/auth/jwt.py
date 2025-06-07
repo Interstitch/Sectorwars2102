@@ -51,8 +51,9 @@ def create_tokens(user_id: str, db: Session) -> tuple[str, str]:
     access_token = create_access_token(user_id)
     refresh_token = create_refresh_token(user_id, db)
     
-    print(f"Generated access token (first 20 chars): {access_token[:20]}...")
-    print(f"Generated refresh token: {refresh_token}")
+    # SECURITY: Never log tokens in production - only log success/failure
+    if settings.DEVELOPMENT_MODE:
+        print(f"Generated tokens for user: {user_id}")
     
     return access_token, refresh_token
 

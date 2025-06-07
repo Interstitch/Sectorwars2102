@@ -107,14 +107,14 @@ class Galaxy(Base):
     description = Column(String, nullable=False, default="A standard galaxy with 500 sectors")
     
     # Relationships
-    regions = relationship("Region", back_populates="galaxy", cascade="all, delete-orphan")
+    regions = relationship("GalaxyRegion", back_populates="galaxy", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Galaxy {self.name} - {self.statistics.get('total_sectors', 0)} sectors>"
     
     def update_statistics(self):
         """Update the galaxy statistics based on related entities"""
-        from src.models.region import Region
+        from src.models.region import Region as PlayerRegion
         from src.models.cluster import Cluster
         from src.models.sector import Sector
         from src.models.port import Port
@@ -127,8 +127,8 @@ class Galaxy(Base):
         pass
 
 
-class Region(Base):
-    __tablename__ = "regions"
+class GalaxyRegion(Base):
+    __tablename__ = "galaxy_regions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
@@ -221,4 +221,4 @@ class Region(Base):
     clusters = relationship("Cluster", back_populates="region", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<Region {self.name} ({self.type.name}) - {self.sector_count} sectors>"
+        return f"<GalaxyRegion {self.name} ({self.type.name}) - {self.sector_count} sectors>"

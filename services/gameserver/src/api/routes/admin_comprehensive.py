@@ -21,7 +21,7 @@ from src.models.planet import Planet
 from src.models.port import Port, PortStatus
 from src.models.sector import Sector
 from src.models.cluster import Cluster
-from src.models.galaxy import Galaxy, Region
+from src.models.galaxy import Galaxy, GalaxyRegion
 from src.models.warp_tunnel import WarpTunnel
 from src.models.team import Team
 from src.services.galaxy_service import GalaxyService

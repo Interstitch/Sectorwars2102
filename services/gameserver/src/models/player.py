@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from src.models.genesis_device import GenesisDevice
     from src.models.resource import MarketTransaction
     from src.models.first_login import FirstLoginSession, PlayerFirstLoginState
+    from src.models.region import Region, RegionalMembership, InterRegionalTravel
 
 
 class Player(Base):
@@ -46,6 +47,11 @@ class Player(Base):
     first_login = Column(JSONB, nullable=False, default={"completed": False})
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)  # When the player was created
     is_active = Column(Boolean, default=True, nullable=False)  # Player can be deactivated in-game
+    
+    # Multi-regional fields
+    home_region_id = Column(UUID(as_uuid=True), ForeignKey("regions.id"), nullable=True)
+    current_region_id = Column(UUID(as_uuid=True), ForeignKey("regions.id"), nullable=True)
+    is_galactic_citizen = Column(Boolean, nullable=False, default=False)
 
     # Relationships
     user = relationship("User", back_populates="player")
@@ -76,6 +82,12 @@ class Player(Base):
     # sessions = relationship("PlayerSession", back_populates="player", cascade="all, delete-orphan")
     # activities = relationship("PlayerActivity", cascade="all, delete-orphan")
     
+    # Multi-regional relationships
+    home_region = relationship("Region", foreign_keys=[home_region_id])
+    current_region = relationship("Region", foreign_keys=[current_region_id])
+    regional_memberships = relationship("RegionalMembership", back_populates="player", cascade="all, delete-orphan")
+    inter_regional_travels = relationship("InterRegionalTravel", back_populates="player", cascade="all, delete-orphan")
+    
     # AI Trading System relationships
     trading_profile = relationship("PlayerTradingProfile", back_populates="player", uselist=False, cascade="all, delete-orphan")
     ai_recommendations = relationship("AIRecommendation", back_populates="player", cascade="all, delete-orphan")
@@ -100,4 +112,58 @@ class Player(Base):
             return self.nickname
         if self.user:
             return self.user.username
-        return "Unknown Player" 
+        return "Unknown Player"
+    
+    # Multi-regional methods
+    @property
+    def can_travel_between_regions(self) -> bool:
+        """Check if player can travel between regions"""
+        return self.is_galactic_citizen or len(self.regional_memberships) > 1
+    
+    def get_regional_membership(self, region_id: str) -> Optional['RegionalMembership']:
+        """Get player's membership in specific region"""
+        for membership in self.regional_memberships:
+            if str(membership.region_id) == region_id:
+                return membership
+        return None
+    
+    def get_reputation_in_region(self, region_id: str) -> int:
+        """Get player's reputation score in specific region"""
+        membership = self.get_regional_membership(region_id)
+        return membership.reputation_score if membership else 0
+    
+    def can_vote_in_region(self, region_id: str) -> bool:
+        """Check if player can vote in region's elections/referendums"""
+        membership = self.get_regional_membership(region_id)
+        return membership.can_vote if membership else False
+    
+    def join_region(self, region_id: str, membership_type: str = "visitor") -> 'RegionalMembership':
+        """Create membership in a region"""
+        from .region import RegionalMembership
+        membership = RegionalMembership(
+            player_id=self.id,
+            region_id=region_id,
+            membership_type=membership_type
+        )
+        self.regional_memberships.append(membership)
+        return membership
+    
+    def leave_region(self, region_id: str) -> bool:
+        """Remove membership from a region"""
+        membership = self.get_regional_membership(region_id)
+        if membership:
+            self.regional_memberships.remove(membership)
+            return True
+        return False
+    
+    def travel_to_region(self, destination_region_id: str, travel_method: str = "platform_gate") -> 'InterRegionalTravel':
+        """Initiate travel to another region"""
+        from .region import InterRegionalTravel
+        travel = InterRegionalTravel(
+            player_id=self.id,
+            source_region_id=self.current_region_id,
+            destination_region_id=destination_region_id,
+            travel_method=travel_method
+        )
+        self.inter_regional_travels.append(travel)
+        return travel 

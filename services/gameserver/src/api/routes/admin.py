@@ -11,7 +11,7 @@ from src.core.database import get_db
 from src.auth.dependencies import get_current_admin
 from src.models.user import User
 from src.models.player import Player
-from src.models.galaxy import Galaxy, Region
+from src.models.galaxy import Galaxy, GalaxyRegion
 from src.models.cluster import Cluster
 from src.models.sector import Sector
 from src.models.warp_tunnel import WarpTunnel

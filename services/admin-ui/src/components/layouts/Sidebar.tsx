@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import LogoutButton from '../auth/LogoutButton';
 import SystemHealthStatus from '../ui/SystemHealthStatus';
+import LanguageSwitcher from '../common/LanguageSwitcher';
 
 interface NavGroup {
   id: string;
@@ -40,7 +41,16 @@ const Sidebar: React.FC = () => {
         { to: '/universe/planets', label: 'Planets', icon: '🏙️' },
         { to: '/colonies', label: 'Colonization', icon: '🚀' },
         { to: '/universe/ports', label: 'Ports', icon: '🏢' },
-        { to: '/universe/warptunnels', label: 'Warp Tunnels', icon: '🌀' }
+        { to: '/universe/warptunnels', label: 'Warp Tunnels', icon: '🌀' },
+        { to: '/nexus', label: 'Central Nexus', icon: '🌟' }
+      ]
+    },
+    {
+      id: 'regional',
+      label: 'Regional Governance',
+      icon: '🏛️',
+      items: [
+        { to: '/regional-governor', label: 'Governor Dashboard', icon: '👑' }
       ]
     },
     {
@@ -135,6 +145,7 @@ const Sidebar: React.FC = () => {
       <div className="sidebar-footer">
         <div style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           <SystemHealthStatus />
+          <LanguageSwitcher />
           <LogoutButton />
         </div>
       </div>

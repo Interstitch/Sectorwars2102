@@ -173,7 +173,7 @@ class NEXUSSwarmSystem:
         # ARCHITECT - Master of system design
         agents[NEXUSAgent.ARCHITECT] = AgentPersonality(
             agent_type=NEXUSAgent.ARCHITECT,
-            name="Athena",  # Named after the goddess of wisdom and strategy
+            name="Architect",  # Master of system design and software architecture
             core_traits={
                 PersonalityTrait.ANALYTICAL: 0.95,
                 PersonalityTrait.CREATIVE: 0.8,

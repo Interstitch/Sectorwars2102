@@ -1,0 +1,331 @@
+.paypal-subscription-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.paypal-subscription-container h2 {
+  color: #1a365d;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.error-message {
+  background-color: #fed7d7;
+  color: #c53030;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #feb2b2;
+}
+
+/* Current Subscriptions */
+.current-subscriptions {
+  margin-bottom: 40px;
+}
+
+.current-subscriptions h3 {
+  color: #2d3748;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.subscription-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.subscription-info h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.2em;
+}
+
+.subscription-amount {
+  font-size: 1.1em;
+  font-weight: bold;
+  margin: 5px 0;
+}
+
+.subscription-status {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-active {
+  background-color: #48bb78;
+  color: white;
+}
+
+.status-suspended {
+  background-color: #ed8936;
+  color: white;
+}
+
+.status-cancelled {
+  background-color: #e53e3e;
+  color: white;
+}
+
+.status-expired {
+  background-color: #718096;
+  color: white;
+}
+
+.cancel-button {
+  background-color: #e53e3e;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background-color: #c53030;
+}
+
+.cancel-button:disabled {
+  background-color: #a0aec0;
+  cursor: not-allowed;
+}
+
+/* Subscription Plans */
+.subscription-plans {
+  margin-bottom: 40px;
+}
+
+.subscription-plans h3 {
+  color: #2d3748;
+  margin-bottom: 30px;
+  text-align: center;
+  font-size: 1.5em;
+}
+
+.plan-card {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 25px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.plan-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.plan-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.plan-header h4 {
+  color: #1a365d;
+  margin: 0;
+  font-size: 1.4em;
+}
+
+.plan-price {
+  font-size: 1.3em;
+  font-weight: bold;
+  color: #667eea;
+  background: #edf2f7;
+  padding: 8px 16px;
+  border-radius: 20px;
+}
+
+.plan-description {
+  color: #4a5568;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 25px 0;
+}
+
+.plan-features li {
+  color: #2d3748;
+  padding: 8px 0;
+  padding-left: 25px;
+  position: relative;
+  border-bottom: 1px solid #f7fafc;
+}
+
+.plan-features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #48bb78;
+  font-weight: bold;
+}
+
+/* Region Name Input */
+.region-name-input {
+  margin-bottom: 20px;
+}
+
+.region-name-input label {
+  display: block;
+  margin-bottom: 8px;
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.region-name-input input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1em;
+  transition: border-color 0.2s;
+}
+
+.region-name-input input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.region-name-error {
+  color: #e53e3e;
+  font-size: 0.9em;
+  margin-top: 5px;
+}
+
+.region-name-success {
+  color: #48bb78;
+  font-size: 0.9em;
+  margin-top: 5px;
+  font-weight: 600;
+}
+
+/* Subscribe Button */
+.subscribe-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-size: 1.1em;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.subscribe-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.subscribe-button:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Information Section */
+.subscription-info {
+  background: #f7fafc;
+  padding: 25px;
+  border-radius: 12px;
+  border-left: 5px solid #667eea;
+}
+
+.subscription-info h4 {
+  color: #1a365d;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.subscription-info ul {
+  color: #4a5568;
+  line-height: 1.6;
+}
+
+.subscription-info li {
+  margin-bottom: 8px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .paypal-subscription-container {
+    padding: 15px;
+  }
+  
+  .subscription-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+  }
+  
+  .plan-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+  
+  .plan-price {
+    align-self: center;
+  }
+}
+
+/* Loading States */
+.subscribe-button:disabled {
+  position: relative;
+  overflow: hidden;
+}
+
+.subscribe-button:disabled::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}

@@ -7,7 +7,7 @@
 
 ## 🎯 Phase Overview
 
-Phase 2 implements the core regional management infrastructure, enabling the creation, provisioning, and administration of new 500-sector regions. This phase introduces the Regional Governor role and associated management tools.
+Phase 2 implements the core regional management infrastructure, enabling the creation, provisioning, and administration of new 500-sector regions using Docker containers for database isolation. This phase introduces the Regional Governor role and PayPal subscription management.
 
 ## 📋 Week-by-Week Breakdown
 
@@ -30,13 +30,20 @@ class RegionalProvisioningService:
         # Validate uniqueness and ownership
         await self._validate_region_creation(name, owner_id)
         
+        # Create PayPal subscription
+        subscription = await self._create_paypal_subscription(owner_id)
+        
         # Create region record
         region = await self._create_region_record(
             name=name,
             display_name=display_name,
             owner_id=owner_id,
-            config=config
+            config=config,
+            paypal_subscription_id=subscription.id
         )
+        
+        # Create dedicated Docker database
+        await self._create_regional_database_container(region)
         
         # Generate spatial structure
         await self._generate_region_space(region)

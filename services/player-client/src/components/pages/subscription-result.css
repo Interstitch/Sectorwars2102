@@ -1,0 +1,300 @@
+.subscription-result-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.result-card {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.result-icon {
+  font-size: 4em;
+  margin-bottom: 20px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.result-card h2 {
+  color: #1a365d;
+  font-size: 2em;
+  margin-bottom: 15px;
+}
+
+.result-card p {
+  color: #4a5568;
+  font-size: 1.1em;
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
+
+/* Success State */
+.result-card.success .result-icon {
+  color: #48bb78;
+}
+
+.result-card.success h2 {
+  color: #22543d;
+}
+
+/* Error State */
+.result-card.error .result-icon {
+  color: #e53e3e;
+}
+
+.result-card.error h2 {
+  color: #742a2a;
+}
+
+/* Cancelled State */
+.result-card.cancelled .result-icon {
+  color: #ed8936;
+}
+
+.result-card.cancelled h2 {
+  color: #7b341e;
+}
+
+/* Loading State */
+.result-card.loading .loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Subscription Summary */
+.subscription-summary {
+  background: #f7fafc;
+  border-radius: 12px;
+  padding: 25px;
+  margin: 30px 0;
+  border-left: 5px solid #667eea;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-item .label {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.summary-item .value {
+  color: #4a5568;
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.value.status-active {
+  color: #48bb78;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+/* Next Steps */
+.next-steps {
+  text-align: left;
+  margin: 30px 0;
+}
+
+.next-steps h3 {
+  color: #1a365d;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.next-steps ul {
+  list-style: none;
+  padding: 0;
+}
+
+.next-steps li {
+  color: #2d3748;
+  padding: 8px 0;
+  font-size: 1.05em;
+}
+
+.next-steps li::before {
+  margin-right: 10px;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 15px;
+  margin: 30px 0;
+  flex-wrap: wrap;
+}
+
+.continue-button {
+  flex: 1;
+  min-width: 200px;
+  padding: 15px 25px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.continue-button.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.continue-button.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.continue-button.secondary {
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.continue-button.secondary:hover {
+  background: #667eea;
+  color: white;
+}
+
+.continue-button:not(.primary):not(.secondary) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.continue-button:not(.primary):not(.secondary):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+/* Support Info */
+.support-info {
+  background: #edf2f7;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 30px;
+}
+
+.support-info p {
+  margin: 0;
+  color: #4a5568;
+  font-size: 0.95em;
+}
+
+.support-info strong {
+  color: #2d3748;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .subscription-result-container {
+    padding: 15px;
+  }
+  
+  .result-card {
+    padding: 25px;
+  }
+  
+  .result-card h2 {
+    font-size: 1.5em;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .continue-button {
+    min-width: auto;
+  }
+  
+  .summary-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 5px;
+  }
+  
+  .summary-item .value {
+    word-break: break-all;
+  }
+}
+
+/* Special animation for success state */
+.result-card.success {
+  position: relative;
+  overflow: hidden;
+}
+
+.result-card.success::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(72, 187, 120, 0.1) 0%, transparent 70%);
+  animation: successGlow 3s ease-in-out;
+  pointer-events: none;
+}
+
+@keyframes successGlow {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}

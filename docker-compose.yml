@@ -1,68 +1,520 @@
+version: '3.8'
+
 services:
-  gameserver:
-    build: ./services/gameserver
+  # ================================
+  # DATABASES
+  # ================================
+  
+  # Development Database (Simple local PostgreSQL)
+  database:
+    image: postgres:15-alpine
+    container_name: sectorwars-database
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sectorwars_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev_password_123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - postgres_backups:/var/lib/postgresql/backups
+      - ./services/database/init:/docker-entrypoint-initdb.d
+      - ./services/database/config:/etc/postgresql
     ports:
-      - "8080:8080"  # Also allow direct port 8080 access for Replit compatibility
+      - "${DB_PORT:-5433}:5432"
+    networks:
+      - sectorwars-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-sectorwars_dev}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    profiles:
+      - development
+      - default
+
+  # Central Nexus Database (Multi-regional production)
+  central-nexus-db:
+    image: postgres:15-alpine
+    container_name: sectorwars-central-nexus-db
+    environment:
+      POSTGRES_DB: ${NEXUS_DB_NAME:-central_nexus}
+      POSTGRES_USER: ${NEXUS_DB_USER:-nexus_admin}
+      POSTGRES_PASSWORD: ${NEXUS_DB_PASSWORD:-nexus_secure_password_123}
+    volumes:
+      - central_nexus_data:/var/lib/postgresql/data
+      - ./services/gameserver/sql/init-central-nexus.sql:/docker-entrypoint-initdb.d/01-init.sql
+    ports:
+      - "${NEXUS_DB_PORT:-5433}:5432"
+    networks:
+      - nexus-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${NEXUS_DB_USER:-nexus_admin} -d ${NEXUS_DB_NAME:-central_nexus}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    profiles:
+      - multi-regional
+      - production
+
+  # Regional Database Template
+  regional-db-template:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${REGION_NAME:-default_region}
+      POSTGRES_USER: ${REGION_DB_USER:-region_admin}
+      POSTGRES_PASSWORD: ${REGION_DB_PASSWORD:-region_secure_password_123}
+    volumes:
+      - ./services/gameserver/sql/init-region.sql:/docker-entrypoint-initdb.d/01-init.sql
+    networks:
+      - nexus-network
+    profiles:
+      - regional-template
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${REGION_DB_USER:-region_admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ================================
+  # CACHE & MESSAGING
+  # ================================
+  
+  # Redis for Real-time Messaging & Session Cache (Development + Production)
+  redis-cache:
+    image: redis:7-alpine
+    container_name: sectorwars-redis-cache
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_dev_password_123}
+    volumes:
+      - redis_cache_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - sectorwars-network
+      - nexus-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_dev_password_123}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    profiles:
+      - development
+      - default
+      - multi-regional
+      - production
+      
+  # Redis for Cross-Regional Communication (Production Only)
+  redis-nexus:
+    image: redis:7-alpine
+    container_name: sectorwars-redis-nexus
+    command: redis-server --appendonly yes --requirepass ${REDIS_NEXUS_PASSWORD:-redis_nexus_password_123} --port 6380
+    volumes:
+      - redis_nexus_data:/data
+    ports:
+      - "${REDIS_NEXUS_PORT:-6380}:6380"
+    networks:
+      - nexus-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6380", "-a", "${REDIS_NEXUS_PASSWORD:-redis_nexus_password_123}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    profiles:
+      - multi-regional
+      - production
+
+  # ================================
+  # GAME SERVERS
+  # ================================
+  
+  # Development Game Server
+  gameserver:
+    build: 
+      context: ./services/gameserver
+    container_name: sectorwars-gameserver
+    ports:
+      - "${GAMESERVER_PORT:-8080}:8080"
     volumes:
       - ./services/gameserver:/app
-      - /var/run/docker.sock:/var/run/docker.sock  # Mount Docker socket for container monitoring
+      - gameserver_data:/app/data
+      - gameserver_logs:/app/logs
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_dev_password_123}@redis-cache:6379/0
       - ENVIRONMENT=${ENVIRONMENT:-development}
-      - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
-      - DEBUG=${DEBUG:-true}
-      - CLIENT_ID_GITHUB=${CLIENT_ID_GITHUB:-mock_github_client_id}
-      - CLIENT_SECRET_GITHUB=${CLIENT_SECRET_GITHUB:-mock_github_client_secret}
+      - JWT_SECRET=${JWT_SECRET}
+      - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - DEBUG=${DEBUG:-false}
+      - CLIENT_ID_GITHUB=${CLIENT_ID_GITHUB}
+      - CLIENT_SECRET_GITHUB=${CLIENT_SECRET_GITHUB}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - STEAM_API_KEY=${STEAM_API_KEY}
       - API_BASE_URL=${API_BASE_URL:-http://localhost:8080}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - DEV_ENVIRONMENT=${DEV_ENVIRONMENT:-local}
-      - CODESPACE_NAME=${CODESPACE_NAME:-}
-      # AI Dialogue Service Configuration
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - CODESPACE_NAME=${CODESPACE_NAME}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - AI_DIALOGUE_ENABLED=${AI_DIALOGUE_ENABLED:-true}
-      - AI_DIALOGUE_PROVIDER=${AI_DIALOGUE_PROVIDER:-anthropic}
-      - AI_DIALOGUE_MODEL=${AI_DIALOGUE_MODEL:-claude-3-sonnet-20240229}
-      - AI_DIALOGUE_FALLBACK=${AI_DIALOGUE_FALLBACK:-true}
-      # Testing configuration - explicitly set to false for containers
-      - TESTING_FROM_HOST=false
+      - AI_PROVIDER_PRIMARY=${AI_PROVIDER_PRIMARY:-openai}
+      - AI_PROVIDER_SECONDARY=${AI_PROVIDER_SECONDARY:-anthropic}
+      - AI_PROVIDER_FALLBACK=${AI_PROVIDER_FALLBACK:-manual}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-3.5-turbo}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-3-sonnet-20240229}
+      - TESTING_FROM_HOST=${TESTING_FROM_HOST:-false}
     restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
     networks:
       - sectorwars-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/status/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    profiles:
+      - development
+      - default
 
-  player-client:
-    build: ./services/player-client
+  # Central Nexus Game Server (Multi-regional)
+  central-nexus-server:
+    build:
+      context: ./services/gameserver
+      dockerfile: Dockerfile
+      args:
+        - ENVIRONMENT=${ENVIRONMENT:-production}
+    container_name: sectorwars-central-nexus-server
+    environment:
+      - DATABASE_URL=postgresql://${NEXUS_DB_USER:-nexus_admin}:${NEXUS_DB_PASSWORD:-nexus_secure_password_123}@central-nexus-db:5432/${NEXUS_DB_NAME:-central_nexus}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_secure_password_123}@redis-nexus:6379/0
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - SERVICE_TYPE=central-nexus
+      - REGION_ID=central-nexus
+      - JWT_SECRET=${JWT_SECRET}
+      - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
+      - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET}
+      - PAYPAL_GALACTIC_CITIZEN_PLAN_ID=${PAYPAL_GALACTIC_CITIZEN_PLAN_ID}
+      - PAYPAL_REGIONAL_OWNER_PLAN_ID=${PAYPAL_REGIONAL_OWNER_PLAN_ID}
+      - PAYPAL_WEBHOOK_ID=${PAYPAL_WEBHOOK_ID}
+      - PAYPAL_MODE=${PAYPAL_MODE:-live}
+      - ENABLE_CROSS_REGIONAL_API=true
+      - NEXUS_ADMIN_MODE=true
+    volumes:
+      - ./services/gameserver/logs:/app/logs
+      - nexus_assets:/app/assets
     ports:
-      - "3000:3000"
+      - "${CENTRAL_NEXUS_PORT:-8080}:8080"
+    networks:
+      - nexus-network
+      - regional-network
+    depends_on:
+      central-nexus-db:
+        condition: service_healthy
+      redis-nexus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/status/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - multi-regional
+      - production
+
+  # Regional Game Server Template
+  regional-server-template:
+    build:
+      context: ./services/gameserver
+      dockerfile: Dockerfile
+      args:
+        - ENVIRONMENT=${ENVIRONMENT:-production}
+    environment:
+      - DATABASE_URL=postgresql://${REGION_DB_USER:-region_admin}:${REGION_DB_PASSWORD:-region_secure_password_123}@${REGION_NAME:-default-region}-db:5432/${REGION_NAME:-default_region}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_secure_password_123}@redis-nexus:6379/1
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - SERVICE_TYPE=regional-server
+      - REGION_ID=${REGION_NAME:-default-region}
+      - REGION_OWNER_ID=${REGION_OWNER_ID}
+      - JWT_SECRET=${JWT_SECRET}
+      - CENTRAL_NEXUS_URL=http://central-nexus-server:8080
+      - ENABLE_CROSS_REGIONAL_API=true
+      - REGIONAL_ISOLATION=true
+    volumes:
+      - ./services/gameserver/logs:/app/logs
+      - regional_assets:/app/assets
+    networks:
+      - nexus-network
+      - regional-network
+    profiles:
+      - regional-template
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/status/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ================================
+  # FRONTEND APPLICATIONS
+  # ================================
+  
+  # Player Client
+  player-client:
+    build: 
+      context: ./services/player-client
+      args:
+        - ENVIRONMENT=${ENVIRONMENT:-development}
+    container_name: sectorwars-player-client
+    ports:
+      - "${PLAYER_CLIENT_PORT:-3000}:3000"
     volumes:
       - ./services/player-client:/app
       - /app/node_modules
+      - player_client_assets:/app/build
     environment:
-      - API_URL=http://gameserver:8080
       - NODE_ENV=${NODE_ENV:-development}
+      - REACT_APP_API_BASE_URL=${API_BASE_URL:-http://localhost:8080}
+      - REACT_APP_ENVIRONMENT=${ENVIRONMENT:-development}
+      - REACT_APP_MULTI_REGIONAL=${MULTI_REGIONAL:-false}
+      - REACT_APP_PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
     restart: unless-stopped
     depends_on:
       - gameserver
     networks:
       - sectorwars-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - development
+      - default
+      - multi-regional
+      - production
 
+  # Admin UI
   admin-ui:
-    build: ./services/admin-ui
+    build: 
+      context: ./services/admin-ui
+      args:
+        - ENVIRONMENT=${ENVIRONMENT:-development}
+    container_name: sectorwars-admin-ui
     ports:
-      - "3001:3001"
+      - "${ADMIN_UI_PORT:-3001}:3000"
     volumes:
       - ./services/admin-ui:/app
       - /app/node_modules
+      - admin_ui_assets:/app/build
     environment:
-      - API_URL=http://gameserver:8080
-      - PORT=3001
       - NODE_ENV=${NODE_ENV:-development}
+      - PORT=${ADMIN_UI_INTERNAL_PORT:-3000}
+      - REACT_APP_API_BASE_URL=${API_BASE_URL:-http://localhost:8080}
+      - REACT_APP_ENVIRONMENT=${ENVIRONMENT:-development}
+      - REACT_APP_NEXUS_MODE=${NEXUS_MODE:-false}
+      - VITE_API_URL=${API_BASE_URL:-http://localhost:8080}/api/v1
+      - VITE_WS_URL=${WS_BASE_URL:-ws://localhost:8080}/ws
     restart: unless-stopped
     depends_on:
       - gameserver
     networks:
       - sectorwars-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - development
+      - default
+      - multi-regional
+      - production
+
+  # ================================
+  # INFRASTRUCTURE SERVICES
+  # ================================
+  
+  # Nginx Gateway (Load Balancer / Reverse Proxy)
+  nginx-gateway:
+    build:
+      context: ./services/nginx-gateway
+      dockerfile: Dockerfile
+    container_name: sectorwars-nginx-gateway
+    volumes:
+      - ./services/nginx-gateway/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    networks:
+      - sectorwars-network
+      - nexus-network
+      - regional-network
+    depends_on:
+      - gameserver
+      - player-client
+      - admin-ui
+    restart: unless-stopped
+    profiles:
+      - development
+      - default
+      - multi-regional
+      - production
+
+  # Regional Management Service
+  region-manager:
+    build:
+      context: ./services/region-manager
+      dockerfile: Dockerfile
+    container_name: sectorwars-region-manager
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres_dev_password_123@database:5432/sectorwars_dev}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_dev_password_123}@redis-cache:6379/1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - JWT_SECRET=${JWT_SECRET}
+      - API_BASE_URL=${API_BASE_URL:-http://localhost:8080}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./services/region-manager/templates:/app/templates
+      - ./services/region-manager/logs:/app/logs
+      - ./services/region-manager/src:/app/src
+    networks:
+      - sectorwars-network
+      - nexus-network
+    depends_on:
+      database:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+      gameserver:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "${REGION_MANAGER_PORT:-8081}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - development
+      - default
+      - multi-regional
+
+  # ================================
+  # MONITORING & ANALYTICS
+  # ================================
+  
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sectorwars-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - nexus-network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+      - production
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sectorwars-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin_secure_password_123}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "${GRAFANA_PORT:-3002}:3000"
+    networks:
+      - nexus-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    profiles:
+      - monitoring
+      - production
+
+# ================================
+# NETWORKS
+# ================================
 
 networks:
   sectorwars-network:
     driver: bridge
+    
+  nexus-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${NEXUS_SUBNET:-172.20.0.0/16}
+        
+  regional-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${REGIONAL_SUBNET:-172.21.0.0/16}
+
+# ================================
+# VOLUMES
+# ================================
+
+volumes:
+  # Development volumes
+  postgres_data:
+    driver: local
+  postgres_backups:
+    driver: local
+  redis_cache_data:
+    driver: local
+  gameserver_data:
+    driver: local
+  gameserver_logs:
+    driver: local
+  nginx_logs:
+    driver: local
+    
+  # Multi-regional volumes
+  central_nexus_data:
+    driver: local
+  redis_nexus_data:
+    driver: local
+  nexus_assets:
+    driver: local
+  regional_assets:
+    driver: local
+  admin_ui_assets:
+    driver: local
+  player_client_assets:
+    driver: local
+    
+  # Monitoring volumes
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local

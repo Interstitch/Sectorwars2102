@@ -8,40 +8,41 @@
 
 The multi-regional architecture transforms SectorWars 2102 from a monolithic single-galaxy game into a distributed, scalable platform supporting unlimited regional instances while maintaining game integrity and performance.
 
-## 🎯 Core Design Principles
+## 🎯 Core Design Principles (Self-Hosted)
 
 ### 1. Regional Isolation
-- Each region operates as an independent game instance
+- Each region operates as an independent Docker container
 - No direct database access between regions
 - All inter-regional operations go through controlled APIs
 - Regional data sovereignty maintained
 
-### 2. Scalability First
-- Horizontal scaling at regional level
-- Database sharding by region_id
-- Stateless application servers
+### 2. Single-Server Scalability
+- Vertical scaling on 64 vCPU/64GB server
+- Docker container orchestration
+- PostgreSQL database per region (containerized)
 - Event-driven architecture
 
 ### 3. Performance Optimization
 - Sub-100ms response times within regions
-- Intelligent caching at multiple layers
-- Read replicas for each region
-- CDN for static assets
+- Local Redis caching (containerized)
+- Nginx reverse proxy for static assets
+- Local SSD storage for databases
 
 ### 4. Security by Design
 - Zero-trust architecture
 - End-to-end encryption
 - Regional access control
 - Comprehensive audit logging
+- Local certificate management
 
 ## 🔧 System Components
 
-### Application Architecture
+### Application Architecture (Single Server)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        Load Balancer                         │
-│                    (Global, Geographic)                      │
+│                    Nginx Load Balancer                       │
+│                    (Local, Port-based)                       │
 └─────────────────┬───────────────────────┬───────────────────┘
                   │                       │
         ┌─────────▼─────────┐   ┌────────▼─────────┐
@@ -54,12 +55,14 @@ The multi-regional architecture transforms SectorWars 2102 from a monolithic sin
 ┌───▼────┐  ┌─────────┐  ┌─────▼───┐   │
 │Region A│  │Region B │  │Region C │   │
 │Services│  │Services │  │Services │   │
+│:8001   │  │:8002    │  │:8003    │   │
 └───┬────┘  └────┬────┘  └────┬────┘   │
     │            │             │        │
-┌───▼────┐  ┌────▼────┐  ┌────▼────┐  ┌▼─────────┐
-│ DB-A   │  │  DB-B   │  │  DB-C   │  │ Nexus-DB │
-│(Shard) │  │ (Shard) │  │ (Shard) │  │ (Master) │
-└────────┘  └─────────┘  └─────────┘  └──────────┘
+┌───▼────────────┐  ┌──▼────────┐  ┌──▼────────┐  ┌▼─────────┐
+│PostgreSQL-A    │  │Postgres   │  │Postgres   │  │Postgres  │
+│:5432           │  │B:5433     │  │C:5434     │  │-Nexus    │
+│(Docker)        │  │(Docker)   │  │(Docker)   │  │:5435     │
+└────────────────┘  └───────────┘  └───────────┘  └──────────┘
 ```
 
 ### Service Layer Architecture
@@ -74,7 +77,7 @@ services/
 │   └── social_service.py       # Regional social
 ├── platform/                   # Platform-wide services
 │   ├── auth_service.py         # Authentication
-│   ├── billing_service.py      # Subscriptions
+│   ├── paypal_service.py       # PayPal subscriptions
 │   ├── travel_service.py       # Inter-regional
 │   └── nexus_service.py        # Central hub
 └── shared/                     # Shared utilities
@@ -150,47 +153,50 @@ class CrossRegionalDataService:
 
 ## 🚀 Performance Architecture
 
-### Caching Strategy
+### Caching Strategy (Self-Hosted)
 
 ```yaml
 # Multi-layer caching configuration
 caching:
-  cdn:
-    provider: cloudflare
-    cache_static: 1 year
-    cache_api: 0  # No CDN caching for API
+  reverse_proxy:
+    provider: nginx
+    static_cache: 1 year
+    api_cache: 0  # No proxy caching for API
+    gzip_compression: true
+    brotli_compression: true
     
   application:
-    provider: redis
+    provider: redis_docker
+    port: 6379
     layers:
       - name: hot_cache
         ttl: 60s
-        size: 1GB
+        size: 2GB  # Increased for single server
         items: [active_sectors, player_positions]
       - name: warm_cache
         ttl: 5m
-        size: 5GB
+        size: 8GB  # Increased for single server
         items: [market_prices, port_inventory]
       - name: cold_cache
         ttl: 1h
-        size: 20GB
+        size: 16GB  # Increased for single server
         items: [player_stats, historical_data]
         
   database:
-    query_cache: 256MB
-    buffer_pool: 8GB
-    connection_pool: 100
+    query_cache: 512MB  # Increased for single server
+    buffer_pool: 16GB   # Increased for 64GB RAM
+    connection_pool: 200 # Increased for single server
 ```
 
-### Load Balancing Strategy
+### Load Balancing Strategy (Single Server)
 
 ```nginx
-# Global load balancer configuration
+# Local load balancer configuration
 upstream regional_backends {
-    # Geographic routing
-    server us-east.sectorwars.com weight=3;
-    server eu-west.sectorwars.com weight=2;
-    server ap-south.sectorwars.com weight=1;
+    # Local port-based routing
+    server localhost:8001 weight=1;  # Region A
+    server localhost:8002 weight=1;  # Region B  
+    server localhost:8003 weight=1;  # Region C
     
     # Health checks
     health_check interval=5s fails=2 passes=2;
@@ -199,16 +205,29 @@ upstream regional_backends {
     ip_hash;
 }
 
+upstream nexus_backend {
+    server localhost:8000;  # Central Nexus
+}
+
 # Regional routing
 location ~ ^/api/v1/regions/([a-f0-9-]+)/ {
     set $region_id $1;
     
-    # Route to correct regional backend
-    proxy_pass http://region-$region_id.internal$request_uri;
+    # Route to correct local port
+    proxy_pass http://localhost:800$region_port$request_uri;
     
-    # Caching headers
+    # Local caching
+    proxy_cache local_cache;
     proxy_cache_bypass $http_pragma;
     proxy_cache_valid 200 1m;
+}
+
+# Static assets
+location /static/ {
+    root /opt/sectorwars/assets;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+    gzip_static on;
 }
 ```
 
@@ -258,7 +277,7 @@ class MultiRegionalAuth:
 encryption:
   at_rest:
     algorithm: AES-256-GCM
-    key_management: AWS KMS
+    key_management: local_vault  # HashiCorp Vault Docker
     key_rotation: 90 days
     
   in_transit:

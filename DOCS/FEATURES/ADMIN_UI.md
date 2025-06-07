@@ -268,7 +268,7 @@ interface GalaxyGenerationConfig {
 3. **Mobile Responsiveness** - Tablet and phone support
 
 ### Implementation Reference
-**Detailed implementation timeline**: See `/DOCS/development-plans/2025-05-24-admin-ui-implementation-plan.md` for comprehensive 12-week development schedule following CLAUDE methodology.
+**Detailed implementation timeline**: See `/DOCS/ARCHIVE/2025/06/development-plans/2025-05-24-admin-ui-implementation-plan.md` for comprehensive 12-week development schedule following CLAUDE methodology.
 
 ## AI Health Status Monitoring
 
@@ -408,7 +408,7 @@ This document serves as the **single source of truth** for Admin UI development.
 - `ADMIN_UI_ENHANCED_COMPREHENSIVE.md` (v3.0 features - merged)
 
 **Archived for historical reference:**
-- `ADMIN_UI_IMPLEMENTATION_PLAN.md` → `/DOCS/development-plans/2025-05-24-admin-ui-implementation-plan.md`
+- `ADMIN_UI_IMPLEMENTATION_PLAN.md` → `/DOCS/ARCHIVE/2025/06/development-plans/2025-05-24-admin-ui-implementation-plan.md`
 
 **Future documentation updates should be made only to this file.**
 

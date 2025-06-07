@@ -107,7 +107,7 @@ const SystemHealthStatus: React.FC = () => {
   });
   const [aiHealth, setAiHealth] = useState<AllProvidersHealth | null>(null);
   const [dbHealth, setDbHealth] = useState<DatabaseHealth | null>(null);
-  const [containerHealth, setContainerHealth] = useState<ContainerHealth | null>(null);
+  // REMOVED: Container health monitoring no longer available (Docker socket removed for security)
   const [isLoading, setIsLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -195,35 +195,15 @@ const SystemHealthStatus: React.FC = () => {
     }
   };
 
-  const checkContainerHealth = async () => {
-    try {
-      const response = await fetch('/api/v1/status/containers', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setContainerHealth(data);
-      } else {
-        console.error('Failed to fetch container health status');
-        setContainerHealth(null);
-      }
-    } catch (error) {
-      console.error('Failed to check container health:', error);
-      setContainerHealth(null);
-    }
-  };
+  // REMOVED: Container health checking no longer available (Docker socket removed for security)
 
   const checkAllStatus = async () => {
     setIsLoading(true);
     await Promise.all([
       checkServerStatus(),
       checkAIHealth(),
-      checkDatabaseHealth(),
-      checkContainerHealth()
+      checkDatabaseHealth()
+      // REMOVED: checkContainerHealth() - Docker socket removed for security
     ]);
     setIsLoading(false);
   };
@@ -240,9 +220,9 @@ const SystemHealthStatus: React.FC = () => {
   const getOverallStatus = () => {
     if (serverStatus.status !== 'online') return 'offline';
     if (!dbHealth?.connected) return 'degraded';
-    if (containerHealth?.status === 'unavailable' || !containerHealth?.summary?.all_healthy) return 'degraded';
+    // REMOVED: Container health checks (Docker socket removed for security)
     if (aiHealth?.status === 'unavailable') return 'degraded';
-    if (aiHealth?.status === 'degraded' || dbHealth?.status === 'degraded' || containerHealth?.status === 'degraded') return 'degraded';
+    if (aiHealth?.status === 'degraded' || dbHealth?.status === 'degraded') return 'degraded';
     return 'healthy';
   };
 
@@ -367,16 +347,7 @@ const SystemHealthStatus: React.FC = () => {
             <span className="service-metric">{dbHealth?.response_time?.toFixed(0) || 0}ms</span>
           </div>
           
-          <div className="service-status">
-            <span 
-              className="service-indicator"
-              style={{ color: getStatusColor(containerHealth?.status || 'unavailable') }}
-              title={`Containers: ${containerHealth?.summary.healthy_game_containers || 0}/${containerHealth?.summary.game_containers || 0} healthy`}
-            >
-              🐳 {containerHealth?.summary.healthy_game_containers || 0}/{containerHealth?.summary.game_containers || 0}
-            </span>
-            <span className="service-metric">{containerHealth?.response_time?.toFixed(0) || 0}ms</span>
-          </div>
+          {/* REMOVED: Container health status (Docker socket removed for security) */}
           
           <div className="service-status">
             <span 
@@ -472,84 +443,7 @@ const SystemHealthStatus: React.FC = () => {
               </div>
             )}
 
-            {/* Container Details */}
-            {containerHealth && (
-              <div className="service-section">
-                <h5 className="service-title">🐳 Containers</h5>
-                <div className="service-metrics">
-                  <div className="metric-row">
-                    <span className="metric-label">Status:</span>
-                    <span 
-                      className="metric-value"
-                      style={{ color: getStatusColor(containerHealth.status) }}
-                    >
-                      {containerHealth.status}
-                    </span>
-                  </div>
-                  <div className="metric-row">
-                    <span className="metric-label">Game Containers:</span>
-                    <span className="metric-value">
-                      {containerHealth.summary.healthy_game_containers}/{containerHealth.summary.game_containers} healthy
-                    </span>
-                  </div>
-                  <div className="metric-row">
-                    <span className="metric-label">Total Containers:</span>
-                    <span className="metric-value">{containerHealth.summary.total_containers}</span>
-                  </div>
-                  <div className="metric-row">
-                    <span className="metric-label">Response:</span>
-                    <span className="metric-value">{containerHealth.response_time.toFixed(0)}ms</span>
-                  </div>
-                  
-                  {/* Individual Container Details */}
-                  {Object.values(containerHealth.containers).filter(c => c.is_game_service).map((container) => (
-                    <div key={container.name} style={{ marginTop: '12px', padding: '8px', background: 'var(--surface-2)', borderRadius: '4px' }}>
-                      <div className="metric-row">
-                        <span className="metric-label" style={{ fontWeight: 'bold' }}>
-                          {container.name.replace('sectorwars2102-', '').replace('-1', '')}:
-                        </span>
-                        <span 
-                          className="metric-value"
-                          style={{ color: getStatusColor(container.status) }}
-                        >
-                          {container.status}
-                        </span>
-                      </div>
-                      <div className="metric-row">
-                        <span className="metric-label">Uptime:</span>
-                        <span className="metric-value">{container.uptime_human}</span>
-                      </div>
-                      {container.cpu_percent && (
-                        <>
-                          <div className="metric-row">
-                            <span className="metric-label">CPU:</span>
-                            <span className="metric-value">{container.cpu_percent}%</span>
-                          </div>
-                          <div className="metric-row">
-                            <span className="metric-label">Memory:</span>
-                            <span className="metric-value">{container.memory_usage} ({container.memory_percent}%)</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                  
-                  <div className="metric-row">
-                    <span className="metric-label">Last Check:</span>
-                    <span className="metric-value">{formatLastCheck(containerHealth.last_check)}</span>
-                  </div>
-                  
-                  {containerHealth.error && (
-                    <div className="metric-row">
-                      <span className="metric-label">Error:</span>
-                      <span className="metric-value" style={{ color: '#e74c3c', fontSize: '0.9em' }}>
-                        {containerHealth.error}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* REMOVED: Container health details (Docker socket removed for security) */}
 
             {/* AI Services Details */}
             {aiHealth && (

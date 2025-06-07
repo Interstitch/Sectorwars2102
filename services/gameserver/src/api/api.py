@@ -33,6 +33,10 @@ from src.api.routes.admin_combat import router as admin_combat_router
 from src.api.routes.admin_ships import router as admin_ships_router
 from src.api.routes.admin_colonization import router as admin_colonization_router
 from src.api.routes.mfa import router as mfa_router
+from src.api.routes.paypal import router as paypal_router
+from src.api.routes.nexus import router as nexus_router
+from src.api.routes.regional_governance import router as regional_governance_router
+from src.api.routes.translation import router as translation_router
 from src.core.config import settings
 
 # Main API router - note that the version is now in the main API_V1_STR prefix
@@ -74,6 +78,10 @@ api_router.include_router(admin_combat_router, tags=["admin-combat"])
 api_router.include_router(admin_ships_router, tags=["admin-ships"])
 api_router.include_router(admin_colonization_router, prefix="/admin", tags=["admin-colonization"])
 api_router.include_router(mfa_router, tags=["mfa"])
+api_router.include_router(paypal_router, tags=["paypal"])
+api_router.include_router(nexus_router, tags=["nexus"])
+api_router.include_router(regional_governance_router, tags=["regional-governance"])
+api_router.include_router(translation_router, tags=["translation"])
 
 # Only include test routes in development/test environments
 if settings.TESTING or settings.DEVELOPMENT_MODE:

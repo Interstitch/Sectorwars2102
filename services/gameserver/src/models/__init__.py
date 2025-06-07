@@ -12,7 +12,8 @@ from src.models.planet import Planet, player_planets
 from src.models.port import Port, player_ports
 
 # New models
-from src.models.galaxy import Galaxy, Region, RegionType
+from src.models.galaxy import Galaxy, GalaxyRegion, RegionType
+from src.models.region import Region, RegionalMembership, RegionalPolicy, RegionalElection, RegionalVote, RegionalTreaty, InterRegionalTravel
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
@@ -29,3 +30,7 @@ from src.models.faction import Faction, FactionType, FactionMission
 from src.models.drone import Drone, DroneType, DroneStatus, DroneDeployment, DroneCombat
 from src.models.fleet import Fleet, FleetMember, FleetBattle, FleetBattleCasualty, FleetRole, FleetStatus, BattlePhase
 from src.models.mfa import MFASecret, MFAAttempt
+from src.models.translation import (
+    Language, TranslationNamespace, TranslationKey, 
+    UserLanguagePreference, TranslationAuditLog, TranslationProgress
+)

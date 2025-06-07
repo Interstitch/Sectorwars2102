@@ -1,0 +1,27 @@
+{
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@types/axios": "^0.9.36",
+    "@types/node": "^22.15.18",
+    "@types/uuid": "^10.0.0",
+    "dotenv": "^16.5.0"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "eslint": "^9.27.0",
+    "form-data": "^4.0.2",
+    "pg": "^8.16.0",
+    "postgres": "^3.4.7",
+    "postgres-client": "^1.0.1",
+    "postgresql": "^0.0.1",
+    "uuid": "^11.1.0"
+  },
+  "scripts": {
+    "claude:analyze": "echo \"Running CLAUDE.md analysis...\" && find . -name \"*.js\" -o -name \"*.ts\" | xargs wc -l",
+    "claude:metrics": "bash .claude/metrics/track.sh test",
+    "claude:learn": "bash .claude/patterns/learn.sh",
+    "claude:report": "echo \"Generating CLAUDE.md report...\" && node .claude/report.js",
+    "claude:quality": "python CLAUDE_SYSTEM/claude-system.py --quick",
+    "claude:heal": "python CLAUDE_SYSTEM/claude-system.py --heal"
+  }
+}

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import List, TYPE_CHECKING
-from sqlalchemy import Boolean, Column, DateTime, String, func
+from sqlalchemy import Boolean, Column, DateTime, String, func, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -28,6 +28,13 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
     deleted = Column(Boolean, default=False, nullable=False)
+    
+    # PayPal subscription tracking
+    paypal_subscription_id = Column(String(255), nullable=True)
+    subscription_tier = Column(String(50), nullable=True)  # galactic_citizen, etc.
+    subscription_status = Column(String(50), nullable=True)  # active, suspended, cancelled
+    subscription_started_at = Column(TIMESTAMP, nullable=True)
+    subscription_expires_at = Column(TIMESTAMP, nullable=True)
 
     # Relationships
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
@@ -37,6 +44,7 @@ class User(Base):
     player = relationship("Player", back_populates="user", cascade="all, delete-orphan", uselist=False)
     mfa_secret = relationship("MFASecret", back_populates="user", cascade="all, delete-orphan", uselist=False)
     mfa_attempts = relationship("MFAAttempt", back_populates="user", cascade="all, delete-orphan")
+    owned_regions = relationship("Region", back_populates="owner")
 
     def __repr__(self):
         return f"<User {self.username}>"

@@ -1,10 +1,10 @@
 # Sector Wars 2102
 
-A web-based space trading simulation game built with a microservices architecture and modern technology stack.
+A revolutionary web-based space trading simulation game featuring a **Multi-Regional Platform** with player-owned territories, sophisticated governance systems, and AI-powered intelligence.
 
 ## Overview
 
-Sector Wars 2102 is a turn-based space trading game where players navigate through different sectors, trade commodities, manage ships, and colonize planets. The game features a dynamic universe with interconnected sectors, a robust trading system, planet colonization mechanics, and **revolutionary AI-powered systems**.
+Sector Wars 2102 is an innovative turn-based space trading game that transforms the traditional single-galaxy experience into a **Multi-Regional Universe**. Players can own and govern entire regional territories, participate in democratic governance, manage economic policies, and engage in complex diplomatic relations. The game features a Central Nexus hub (5000 sectors) connecting all regional territories, sophisticated AI-powered systems, and monetization through regional ownership subscriptions.
 
 ### 🤖 AI-Powered Features
 

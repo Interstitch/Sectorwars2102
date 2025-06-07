@@ -1,0 +1,240 @@
+version: '3.8'
+
+services:
+  # Regional Database
+  region-{{ config.region_name }}-db:
+    image: postgres:15-alpine
+    container_name: region-{{ config.region_name }}-db
+    environment:
+      POSTGRES_DB: {{ config.region_name.replace('-', '_') }}
+      POSTGRES_USER: region_{{ config.region_name.replace('-', '_') }}_user
+      POSTGRES_PASSWORD: "${REGION_DB_PASSWORD}"
+    volumes:
+      - region_{{ config.region_name.replace('-', '_') }}_data:/var/lib/postgresql/data
+      - ./sql/init-region.sql:/docker-entrypoint-initdb.d/01-init.sql
+    networks:
+      - region-{{ config.region_name }}-network
+      - nexus-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U region_{{ config.region_name.replace('-', '_') }}_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    labels:
+      - "region={{ config.region_name }}"
+      - "service=database"
+      - "owner={{ config.owner_id }}"
+    deploy:
+      resources:
+        limits:
+          cpus: '{{ config.cpu_cores * 0.3 }}'
+          memory: {{ (config.memory_gb * 0.3) | int }}G
+        reservations:
+          cpus: '{{ config.cpu_cores * 0.2 }}'
+          memory: {{ (config.memory_gb * 0.2) | int }}G
+
+  # Regional Game Server
+  region-{{ config.region_name }}-server:
+    build:
+      context: ../gameserver
+      dockerfile: Dockerfile
+      args:
+        - ENVIRONMENT=production
+    container_name: region-{{ config.region_name }}-server
+    environment:
+      - DATABASE_URL={{ config.database_url }}
+      - REDIS_URL={{ config.redis_url }}
+      - ENVIRONMENT=production
+      - SERVICE_TYPE=regional-server
+      - REGION_ID={{ config.region_name }}
+      - REGION_OWNER_ID={{ config.owner_id }}
+      - REGION_NAME={{ config.region_name }}
+      - JWT_SECRET=${JWT_SECRET}
+      - CENTRAL_NEXUS_URL=http://central-nexus-server:8080
+      - ENABLE_CROSS_REGIONAL_API=true
+      - REGIONAL_ISOLATION=true
+      
+      # Regional Configuration
+      - GOVERNANCE_TYPE={{ config.governance_type }}
+      - ECONOMIC_SPECIALIZATION={{ config.economic_specialization or 'balanced' }}
+      - STARTING_CREDITS={{ config.starting_credits }}
+      - STARTING_SHIP={{ config.starting_ship }}
+      - MAX_PLAYERS={{ config.max_players }}
+      
+      # Custom Rules
+      {% if config.custom_rules %}
+      {% for key, value in config.custom_rules.items() %}
+      - CUSTOM_{{ key.upper() }}={{ value }}
+      {% endfor %}
+      {% endif %}
+      
+      # Language Pack
+      {% if config.language_pack %}
+      - LANGUAGE_PACK={{ config.language_pack | tojson }}
+      {% endif %}
+      
+      # Aesthetic Theme
+      {% if config.aesthetic_theme %}
+      - AESTHETIC_THEME={{ config.aesthetic_theme | tojson }}
+      {% endif %}
+      
+    volumes:
+      - region_{{ config.region_name.replace('-', '_') }}_logs:/app/logs
+      - region_{{ config.region_name.replace('-', '_') }}_assets:/app/assets
+    ports:
+      - "{{ 8100 + (config.region_name | hash | abs) % 900 }}:8080"  # Dynamic port allocation
+    networks:
+      - region-{{ config.region_name }}-network
+      - nexus-network
+    depends_on:
+      region-{{ config.region_name }}-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/status/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    labels:
+      - "region={{ config.region_name }}"
+      - "service=gameserver"
+      - "owner={{ config.owner_id }}"
+      - "governance={{ config.governance_type }}"
+      - "specialization={{ config.economic_specialization or 'balanced' }}"
+    deploy:
+      resources:
+        limits:
+          cpus: '{{ config.cpu_cores }}'
+          memory: {{ config.memory_gb }}G
+        reservations:
+          cpus: '{{ config.cpu_cores * 0.7 }}'
+          memory: {{ (config.memory_gb * 0.7) | int }}G
+
+  # Regional Worker (for background tasks)
+  region-{{ config.region_name }}-worker:
+    build:
+      context: ../gameserver
+      dockerfile: Dockerfile.worker
+      args:
+        - ENVIRONMENT=production
+    container_name: region-{{ config.region_name }}-worker
+    environment:
+      - DATABASE_URL={{ config.database_url }}
+      - REDIS_URL={{ config.redis_url }}
+      - ENVIRONMENT=production
+      - SERVICE_TYPE=regional-worker
+      - REGION_ID={{ config.region_name }}
+      - REGION_OWNER_ID={{ config.owner_id }}
+      - JWT_SECRET=${JWT_SECRET}
+      - CENTRAL_NEXUS_URL=http://central-nexus-server:8080
+    volumes:
+      - region_{{ config.region_name.replace('-', '_') }}_logs:/app/logs
+    networks:
+      - region-{{ config.region_name }}-network
+      - nexus-network
+    depends_on:
+      - region-{{ config.region_name }}-server
+    restart: unless-stopped
+    labels:
+      - "region={{ config.region_name }}"
+      - "service=worker"
+      - "owner={{ config.owner_id }}"
+    deploy:
+      resources:
+        limits:
+          cpus: '{{ config.cpu_cores * 0.3 }}'
+          memory: {{ (config.memory_gb * 0.3) | int }}G
+        reservations:
+          cpus: '{{ config.cpu_cores * 0.2 }}'
+          memory: {{ (config.memory_gb * 0.2) | int }}G
+
+  # Regional Cache (Redis instance for regional data)
+  region-{{ config.region_name }}-cache:
+    image: redis:7-alpine
+    container_name: region-{{ config.region_name }}-cache
+    command: redis-server --appendonly yes --maxmemory {{ (config.memory_gb * 0.2 * 1024) | int }}mb --maxmemory-policy allkeys-lru
+    volumes:
+      - region_{{ config.region_name.replace('-', '_') }}_cache:/data
+    networks:
+      - region-{{ config.region_name }}-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    labels:
+      - "region={{ config.region_name }}"
+      - "service=cache"
+      - "owner={{ config.owner_id }}"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: {{ (config.memory_gb * 0.2) | int }}G
+        reservations:
+          cpus: '0.1'
+          memory: {{ (config.memory_gb * 0.1) | int }}G
+
+  # Regional File Storage (for assets, logs, backups)
+  region-{{ config.region_name }}-storage:
+    image: alpine:latest
+    container_name: region-{{ config.region_name }}-storage
+    command: ['sh', '-c', 'while true; do sleep 3600; done']  # Keep alive container
+    volumes:
+      - region_{{ config.region_name.replace('-', '_') }}_assets:/storage/assets
+      - region_{{ config.region_name.replace('-', '_') }}_logs:/storage/logs
+      - region_{{ config.region_name.replace('-', '_') }}_backups:/storage/backups
+    networks:
+      - region-{{ config.region_name }}-network
+    labels:
+      - "region={{ config.region_name }}"
+      - "service=storage"
+      - "owner={{ config.owner_id }}"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 128M
+
+networks:
+  region-{{ config.region_name }}-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{ '172.22.' + ((config.region_name | hash | abs) % 254 + 1) | string + '.0/24' }}
+  nexus-network:
+    external: true
+
+volumes:
+  region_{{ config.region_name.replace('-', '_') }}_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/sectorwars/regions/{{ config.region_name }}/database
+  region_{{ config.region_name.replace('-', '_') }}_cache:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/sectorwars/regions/{{ config.region_name }}/cache
+  region_{{ config.region_name.replace('-', '_') }}_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/sectorwars/regions/{{ config.region_name }}/logs
+  region_{{ config.region_name.replace('-', '_') }}_assets:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/sectorwars/regions/{{ config.region_name }}/assets
+  region_{{ config.region_name.replace('-', '_') }}_backups:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/sectorwars/regions/{{ config.region_name }}/backups

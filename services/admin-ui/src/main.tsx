@@ -4,6 +4,9 @@ import App from './App'
 import './index.css'
 import './main.css'
 
+// Initialize i18n
+import './i18n'
+
 // Register Chart.js components
 import {
   Chart as ChartJS,

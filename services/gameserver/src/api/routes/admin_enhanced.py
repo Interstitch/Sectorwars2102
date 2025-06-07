@@ -9,7 +9,7 @@ import uuid
 from src.core.database import get_db
 from src.auth.dependencies import get_current_admin
 from src.models.user import User
-from src.models.galaxy import Galaxy, Region, RegionType
+from src.models.galaxy import Galaxy, GalaxyRegion, RegionType
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, SectorSpecialType
 from src.models.warp_tunnel import WarpTunnel
@@ -195,7 +195,7 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
     regions = []
     
     # Federation region
-    federation_region = Region(
+    federation_region = GalaxyRegion(
         name="Federation Space",
         type=RegionType.FEDERATION,
         galaxy_id=galaxy.id,
@@ -239,7 +239,7 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
     regions.append(federation_region)
     
     # Border region
-    border_region = Region(
+    border_region = GalaxyRegion(
         name="Border Zone",
         type=RegionType.BORDER,
         galaxy_id=galaxy.id,
@@ -283,7 +283,7 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
     regions.append(border_region)
     
     # Frontier region
-    frontier_region = Region(
+    frontier_region = GalaxyRegion(
         name="Frontier Territory",
         type=RegionType.FRONTIER,
         galaxy_id=galaxy.id,

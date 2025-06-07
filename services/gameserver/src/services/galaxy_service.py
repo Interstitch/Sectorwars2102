@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Tuple, Set, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from src.models.galaxy import Galaxy, Region, RegionType
+from src.models.galaxy import Galaxy, GalaxyRegion, RegionType
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
@@ -109,7 +109,7 @@ class GalaxyGenerator:
         logger.info(f"Galaxy '{name}' generation completed with {self.sectors_generated} sectors")
         return galaxy
     
-    def _create_region(self, galaxy: Galaxy, name: str, region_type: RegionType, sector_count: int) -> Region:
+    def _create_region(self, galaxy: Galaxy, name: str, region_type: RegionType, sector_count: int) -> GalaxyRegion:
         """Create a region within the galaxy."""
         security_levels = {
             RegionType.FEDERATION: 0.9,
@@ -123,7 +123,7 @@ class GalaxyGenerator:
             RegionType.FRONTIER: 1.6     # Resource rich but dangerous
         }
         
-        region = Region(
+        region = GalaxyRegion(
             name=name,
             galaxy_id=galaxy.id,
             type=region_type,
@@ -138,7 +138,7 @@ class GalaxyGenerator:
         self.db.flush()
         return region
     
-    def _create_clusters(self, region: Region, cluster_count: int, avg_sectors_per_cluster: int) -> List[Cluster]:
+    def _create_clusters(self, region: GalaxyRegion, cluster_count: int, avg_sectors_per_cluster: int) -> List[Cluster]:
         """Create clusters within a region."""
         clusters = []
         total_sectors = region.sector_count

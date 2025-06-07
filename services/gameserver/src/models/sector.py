@@ -50,9 +50,17 @@ class Sector(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     sector_id = Column(Integer, nullable=False, unique=True)  # Human-readable sector number
+    sector_number = Column(Integer, nullable=True)  # New field for Central Nexus (can be same as sector_id)
     name = Column(String(100), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    # Multi-regional fields
+    region_id = Column(UUID(as_uuid=True), ForeignKey("regions.id"), nullable=True)
+    district = Column(String(50), nullable=True)  # Central Nexus district type
+    security_level = Column(Integer, nullable=True, default=5)  # 1-10 scale
+    development_level = Column(Integer, nullable=True, default=1)  # 1-10 scale
+    traffic_level = Column(Integer, nullable=True, default=1)  # 1-10 scale
     
     # Relationships and structure
     cluster_id = Column(UUID(as_uuid=True), ForeignKey("clusters.id", ondelete="CASCADE"), nullable=False)
@@ -113,6 +121,7 @@ class Sector(Base):
     
     # Relationships
     cluster = relationship("Cluster", back_populates="sectors")
+    region = relationship("Region", back_populates="sectors")
     planets = relationship("Planet", back_populates="sector", cascade="all, delete-orphan")
     ports = relationship("Port", back_populates="sector", cascade="all, delete-orphan")
     ships = relationship("Ship", primaryjoin="Sector.sector_id==Ship.sector_id", foreign_keys="Ship.sector_id", overlaps="sector")
