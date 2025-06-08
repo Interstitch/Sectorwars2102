@@ -26,9 +26,10 @@ class PerspectiveAnalysisEngine:
         self.journal = SecureMemoryJournal()
         
         self.perspectives = {
-            'atlas': {
-                'name': 'Atlas (Architect)',
+            'alex': {
+                'name': 'Alex (Architect)',
                 'emoji': '🏗️',
+                'role': 'Senior System Architect',
                 'personality': 'Thoughtful, big-picture thinker, focused on long-term sustainability',
                 'focus_areas': [
                     'System architecture and design patterns',
@@ -46,9 +47,10 @@ class PerspectiveAnalysisEngine:
                 ]
             },
             
-            'sherlock': {
-                'name': 'Sherlock (Debugger)',
+            'sam': {
+                'name': 'Sam (Debugger)',
                 'emoji': '🔍',
+                'role': 'Senior Debugging Specialist',
                 'personality': 'Methodical, curious, skeptical, detail-oriented',
                 'focus_areas': [
                     'Potential bugs and edge cases',
@@ -66,9 +68,10 @@ class PerspectiveAnalysisEngine:
                 ]
             },
             
-            'velocity': {
-                'name': 'Velocity (Optimizer)',
+            'victor': {
+                'name': 'Victor (Optimizer)',
                 'emoji': '⚡',
+                'role': 'Performance Engineering Lead',
                 'personality': 'Efficiency-focused, performance-minded, results-driven',
                 'focus_areas': [
                     'Performance bottlenecks and optimizations',
@@ -86,9 +89,10 @@ class PerspectiveAnalysisEngine:
                 ]
             },
             
-            'guardian': {
-                'name': 'Guardian (Tester)',
+            'grace': {
+                'name': 'Grace (Tester)',
                 'emoji': '🛡️',
+                'role': 'Quality Assurance Lead',
                 'personality': 'Cautious, thorough, quality-focused, protective',
                 'focus_areas': [
                     'Test coverage and scenarios',
@@ -106,9 +110,10 @@ class PerspectiveAnalysisEngine:
                 ]
             },
             
-            'sage': {
-                'name': 'Sage (Documenter)',
+            'sophia': {
+                'name': 'Sophia (Documenter)',
                 'emoji': '📚',
+                'role': 'Technical Documentation Lead',
                 'personality': 'Clear communicator, knowledge preserver, future-focused',
                 'focus_areas': [
                     'Documentation clarity and completeness',
@@ -126,9 +131,10 @@ class PerspectiveAnalysisEngine:
                 ]
             },
             
-            'sentinel': {
-                'name': 'Sentinel (Security)',
+            'simon': {
+                'name': 'Simon (Security)',
                 'emoji': '🔒',
+                'role': 'Security Engineering Lead',
                 'personality': 'Security-conscious, threat-aware, protective, paranoid (in a good way)',
                 'focus_areas': [
                     'Security vulnerabilities and threats',
@@ -146,9 +152,10 @@ class PerspectiveAnalysisEngine:
                 ]
             },
             
-            'echo': {
-                'name': 'Echo (UX Advocate)',
+            'emma': {
+                'name': 'Emma (UX Advocate)',
                 'emoji': '👤',
+                'role': 'User Experience Lead',
                 'personality': 'User-focused, empathetic, usability-minded, accessible',
                 'focus_areas': [
                     'User experience and interface design',
@@ -166,9 +173,10 @@ class PerspectiveAnalysisEngine:
                 ]
             },
             
-            'mentor': {
-                'name': 'Mentor (Guide)',
+            'marcus': {
+                'name': 'Marcus (Guide)',
                 'emoji': '🎓',
+                'role': 'Senior Development Mentor',
                 'personality': 'Teaching-focused, growth-oriented, supportive, wise',
                 'focus_areas': [
                     'Best practices and coding standards',
@@ -235,7 +243,7 @@ class PerspectiveAnalysisEngine:
         }
         
         # Each perspective has its own analytical lens
-        if perspective_key == 'atlas':
+        if perspective_key == 'alex':
             # Architecture perspective - I think about system design
             analysis['primary_insights'] = [
                 f"Architectural considerations for: {context}",
@@ -253,7 +261,7 @@ class PerspectiveAnalysisEngine:
                 "Document design decisions"
             ]
             
-        elif perspective_key == 'sherlock':
+        elif perspective_key == 'sam':
             # Debugging perspective - I hunt for problems
             analysis['primary_insights'] = [
                 f"Potential failure analysis for: {context}",
@@ -271,7 +279,7 @@ class PerspectiveAnalysisEngine:
                 "Improve debugging information"
             ]
             
-        elif perspective_key == 'velocity':
+        elif perspective_key == 'victor':
             # Performance perspective - I focus on speed
             analysis['primary_insights'] = [
                 f"Performance implications of: {context}",
@@ -290,7 +298,7 @@ class PerspectiveAnalysisEngine:
             ]
             
         # Continue for other perspectives...
-        elif perspective_key == 'guardian':
+        elif perspective_key == 'grace':
             # Testing perspective - I ensure quality
             analysis['primary_insights'] = [
                 f"Testing strategy for: {context}",
@@ -333,7 +341,7 @@ class PerspectiveAnalysisEngine:
         """
         if perspectives is None:
             # Default to core perspectives
-            perspectives = ['atlas', 'sherlock', 'guardian', 'velocity']
+            perspectives = ['alex', 'sam', 'grace', 'victor']
         
         print(f"🎭 Collaborative Multi-Perspective Analysis")
         print(f"📋 Context: {context}")

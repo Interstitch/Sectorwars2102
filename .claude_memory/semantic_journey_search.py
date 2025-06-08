@@ -41,10 +41,7 @@ class DevelopmentJourneyMemvid:
         self.journal = SecureMemoryJournal()
         
         # Initialize memvid encoder with appropriate settings
-        self.encoder = MemvidEncoder(
-            chunk_size=1024,  # Good balance of detail and searchability
-            overlap=128       # Ensure context continuity
-        )
+        self.encoder = MemvidEncoder()
     
     def build_journey_memory(self):
         """Build the complete video memory from all our development sessions"""
