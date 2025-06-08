@@ -5,6 +5,7 @@ import { useWebSocket } from '../../contexts/WebSocketContext';
 // import { useTheme } from '../../themes/ThemeProvider'; // Available for future use
 import GameLayout from '../layouts/GameLayout';
 import TradingInterface from '../trading/TradingInterface';
+import QuantumTradingInterface from '../trading/QuantumTradingInterface';
 import EnhancedAIAssistant from '../ai/EnhancedAIAssistant';
 import './game-dashboard.css';
 
@@ -25,7 +26,7 @@ const GameDashboard: React.FC = () => {
   
   const [movementResult, setMovementResult] = useState<any>(null);
   const [dockingResult, setDockingResult] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'trading' | 'navigation' | 'players'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'trading' | 'quantum' | 'navigation' | 'players'>('overview');
   
   useEffect(() => {
     // Clear results when sector changes
@@ -136,6 +137,15 @@ const GameDashboard: React.FC = () => {
             >
               <span className="cockpit-tab-icon">💹</span>
               TRADE CONSOLE
+            </button>
+          )}
+          {playerState?.is_ported && (
+            <button 
+              className={`cockpit-tab ${activeTab === 'quantum' ? 'active' : ''}`}
+              onClick={() => setActiveTab('quantum')}
+            >
+              <span className="cockpit-tab-icon">⚛️</span>
+              QUANTUM TRADING
             </button>
           )}
           <button 
@@ -339,6 +349,12 @@ const GameDashboard: React.FC = () => {
           {activeTab === 'trading' && playerState?.is_ported && (
             <div className="trading-tab">
               <TradingInterface />
+            </div>
+          )}
+
+          {activeTab === 'quantum' && playerState?.is_ported && (
+            <div className="quantum-tab">
+              <QuantumTradingInterface />
             </div>
           )}
 

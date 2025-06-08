@@ -4,7 +4,10 @@ import websocketService, {
   ChatMessage, 
   PlayerMovementMessage, 
   SectorPlayersMessage,
-  NotificationMessage 
+  NotificationMessage,
+  ARIAResponseMessage,
+  QuantumTradingResponse,
+  QuantumMarketDataMessage
 } from '../services/websocket';
 import { useAuth } from './AuthContext';
 
@@ -17,6 +20,23 @@ interface WebSocketContextType {
   chatMessages: ChatMessage[];
   sendChatMessage: (content: string, targetType?: 'sector' | 'team' | 'global') => boolean;
   clearChatMessages: () => void;
+  
+  // ARIA AI Chat functionality
+  sendARIAMessage: (content: string, conversationId?: string, context?: string) => boolean;
+  ariaMessages: Array<{
+    id: string;
+    type: 'user' | 'ai';
+    content: string;
+    timestamp: string;
+    conversationId?: string;
+    confidence?: number;
+    actions?: Array<{
+      type: string;
+      [key: string]: any;
+    }>;
+    suggestions?: string[];
+  }>;
+  clearARIAMessages: () => void;
   
   // Player presence
   sectorPlayers: Array<{
@@ -35,6 +55,74 @@ interface WebSocketContextType {
   
   // Player movement tracking
   recentMovements: PlayerMovementMessage[];
+  
+  // Quantum Trading functionality
+  quantumTrades: Array<{
+    trade_id: string;
+    trade_type: 'buy' | 'sell';
+    commodity: string;
+    quantity: number;
+    superposition_states: Array<{
+      price: number;
+      profit: number;
+      probability: number;
+      outcome: string;
+    }>;
+    manipulation_warning: boolean;
+    risk_score: number;
+    confidence_interval: [number, number];
+    dna_sequence?: string;
+    timestamp: string;
+  }>;
+  
+  ghostTrades: Array<{
+    trade_id: string;
+    trade_type: 'buy' | 'sell';
+    commodity: string;
+    quantity: number;
+    expected_profit: number;
+    success_probability: number;
+    risk_assessment: string;
+    timestamp: string;
+  }>;
+  
+  quantumMarketData: Array<{
+    sector_id: number;
+    commodity_prices: Array<{
+      commodity: string;
+      current_price: number;
+      quantum_volatility: number;
+      manipulation_probability: number;
+      ai_recommendation: 'buy' | 'sell' | 'hold';
+      aria_insights: string[];
+    }>;
+    timestamp: string;
+  }>;
+  
+  // Quantum Trading methods
+  createQuantumTrade: (
+    tradeType: 'buy' | 'sell',
+    commodity: string,
+    quantity: number,
+    sectorId?: number,
+    portId?: number,
+    maxPrice?: number,
+    minPrice?: number,
+    superpositionStates?: number
+  ) => boolean;
+  
+  collapseQuantumTrade: (tradeId: string) => boolean;
+  executeGhostTrade: (
+    tradeType: 'buy' | 'sell',
+    commodity: string,
+    quantity: number,
+    sectorId?: number,
+    portId?: number
+  ) => boolean;
+  
+  cancelQuantumTrade: (tradeId: string) => boolean;
+  clearQuantumTrades: () => void;
+  clearGhostTrades: () => void;
   
   // Connection management
   connect: () => void;
@@ -62,6 +150,19 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('Disconnected');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [ariaMessages, setAriaMessages] = useState<Array<{
+    id: string;
+    type: 'user' | 'ai';
+    content: string;
+    timestamp: string;
+    conversationId?: string;
+    confidence?: number;
+    actions?: Array<{
+      type: string;
+      [key: string]: any;
+    }>;
+    suggestions?: string[];
+  }>>([]);
   const [sectorPlayers, setSectorPlayers] = useState<Array<{
     user_id: string;
     username: string;
@@ -70,6 +171,49 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   }>>([]);
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const [recentMovements, setRecentMovements] = useState<PlayerMovementMessage[]>([]);
+  
+  // Quantum Trading state
+  const [quantumTrades, setQuantumTrades] = useState<Array<{
+    trade_id: string;
+    trade_type: 'buy' | 'sell';
+    commodity: string;
+    quantity: number;
+    superposition_states: Array<{
+      price: number;
+      profit: number;
+      probability: number;
+      outcome: string;
+    }>;
+    manipulation_warning: boolean;
+    risk_score: number;
+    confidence_interval: [number, number];
+    dna_sequence?: string;
+    timestamp: string;
+  }>>([]);
+
+  const [ghostTrades, setGhostTrades] = useState<Array<{
+    trade_id: string;
+    trade_type: 'buy' | 'sell';
+    commodity: string;
+    quantity: number;
+    expected_profit: number;
+    success_probability: number;
+    risk_assessment: string;
+    timestamp: string;
+  }>>([]);
+
+  const [quantumMarketData, setQuantumMarketData] = useState<Array<{
+    sector_id: number;
+    commodity_prices: Array<{
+      commodity: string;
+      current_price: number;
+      quantum_volatility: number;
+      manipulation_probability: number;
+      ai_recommendation: 'buy' | 'sell' | 'hold';
+      aria_insights: string[];
+    }>;
+    timestamp: string;
+  }>>([]);
   
   // Keep track of cleanup functions
   const cleanupFunctions = useRef<Array<() => void>>([]);
@@ -102,6 +246,118 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
   const clearChatMessages = useCallback(() => {
     setChatMessages([]);
+  }, []);
+
+  // ARIA functionality
+  const sendARIAMessage = useCallback((content: string, conversationId?: string, context?: string) => {
+    const success = websocketService.sendARIAMessage(content, conversationId, context);
+    
+    if (success) {
+      // Add user message immediately to the local state
+      const userMessage = {
+        id: `user-${Date.now()}`,
+        type: 'user' as const,
+        content: content,
+        timestamp: new Date().toISOString(),
+        conversationId: conversationId
+      };
+      setAriaMessages(prev => [...prev, userMessage]);
+    }
+    
+    return success;
+  }, []);
+
+  const clearARIAMessages = useCallback(() => {
+    setAriaMessages([]);
+  }, []);
+
+  // Quantum Trading functionality
+  const createQuantumTrade = useCallback((
+    tradeType: 'buy' | 'sell',
+    commodity: string,
+    quantity: number,
+    sectorId?: number,
+    portId?: number,
+    maxPrice?: number,
+    minPrice?: number,
+    superpositionStates?: number
+  ) => {
+    const success = websocketService.createQuantumTrade(
+      tradeType, commodity, quantity, sectorId, portId, maxPrice, minPrice, superpositionStates
+    );
+    
+    if (success) {
+      // Notify ARIA about the quantum trade creation
+      websocketService.sendARIAMessage(
+        `Creating quantum ${tradeType} trade: ${quantity} ${commodity} with ${superpositionStates || 3} superposition states`,
+        undefined,
+        'quantum_trading'
+      );
+    }
+    
+    return success;
+  }, []);
+
+  const collapseQuantumTrade = useCallback((tradeId: string) => {
+    const success = websocketService.collapseQuantumTrade(tradeId);
+    
+    if (success) {
+      // Notify ARIA about the quantum trade collapse
+      websocketService.sendARIAMessage(
+        `Collapsing quantum trade ${tradeId} to reality`,
+        undefined,
+        'quantum_trading'
+      );
+    }
+    
+    return success;
+  }, []);
+
+  const executeGhostTrade = useCallback((
+    tradeType: 'buy' | 'sell',
+    commodity: string,
+    quantity: number,
+    sectorId?: number,
+    portId?: number
+  ) => {
+    const success = websocketService.executeGhostTrade(tradeType, commodity, quantity, sectorId, portId);
+    
+    if (success) {
+      // Notify ARIA about the ghost trade
+      websocketService.sendARIAMessage(
+        `Running ghost ${tradeType} simulation: ${quantity} ${commodity}`,
+        undefined,
+        'quantum_trading'
+      );
+    }
+    
+    return success;
+  }, []);
+
+  const cancelQuantumTrade = useCallback((tradeId: string) => {
+    const success = websocketService.cancelQuantumTrade(tradeId);
+    
+    if (success) {
+      // Remove from local state
+      setQuantumTrades(prev => prev.filter(trade => trade.trade_id !== tradeId));
+      
+      // Notify ARIA about the cancellation
+      websocketService.sendARIAMessage(
+        `Cancelled quantum trade ${tradeId}`,
+        undefined,
+        'quantum_trading'
+      );
+    }
+    
+    return success;
+  }, []);
+
+  const clearQuantumTrades = useCallback(() => {
+    setQuantumTrades([]);
+  }, []);
+
+  const clearGhostTrades = useCallback(() => {
+    setGhostTrades([]);
   }, []);
 
   // Player presence
@@ -204,6 +460,135 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       }
     });
     cleanups.push(notificationHandler);
+
+    // ARIA response handler
+    const ariaHandler = websocketService.onARIAResponse((message) => {
+      const aiMessage = {
+        id: `ai-${Date.now()}`,
+        type: 'ai' as const,
+        content: message.data.message,
+        timestamp: message.timestamp,
+        conversationId: message.conversation_id,
+        confidence: message.data.confidence,
+        actions: message.data.actions,
+        suggestions: message.data.suggestions
+      };
+      
+      setAriaMessages(prev => [...prev, aiMessage]);
+      
+      // Show notification for important ARIA responses
+      if (message.data.actions && message.data.actions.length > 0) {
+        addNotification({
+          title: 'ARIA Recommendation',
+          content: `ARIA has ${message.data.actions.length} suggestion(s) for you`,
+          level: 'info'
+        });
+      }
+    });
+    cleanups.push(ariaHandler);
+
+    // Quantum Trading response handler
+    const quantumTradingHandler = websocketService.onQuantumTradingResponse((message) => {
+      if (message.success && message.data) {
+        if (message.action === 'create_quantum_trade') {
+          // Add new quantum trade to state
+          const newTrade = {
+            trade_id: message.data.trade_id,
+            trade_type: message.data.superposition_states[0]?.outcome.includes('buy') ? 'buy' as const : 'sell' as const,
+            commodity: 'ORE', // This should come from the original request, stored temporarily
+            quantity: 100, // This should come from the original request
+            superposition_states: message.data.superposition_states,
+            manipulation_warning: message.data.manipulation_warning,
+            risk_score: message.data.risk_score,
+            confidence_interval: message.data.confidence_interval,
+            dna_sequence: message.data.dna_sequence,
+            timestamp: message.timestamp
+          };
+          
+          setQuantumTrades(prev => [...prev, newTrade]);
+          
+          addNotification({
+            title: 'Quantum Trade Created',
+            content: `Created quantum trade with ${message.data.superposition_states.length} probability states`,
+            level: 'success'
+          });
+          
+        } else if (message.action === 'execute_ghost_trade' && message.data.ghost_results) {
+          // Add ghost trade result to state
+          const ghostResult = {
+            trade_id: message.data.trade_id,
+            trade_type: 'buy' as const, // This should come from the original request
+            commodity: 'ORE', // This should come from the original request
+            quantity: 100, // This should come from the original request
+            expected_profit: message.data.ghost_results.expected_profit,
+            success_probability: message.data.ghost_results.success_probability,
+            risk_assessment: message.data.ghost_results.risk_assessment,
+            timestamp: message.timestamp
+          };
+          
+          setGhostTrades(prev => [...prev, ghostResult]);
+          
+          addNotification({
+            title: 'Ghost Trade Completed',
+            content: `Simulation shows ${message.data.ghost_results.success_probability}% success probability`,
+            level: 'info'
+          });
+          
+        } else if (message.action === 'collapse_trade') {
+          // Remove quantum trade from superposition
+          setQuantumTrades(prev => prev.filter(trade => trade.trade_id !== message.data?.trade_id));
+          
+          addNotification({
+            title: 'Quantum Trade Collapsed',
+            content: `Trade ${message.data.trade_id} collapsed to reality`,
+            level: 'success'
+          });
+        }
+      } else if (!message.success) {
+        addNotification({
+          title: 'Quantum Trade Error',
+          content: message.error || 'Quantum trading operation failed',
+          level: 'error'
+        });
+      }
+    });
+    cleanups.push(quantumTradingHandler);
+
+    // Quantum Market Data handler
+    const quantumMarketHandler = websocketService.onQuantumMarketData((message) => {
+      setQuantumMarketData(prev => {
+        // Replace data for the same sector or add new sector data
+        const filtered = prev.filter(data => data.sector_id !== message.sector_id);
+        return [...filtered, message].slice(-10); // Keep last 10 sectors
+      });
+      
+      // Check for important market events
+      const highVolatilityCommodities = message.commodity_prices.filter(
+        price => price.quantum_volatility > 0.7
+      );
+      
+      if (highVolatilityCommodities.length > 0) {
+        addNotification({
+          title: 'Quantum Market Alert',
+          content: `High volatility detected in ${highVolatilityCommodities.length} commodities`,
+          level: 'warning'
+        });
+      }
+      
+      // Check for manipulation warnings
+      const manipulationRisk = message.commodity_prices.filter(
+        price => price.manipulation_probability > 0.5
+      );
+      
+      if (manipulationRisk.length > 0) {
+        addNotification({
+          title: 'Market Manipulation Alert',
+          content: `Manipulation risk detected in ${manipulationRisk.map(p => p.commodity).join(', ')}`,
+          level: 'error'
+        });
+      }
+    });
+    cleanups.push(quantumMarketHandler);
 
     // Handle other message types
     const generalHandler = (message: WebSocketMessage) => {
@@ -312,6 +697,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     sendChatMessage,
     clearChatMessages,
     
+    // ARIA AI Chat functionality
+    sendARIAMessage,
+    ariaMessages,
+    clearARIAMessages,
+    
     // Player presence
     sectorPlayers,
     requestSectorPlayers,
@@ -324,6 +714,17 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     
     // Player movement tracking
     recentMovements,
+    
+    // Quantum Trading functionality
+    quantumTrades,
+    ghostTrades,
+    quantumMarketData,
+    createQuantumTrade,
+    collapseQuantumTrade,
+    executeGhostTrade,
+    cancelQuantumTrade,
+    clearQuantumTrades,
+    clearGhostTrades,
     
     // Connection management
     connect,

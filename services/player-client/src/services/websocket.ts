@@ -42,6 +42,96 @@ export interface NotificationMessage {
   timestamp: string;
 }
 
+export interface ARIAChatMessage {
+  type: 'aria_chat';
+  content: string;
+  conversation_id?: string;
+  context?: string;
+  timestamp: string;
+  session_id: string;
+  signature?: string;
+}
+
+export interface ARIAResponseMessage {
+  type: 'aria_response';
+  conversation_id: string;
+  data: {
+    message: string;
+    confidence: number;
+    context_used: string;
+    actions: Array<{
+      type: string;
+      [key: string]: any;
+    }>;
+    suggestions: string[];
+    learning_note?: string;
+  };
+  timestamp: string;
+  server_version: string;
+  signature?: string;
+}
+
+// Quantum Trading Message Types
+export interface QuantumTradingMessage {
+  type: 'quantum_trading';
+  action: 'create_quantum_trade' | 'collapse_trade' | 'execute_ghost_trade' | 'cancel_quantum_trade';
+  params: {
+    trade_type: 'buy' | 'sell';
+    commodity: string;
+    quantity: number;
+    sector_id?: number;
+    port_id?: number;
+    max_price?: number;
+    min_price?: number;
+    trade_id?: string;
+    superposition_states?: number;
+  };
+  timestamp: string;
+  session_id: string;
+  signature?: string;
+}
+
+export interface QuantumTradingResponse {
+  type: 'quantum_trading_response';
+  action: string;
+  success: boolean;
+  data?: {
+    trade_id: string;
+    superposition_states: Array<{
+      price: number;
+      profit: number;
+      probability: number;
+      outcome: string;
+    }>;
+    manipulation_warning: boolean;
+    risk_score: number;
+    confidence_interval: [number, number];
+    dna_sequence?: string;
+    ghost_results?: {
+      expected_profit: number;
+      success_probability: number;
+      risk_assessment: string;
+    };
+  };
+  error?: string;
+  timestamp: string;
+  signature?: string;
+}
+
+export interface QuantumMarketDataMessage {
+  type: 'quantum_market_data';
+  sector_id: number;
+  commodity_prices: Array<{
+    commodity: string;
+    current_price: number;
+    quantum_volatility: number;
+    manipulation_probability: number;
+    ai_recommendation: 'buy' | 'sell' | 'hold';
+    aria_insights: string[];
+  }>;
+  timestamp: string;
+}
+
 type MessageHandler = (message: WebSocketMessage) => void;
 
 class WebSocketService {
@@ -260,6 +350,155 @@ class WebSocketService {
     });
   }
 
+  // ARIA AI Chat methods
+  sendARIAMessage(content: string, conversationId?: string, context?: string): boolean {
+    // Generate session ID (could be stored in localStorage or state)
+    const sessionId = localStorage.getItem('aria_session_id') || 'session_' + Date.now();
+    localStorage.setItem('aria_session_id', sessionId);
+
+    const message: ARIAChatMessage = {
+      type: 'aria_chat',
+      content: content.trim(),
+      conversation_id: conversationId,
+      context: context || 'general',
+      timestamp: new Date().toISOString(),
+      session_id: sessionId
+    };
+
+    // Add signature for security (simplified client-side signing)
+    message.signature = this.generateMessageSignature(message);
+
+    return this.send(message);
+  }
+
+  // Quantum Trading methods
+  createQuantumTrade(
+    tradeType: 'buy' | 'sell',
+    commodity: string,
+    quantity: number,
+    sectorId?: number,
+    portId?: number,
+    maxPrice?: number,
+    minPrice?: number,
+    superpositionStates?: number
+  ): boolean {
+    const sessionId = localStorage.getItem('aria_session_id') || 'session_' + Date.now();
+
+    const message: QuantumTradingMessage = {
+      type: 'quantum_trading',
+      action: 'create_quantum_trade',
+      params: {
+        trade_type: tradeType,
+        commodity,
+        quantity,
+        sector_id: sectorId,
+        port_id: portId,
+        max_price: maxPrice,
+        min_price: minPrice,
+        superposition_states: superpositionStates || 3
+      },
+      timestamp: new Date().toISOString(),
+      session_id: sessionId
+    };
+
+    // Add signature for security
+    message.signature = this.generateQuantumSignature(message);
+
+    return this.send(message);
+  }
+
+  collapseQuantumTrade(tradeId: string): boolean {
+    const sessionId = localStorage.getItem('aria_session_id') || 'session_' + Date.now();
+
+    const message: QuantumTradingMessage = {
+      type: 'quantum_trading',
+      action: 'collapse_trade',
+      params: {
+        trade_id: tradeId,
+        trade_type: 'buy', // Required but not used for collapse
+        commodity: '', // Required but not used for collapse
+        quantity: 0 // Required but not used for collapse
+      },
+      timestamp: new Date().toISOString(),
+      session_id: sessionId
+    };
+
+    message.signature = this.generateQuantumSignature(message);
+    return this.send(message);
+  }
+
+  executeGhostTrade(
+    tradeType: 'buy' | 'sell',
+    commodity: string,
+    quantity: number,
+    sectorId?: number,
+    portId?: number
+  ): boolean {
+    const sessionId = localStorage.getItem('aria_session_id') || 'session_' + Date.now();
+
+    const message: QuantumTradingMessage = {
+      type: 'quantum_trading',
+      action: 'execute_ghost_trade',
+      params: {
+        trade_type: tradeType,
+        commodity,
+        quantity,
+        sector_id: sectorId,
+        port_id: portId
+      },
+      timestamp: new Date().toISOString(),
+      session_id: sessionId
+    };
+
+    message.signature = this.generateQuantumSignature(message);
+    return this.send(message);
+  }
+
+  cancelQuantumTrade(tradeId: string): boolean {
+    const sessionId = localStorage.getItem('aria_session_id') || 'session_' + Date.now();
+
+    const message: QuantumTradingMessage = {
+      type: 'quantum_trading',
+      action: 'cancel_quantum_trade',
+      params: {
+        trade_id: tradeId,
+        trade_type: 'buy', // Required but not used for cancel
+        commodity: '', // Required but not used for cancel
+        quantity: 0 // Required but not used for cancel
+      },
+      timestamp: new Date().toISOString(),
+      session_id: sessionId
+    };
+
+    message.signature = this.generateQuantumSignature(message);
+    return this.send(message);
+  }
+
+  private generateMessageSignature(message: ARIAChatMessage): string {
+    // Simple client-side signature - server will validate properly
+    const content = JSON.stringify({
+      type: message.type,
+      timestamp: message.timestamp,
+      session_id: message.session_id
+    });
+    
+    // Use a simple hash - real signature would use proper crypto
+    return btoa(content).slice(0, 16);
+  }
+
+  private generateQuantumSignature(message: QuantumTradingMessage): string {
+    // Simple client-side signature for quantum trading - server will validate properly
+    const content = JSON.stringify({
+      type: message.type,
+      action: message.action,
+      timestamp: message.timestamp,
+      session_id: message.session_id
+    });
+    
+    // Use a simple hash - real signature would use proper crypto
+    return btoa(content).slice(0, 16);
+  }
+
   // Message handler management
   addMessageHandler(handler: MessageHandler): void {
     this.messageHandlers.add(handler);
@@ -348,6 +587,38 @@ class WebSocketService {
     const handler = (message: WebSocketMessage) => {
       if (message.type === 'connection_status') {
         callback(message.connected, message);
+      }
+    };
+    this.addMessageHandler(handler);
+    return () => this.removeMessageHandler(handler);
+  }
+
+  // ARIA AI callback handlers
+  onARIAResponse(callback: (message: ARIAResponseMessage) => void): () => void {
+    const handler = (message: WebSocketMessage) => {
+      if (message.type === 'aria_response') {
+        callback(message as ARIAResponseMessage);
+      }
+    };
+    this.addMessageHandler(handler);
+    return () => this.removeMessageHandler(handler);
+  }
+
+  // Quantum Trading callback handlers
+  onQuantumTradingResponse(callback: (message: QuantumTradingResponse) => void): () => void {
+    const handler = (message: WebSocketMessage) => {
+      if (message.type === 'quantum_trading_response') {
+        callback(message as QuantumTradingResponse);
+      }
+    };
+    this.addMessageHandler(handler);
+    return () => this.removeMessageHandler(handler);
+  }
+
+  onQuantumMarketData(callback: (message: QuantumMarketDataMessage) => void): () => void {
+    const handler = (message: WebSocketMessage) => {
+      if (message.type === 'quantum_market_data') {
+        callback(message as QuantumMarketDataMessage);
       }
     };
     this.addMessageHandler(handler);
