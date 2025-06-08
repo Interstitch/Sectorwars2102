@@ -32,10 +32,12 @@ from src.services.websocket_service import ConnectionManager, connection_manager
 from src.services.ai_trading_service import AITradingService
 from src.services.trading_service import TradingService
 from src.services.enhanced_ai_service import EnhancedAIService
+from src.services.realtime_market_service import RealTimeMarketService, get_market_service
+from src.services.redis_pubsub_service import RedisPubSubService, get_pubsub_service
 from src.models.player import Player
 from src.models.market_transaction import MarketTransaction
 from src.models.ai_trading import AIMarketPrediction
-from src.core.security import verify_password_hash
+from src.core.security import verify_password
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +88,7 @@ class EnhancedWebSocketService:
         self.ai_trading_service = None  # Lazy loaded
         self.trading_service = None     # Lazy loaded
         self.enhanced_ai_service = None # Lazy loaded
+        self.market_service = get_market_service(redis_client)  # Real-time market data
         
         # Security configuration
         self.rate_limit_config = RateLimitConfig()
@@ -307,77 +310,90 @@ class EnhancedWebSocketService:
             self.market_subscriptions[player_id].clear()
     
     async def _stream_market_updates(self, player_id: str, db: AsyncSession):
-        """Stream real-time market updates to subscribed player"""
+        """Stream real-time market updates to subscribed player using Redis Pub/Sub"""
+        
+        async def market_callback(update: Dict[str, Any]):
+            """Callback for pub/sub service to send updates"""
+            try:
+                # The update already comes formatted from the pub/sub service
+                await self.send_message(player_id, update)
+            except Exception as e:
+                logger.error(f"Error sending market update to player {player_id}: {e}")
+        
         try:
-            while player_id in self.sessions and self.market_subscriptions.get(player_id):
-                commodities = list(self.market_subscriptions[player_id])
-                if not commodities:
-                    break
-                
-                # Get latest market data
-                market_updates = await self._get_market_updates(commodities, db)
-                
-                if market_updates:
-                    await self.send_message(player_id, {
-                        "type": "market_update",
-                        "data": market_updates
-                    })
-                
-                # Wait before next update (1 second for real-time feel)
-                await asyncio.sleep(1)
-                
+            # Get commodities player is subscribed to
+            commodities = list(self.market_subscriptions.get(player_id, []))
+            if not commodities:
+                return
+            
+            # Get pub/sub service
+            pubsub_service = await get_pubsub_service()
+            
+            # Subscribe to market updates via Redis pub/sub
+            # This will run until the player disconnects
+            await pubsub_service.subscribe_to_market_updates(
+                commodities=commodities,
+                callback=market_callback,
+                player_id=player_id
+            )
+            
         except Exception as e:
             logger.error(f"Error streaming market updates: {e}")
+        finally:
+            # Clean up subscription when done
+            try:
+                pubsub_service = await get_pubsub_service()
+                await pubsub_service.unsubscribe_player(player_id)
+            except:
+                pass  # Don't fail on cleanup
     
     async def _get_current_market_data(self, commodities: List[str], db: AsyncSession) -> Dict[str, Any]:
-        """Get current market data for specified commodities"""
-        market_data = {}
-        
-        for commodity in commodities:
-            # Get latest transactions
-            stmt = select(MarketTransaction).where(
-                MarketTransaction.commodity == commodity
-            ).order_by(MarketTransaction.timestamp.desc()).limit(100)
+        """Get current market data for specified commodities using RealTimeMarketService"""
+        try:
+            # Use the market service to get comprehensive market data
+            market_data = await self.market_service.get_multi_commodity_data(commodities, db)
             
-            result = await db.execute(stmt)
-            transactions = result.scalars().all()
-            
-            if transactions:
-                # Calculate current price and volume
-                current_price = transactions[0].price
-                volume_24h = sum(t.quantity for t in transactions if 
-                               t.timestamp > datetime.now(UTC) - timedelta(hours=24))
-                
-                # Get AI prediction if available
-                prediction_stmt = select(AIMarketPrediction).where(
-                    and_(
-                        AIMarketPrediction.commodity == commodity,
-                        AIMarketPrediction.timestamp > datetime.now(UTC) - timedelta(hours=1)
-                    )
-                ).order_by(AIMarketPrediction.timestamp.desc()).limit(1)
-                
-                prediction_result = await db.execute(prediction_stmt)
-                prediction = prediction_result.scalar_one_or_none()
-                
-                market_data[commodity] = {
-                    "current_price": float(current_price),
-                    "volume_24h": int(volume_24h),
-                    "price_24h_ago": float(transactions[-1].price if len(transactions) > 1 else current_price),
-                    "high_24h": float(max(t.price for t in transactions)),
-                    "low_24h": float(min(t.price for t in transactions)),
-                    "prediction": {
-                        "price": float(prediction.predicted_price) if prediction else None,
-                        "confidence": float(prediction.confidence) if prediction else None,
-                        "trend": prediction.trend if prediction else None
-                    } if prediction else None
+            # Convert to WebSocket format
+            formatted_data = {}
+            for commodity, snapshot in market_data.items():
+                formatted_data[commodity] = {
+                    "current_price": snapshot.current_price,
+                    "volume_24h": snapshot.volume_24h,
+                    "price_24h_ago": snapshot.current_price - snapshot.price_change_24h,
+                    "high_24h": snapshot.high_24h,
+                    "low_24h": snapshot.low_24h,
+                    "price_change_24h": snapshot.price_change_24h,
+                    "price_change_percent": snapshot.price_change_percent,
+                    "bid_ask_spread": snapshot.bid_ask_spread,
+                    "market_depth": snapshot.market_depth,
+                    "sector_prices": snapshot.sector_prices,
+                    "last_transaction": snapshot.last_transaction.isoformat(),
+                    "prediction": snapshot.ai_prediction
                 }
-        
-        return market_data
+                
+                # Add trading signals if available
+                signals = await self.market_service.generate_trading_signals(commodity, snapshot)
+                if signals:
+                    formatted_data[commodity]["signals"] = [
+                        {
+                            "type": s.signal_type,
+                            "strength": s.strength,
+                            "reason": s.reason,
+                            "target_price": s.target_price,
+                            "confidence": s.confidence
+                        } for s in signals
+                    ]
+            
+            return formatted_data
+            
+        except Exception as e:
+            logger.error(f"Error getting market data: {e}")
+            # Return empty data on error
+            return {commodity: {} for commodity in commodities}
     
     async def _get_market_updates(self, commodities: List[str], db: AsyncSession) -> Dict[str, Any]:
-        """Get incremental market updates"""
-        # This would check for changes since last update
-        # For now, return current data
+        """Get incremental market updates using the market service"""
+        # The market service handles caching and change detection
         return await self._get_current_market_data(commodities, db)
     
     # =============================================================================
@@ -747,16 +763,35 @@ class EnhancedWebSocketService:
         })
     
     async def _broadcast_trade_update(self, trade: Dict[str, Any], db: AsyncSession):
-        """Broadcast trade update to relevant subscribers"""
-        commodity = trade.get("commodity")
-        
-        # Find all players subscribed to this commodity
-        for player_id, commodities in self.market_subscriptions.items():
-            if commodity in commodities:
-                await self.send_message(player_id, {
-                    "type": "trade_executed",
-                    "trade": trade
-                })
+        """Broadcast trade update via Redis pub/sub for scalability"""
+        try:
+            # Get pub/sub service
+            pubsub_service = await get_pubsub_service()
+            
+            # Publish trade event
+            await pubsub_service.publish_trading_event(
+                event_type="trade_executed",
+                event_data={
+                    "trade": trade,
+                    "commodity": trade.get("commodity"),
+                    "action": trade.get("action"),
+                    "quantity": trade.get("quantity"),
+                    "price": trade.get("price"),
+                    "player_id": trade.get("player_id"),  # Can be anonymized if needed
+                    "timestamp": trade.get("timestamp")
+                }
+            )
+            
+            # Also trigger market data update for this commodity
+            commodity = trade.get("commodity")
+            if commodity:
+                # Get fresh market snapshot
+                snapshot = await self.market_service.get_market_snapshot(commodity, db)
+                # Publish market update
+                await self.market_service.publish_market_update(commodity, snapshot)
+                
+        except Exception as e:
+            logger.error(f"Error broadcasting trade update: {e}")
 
 
 # Global enhanced service instance

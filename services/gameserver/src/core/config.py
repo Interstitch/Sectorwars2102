@@ -99,7 +99,7 @@ class Settings(BaseSettings):
     SQLALCHEMY_MAX_OVERFLOW: int = 20
     
     # Redis Configuration
-    REDIS_URL: str = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    REDIS_URL: str = os.environ.get("REDIS_URL", "redis://:redis_secure_password_123@localhost:6379/0")
     REDIS_CACHE_TTL: int = int(os.environ.get("REDIS_CACHE_TTL", "3600"))  # 1 hour default
     REDIS_SESSION_TTL: int = int(os.environ.get("REDIS_SESSION_TTL", "86400"))  # 24 hours default
 
