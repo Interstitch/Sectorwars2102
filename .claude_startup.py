@@ -62,4 +62,15 @@ def check_memory_system():
     print("   Current phase should be tracked with TodoRead/TodoWrite tools\n")
 
 if __name__ == "__main__":
-    check_memory_system()
+    # Try enhanced startup first, fall back to basic if needed
+    try:
+        import sys
+        sys.path.append('.claude_memory')
+        from enhanced_session_startup import EnhancedSessionStartup
+        
+        startup = EnhancedSessionStartup()
+        startup.display_enhanced_startup()
+    except Exception as e:
+        print(f"Enhanced startup failed: {e}")
+        print("Falling back to basic startup...")
+        check_memory_system()

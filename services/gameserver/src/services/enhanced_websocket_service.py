@@ -688,27 +688,81 @@ class EnhancedWebSocketService:
     
     async def _handle_aria_chat(self, player_id: str, message: Dict[str, Any], 
                               db: AsyncSession, session: WebSocketSession):
-        """Handle ARIA conversational AI requests"""
+        """Handle ARIA conversational AI requests with full cross-system intelligence"""
         try:
-            # Initialize enhanced AI service if needed
+            # Initialize services if needed
             if not self.enhanced_ai_service:
-                self.enhanced_ai_service = EnhancedAIService(db)
+                from src.services.enhanced_ai_service import get_enhanced_ai_service
+                self.enhanced_ai_service = await get_enhanced_ai_service(db)
             
             user_input = message.get("content", "")
-            conversation_id = message.get("conversation_id")
+            conversation_id = message.get("conversation_id", str(uuid4()))
+            context_type = message.get("context", "general")  # trading, combat, colony, port, strategic
             
-            # Process natural language query
-            response = await self.enhanced_ai_service.process_natural_language_query(
+            # Build conversation context with player's current state
+            conversation_context = await self._build_aria_context(player_id, context_type, db)
+            
+            # Check if this is a quantum trading query
+            if any(keyword in user_input.lower() for keyword in ["quantum", "ghost", "superposition", "cascade"]):
+                # Enhance with quantum trading context
+                from src.services.quantum_trading_engine import get_quantum_trading_engine
+                quantum_engine = get_quantum_trading_engine()
+                
+                # Get player's quantum trades
+                player_quantum_trades = [
+                    trade for trade_id, trade in quantum_engine.quantum_trades.items()
+                    if trade.player_id == player_id
+                ]
+                
+                conversation_context["quantum_trading"] = {
+                    "active_trades": len(player_quantum_trades),
+                    "trades": [
+                        {
+                            "trade_id": t.trade_id,
+                            "commodity": t.commodity,
+                            "action": t.action,
+                            "probability": t.probability,
+                            "manipulation_warning": t.manipulation_probability > 0.5
+                        } for t in player_quantum_trades[:5]  # Limit to 5 most recent
+                    ],
+                    "quantum_state": quantum_engine.get_quantum_state()
+                }
+            
+            # Check if this is a market intelligence query
+            if any(keyword in user_input.lower() for keyword in ["market", "price", "commodity", "trade"]):
+                # Add real-time market data
+                subscribed_commodities = list(self.market_subscriptions.get(player_id, []))
+                if subscribed_commodities:
+                    market_data = await self._get_current_market_data(subscribed_commodities, db)
+                    conversation_context["market_data"] = market_data
+            
+            # Process with ARIA's enhanced intelligence
+            response = await self.enhanced_ai_service.process_player_query(
                 player_id=player_id,
-                user_input=user_input,
-                conversation_context=None  # Would build from conversation_id
+                query=user_input,
+                conversation_id=conversation_id,
+                context=conversation_context
             )
             
+            # Extract actionable items from ARIA's response
+            actions = await self._extract_aria_actions(response, player_id, db)
+            
+            # Send response with any actions
             await self.send_message(player_id, {
                 "type": "aria_response",
-                "conversation_id": conversation_id or response.get("conversation_id"),
-                "data": response
+                "conversation_id": conversation_id,
+                "data": {
+                    "message": response.get("response", ""),
+                    "confidence": response.get("confidence", 0.95),
+                    "context_used": response.get("context_type", context_type),
+                    "actions": actions,
+                    "suggestions": response.get("suggestions", []),
+                    "learning_note": response.get("learning_note", None)
+                }
             })
+            
+            # Log ARIA interaction for learning
+            await self._log_aria_interaction(player_id, user_input, response, db)
             
         except Exception as e:
             logger.error(f"Error handling ARIA chat: {e}")
@@ -1000,6 +1054,123 @@ class EnhancedWebSocketService:
         except Exception as e:
             logger.error(f"Error handling quantum trading: {e}")
             await self.send_error(player_id, "Quantum trading operation failed")
+    
+    # =============================================================================
+    # ARIA HELPER METHODS
+    # =============================================================================
+    
+    async def _build_aria_context(self, player_id: str, context_type: str, 
+                                 db: AsyncSession) -> Dict[str, Any]:
+        """Build comprehensive context for ARIA based on player's current state"""
+        context = {
+            "player_id": player_id,
+            "context_type": context_type,
+            "timestamp": datetime.now(UTC).isoformat()
+        }
+        
+        # Get player and ship info
+        player = await db.get(Player, player_id)
+        if player:
+            context["player_state"] = {
+                "credits": float(player.credits),
+                "is_ported": player.is_ported,
+                "current_sector": player.current_sector_id,
+                "team_id": str(player.team_id) if player.team_id else None
+            }
+            
+            # Get current ship
+            if player.current_ship_id:
+                from src.models.ship import Ship
+                ship = await db.get(Ship, player.current_ship_id)
+                if ship:
+                    context["ship_state"] = {
+                        "type": ship.ship_type,
+                        "cargo_capacity": ship.cargo_capacity,
+                        "cargo": dict(ship.cargo) if ship.cargo else {},
+                        "current_port": str(ship.current_port_id) if ship.current_port_id else None
+                    }
+        
+        # Add ARIA personal intelligence summary
+        from src.services.aria_personal_intelligence_service import get_aria_intelligence_service
+        aria_intel = get_aria_intelligence_service()
+        
+        # Get exploration summary
+        from src.models.aria_personal_intelligence import ARIAExplorationMap
+        exploration_count = await db.execute(
+            select(func.count(ARIAExplorationMap.id)).where(
+                ARIAExplorationMap.player_id == player_id
+            )
+        )
+        context["exploration_summary"] = {
+            "sectors_visited": exploration_count.scalar() or 0
+        }
+        
+        return context
+    
+    async def _extract_aria_actions(self, response: Dict[str, Any], player_id: str,
+                                   db: AsyncSession) -> List[Dict[str, Any]]:
+        """Extract actionable items from ARIA's response"""
+        actions = []
+        
+        # Check for trading recommendations
+        if "recommended_trades" in response:
+            for trade in response["recommended_trades"]:
+                actions.append({
+                    "type": "trade_recommendation",
+                    "action": trade.get("action"),
+                    "commodity": trade.get("commodity"),
+                    "quantity": trade.get("quantity"),
+                    "expected_profit": trade.get("expected_profit"),
+                    "confidence": trade.get("confidence", 0.8)
+                })
+        
+        # Check for quantum trading suggestions
+        if "quantum_opportunities" in response:
+            for opp in response["quantum_opportunities"]:
+                actions.append({
+                    "type": "quantum_trade_opportunity",
+                    "commodity": opp.get("commodity"),
+                    "superposition_count": opp.get("states", 3),
+                    "success_probability": opp.get("probability", 0.7)
+                })
+        
+        # Check for navigation suggestions
+        if "navigation_suggestions" in response:
+            for nav in response["navigation_suggestions"]:
+                actions.append({
+                    "type": "navigation",
+                    "destination": nav.get("sector"),
+                    "reason": nav.get("reason"),
+                    "estimated_profit": nav.get("profit_potential")
+                })
+        
+        return actions
+    
+    async def _log_aria_interaction(self, player_id: str, user_input: str,
+                                   response: Dict[str, Any], db: AsyncSession):
+        """Log ARIA interaction for learning and improvement"""
+        try:
+            # Store in ARIA personal memory for learning
+            from src.services.aria_personal_intelligence_service import get_aria_intelligence_service
+            aria_intel = get_aria_intelligence_service()
+            
+            # Create memory of this interaction
+            memory_content = {
+                "type": "conversation",
+                "input": user_input,
+                "response_summary": response.get("response", "")[:200],  # First 200 chars
+                "confidence": response.get("confidence", 0),
+                "actions_suggested": len(response.get("actions", [])),
+                "timestamp": datetime.now(UTC).isoformat()
+            }
+            
+            # This would store in the ARIA personal memory system
+            # await aria_intel._create_memory(player_id, "conversation", memory_content, 0.5, db)
+            
+            logger.info(f"ARIA interaction logged for player {player_id}")
+            
+        except Exception as e:
+            logger.error(f"Error logging ARIA interaction: {e}")
 
 
 # Global enhanced service instance
