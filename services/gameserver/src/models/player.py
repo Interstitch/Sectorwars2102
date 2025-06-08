@@ -92,6 +92,12 @@ class Player(Base):
     trading_profile = relationship("PlayerTradingProfile", back_populates="player", uselist=False, cascade="all, delete-orphan")
     ai_recommendations = relationship("AIRecommendation", back_populates="player", cascade="all, delete-orphan")
     
+    # ARIA Personal Intelligence relationships
+    aria_memories = relationship("ARIAPersonalMemory", back_populates="player", cascade="all, delete-orphan")
+    aria_market_intelligence = relationship("ARIAMarketIntelligence", back_populates="player", cascade="all, delete-orphan")
+    aria_exploration_map = relationship("ARIAExplorationMap", back_populates="player", cascade="all, delete-orphan")
+    aria_trading_patterns = relationship("ARIATradingPattern", back_populates="player", cascade="all, delete-orphan")
+    
     # Fleet relationships
     commanded_fleets = relationship("Fleet", back_populates="commander", foreign_keys="Fleet.commander_id")
     fleet_memberships = relationship("FleetMember", back_populates="player", cascade="all, delete-orphan")
