@@ -274,6 +274,7 @@ class OptimizedCLAUDESystem:
         
         # Look for common test patterns
         test_commands = [
+            (['npx', 'playwright', 'test', '-c', 'e2e_tests/playwright.config.ts', '--reporter=line'], 'e2e_tests/playwright.config.ts'),
             (['npm', 'test'], 'package.json'),
             (['pytest', '--tb=short', '-q'], 'pytest.ini'),
             (['python', '-m', 'pytest', '--tb=short', '-q'], 'conftest.py'),

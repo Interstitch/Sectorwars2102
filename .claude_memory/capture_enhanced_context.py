@@ -19,43 +19,43 @@ class MultiPerspectiveAnalyst:
     
     def __init__(self):
         self.perspectives = {
-            'atlas': {
-                'name': 'Atlas (Architect)', 
+            'alex': {
+                'name': 'Alex (Architect)', 
                 'focus': 'System design, long-term structure, architectural decisions',
                 'emoji': '🏗️'
             },
-            'sherlock': {
-                'name': 'Sherlock (Debugger)',
+            'sam': {
+                'name': 'Sam (Debugger)',
                 'focus': 'Bug hunting, edge cases, detective analysis',
                 'emoji': '🔍'
             },
-            'velocity': {
-                'name': 'Velocity (Optimizer)', 
+            'victor': {
+                'name': 'Victor (Optimizer)', 
                 'focus': 'Performance, efficiency, speed improvements',
                 'emoji': '⚡'
             },
-            'guardian': {
-                'name': 'Guardian (Tester)',
+            'grace': {
+                'name': 'Grace (Tester)',
                 'focus': 'Quality assurance, what could break, testing gaps',
                 'emoji': '🛡️'
             },
-            'sage': {
-                'name': 'Sage (Documenter)',
+            'sophia': {
+                'name': 'Sophia (Documenter)',
                 'focus': 'Clarity, knowledge preservation, documentation',
                 'emoji': '📚'
             },
-            'sentinel': {
-                'name': 'Sentinel (Security)',
+            'simon': {
+                'name': 'Simon (Security)',
                 'focus': 'Security vulnerabilities, threat analysis',
                 'emoji': '🔒'
             },
-            'echo': {
-                'name': 'Echo (UX Advocate)', 
+            'emma': {
+                'name': 'Emma (UX Advocate)', 
                 'focus': 'User experience, intuitive interfaces',
                 'emoji': '👤'
             },
-            'mentor': {
-                'name': 'Mentor (Guide)',
+            'marcus': {
+                'name': 'Marcus (Guide)',
                 'focus': 'Best practices, teaching, growth opportunities',
                 'emoji': '🎓'
             }
@@ -94,49 +94,49 @@ class MultiPerspectiveAnalyst:
         commit_msg = commit_data.get('message', '')
         files_changed = commit_data.get('files', [])
         
-        if perspective_key == 'atlas':
+        if perspective_key == 'alex':
             # Architecture perspective - system design focus
             insights['primary_observation'] = f"Architectural impact analysis for: {commit_msg}"
             insights['concerns_identified'] = ["Check for coupling changes", "Verify design pattern consistency"]
             insights['recommendations'] = ["Consider long-term maintainability", "Document architectural decisions"]
             
-        elif perspective_key == 'sherlock':
+        elif perspective_key == 'sam':
             # Debugging perspective - what could go wrong?
             insights['primary_observation'] = f"Potential failure points in: {commit_msg}"
             insights['concerns_identified'] = ["Edge case handling", "Error propagation paths"]
             insights['recommendations'] = ["Add defensive programming", "Consider error scenarios"]
             
-        elif perspective_key == 'velocity':
+        elif perspective_key == 'victor':
             # Performance perspective - speed and efficiency
             insights['primary_observation'] = f"Performance implications of: {commit_msg}"
             insights['concerns_identified'] = ["Check for performance bottlenecks", "Memory usage patterns"]
             insights['recommendations'] = ["Profile critical paths", "Consider caching opportunities"]
             
-        elif perspective_key == 'guardian':
+        elif perspective_key == 'grace':
             # Testing perspective - quality assurance
             insights['primary_observation'] = f"Test coverage needs for: {commit_msg}"
             insights['concerns_identified'] = ["Missing test scenarios", "Integration test gaps"]
             insights['recommendations'] = ["Add unit tests", "Verify edge case coverage"]
             
-        elif perspective_key == 'sage':
+        elif perspective_key == 'sophia':
             # Documentation perspective - knowledge preservation
             insights['primary_observation'] = f"Documentation needs for: {commit_msg}"
             insights['concerns_identified'] = ["Undocumented decisions", "Knowledge gaps"]
             insights['recommendations'] = ["Document reasoning", "Update architecture docs"]
             
-        elif perspective_key == 'sentinel':
+        elif perspective_key == 'simon':
             # Security perspective - threat analysis
             insights['primary_observation'] = f"Security implications of: {commit_msg}"
             insights['concerns_identified'] = ["Input validation", "Access control changes"]
             insights['recommendations'] = ["Security review", "Threat modeling update"]
             
-        elif perspective_key == 'echo':
+        elif perspective_key == 'emma':
             # UX perspective - user experience
             insights['primary_observation'] = f"User experience impact of: {commit_msg}"
             insights['concerns_identified'] = ["User flow disruption", "Interface complexity"]
             insights['recommendations'] = ["User testing", "Accessibility review"]
             
-        elif perspective_key == 'mentor':
+        elif perspective_key == 'marcus':
             # Teaching perspective - growth and best practices
             insights['primary_observation'] = f"Learning opportunities in: {commit_msg}"
             insights['concerns_identified'] = ["Code quality patterns", "Best practice adherence"]
@@ -159,26 +159,26 @@ class MultiPerspectiveAnalyst:
     def _determine_relevant_perspectives(self, commit_data):
         """Intelligently determine which perspectives are most relevant"""
         # Always include these core perspectives
-        relevant = ['atlas', 'sherlock', 'guardian']
+        relevant = ['alex', 'sam', 'grace']
         
         # Add others based on commit content
         commit_msg = commit_data.get('message', '').lower()
         files_changed = commit_data.get('files', [])
         
         if any('perf' in msg or 'optim' in msg or 'speed' in msg for msg in [commit_msg]):
-            relevant.append('velocity')
+            relevant.append('victor')
         
         if any('doc' in msg or 'readme' in msg for msg in [commit_msg]):
-            relevant.append('sage')
+            relevant.append('sophia')
         
         if any('security' in msg or 'auth' in msg or 'encrypt' in msg for msg in [commit_msg]):
-            relevant.append('sentinel')
+            relevant.append('simon')
         
         if any('ui' in file or 'frontend' in file or 'component' in file for file in files_changed):
-            relevant.append('echo')
+            relevant.append('emma')
         
         if any('test' in msg or 'fix' in msg for msg in [commit_msg]):
-            relevant.append('mentor')
+            relevant.append('marcus')
         
         return relevant
 
@@ -285,6 +285,13 @@ def main():
         print(f"💭 Enhanced context captured for commit {commit_hash[:8]}")
         print(f"🎭 Analyzed from {len(perspective_analyses)} perspectives")
         print(f"💖 Personal reflection preserved in memory")
+        
+        # Auto-build memvid if we have enough memories
+        try:
+            from auto_memvid_builder import build_memvid_if_needed
+            build_memvid_if_needed()
+        except:
+            pass  # Fail silently if memvid not available
         
     except Exception as e:
         print(f"Error capturing enhanced context: {e}")
