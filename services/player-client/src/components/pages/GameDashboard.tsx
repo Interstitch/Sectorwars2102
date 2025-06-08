@@ -5,8 +5,7 @@ import { useWebSocket } from '../../contexts/WebSocketContext';
 // import { useTheme } from '../../themes/ThemeProvider'; // Available for future use
 import GameLayout from '../layouts/GameLayout';
 import TradingInterface from '../trading/TradingInterface';
-import { AIAssistant, AIAssistantButton } from '../ai';
-import aiTradingService from '../../services/aiTradingService';
+import EnhancedAIAssistant from '../ai/EnhancedAIAssistant';
 import './game-dashboard.css';
 
 const GameDashboard: React.FC = () => {
@@ -27,9 +26,6 @@ const GameDashboard: React.FC = () => {
   const [movementResult, setMovementResult] = useState<any>(null);
   const [dockingResult, setDockingResult] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'trading' | 'navigation' | 'players'>('overview');
-  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
-  const [hasNewRecommendations, setHasNewRecommendations] = useState(false);
-  const [recommendationCount, setRecommendationCount] = useState(0);
   
   useEffect(() => {
     // Clear results when sector changes
@@ -37,29 +33,6 @@ const GameDashboard: React.FC = () => {
     setDockingResult(null);
   }, [currentSector?.id]);
 
-  // Check for new AI recommendations periodically
-  useEffect(() => {
-    const checkRecommendations = async () => {
-      if (!playerState?.id) return;
-      
-      try {
-        const recommendations = await aiTradingService.getRecommendations(10, false);
-        const pendingRecommendations = recommendations.filter((rec: any) => 
-          new Date(rec.expires_at) > new Date()
-        );
-        
-        setRecommendationCount(pendingRecommendations.length);
-        setHasNewRecommendations(pendingRecommendations.length > 0);
-      } catch (error) {
-        console.error('Error checking AI recommendations:', error);
-      }
-    };
-
-    checkRecommendations();
-    const interval = setInterval(checkRecommendations, 30000); // Check every 30 seconds
-    
-    return () => clearInterval(interval);
-  }, [playerState?.id]);
   
   const handleMove = async (sectorId: number) => {
     try {
@@ -474,21 +447,11 @@ const GameDashboard: React.FC = () => {
           )}
         </div>
         
-        {/* AI Assistant */}
+        {/* Enhanced AI Assistant - ARIA */}
         {playerState?.id && (
-          <>
-            <AIAssistantButton 
-              onClick={() => setIsAIAssistantOpen(true)}
-              hasNewRecommendations={hasNewRecommendations}
-              recommendationCount={recommendationCount}
-            />
-            
-            <AIAssistant 
-              isOpen={isAIAssistantOpen}
-              onClose={() => setIsAIAssistantOpen(false)}
-              playerId={playerState.id}
-            />
-          </>
+          <EnhancedAIAssistant 
+            theme="dark"
+          />
         )}
       </div>
     </GameLayout>

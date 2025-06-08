@@ -684,32 +684,8 @@ async def cleanup_ai_data(
 
 
 # =============================================================================
-# ERROR HANDLERS
+# ERROR HANDLERS (Note: These are handled by FastAPI's main app exception handlers)
 # =============================================================================
 
-@router.exception_handler(ValueError)
-async def value_error_handler(request, exc):
-    """Handle validation errors"""
-    return HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=str(exc)
-    )
-
-
-@router.exception_handler(PermissionError)
-async def permission_error_handler(request, exc):
-    """Handle permission errors"""
-    return HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail=str(exc)
-    )
-
-
-@router.exception_handler(SQLAlchemyError)
-async def database_error_handler(request, exc):
-    """Handle database errors"""
-    logger.error(f"Database error in AI API: {exc}")
-    return HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail="Service temporarily unavailable"
-    )
+# Exception handlers are implemented at the application level in main.py
+# Individual route error handling is done within each endpoint's try/catch blocks

@@ -600,7 +600,7 @@ class AILearningPattern(Base):
             name="description_length_limit"
         ),
         UniqueConstraint("assistant_id", "pattern_name", "pattern_version", name="unique_pattern_version"),
-        Index("idx_patterns_active_success", assistant_id, pattern_category, "success_rate"),
+        Index("idx_patterns_active", assistant_id, pattern_category),
     )
 
     @hybrid_property 
@@ -731,7 +731,7 @@ class AIConversationLog(Base):
             name="response_length_limit"
         ),
         Index("idx_conversations_session", session_id, interaction_sequence),
-        Index("idx_conversations_retention", "expires_at"),
+        Index("idx_conversations_retention", interaction_timestamp),
     )
 
     @hybrid_property
