@@ -487,60 +487,102 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     });
     cleanups.push(ariaHandler);
 
-    // Quantum Trading response handler
+    // Backend Quantum Trading message handlers (matching actual backend format)
+    const quantumTradeCreatedHandler = (message: WebSocketMessage) => {
+      if (message.type === 'quantum_trade_created' && message.data) {
+        // Add new quantum trade to state
+        const newTrade = {
+          trade_id: message.data.trade_id,
+          trade_type: message.data.action as 'buy' | 'sell',
+          commodity: message.data.commodity,
+          quantity: message.data.quantity,
+          superposition_states: message.data.superposition_states,
+          manipulation_warning: message.data.manipulation_warning,
+          risk_score: message.data.probability < 0.7 ? 0.3 : 0.1, // Convert probability to risk
+          confidence_interval: [message.data.probability - 0.1, message.data.probability + 0.1] as [number, number],
+          dna_sequence: message.data.dna_sequence,
+          timestamp: message.timestamp || new Date().toISOString()
+        };
+        
+        setQuantumTrades(prev => [...prev, newTrade]);
+        
+        addNotification({
+          title: 'Quantum Trade Created',
+          content: `Created quantum ${message.data.action} trade for ${message.data.quantity} ${message.data.commodity}`,
+          level: 'success'
+        });
+      }
+    };
+    websocketService.addMessageHandler(quantumTradeCreatedHandler);
+    cleanups.push(() => websocketService.removeMessageHandler(quantumTradeCreatedHandler));
+
+    const ghostTradeResultHandler = (message: WebSocketMessage) => {
+      if (message.type === 'ghost_trade_result' && message.data) {
+        // Add ghost trade result to state
+        const ghostResult = {
+          trade_id: message.data.trade_id || `ghost_${Date.now()}`,
+          trade_type: message.data.action as 'buy' | 'sell',
+          commodity: message.data.commodity || 'ORE',
+          quantity: message.data.quantity || 100,
+          expected_profit: message.data.expected_profit,
+          success_probability: message.data.outcomes?.reduce((sum: number, outcome: any) => 
+            sum + (outcome.profit > 0 ? outcome.probability : 0), 0) || 0.5,
+          risk_assessment: message.data.recommendation?.includes('HIGH') ? 'high' : 
+                          message.data.recommendation?.includes('MEDIUM') ? 'medium' : 'low',
+          timestamp: message.timestamp || new Date().toISOString()
+        };
+        
+        setGhostTrades(prev => [...prev, ghostResult]);
+        
+        addNotification({
+          title: 'Ghost Trade Completed',
+          content: `Simulation: ${message.data.recommendation}`,
+          level: 'info'
+        });
+      }
+    };
+    websocketService.addMessageHandler(ghostTradeResultHandler);
+    cleanups.push(() => websocketService.removeMessageHandler(ghostTradeResultHandler));
+
+    const quantumTradeCollapsedHandler = (message: WebSocketMessage) => {
+      if (message.type === 'quantum_trade_collapsed' && message.data) {
+        // Remove quantum trade from superposition
+        setQuantumTrades(prev => prev.filter(trade => trade.trade_id !== message.data.trade?.id));
+        
+        const profit = message.data.trade?.profit || 0;
+        addNotification({
+          title: 'Quantum Trade Collapsed',
+          content: `Trade executed with ${profit > 0 ? '+' : ''}${profit} credits`,
+          level: profit > 0 ? 'success' : 'warning'
+        });
+      }
+    };
+    websocketService.addMessageHandler(quantumTradeCollapsedHandler);
+    cleanups.push(() => websocketService.removeMessageHandler(quantumTradeCollapsedHandler));
+
+    // Legacy quantum trading response handler (for backward compatibility)
     const quantumTradingHandler = websocketService.onQuantumTradingResponse((message) => {
       if (message.success && message.data) {
         if (message.action === 'create_quantum_trade') {
-          // Add new quantum trade to state
+          // Handle legacy format
           const newTrade = {
             trade_id: message.data.trade_id,
-            trade_type: message.data.superposition_states[0]?.outcome.includes('buy') ? 'buy' as const : 'sell' as const,
+            trade_type: message.data.superposition_states?.[0]?.outcome?.includes('buy') ? 'buy' as const : 'sell' as const,
             commodity: 'ORE', // This should come from the original request, stored temporarily
             quantity: 100, // This should come from the original request
-            superposition_states: message.data.superposition_states,
-            manipulation_warning: message.data.manipulation_warning,
-            risk_score: message.data.risk_score,
-            confidence_interval: message.data.confidence_interval,
+            superposition_states: message.data.superposition_states || [],
+            manipulation_warning: message.data.manipulation_warning || false,
+            risk_score: message.data.risk_score || 0.5,
+            confidence_interval: message.data.confidence_interval || [0.6, 0.9],
             dna_sequence: message.data.dna_sequence,
-            timestamp: message.timestamp
+            timestamp: message.timestamp || new Date().toISOString()
           };
           
           setQuantumTrades(prev => [...prev, newTrade]);
           
           addNotification({
             title: 'Quantum Trade Created',
-            content: `Created quantum trade with ${message.data.superposition_states.length} probability states`,
-            level: 'success'
-          });
-          
-        } else if (message.action === 'execute_ghost_trade' && message.data.ghost_results) {
-          // Add ghost trade result to state
-          const ghostResult = {
-            trade_id: message.data.trade_id,
-            trade_type: 'buy' as const, // This should come from the original request
-            commodity: 'ORE', // This should come from the original request
-            quantity: 100, // This should come from the original request
-            expected_profit: message.data.ghost_results.expected_profit,
-            success_probability: message.data.ghost_results.success_probability,
-            risk_assessment: message.data.ghost_results.risk_assessment,
-            timestamp: message.timestamp
-          };
-          
-          setGhostTrades(prev => [...prev, ghostResult]);
-          
-          addNotification({
-            title: 'Ghost Trade Completed',
-            content: `Simulation shows ${message.data.ghost_results.success_probability}% success probability`,
-            level: 'info'
-          });
-          
-        } else if (message.action === 'collapse_trade') {
-          // Remove quantum trade from superposition
-          setQuantumTrades(prev => prev.filter(trade => trade.trade_id !== message.data?.trade_id));
-          
-          addNotification({
-            title: 'Quantum Trade Collapsed',
-            content: `Trade ${message.data.trade_id} collapsed to reality`,
+            content: `Created quantum trade with ${message.data.superposition_states?.length || 0} probability states`,
             level: 'success'
           });
         }
