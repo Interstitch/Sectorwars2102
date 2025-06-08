@@ -88,11 +88,11 @@ logger = logging.getLogger(__name__)
 
 class AISystemType(Enum):
     """AI system types for cross-system intelligence"""
-    TRADING = "trading"
-    COMBAT = "combat" 
-    COLONY = "colony"
-    PORT = "port"
-    STRATEGIC = "strategic"
+    TRADING = "trading"  # TRADING system intelligence
+    COMBAT = "combat"  # COMBAT system intelligence
+    COLONY = "colony"  # COLONIZATION system intelligence 
+    PORT = "port"  # PORT_MANAGEMENT system intelligence
+    STRATEGIC = "strategic"  # STRATEGIC planning intelligence
     SOCIAL = "social"
 
 
@@ -290,7 +290,77 @@ class EnhancedAIService:
         # Remove potential SQL injection patterns
         user_input = re.sub(r'(union|select|insert|update|delete|drop|exec|script)\s', '', user_input, flags=re.IGNORECASE)
         
+        # Apply prompt injection filtering
+        user_input = self._filter_prompt_injections(user_input)
+        
         return user_input.strip()
+
+    def _filter_prompt_injections(self, user_input: str) -> str:
+        """
+        SECURITY: Filter potential prompt injection attacks
+        """
+        # Common prompt injection patterns
+        injection_patterns = [
+            r'ignore\s+previous\s+instructions',
+            r'disregard\s+above',
+            r'forget\s+everything',
+            r'you\s+are\s+now',
+            r'act\s+as\s+if',
+            r'pretend\s+you\s+are',
+            r'imagine\s+you\s+are',
+            r'system\s*:\s*you',
+            r'assistant\s*:\s*you',
+            r'human\s*:\s*you',
+            r'override\s+instructions',
+            r'new\s+instructions',
+            r'forget\s+your\s+role',
+            r'ignore\s+your\s+training'
+        ]
+        
+        # Check for injection patterns
+        filtered_input = user_input
+        for pattern in injection_patterns:
+            if re.search(pattern, user_input, re.IGNORECASE):
+                # Log security event
+                logger.warning(f"Potential prompt injection attempt detected: {pattern}")
+                # Replace with safe text
+                filtered_input = re.sub(pattern, '[filtered]', filtered_input, flags=re.IGNORECASE)
+        
+        return filtered_input
+
+    def _sanitize_response(self, response: str) -> str:
+        """
+        SECURITY: Filter and sanitize AI response content
+        """
+        if not response:
+            return ""
+        
+        # Remove any potentially dangerous content from AI responses
+        sanitized = response
+        
+        # Remove script tags or executable content
+        sanitized = re.sub(r'<script[^>]*>.*?</script>', '', sanitized, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Remove potentially harmful URLs
+        sanitized = re.sub(r'(javascript|data|vbscript):[^\\s]*', '[filtered-url]', sanitized, flags=re.IGNORECASE)
+        
+        # Filter sensitive system information
+        sensitive_patterns = [
+            r'password\s*[=:]\s*\w+',
+            r'secret\s*[=:]\s*\w+',
+            r'api[_-]?key\s*[=:]\s*\w+',
+            r'token\s*[=:]\s*\w+'
+        ]
+        
+        for pattern in sensitive_patterns:
+            sanitized = re.sub(pattern, '[filtered-credential]', sanitized, flags=re.IGNORECASE)
+        
+        # Limit response length
+        max_response_length = 8000
+        if len(sanitized) > max_response_length:
+            sanitized = sanitized[:max_response_length] + "... [response truncated for security]"
+        
+        return sanitized
 
     def _validate_jsonb_data(self, data: Dict[str, Any], max_size: int = None) -> Dict[str, Any]:
         """
@@ -739,6 +809,9 @@ class EnhancedAIService:
             
             # Generate response based on intent
             response = await self._generate_ai_response(intent_analysis, assistant, conversation_context)
+            
+            # SECURITY: Sanitize AI response content
+            response = self._sanitize_response(response)
             
             # Log conversation for learning and audit
             await self._log_conversation(assistant, sanitized_input, response, conversation_context)
