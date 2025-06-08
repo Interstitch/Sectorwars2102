@@ -248,6 +248,9 @@ class EnhancedWebSocketService:
             elif message_type == "automation_rule":
                 await self._handle_automation_rule(player_id, message, db, session)
             
+            elif message_type == "quantum_trading":
+                await self._handle_quantum_trading(player_id, message, db, session)
+            
             elif message_type == "heartbeat":
                 await self._handle_heartbeat(player_id)
             
@@ -451,44 +454,143 @@ class EnhancedWebSocketService:
     
     async def _execute_trade(self, player_id: str, action: str, trade_data: Dict[str, Any], 
                            db: AsyncSession) -> Dict[str, Any]:
-        """Execute buy or sell trade"""
+        """Execute buy or sell trade using existing trading logic"""
         try:
+            # Import required models
+            from src.models.ship import Ship
+            from src.models.port import Port
+            from src.models.market_transaction import MarketPrice, TransactionType
+            
             # Get player
             player = await db.get(Player, player_id)
             if not player:
                 return {"success": False, "error": "Player not found"}
             
-            # Check if player has sufficient credits/cargo
+            # Verify player is docked
+            if not player.is_ported:
+                return {"success": False, "error": "You must be docked at a port to trade"}
+            
+            # Get port
+            port_id = trade_data.get("port_id")
+            if not port_id:
+                # If port_id not provided, get from player's current location
+                ship = await db.execute(
+                    select(Ship).where(
+                        Ship.id == player.current_ship_id,
+                        Ship.owner_id == player.id
+                    )
+                )
+                ship = ship.scalar_one_or_none()
+                if ship and ship.current_port_id:
+                    port_id = str(ship.current_port_id)
+                else:
+                    return {"success": False, "error": "Port ID required or ship must be docked"}
+            
+            port = await db.get(Port, port_id)
+            if not port:
+                return {"success": False, "error": "Port not found"}
+            
+            # Verify player is in the same sector as the port
+            if player.current_sector_id != port.sector_id:
+                return {"success": False, "error": "You must be in the same sector as the port"}
+            
+            # Get current ship
+            ship = await db.execute(
+                select(Ship).where(
+                    Ship.id == player.current_ship_id,
+                    Ship.owner_id == player.id
+                )
+            )
+            current_ship = ship.scalar_one_or_none()
+            if not current_ship:
+                return {"success": False, "error": "No active ship found"}
+            
             commodity = trade_data.get("commodity")
             quantity = int(trade_data.get("quantity", 0))
-            price = float(trade_data.get("price", 0))
             
-            if action == "buy":
-                total_cost = quantity * price
-                if player.credits < total_cost:
-                    return {"success": False, "error": "Insufficient credits"}
-            else:  # sell
-                # Check cargo (simplified - would need actual cargo check)
-                pass
-            
-            # Create transaction
-            transaction = MarketTransaction(
-                player_id=player_id,
-                commodity=commodity,
-                action=action,
-                quantity=quantity,
-                price=price,
-                sector_id=trade_data.get("sector_id"),
-                port_id=trade_data.get("port_id")
+            # Get market price for this commodity
+            market_price_query = await db.execute(
+                select(MarketPrice).where(
+                    MarketPrice.port_id == port_id,
+                    MarketPrice.commodity == commodity
+                )
             )
+            market_price = market_price_query.scalar_one_or_none()
+            if not market_price:
+                return {"success": False, "error": "Commodity not available at this port"}
             
-            # Update player credits
             if action == "buy":
-                player.credits -= quantity * price
-            else:
-                player.credits += quantity * price
+                # Check if port has enough quantity
+                if market_price.quantity_available < quantity:
+                    return {
+                        "success": False, 
+                        "error": f"Port only has {market_price.quantity_available} units available"
+                    }
+                
+                # Calculate total cost
+                total_cost = market_price.buy_price * quantity
+                
+                # Check if player has enough credits
+                if player.credits < total_cost:
+                    return {
+                        "success": False,
+                        "error": f"Insufficient credits. Need {total_cost}, have {player.credits}"
+                    }
+                
+                # Check ship cargo capacity
+                current_cargo = sum(current_ship.cargo.values()) if current_ship.cargo else 0
+                if current_cargo + quantity > current_ship.cargo_capacity:
+                    return {"success": False, "error": "Insufficient cargo space"}
+                
+                # Execute buy trade
+                player.credits -= total_cost
+                
+                # Update ship cargo
+                if not current_ship.cargo:
+                    current_ship.cargo = {}
+                current_ship.cargo[commodity] = current_ship.cargo.get(commodity, 0) + quantity
+                
+                # Update market quantity
+                market_price.quantity_available -= quantity
+                market_price.last_updated = datetime.now(UTC)
+                
+                price_used = market_price.buy_price
+                
+            else:  # sell
+                # Check if player has the commodity
+                if not current_ship.cargo or current_ship.cargo.get(commodity, 0) < quantity:
+                    return {"success": False, "error": "Insufficient cargo to sell"}
+                
+                # Calculate total revenue
+                total_revenue = market_price.sell_price * quantity
+                
+                # Execute sell trade
+                player.credits += total_revenue
+                
+                # Update ship cargo
+                current_ship.cargo[commodity] -= quantity
+                if current_ship.cargo[commodity] == 0:
+                    del current_ship.cargo[commodity]
+                
+                # Update market quantity
+                market_price.quantity_available += quantity
+                market_price.last_updated = datetime.now(UTC)
+                
+                price_used = market_price.sell_price
             
+            # Create transaction record
+            transaction = MarketTransaction(
+                player_id=player.id,
+                port_id=port_id,
+                transaction_type=TransactionType.BUY if action == "buy" else TransactionType.SELL,
+                commodity=commodity,
+                quantity=quantity,
+                unit_price=price_used,
+                total_value=total_cost if action == "buy" else total_revenue,
+                timestamp=datetime.now(UTC)
+            )
             db.add(transaction)
+            
             await db.commit()
             
             return {
@@ -498,11 +600,13 @@ class EnhancedWebSocketService:
                     "commodity": commodity,
                     "action": action,
                     "quantity": quantity,
-                    "price": price,
-                    "total": quantity * price,
+                    "price": price_used,
+                    "total": total_cost if action == "buy" else total_revenue,
                     "timestamp": transaction.timestamp.isoformat()
                 },
-                "new_balance": float(player.credits)
+                "new_balance": float(player.credits),
+                "cargo_update": dict(current_ship.cargo) if current_ship.cargo else {},
+                "remaining_cargo_space": current_ship.cargo_capacity - sum(current_ship.cargo.values() if current_ship.cargo else [])
             }
             
         except Exception as e:
@@ -792,6 +896,110 @@ class EnhancedWebSocketService:
                 
         except Exception as e:
             logger.error(f"Error broadcasting trade update: {e}")
+    
+    # =============================================================================
+    # QUANTUM TRADING INTEGRATION
+    # =============================================================================
+    
+    async def _handle_quantum_trading(self, player_id: str, message: Dict[str, Any], 
+                                    db: AsyncSession, session: WebSocketSession):
+        """Handle quantum trading operations via WebSocket"""
+        try:
+            from src.services.quantum_trading_engine import get_quantum_trading_engine
+            
+            action = message.get("action")
+            if not action:
+                await self.send_error(player_id, "Quantum trading action required")
+                return
+            
+            quantum_engine = get_quantum_trading_engine()
+            
+            if action == "create_quantum_trade":
+                # Create a quantum trade in superposition
+                trade_params = message.get("params", {})
+                quantum_trade = await quantum_engine.create_quantum_trade(
+                    player_id=player_id,
+                    trade_params=trade_params,
+                    db=db
+                )
+                
+                await self.send_message(player_id, {
+                    "type": "quantum_trade_created",
+                    "data": {
+                        "trade_id": quantum_trade.trade_id,
+                        "commodity": quantum_trade.commodity,
+                        "superposition_states": quantum_trade.superposition_states,
+                        "probability": quantum_trade.probability,
+                        "manipulation_warning": quantum_trade.manipulation_probability > 0.5
+                    }
+                })
+                
+            elif action == "execute_ghost_trade":
+                # Run a ghost trade simulation
+                trade_id = message.get("trade_id")
+                if not trade_id:
+                    await self.send_error(player_id, "Trade ID required for ghost simulation")
+                    return
+                
+                quantum_trade = quantum_engine.quantum_trades.get(trade_id)
+                if not quantum_trade or quantum_trade.player_id != player_id:
+                    await self.send_error(player_id, "Quantum trade not found")
+                    return
+                
+                ghost_result = await quantum_engine.execute_ghost_trade(quantum_trade, db)
+                
+                await self.send_message(player_id, {
+                    "type": "ghost_trade_result",
+                    "data": ghost_result
+                })
+                
+            elif action == "collapse_trade":
+                # Collapse quantum superposition and execute the trade
+                trade_id = message.get("trade_id")
+                if not trade_id:
+                    await self.send_error(player_id, "Trade ID required for collapse")
+                    return
+                
+                result = await quantum_engine.collapse_quantum_trade(trade_id, db)
+                
+                await self.send_message(player_id, {
+                    "type": "quantum_trade_collapsed",
+                    "data": result
+                })
+                
+                # Broadcast market update if trade succeeded
+                if result.get("status") == "success":
+                    await self._broadcast_trade_update(result, db)
+                    
+            elif action == "get_quantum_state":
+                # Get current quantum trading state
+                state = quantum_engine.get_quantum_state()
+                player_trades = [
+                    {
+                        "trade_id": trade_id,
+                        "commodity": trade.commodity,
+                        "action": trade.action,
+                        "quantity": trade.quantity,
+                        "probability": trade.probability
+                    }
+                    for trade_id, trade in quantum_engine.quantum_trades.items()
+                    if trade.player_id == player_id
+                ]
+                
+                await self.send_message(player_id, {
+                    "type": "quantum_state",
+                    "data": {
+                        "global_state": state,
+                        "my_trades": player_trades
+                    }
+                })
+                
+            else:
+                await self.send_error(player_id, f"Unknown quantum trading action: {action}")
+                
+        except Exception as e:
+            logger.error(f"Error handling quantum trading: {e}")
+            await self.send_error(player_id, "Quantum trading operation failed")
 
 
 # Global enhanced service instance
