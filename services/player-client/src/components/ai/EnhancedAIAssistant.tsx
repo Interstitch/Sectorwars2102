@@ -104,7 +104,6 @@ const EnhancedAIAssistant: React.FC<EnhancedAIAssistantProps> = ({
   // State management
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
-  const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<AIRecommendation[]>([]);
   const [assistantStatus, setAssistantStatus] = useState<AssistantStatus | null>(null);
@@ -121,11 +120,11 @@ const EnhancedAIAssistant: React.FC<EnhancedAIAssistantProps> = ({
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
   
   // Context hooks
-  const { user, getAuthToken } = useAuth();
-  const { socket, isConnected } = useWebSocket();
+  const { user } = useAuth();
+  const { sendARIAMessage, ariaMessages, clearARIAMessages, isConnected } = useWebSocket();
 
   // Security constants
   const MAX_MESSAGE_LENGTH = 4000;
@@ -161,7 +160,17 @@ const EnhancedAIAssistant: React.FC<EnhancedAIAssistantProps> = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [ariaMessages, scrollToBottom]);
+
+  // Handle loading state when new messages arrive
+  useEffect(() => {
+    if (ariaMessages.length > 0) {
+      const lastMessage = ariaMessages[ariaMessages.length - 1];
+      if (lastMessage.type === 'ai') {
+        setIsLoading(false);
+      }
+    }
+  }, [ariaMessages]);
 
   // Initialize assistant status
   useEffect(() => {
@@ -174,7 +183,7 @@ const EnhancedAIAssistant: React.FC<EnhancedAIAssistantProps> = ({
   // Speech recognition setup
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
@@ -225,59 +234,32 @@ const EnhancedAIAssistant: React.FC<EnhancedAIAssistantProps> = ({
     return true;
   }, [lastRequestTime, requestCount]);
 
-  // Secure API request helper
-  const makeSecureRequest = useCallback(async (endpoint: string, options: RequestInit = {}) => {
-    const token = await getAuthToken();
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-    
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'X-Requested-With': 'XMLHttpRequest', // CSRF protection
-        ...options.headers,
-      },
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Network error' }));
-      throw new Error(errorData.detail || `HTTP ${response.status}`);
-    }
-    
-    return response.json();
-  }, [API_BASE_URL, getAuthToken]);
+  // Note: HTTP API calls removed - now using WebSocket
 
-  // Fetch assistant status
+  // Fetch assistant status (simplified for WebSocket)
   const fetchAssistantStatus = useCallback(async () => {
-    try {
-      const status = await makeSecureRequest('/api/v1/ai/assistant/status');
-      setAssistantStatus(status);
-    } catch (error) {
-      console.error('Failed to fetch assistant status:', error);
-    }
-  }, [makeSecureRequest]);
+    // Mock status for now - in full implementation would come via WebSocket
+    setAssistantStatus({
+      assistant_id: 'aria-ws-1',
+      assistant_name: 'ARIA (WebSocket)',
+      security_level: 'HIGH',
+      api_usage: { quota: 1000, used: 0, remaining: 1000 },
+      total_interactions: 0,
+      last_active: new Date().toISOString(),
+      access_permissions: {
+        trading: true,
+        combat: true,
+        colony: true,
+        port: true
+      }
+    });
+  }, []);
 
-  // Fetch AI recommendations
+  // Fetch AI recommendations (simplified for WebSocket)
   const fetchRecommendations = useCallback(async () => {
-    try {
-      const requestBody = {
-        system_types: selectedSystems,
-        max_recommendations: 5
-      };
-      
-      const recs = await makeSecureRequest('/api/v1/ai/recommendations', {
-        method: 'POST',
-        body: JSON.stringify(requestBody)
-      });
-      
-      setRecommendations(recs);
-    } catch (error) {
-      console.error('Failed to fetch recommendations:', error);
-    }
-  }, [makeSecureRequest, selectedSystems]);
+    // Mock recommendations for now - in full implementation would come via WebSocket
+    setRecommendations([]);
+  }, [selectedSystems]);
 
   // Input sanitization
   const sanitizeInput = useCallback((input: string): string => {
@@ -292,9 +274,14 @@ const EnhancedAIAssistant: React.FC<EnhancedAIAssistantProps> = ({
     return sanitized.slice(0, MAX_MESSAGE_LENGTH);
   }, []);
 
-  // Send message to AI
-  const sendMessage = useCallback(async () => {
-    if (!inputValue.trim() || isLoading || !checkRateLimit()) {
+  // Send message to AI via WebSocket
+  const sendMessage = useCallback(() => {
+    if (!inputValue.trim() || isLoading || !checkRateLimit() || !isConnected) {
+      if (!isConnected) {
+        // Show connection warning
+        setRateLimitWarning(true);
+        setTimeout(() => setRateLimitWarning(false), 3000);
+      }
       return;
     }
     
@@ -305,68 +292,32 @@ const EnhancedAIAssistant: React.FC<EnhancedAIAssistantProps> = ({
     
     setIsLoading(true);
     
-    // Add user message immediately
-    const userMessage: ConversationMessage = {
-      id: `user-${Date.now()}`,
-      type: 'user',
-      content: sanitizedMessage,
-      timestamp: new Date().toISOString()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
-    
-    try {
-      const requestBody = {
-        message: sanitizedMessage,
-        conversation_id: conversationId,
-        conversation_type: 'query'
-      };
-      
-      const response = await makeSecureRequest('/api/v1/ai/chat', {
-        method: 'POST',
-        body: JSON.stringify(requestBody)
-      });
-      
-      // Update conversation ID
-      if (!conversationId) {
-        setConversationId(response.conversation_id);
-      }
-      
-      // Add AI response
-      const aiMessage: ConversationMessage = {
-        id: `ai-${Date.now()}`,
-        type: 'ai',
-        content: DOMPurify.sanitize(response.response),
-        timestamp: response.response_time,
-        intent: response.intent,
-        metadata: {
-          response_time: Date.now() - userMessage.timestamp,
-          confidence: response.intent?.confidence
-        }
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-      
-      // Refresh recommendations after conversation
-      setTimeout(() => fetchRecommendations(), 1000);
-      
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      
-      // Add error message
-      const errorMessage: ConversationMessage = {
-        id: `error-${Date.now()}`,
-        type: 'ai',
-        content: 'I apologize, but I\'m having trouble responding right now. Please try again in a moment.',
-        timestamp: new Date().toISOString()
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
+    // Determine context based on selected systems
+    let context = 'general';
+    if (selectedSystems.length === 1) {
+      context = selectedSystems[0];
+    } else if (selectedSystems.includes('trading')) {
+      context = 'trading';
     }
-  }, [inputValue, isLoading, checkRateLimit, sanitizeInput, conversationId, makeSecureRequest, fetchRecommendations]);
+    
+    // Send via WebSocket
+    const success = sendARIAMessage(sanitizedMessage, conversationId, context);
+    
+    if (success) {
+      setInputValue('');
+      
+      // Update conversation ID if not set
+      if (!conversationId) {
+        const newConversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        setConversationId(newConversationId);
+      }
+    } else {
+      console.error('Failed to send ARIA message via WebSocket');
+    }
+    
+    // Set loading to false after a short delay (WebSocket response will handle it)
+    setTimeout(() => setIsLoading(false), 5000); // 5-second timeout
+  }, [inputValue, isLoading, checkRateLimit, sanitizeInput, conversationId, sendARIAMessage, selectedSystems, isConnected]);
 
   // Handle Enter key
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
@@ -394,43 +345,27 @@ const EnhancedAIAssistant: React.FC<EnhancedAIAssistantProps> = ({
 
   // Clear conversation
   const clearConversation = useCallback(() => {
-    setMessages([]);
+    clearARIAMessages();
     setConversationId(null);
-  }, []);
+  }, [clearARIAMessages]);
 
-  // Accept recommendation
+  // Accept recommendation (simplified for WebSocket)
   const acceptRecommendation = useCallback(async (recommendation: AIRecommendation) => {
     try {
-      // Record user action for AI learning
-      await makeSecureRequest('/api/v1/ai/learning/record-action', {
-        method: 'POST',
-        body: JSON.stringify({
-          action_type: 'recommendation_accepted',
-          action_data: {
-            recommendation_id: recommendation.id,
-            category: recommendation.category,
-            type: recommendation.recommendation_type
-          }
-        })
-      });
-      
-      // Add acceptance message to conversation
-      const acceptanceMessage: ConversationMessage = {
-        id: `accept-${Date.now()}`,
-        type: 'user',
-        content: `✅ Accepted recommendation: ${recommendation.title}`,
-        timestamp: new Date().toISOString()
-      };
-      
-      setMessages(prev => [...prev, acceptanceMessage]);
-      
       // Remove from recommendations
       setRecommendations(prev => prev.filter(r => r.id !== recommendation.id));
+      
+      // Send acceptance message to ARIA
+      const success = sendARIAMessage(`I accept your recommendation: ${recommendation.title}`, conversationId, 'trading');
+      
+      if (!success) {
+        console.error('Failed to send acceptance message to ARIA');
+      }
       
     } catch (error) {
       console.error('Failed to accept recommendation:', error);
     }
-  }, [makeSecureRequest]);
+  }, [sendARIAMessage, conversationId]);
 
   // Get priority color
   const getPriorityColor = (priority: number): string => {
@@ -645,7 +580,7 @@ const EnhancedAIAssistant: React.FC<EnhancedAIAssistantProps> = ({
 
       {/* Messages */}
       <div className="ai-messages">
-        {messages.length === 0 && (
+        {ariaMessages.length === 0 && (
           <div className="ai-welcome">
             <Brain className="w-8 h-8" />
             <h3>Hello! I'm ARIA</h3>
@@ -669,22 +604,47 @@ const EnhancedAIAssistant: React.FC<EnhancedAIAssistantProps> = ({
           </div>
         )}
         
-        {messages.map((message) => (
+        {ariaMessages.map((message) => (
           <div key={message.id} className={`message ${message.type}`}>
             <div className="message-content">
               {message.content}
             </div>
             
-            {message.type === 'ai' && message.metadata && (
+            {message.type === 'ai' && (
               <div className="message-metadata">
                 <Clock className="w-3 h-3" />
-                <span>{message.metadata.response_time}ms</span>
-                {message.metadata.confidence && (
+                <span>Real-time</span>
+                {message.confidence && (
                   <>
                     <Target className="w-3 h-3" />
-                    <span>{Math.round(message.metadata.confidence * 100)}%</span>
+                    <span>{Math.round(message.confidence * 100)}%</span>
                   </>
                 )}
+              </div>
+            )}
+            
+            {message.type === 'ai' && message.actions && message.actions.length > 0 && (
+              <div className="message-actions">
+                <h4>Recommendations:</h4>
+                {message.actions.map((action, idx) => (
+                  <div key={idx} className="action-suggestion">
+                    <strong>{action.type}:</strong> {JSON.stringify(action)}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {message.type === 'ai' && message.suggestions && message.suggestions.length > 0 && (
+              <div className="message-suggestions">
+                {message.suggestions.slice(0, 3).map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setInputValue(suggestion)}
+                    className="suggestion-button"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -753,7 +713,7 @@ const EnhancedAIAssistant: React.FC<EnhancedAIAssistantProps> = ({
             {inputValue.length}/{MAX_MESSAGE_LENGTH}
           </span>
           
-          {messages.length > 0 && (
+          {ariaMessages.length > 0 && (
             <button
               onClick={clearConversation}
               className="clear-conversation"

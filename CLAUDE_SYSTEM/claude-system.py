@@ -85,6 +85,9 @@ class OptimizedCLAUDESystem:
                 self.intelligence = get_simplified_intelligence(project_root)
             except Exception as e:
                 print(f"⚠️  Intelligence initialization failed: {e}")
+        
+        # Initialize conversation indexing system
+        self._init_conversation_indexing()
     
     def quick_health_check(self) -> Dict[str, Any]:
         """
@@ -317,6 +320,105 @@ class OptimizedCLAUDESystem:
             print(f"    📝 Tests: None found")
         
         return test_results
+    
+    def _init_conversation_indexing(self):
+        """Initialize conversation indexing in background"""
+        try:
+            # Check if memory system exists
+            memory_path = self.project_root / ".claude_memory"
+            if not memory_path.exists():
+                return
+            
+            # Import indexing system
+            sys.path.insert(0, str(memory_path))
+            from comprehensive_indexer import ComprehensiveIndexer, BackgroundIndexer
+            
+            # Create indexer instance
+            self.indexer = ComprehensiveIndexer()
+            
+            # Check if indexing is needed
+            stats = self.indexer.get_stats()
+            total_messages = stats.get('total_messages', 0)
+            
+            if total_messages < 10000:  # If we have less than 10k messages indexed
+                print(f"🔍 Conversation database has {total_messages:,} messages indexed")
+                
+                # Check how many are available
+                projects = self.indexer.discover_projects()
+                total_available = sum(count for _, _, count in projects)
+                
+                if total_available > total_messages * 1.5:  # If 50% more messages available
+                    print(f"📊 Found {total_available:,} messages available for indexing")
+                    print("💡 Run 'python claude-system.py --index-conversations' to index all messages")
+                    
+                    # Start minimal background indexing for current project only
+                    import threading
+                    
+                    def index_current_project():
+                        try:
+                            current_project = self.indexer._detect_current_project()
+                            project_path = self.indexer.projects_dir / f"-workspaces-{current_project}"
+                            if project_path.exists():
+                                print(f"🔄 Background indexing {current_project} conversations...")
+                                self.indexer.index_project(f"-workspaces-{current_project}", project_path)
+                                self.indexer.build_priority_cache()
+                        except Exception as e:
+                            # Silent failure in background
+                            pass
+                    
+                    # Run in background thread
+                    thread = threading.Thread(target=index_current_project, daemon=True)
+                    thread.start()
+            
+        except Exception as e:
+            # Silent failure - indexing is enhancement, not critical
+            pass
+    
+    def index_all_conversations(self):
+        """Index all available conversations across all projects"""
+        print("🚀 Comprehensive Conversation Indexing")
+        print("=" * 60)
+        
+        if not hasattr(self, 'indexer'):
+            print("❌ Conversation indexing not available")
+            return
+        
+        # Run the indexing
+        import asyncio
+        
+        try:
+            # Get current stats
+            stats_before = self.indexer.get_stats()
+            print(f"📊 Current: {stats_before['total_messages']:,} messages indexed")
+            
+            # Discover all projects
+            projects = self.indexer.discover_projects()
+            total_available = sum(count for _, _, count in projects)
+            print(f"🔍 Found: {total_available:,} messages across {len(projects)} projects")
+            
+            if total_available <= stats_before['total_messages']:
+                print("✅ All messages already indexed!")
+                return
+            
+            print("\n🔨 Indexing all conversations...")
+            print("This may take several minutes for 100k+ messages")
+            
+            # Run async indexing
+            start_time = time.time()
+            asyncio.run(self.indexer.index_all_async(force_reindex=False))
+            
+            # Show results
+            stats_after = self.indexer.get_stats()
+            duration = time.time() - start_time
+            
+            print("\n✅ Indexing Complete!")
+            print(f"   Indexed: {stats_after['total_messages'] - stats_before['total_messages']:,} new messages")
+            print(f"   Total: {stats_after['total_messages']:,} messages")
+            print(f"   Duration: {duration/60:.1f} minutes")
+            print(f"   Database size: {stats_after['db_size_mb']:.1f} MB")
+            
+        except Exception as e:
+            print(f"❌ Indexing error: {e}")
 
 
 def main():
@@ -349,6 +451,10 @@ Examples:
                        help='Multi-perspective team analysis')
     parser.add_argument('--team-context', type=str,
                        help='Context for team analysis')
+    
+    # Conversation indexing
+    parser.add_argument('--index-conversations', action='store_true',
+                       help='Index all available conversations (120k+ messages)')
     
     # System information
     parser.add_argument('--version', action='store_true',
@@ -383,6 +489,9 @@ Examples:
     
     elif args.heal:
         system.heal_issues()
+    
+    elif args.index_conversations:
+        system.index_all_conversations()
     
     else:
         # Default: quick health check

@@ -35,6 +35,8 @@ import {
 } from 'lucide-react';
 import { useWebSocket } from '../../contexts/WebSocketContext';
 import { useGame } from '../../contexts/GameContext';
+import { useAuth } from '../../contexts/AuthContext';
+import quantumTradingApi from '../../services/quantumTradingApi';
 import './quantum-trading-interface.css';
 
 // Types for quantum trading
@@ -133,6 +135,17 @@ const QuantumTradingInterface: React.FC<QuantumTradingInterfaceProps> = ({
     quantumMarketData: wsQuantumMarketData
   } = useWebSocket();
   const { playerState, currentShip, marketInfo } = useGame();
+  const { user } = useAuth();
+
+  // Set up API authentication when user changes
+  useEffect(() => {
+    if (user) {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        quantumTradingApi.setAuthToken(token);
+      }
+    }
+  }, [user]);
 
   // Available commodities
   const commodities = ['ORE', 'ORGANICS', 'EQUIPMENT', 'FUEL', 'LUXURY', 'TECHNOLOGY', 'COLONISTS'];

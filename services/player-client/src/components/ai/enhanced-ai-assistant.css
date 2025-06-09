@@ -41,6 +41,61 @@
   --ai-border-light: #d1d5db;
 }
 
+/* Message Actions and Suggestions */
+.message-actions {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: var(--ai-bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--ai-border);
+}
+
+.message-actions h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ai-primary);
+}
+
+.action-suggestion {
+  margin: 6px 0;
+  padding: 8px;
+  background-color: var(--ai-bg-tertiary);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.action-suggestion strong {
+  color: var(--ai-success);
+  text-transform: capitalize;
+}
+
+.message-suggestions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.suggestion-button {
+  padding: 6px 12px;
+  background-color: var(--ai-bg-secondary);
+  border: 1px solid var(--ai-border);
+  border-radius: 16px;
+  color: var(--ai-text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: var(--ai-transition);
+}
+
+.suggestion-button:hover {
+  background-color: var(--ai-primary);
+  color: var(--ai-text);
+  border-color: var(--ai-primary);
+  transform: translateY(-1px);
+}
+
 /* Minimized State */
 .ai-assistant-minimized {
   position: fixed;

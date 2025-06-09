@@ -1,0 +1,167 @@
+{
+  "perspective_stats": {
+    "arch": {
+      "analysis_count": 1,
+      "avg_confidence": 0.0,
+      "learning_improvements": 0
+    },
+    "sec": {
+      "analysis_count": 1,
+      "avg_confidence": 0.0,
+      "learning_improvements": 0
+    },
+    "mentor": {
+      "analysis_count": 1,
+      "avg_confidence": 0.0,
+      "learning_improvements": 0
+    }
+  },
+  "analysis_history": [
+    {
+      "perspective_key": "arch",
+      "context": "WebSocket authentication system with JWT tokens and real-time session management",
+      "timestamp": "2025-06-08T07:00:18.065519",
+      "insights": {
+        "perspective_name": "Arthur (Architect)",
+        "emoji": "\ud83c\udfd7\ufe0f",
+        "timestamp": "2025-06-08T07:00:18.065487",
+        "context_analyzed": "WebSocket authentication system with JWT tokens and real-time session management",
+        "files_involved": [],
+        "learning_enhanced": true,
+        "base_analysis": {
+          "primary_insights": [
+            "Architectural analysis of: WebSocket authentication system with JWT tokens and real-time session management",
+            "System design impact assessment",
+            "Long-term sustainability considerations"
+          ],
+          "concerns_identified": [
+            "Potential coupling issues",
+            "Design pattern consistency",
+            "Scalability bottlenecks"
+          ],
+          "recommendations": [
+            "Review architectural patterns",
+            "Consider SOLID principles",
+            "Document design decisions"
+          ],
+          "questions_for_consideration": [],
+          "confidence_level": 0.7
+        },
+        "learned_insights": {
+          "pattern_matches": [],
+          "learned_recommendations": [],
+          "confidence_boost": 0.0
+        },
+        "contextual_recommendations": [],
+        "collaborative_insights": {
+          "cross_perspective_concerns": [],
+          "synergy_opportunities": [],
+          "potential_conflicts": []
+        },
+        "enhanced_insights": {
+          "primary_insights": [
+            "Architectural analysis of: WebSocket authentication system with JWT tokens and real-time session management",
+            "System design impact assessment",
+            "Long-term sustainability considerations"
+          ],
+          "concerns_identified": [
+            "Potential coupling issues",
+            "Design pattern consistency",
+            "Scalability bottlenecks"
+          ],
+          "recommendations": [
+            "Consider SOLID principles",
+            "Review architectural patterns",
+            "Document design decisions"
+          ],
+          "confidence_level": 0.7,
+          "learning_applied": false,
+          "collaborative_input": false
+        }
+      },
+      "effectiveness_score": 0.8
+    },
+    {
+      "perspective_key": "sec",
+      "context": "WebSocket authentication system with JWT tokens and real-time session management",
+      "timestamp": "2025-06-08T07:00:18.065885",
+      "insights": {
+        "perspective_name": "Sergio (Security)",
+        "emoji": "\ud83d\udd12",
+        "timestamp": "2025-06-08T07:00:18.065866",
+        "context_analyzed": "WebSocket authentication system with JWT tokens and real-time session management",
+        "files_involved": [],
+        "learning_enhanced": true,
+        "base_analysis": {
+          "primary_insights": [],
+          "concerns_identified": [],
+          "recommendations": [],
+          "questions_for_consideration": [],
+          "confidence_level": 0.7
+        },
+        "learned_insights": {
+          "pattern_matches": [],
+          "learned_recommendations": [],
+          "confidence_boost": 0.0
+        },
+        "contextual_recommendations": [],
+        "collaborative_insights": {
+          "cross_perspective_concerns": [],
+          "synergy_opportunities": [],
+          "potential_conflicts": []
+        },
+        "enhanced_insights": {
+          "primary_insights": [],
+          "concerns_identified": [],
+          "recommendations": [],
+          "confidence_level": 0.7,
+          "learning_applied": false,
+          "collaborative_input": false
+        }
+      },
+      "effectiveness_score": 0.8
+    },
+    {
+      "perspective_key": "mentor",
+      "context": "WebSocket authentication system with JWT tokens and real-time session management",
+      "timestamp": "2025-06-08T07:00:18.066341",
+      "insights": {
+        "perspective_name": "Devara (Developer)",
+        "emoji": "\ud83c\udf93",
+        "timestamp": "2025-06-08T07:00:18.066326",
+        "context_analyzed": "WebSocket authentication system with JWT tokens and real-time session management",
+        "files_involved": [],
+        "learning_enhanced": true,
+        "base_analysis": {
+          "primary_insights": [],
+          "concerns_identified": [],
+          "recommendations": [],
+          "questions_for_consideration": [],
+          "confidence_level": 0.7
+        },
+        "learned_insights": {
+          "pattern_matches": [],
+          "learned_recommendations": [],
+          "confidence_boost": 0.0
+        },
+        "contextual_recommendations": [],
+        "collaborative_insights": {
+          "cross_perspective_concerns": [],
+          "synergy_opportunities": [],
+          "potential_conflicts": []
+        },
+        "enhanced_insights": {
+          "primary_insights": [],
+          "concerns_identified": [],
+          "recommendations": [],
+          "confidence_level": 0.7,
+          "learning_applied": false,
+          "collaborative_input": false
+        }
+      },
+      "effectiveness_score": 0.8
+    }
+  ],
+  "learning_iterations": 0,
+  "last_learning_update": ""
+}

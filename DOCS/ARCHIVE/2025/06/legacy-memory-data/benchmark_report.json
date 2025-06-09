@@ -1,0 +1,35 @@
+{
+  "tests_run": 3,
+  "tests_passed": 3,
+  "tests_failed": 2,
+  "performance_metrics": {
+    "instant_memory_save": {
+      "elapsed_seconds": 0.005466938018798828,
+      "status": "success"
+    },
+    "lightning_search": {
+      "elapsed_seconds": 0.001649618148803711,
+      "status": "success"
+    },
+    "batch_memory_saves": {
+      "elapsed_seconds": 0.04970121383666992,
+      "status": "success"
+    },
+    "initialize_DevelopmentJourneyMemvid": {
+      "elapsed_seconds": 1.8860557079315186,
+      "status": "failed",
+      "error": "Cannot copy out of meta tensor; no data! Please use torch.nn.Module.to_empty() instead of torch.nn.Module.to() when moving module from meta to a different device."
+    }
+  },
+  "issues_found": [
+    "Retrieval pattern analysis failed: cannot import name 'SecureMemoryJournal' from 'claude_memory' (/workspaces/Sectorwars2102/.claude_memory/claude_memory.py)",
+    "SecureMemoryJournal not found in claude_memory.py",
+    "AutoIntelligence not found in auto_intelligence.py",
+    "UnifiedIntelligenceSystem not found in unified_intelligence.py",
+    "IntelligentRecoverySystem not found in intelligent_recovery.py",
+    "PerspectiveLearning not found in learning_perspectives.py",
+    "initialize_DevelopmentJourneyMemvid failed: Cannot copy out of meta tensor; no data! Please use torch.nn.Module.to_empty() instead of torch.nn.Module.to() when moving module from meta to a different device.",
+    "semantic_journey_search.py failed: Cannot copy out of meta tensor; no data! Please use torch.nn.Module.to_empty() instead of torch.nn.Module.to() when moving module from meta to a different device."
+  ],
+  "recommendations": []
+}
