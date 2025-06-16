@@ -35,17 +35,10 @@ class ComprehensiveIndexer:
         
         # Initialize database
         self._init_database()
-    
-    def _get_connection(self):
-        """Get a database connection with proper settings"""
-        conn = sqlite3.connect(str(self.db_path), timeout=30)
-        conn.execute("PRAGMA journal_mode=WAL")  # Better concurrency
-        conn.execute("PRAGMA busy_timeout=30000")  # 30s timeout
-        return conn
         
     def _init_database(self):
         """Initialize SQLite database with optimized schema"""
-        conn = self._get_connection()
+        conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
         
         # Main conversations table
@@ -130,7 +123,7 @@ class ComprehensiveIndexer:
     
     def index_project(self, project_name: str, project_path: Path) -> int:
         """Index a single project's conversations"""
-        conn = self._get_connection()
+        conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
         
         indexed_count = 0
@@ -294,7 +287,7 @@ class ComprehensiveIndexer:
         identity_mentions = {}
         
         for pattern in identity_patterns:
-            sql_pattern = pattern.replace('%', '\\%').replace('_', '\\_')
+            sql_pattern = pattern.replace('%', '%')
             cursor.execute('''
                 SELECT content, COUNT(*) as mention_count
                 FROM conversations
@@ -365,7 +358,7 @@ class ComprehensiveIndexer:
     
     def build_priority_cache(self):
         """Build cache of recent/important conversations for quick access"""
-        conn = self._get_connection()
+        conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
         
         # Detect current project
@@ -472,7 +465,7 @@ class ComprehensiveIndexer:
     
     def _is_indexed(self) -> bool:
         """Check if database is already indexed"""
-        conn = self._get_connection()
+        conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
         
         cursor.execute('SELECT COUNT(*) FROM conversations')
@@ -483,7 +476,7 @@ class ComprehensiveIndexer:
     
     def quick_recall(self, query: str) -> List[Dict]:
         """Quick recall from priority cache first, then full search"""
-        conn = self._get_connection()
+        conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
         
         results = []
@@ -529,7 +522,7 @@ class ComprehensiveIndexer:
     
     def get_stats(self) -> Dict:
         """Get indexing statistics"""
-        conn = self._get_connection()
+        conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
         
         # Total messages

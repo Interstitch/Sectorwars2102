@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generic Claude startup script that works for any user
+MIRA startup script - Initialize memory system for any user
 """
 
 import os
@@ -41,12 +41,12 @@ def check_memory_system():
         else:
             print("\n📚 No recent memories found (this is normal for new projects)")
             
-        print("\n✅ Memory system ready for any collaborator!")
+        print("\n✅ MIRA memory system ready for any collaborator!")
         print("=" * 60)
         
     except ImportError:
-        print("⚠️  Memory system not found. This is normal for fresh installations.")
-        print("📖 Run the installer to add memory capabilities to this project.")
+        print("⚠️  MIRA memory system not found. This is normal for fresh installations.")
+        print("📖 Run 'pip install -r requirements.txt' to install dependencies.")
     except Exception as e:
         print(f"❌ Memory system error: {e}")
         print("🔧 Try running: python .claude_memory/fix_current_memory_system.py")
