@@ -38,3 +38,4 @@ from src.models.aria_personal_intelligence import (
     ARIAPersonalMemory, ARIAMarketIntelligence, ARIAExplorationMap,
     ARIATradingPattern, ARIAQuantumCache, ARIASecurityLog
 )
+from src.models.enhanced_ai_models import AIComprehensiveAssistant

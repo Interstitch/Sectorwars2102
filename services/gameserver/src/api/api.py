@@ -40,6 +40,7 @@ from src.api.routes.regional_governance import router as regional_governance_rou
 from src.api.routes.translation import router as translation_router
 from src.api.routes.enhanced_websocket import router as enhanced_websocket_router
 from src.api.routes.quantum_trading import router as quantum_trading_router
+from src.api.routes.debug import router as debug_router
 from src.core.config import settings
 
 # Main API router - note that the version is now in the main API_V1_STR prefix
@@ -88,6 +89,7 @@ api_router.include_router(regional_governance_router, tags=["regional-governance
 api_router.include_router(translation_router, tags=["translation"])
 api_router.include_router(enhanced_websocket_router, tags=["websocket", "real-time"])
 api_router.include_router(quantum_trading_router, tags=["quantum-trading", "trading"])
+api_router.include_router(debug_router, tags=["debug"])
 
 # Only include test routes in development/test environments
 if settings.TESTING or settings.DEVELOPMENT_MODE:
