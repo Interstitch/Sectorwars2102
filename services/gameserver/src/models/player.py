@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from src.models.resource import MarketTransaction
     from src.models.first_login import FirstLoginSession, PlayerFirstLoginState
     from src.models.region import Region, RegionalMembership, InterRegionalTravel
+    from src.models.enhanced_ai_models import AIComprehensiveAssistant
 
 
 class Player(Base):
@@ -101,6 +102,9 @@ class Player(Base):
     # Fleet relationships
     commanded_fleets = relationship("Fleet", back_populates="commander", foreign_keys="Fleet.commander_id")
     fleet_memberships = relationship("FleetMember", back_populates="player", cascade="all, delete-orphan")
+    
+    # Enhanced AI Assistant relationship
+    ai_assistant = relationship("AIComprehensiveAssistant", back_populates="player", uselist=False, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Player {self.id} (User: {self.user_id})>"
