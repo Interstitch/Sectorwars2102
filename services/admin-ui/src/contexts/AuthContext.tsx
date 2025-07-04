@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const directApiUrl = import.meta.env.VITE_API_URL || '';
       
       const response = await fetch(
-        `${directApiUrl}/api/v1/auth/refresh`,
+        `${directApiUrl}/auth/refresh`,
         { 
           method: 'POST',
           headers: { 
@@ -196,7 +196,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setToken(accessToken);
         
         // Try to get user profile
-        const response = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
+        const response = await axios.get<User>(`${apiUrl}/auth/me`);
         setUser(response.data);
         console.log('Auth successful - user loaded:', response.data);
       } catch (error: any) {
@@ -214,7 +214,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (error?.response?.status !== 429) {
           try {
             await refreshToken();
-            const userResponse = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
+            const userResponse = await axios.get<User>(`${apiUrl}/auth/me`);
             setUser(userResponse.data);
             console.log('Auth successful after refresh');
           } catch (refreshError: any) {
@@ -257,7 +257,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('Attempting direct login call to gameserver API');
         
         // Use fetch API instead of axios for better control
-        const directResponse = await fetch(`${directApiUrl}/api/v1/auth/login/direct`, {
+        const directResponse = await fetch(`${directApiUrl}/auth/login/direct`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -324,9 +324,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
         // Get user data
-        console.log('Fetching user data from /api/v1/auth/me');
+        console.log('Fetching user data from /auth/me');
         try {
-          const userResponse = await fetch(`${directApiUrl}/api/v1/auth/me`, {
+          const userResponse = await fetch(`${directApiUrl}/auth/me`, {
             headers: {
               'Authorization': `Bearer ${access_token}`,
               'Content-Type': 'application/json',
@@ -377,7 +377,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const directApiUrl = import.meta.env.VITE_API_URL || '';
       
-      const response = await fetch(`${directApiUrl}/api/v1/auth/mfa/verify`, {
+      const response = await fetch(`${directApiUrl}/auth/mfa/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -407,7 +407,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
       
       // Get user data
-      const userResponse = await fetch(`${directApiUrl}/api/v1/auth/me`, {
+      const userResponse = await fetch(`${directApiUrl}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${data.access_token}`,
           'Content-Type': 'application/json',
@@ -433,7 +433,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const enableMFA = async () => {
     const directApiUrl = import.meta.env.VITE_API_URL || '';
     
-    const response = await fetch(`${directApiUrl}/api/v1/auth/mfa/generate`, {
+    const response = await fetch(`${directApiUrl}/auth/mfa/generate`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -457,7 +457,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const confirmMFASetup = async (code: string, secret: string) => {
     const directApiUrl = import.meta.env.VITE_API_URL || '';
     
-    const response = await fetch(`${directApiUrl}/api/v1/auth/mfa/confirm`, {
+    const response = await fetch(`${directApiUrl}/auth/mfa/confirm`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -492,7 +492,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Call logout endpoint to invalidate refresh token, but don't wait for it
     if (refreshTokenStr) {
       // Set a short timeout to avoid CORS issues during page navigation
-      axios.post(`${apiUrl}/api/v1/auth/logout`, { refresh_token: refreshTokenStr }, {
+      axios.post(`${apiUrl}/auth/logout`, { refresh_token: refreshTokenStr }, {
         timeout: 1000 // 1 second timeout
       }).catch(() => {
         // Just log the error, don't block logout
