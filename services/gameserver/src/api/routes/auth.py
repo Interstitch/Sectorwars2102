@@ -399,6 +399,13 @@ async def refresh_token(
             detail="Invalid refresh token",
         )
     
+    # Check if token has expired
+    if refresh.is_expired:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has expired",
+        )
+    
     # Revoke the current refresh token (token rotation)
     refresh.revoked = True
     db.commit()

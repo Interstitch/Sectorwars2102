@@ -37,6 +37,8 @@ interface AuthResponse {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [refreshPromise, setRefreshPromise] = useState<Promise<void> | null>(null);
   
   // Use Vite proxy for all API requests to avoid CORS issues
   const getApiUrl = () => {
@@ -318,35 +320,62 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
   };
   
   const refreshToken = async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) {
+    // If already refreshing, return the existing promise to prevent race conditions
+    if (isRefreshing && refreshPromise) {
+      console.log('Token refresh already in progress, waiting for existing refresh...');
+      return refreshPromise;
+    }
+
+    const storedRefreshToken = localStorage.getItem('refreshToken');
+    if (!storedRefreshToken) {
       throw new Error('No refresh token available');
     }
     
-    try {
-      const response = await axios.post<AuthResponse>(
-        `${apiUrl}/api/v1/auth/refresh`,
-        { refresh_token: refreshToken },
-        { headers: { Authorization: '' } } // Don't send current auth header
-      );
+    // Create a new refresh promise
+    const newRefreshPromise = (async () => {
+      setIsRefreshing(true);
       
-      const { access_token, refresh_token } = response.data;
-      
-      // Store new tokens
-      localStorage.setItem('accessToken', access_token);
-      localStorage.setItem('refreshToken', refresh_token);
-      
-      // Update auth header
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      // Clear tokens and user on refresh failure
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      axios.defaults.headers.common['Authorization'] = '';
-      setUser(null);
-      throw error;
-    }
+      try {
+        console.log('Starting token refresh with token:', storedRefreshToken.substring(0, 20) + '...');
+        
+        const response = await axios.post<AuthResponse>(
+          `${apiUrl}/api/v1/auth/refresh`,
+          { refresh_token: storedRefreshToken },
+          { headers: { Authorization: '' } } // Don't send current auth header
+        );
+        
+        const { access_token, refresh_token } = response.data;
+        
+        console.log('Token refresh successful, updating tokens');
+        
+        // Store new tokens
+        localStorage.setItem('accessToken', access_token);
+        localStorage.setItem('refreshToken', refresh_token);
+        
+        // Update auth header
+        axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+        
+        // Clear the refresh promise and state
+        setIsRefreshing(false);
+        setRefreshPromise(null);
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        
+        // Clear the refresh promise and state
+        setIsRefreshing(false);
+        setRefreshPromise(null);
+        
+        // Clear tokens and user on refresh failure
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        axios.defaults.headers.common['Authorization'] = '';
+        setUser(null);
+        throw error;
+      }
+    })();
+    
+    setRefreshPromise(newRefreshPromise);
+    return newRefreshPromise;
   };
   
   const logout = () => {
