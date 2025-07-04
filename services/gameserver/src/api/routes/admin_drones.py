@@ -12,7 +12,7 @@ from sqlalchemy import select, func
 from pydantic import BaseModel
 from datetime import datetime
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_admin_user
 from src.models.drone import Drone, DroneDeployment, DroneCombat
 from src.models.user import User
@@ -58,7 +58,7 @@ async def get_all_drones(
     drone_type: Optional[str] = None,
     status: Optional[str] = None,
     admin: User = Depends(get_current_admin_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get all drones with optional filters."""
     query = select(Drone)
@@ -112,7 +112,7 @@ async def get_all_drones(
 @router.get("/statistics", response_model=DroneStatistics)
 async def get_drone_statistics(
     admin: User = Depends(get_current_admin_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get overall drone statistics."""
     # Total drones
@@ -185,7 +185,7 @@ async def get_drone_statistics(
 async def get_drone_details(
     drone_id: UUID,
     admin: User = Depends(get_current_admin_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get detailed information about a specific drone."""
     drone = await db.get(Drone, drone_id)
@@ -277,7 +277,7 @@ async def update_drone(
     drone_id: UUID,
     update: AdminDroneUpdate,
     admin: User = Depends(get_current_admin_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Update a drone's attributes."""
     drone = await db.get(Drone, drone_id)
@@ -303,7 +303,7 @@ async def update_drone(
 async def delete_drone(
     drone_id: UUID,
     admin: User = Depends(get_current_admin_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Permanently delete a drone."""
     drone = await db.get(Drone, drone_id)
@@ -324,7 +324,7 @@ async def delete_drone(
 async def force_recall_drone(
     drone_id: UUID,
     admin: User = Depends(get_current_admin_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Force recall a deployed drone."""
     service = DroneService(db)
@@ -348,7 +348,7 @@ async def force_recall_drone(
 async def restore_destroyed_drone(
     drone_id: UUID,
     admin: User = Depends(get_current_admin_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Restore a destroyed drone to active status."""
     drone = await db.get(Drone, drone_id)
@@ -379,7 +379,7 @@ async def restore_destroyed_drone(
 async def get_sector_drone_summary(
     sector_id: UUID,
     admin: User = Depends(get_current_admin_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get a summary of drones in a specific sector."""
     # Get all drones in sector

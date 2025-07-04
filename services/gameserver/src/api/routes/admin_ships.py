@@ -14,7 +14,7 @@ from sqlalchemy import and_, or_, func
 from pydantic import BaseModel, Field
 from enum import Enum
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_user, require_admin
 from src.models.user import User
 from src.models.ship import Ship, ShipType, ShipStatus
@@ -89,7 +89,7 @@ async def get_ships(
     owner_id: Optional[UUID] = Query(None, alias="ownerId"),
     sector_id: Optional[UUID] = Query(None, alias="sectorId"),
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get all ships with optional filters and pagination."""
     
@@ -177,7 +177,7 @@ async def emergency_ship_action(
     ship_id: UUID,
     request: EmergencyActionRequest,
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Perform emergency action on a ship."""
     
@@ -248,7 +248,7 @@ async def emergency_ship_action(
 @router.get("/health-report", response_model=HealthReportResponse)
 async def get_fleet_health_report(
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get comprehensive fleet health report."""
     
@@ -334,7 +334,7 @@ async def get_fleet_health_report(
 async def create_ship(
     request: CreateShipRequest,
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Create a new ship administratively."""
     
@@ -427,7 +427,7 @@ async def create_ship(
 async def delete_ship(
     ship_id: UUID,
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Delete a ship administratively."""
     

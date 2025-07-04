@@ -478,8 +478,8 @@ class ARIAPersonalIntelligenceService:
         self.patterns_evolved += 1
     
     async def get_evolved_patterns(self, player_id: str, 
-                                 pattern_type: Optional[str] = None,
-                                 db: AsyncSession) -> List[ARIATradingPattern]:
+                                 db: AsyncSession,
+                                 pattern_type: Optional[str] = None) -> List[ARIATradingPattern]:
         """
         Get player's evolved trading patterns
         """

@@ -1,0 +1,88 @@
+[tool.poetry]
+name = "sectorwars-gameserver"
+version = "0.1.0"
+description = "SectorWars 2102 Game Server"
+authors = ["SectorWars Team"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.103.1"
+uvicorn = {extras = ["standard"], version = "^0.23.2"}
+websockets = "^11.0.3"
+sqlalchemy = "^2.0.20"
+psycopg2-binary = "^2.9.7"
+asyncpg = "^0.28.0"
+pydantic = {extras = ["email"], version = "^2.3.0"}
+pydantic-settings = "^2.0.3"
+alembic = "^1.12.0"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+python-multipart = "^0.0.6"
+passlib = {extras = ["argon2"], version = "^1.7.4"}
+argon2-cffi = "^23.1.0"
+httpx = "^0.24.1"
+bcrypt = "^4.0.1"
+email-validator = "^2.0.0"
+python-dotenv = "^1.0.0"
+redis = {extras = ["hiredis"], version = "^5.0.1"}
+aioredis = "^2.0.1"
+scikit-learn = "^1.3.0"
+prophet = "^1.1.4"
+pandas = "^2.0.3"
+numpy = "^1.24.3"
+scipy = "^1.11.2"
+anthropic = "^0.18.1"
+openai = "^1.12.0"
+pyotp = "^2.9.0"
+qrcode = {extras = ["pil"], version = "^7.4.2"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-asyncio = "^0.21.1"
+pytest-cov = "^4.1.0"
+black = "^23.7.0"
+isort = "^5.12.0"
+flake8 = "^6.1.0"
+mypy = "^1.5.1"
+ruff = "^0.0.287"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  migrations
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip_glob = ["*/migrations/*"]
+
+[tool.ruff]
+line-length = 120
+select = ["E", "F", "W", "C90", "I", "N", "B", "S"]
+ignore = ["S101", "B008"]
+exclude = ["migrations"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["migrations"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+asyncio_mode = "auto"

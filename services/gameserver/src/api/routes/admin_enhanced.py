@@ -6,7 +6,7 @@ import random
 import math
 import uuid
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_admin
 from src.models.user import User
 from src.models.galaxy import Galaxy, GalaxyRegion, RegionType
@@ -71,7 +71,7 @@ router = APIRouter()
 async def generate_enhanced_galaxy(
     config: EnhancedGalaxyConfig,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Generate a galaxy with enhanced configuration options"""
     # Check if a galaxy already exists
@@ -601,7 +601,7 @@ async def update_sector(
     sector_id: int,
     request: SectorUpdateRequest,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Update sector properties"""
     sector = db.query(Sector).filter(Sector.sector_id == sector_id).first()
@@ -652,7 +652,7 @@ async def update_sector(
 async def create_port(
     request: PortCreateRequest,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Create a new port in a sector"""
     # Check if sector exists and doesn't have a port
@@ -698,7 +698,7 @@ async def create_port(
 async def create_planet(
     request: PlanetCreateRequest,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Create a new planet in a sector"""
     # Check if sector exists and doesn't have a planet
@@ -745,7 +745,7 @@ async def create_planet(
 async def create_enhanced_warp_tunnel(
     request: WarpTunnelEnhancedRequest,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Create a warp tunnel with enhanced options"""
     # Validate sectors exist
@@ -803,7 +803,7 @@ async def get_enhanced_sectors(
     cluster_id: Optional[str] = None,
     include_contents: bool = True,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get sectors with enhanced information"""
     query = db.query(Sector)

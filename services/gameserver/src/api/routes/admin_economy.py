@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import require_admin
 from src.models.user import User
 from src.services.economy_analytics_service import EconomyAnalyticsService
@@ -78,7 +78,7 @@ async def get_market_data(
     resource_type: Optional[str] = Query(None, description="Filter by resource type"),
     sector_id: Optional[UUID] = Query(None, description="Filter by sector"),
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """
     Get comprehensive market data for the admin dashboard.
@@ -109,7 +109,7 @@ async def get_market_data(
 @router.get("/metrics", response_model=EconomicMetricsResponse)
 async def get_economic_metrics(
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """
     Get key economic health metrics.
@@ -139,7 +139,7 @@ async def get_economic_metrics(
 async def get_price_alerts(
     threshold_percent: float = Query(10.0, description="Alert threshold percentage", ge=1.0, le=100.0),
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """
     Get price anomalies and market manipulation alerts.
@@ -169,7 +169,7 @@ async def get_price_alerts(
 async def perform_market_intervention(
     request: MarketInterventionRequest,
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """
     Perform market intervention actions.
@@ -217,7 +217,7 @@ async def perform_market_intervention(
 @router.get("/dashboard-summary")
 async def get_dashboard_summary(
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """
     Get a comprehensive summary for the economy dashboard.

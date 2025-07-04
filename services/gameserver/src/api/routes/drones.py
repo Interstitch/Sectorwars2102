@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from datetime import datetime
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.models.drone import Drone, DroneDeployment, DroneCombat, DroneType, DroneStatus
@@ -124,7 +124,7 @@ class DroneCombatResponse(BaseModel):
 async def create_drone(
     request: CreateDroneRequest,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Create a new drone for the current player."""
     service = DroneService(db)
@@ -148,7 +148,7 @@ async def create_drone(
 async def get_my_drones(
     include_destroyed: bool = False,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get all drones owned by the current player."""
     service = DroneService(db)
@@ -227,7 +227,7 @@ async def get_drone_types():
 async def get_drone(
     drone_id: UUID,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get a specific drone by ID."""
     drone = await db.get(Drone, drone_id)
@@ -253,7 +253,7 @@ async def deploy_drone(
     drone_id: UUID,
     request: DeployDroneRequest,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Deploy a drone to a sector."""
     # Verify drone ownership
@@ -285,7 +285,7 @@ async def deploy_drone(
 async def recall_drone(
     drone_id: UUID,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Recall a deployed drone."""
     # Verify drone ownership
@@ -313,7 +313,7 @@ async def repair_drone(
     drone_id: UUID,
     request: RepairDroneRequest,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Repair a damaged drone."""
     # Verify drone ownership
@@ -340,7 +340,7 @@ async def repair_drone(
 async def upgrade_drone(
     drone_id: UUID,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Upgrade a drone to the next level."""
     # Verify drone ownership
@@ -367,7 +367,7 @@ async def upgrade_drone(
 async def initiate_combat(
     request: InitiateCombatRequest,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Initiate combat between drones."""
     # Verify attacker ownership
@@ -398,7 +398,7 @@ async def initiate_combat(
 async def get_my_deployments(
     active_only: bool = True,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get all drone deployments for the current player."""
     service = DroneService(db)
@@ -412,7 +412,7 @@ async def get_my_deployments(
 @router.get("/sector/{sector_id}", response_model=List[DroneResponse])
 async def get_sector_drones(
     sector_id: UUID,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get all active drones in a sector."""
     service = DroneService(db)
@@ -426,7 +426,7 @@ async def get_combat_history(
     sector_id: Optional[UUID] = None,
     limit: int = 10,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get combat history for drones or sectors."""
     # If drone_id is provided, verify ownership
@@ -452,7 +452,7 @@ async def get_team_drones(
     team_id: UUID,
     include_destroyed: bool = False,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get all drones assigned to a team."""
     # TODO: Verify player is member of the team
@@ -471,7 +471,7 @@ async def get_team_drones(
 async def deploy_drones_contract(
     request: DeployDronesRequest,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Deploy multiple drones to a sector (API contract version)."""
     try:
@@ -524,7 +524,7 @@ async def deploy_drones_contract(
 @router.get("/deployed")
 async def get_deployed_drones_contract(
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get all deployed drones (API contract version)."""
     service = DroneService(db)
@@ -553,7 +553,7 @@ async def get_deployed_drones_contract(
 async def recall_drones_contract(
     deploymentId: str,
     current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Recall deployed drones (API contract version)."""
     try:

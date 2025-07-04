@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.models.team import TeamRecruitmentStatus
@@ -109,7 +109,7 @@ class PermissionsResponse(BaseModel):
 async def create_team(
     request: CreateTeamRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Create a new team"""
     try:
@@ -152,7 +152,7 @@ async def create_team(
 @router.get("/{team_id}", response_model=TeamResponse)
 async def get_team(
     team_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get team details"""
     team_service = TeamService(db)
@@ -188,7 +188,7 @@ async def update_team(
     team_id: UUID,
     request: UpdateTeamRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Update team details (leader/officer only)"""
     try:
@@ -243,7 +243,7 @@ async def update_team(
 async def delete_team(
     team_id: UUID,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Delete team (leader only)"""
     try:
@@ -259,7 +259,7 @@ async def delete_team(
 @router.get("/{team_id}/members", response_model=List[TeamMemberResponse])
 async def get_team_members(
     team_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get all team members"""
     team_service = TeamService(db)
@@ -273,7 +273,7 @@ async def invite_player(
     team_id: UUID,
     request: InvitePlayerRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Invite a player to the team"""
     try:
@@ -294,7 +294,7 @@ async def invite_player(
 async def join_team(
     request: JoinTeamRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Join a team (via invitation or direct for open teams)"""
     try:
@@ -337,7 +337,7 @@ async def join_team(
 @router.post("/leave")
 async def leave_team(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Leave current team"""
     try:
@@ -355,7 +355,7 @@ async def remove_member(
     team_id: UUID,
     member_id: UUID,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Remove a member from the team"""
     try:
@@ -378,7 +378,7 @@ async def update_member_role(
     member_id: UUID,
     request: UpdateRoleRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Update a member's role (leader only)"""
     try:
@@ -418,7 +418,7 @@ async def update_member_role(
 async def get_user_permissions(
     team_id: UUID,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get current player's permissions in the team"""
     team_service = TeamService(db)
@@ -431,7 +431,7 @@ async def transfer_leadership(
     team_id: UUID,
     new_leader_id: UUID,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Transfer team leadership to another member"""
     try:
@@ -490,7 +490,7 @@ async def deposit_to_treasury(
     team_id: UUID,
     request: DepositRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Deposit resources to team treasury"""
     try:
@@ -513,7 +513,7 @@ async def withdraw_from_treasury(
     team_id: UUID,
     request: WithdrawRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Withdraw resources from team treasury"""
     try:
@@ -536,7 +536,7 @@ async def transfer_to_player(
     team_id: UUID,
     request: TransferRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Transfer resources from treasury to a specific player"""
     try:
@@ -558,7 +558,7 @@ async def transfer_to_player(
 @router.get("/{team_id}/treasury", response_model=TreasuryBalanceResponse)
 async def get_treasury_balance(
     team_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get team treasury balance"""
     try:
@@ -597,7 +597,7 @@ async def get_team_messages(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get team messages"""
     # Verify player is a team member
@@ -641,7 +641,7 @@ async def send_team_message(
     team_id: UUID,
     request: SendMessageRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Send a message to the team"""
     # Verify player is a team member

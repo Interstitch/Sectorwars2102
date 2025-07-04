@@ -21,7 +21,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 import redis.asyncio as redis
 
-from src.core.database import get_db_session
+from src.core.database import get_async_db, get_async_session
 from src.auth.dependencies import get_current_user, validate_websocket_token
 from src.services.enhanced_websocket_service import get_enhanced_websocket_service
 from src.services.audit_service import AuditService
@@ -55,7 +55,7 @@ async def enhanced_trading_websocket(
     websocket: WebSocket,
     player_id: str,
     token: str = Query(..., description="JWT authentication token"),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """
     Enhanced WebSocket endpoint for Foundation Sprint real-time trading

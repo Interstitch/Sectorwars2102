@@ -275,7 +275,7 @@ const QuantumTradingInterface: React.FC<QuantumTradingInterfaceProps> = ({
   }, [isConnected, wsCollapseQuantumTrade]);
 
   // Use WebSocket quantum trades instead of local state
-  const quantumTrades = useMemo(() => {
+  const processedQuantumTrades = useMemo(() => {
     return wsQuantumTrades.map(trade => ({
       trade_id: trade.trade_id,
       commodity: trade.commodity,
@@ -290,7 +290,7 @@ const QuantumTradingInterface: React.FC<QuantumTradingInterfaceProps> = ({
     }));
   }, [wsQuantumTrades]);
 
-  const ghostResults = useMemo(() => {
+  const processedGhostResults = useMemo(() => {
     return wsGhostTrades.map(ghost => ({
       success: ghost.success_probability > 0.5,
       simulated_profit: ghost.expected_profit,
@@ -303,6 +303,15 @@ const QuantumTradingInterface: React.FC<QuantumTradingInterfaceProps> = ({
       ]
     }));
   }, [wsGhostTrades]);
+
+  // Update state with processed WebSocket data
+  useEffect(() => {
+    setQuantumTrades(processedQuantumTrades);
+  }, [processedQuantumTrades]);
+
+  useEffect(() => {
+    setGhostResults(processedGhostResults);
+  }, [processedGhostResults]);
 
   // Calculate total potential profit
   const totalPotentialProfit = useMemo(() => {

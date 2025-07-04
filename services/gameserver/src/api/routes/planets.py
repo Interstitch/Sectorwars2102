@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.services.planetary_service import PlanetaryService
@@ -58,7 +58,7 @@ class SpecializationRequest(BaseModel):
 @router.get("/owned")
 async def get_owned_planets(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get all planets owned by the player."""
     service = PlanetaryService(db)
@@ -74,7 +74,7 @@ async def get_owned_planets(
 async def get_planet_details(
     planetId: str,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get detailed information about a specific planet."""
     try:
@@ -96,7 +96,7 @@ async def allocate_colonists(
     planetId: str,
     allocation: PlanetResourceAllocation,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Allocate colonists to different production areas."""
     try:
@@ -124,7 +124,7 @@ async def upgrade_building(
     planetId: str,
     request: BuildingUpgradeRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Upgrade a building on a planet."""
     try:
@@ -151,7 +151,7 @@ async def update_defenses(
     planetId: str,
     request: DefenseUpdateRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Update planetary defenses."""
     try:
@@ -178,7 +178,7 @@ async def update_defenses(
 async def deploy_genesis_device(
     request: GenesisDeployRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Deploy a genesis device to create a new planet."""
     try:
@@ -205,7 +205,7 @@ async def set_specialization(
     planetId: str,
     request: SpecializationRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Set planet specialization."""
     try:
@@ -230,7 +230,7 @@ async def set_specialization(
 async def get_siege_status(
     planetId: str,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get siege status of a planet."""
     try:

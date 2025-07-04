@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field, validator
 
-from src.core.database import get_db_session
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.services.quantum_trading_engine import get_quantum_trading_engine
@@ -35,8 +35,8 @@ router = APIRouter(prefix="/quantum-trading")
 
 class QuantumTradeRequest(BaseModel):
     """Request to create a quantum trade"""
-    commodity: str = Field(..., regex="^(ORE|ORGANICS|EQUIPMENT|FUEL|LUXURY|TECHNOLOGY|COLONISTS)$")
-    action: str = Field(..., regex="^(buy|sell)$")
+    commodity: str = Field(..., pattern="^(ORE|ORGANICS|EQUIPMENT|FUEL|LUXURY|TECHNOLOGY|COLONISTS)$")
+    action: str = Field(..., pattern="^(buy|sell)$")
     quantity: int = Field(..., gt=0, le=10000)
     price: Optional[float] = Field(None, gt=0, le=1000000)
     
@@ -49,8 +49,8 @@ class QuantumTradeRequest(BaseModel):
 
 class GhostTradeRequest(BaseModel):
     """Request to run a ghost trade simulation"""
-    commodity: str = Field(..., regex="^(ORE|ORGANICS|EQUIPMENT|FUEL|LUXURY|TECHNOLOGY|COLONISTS)$")
-    action: str = Field(..., regex="^(buy|sell)$")
+    commodity: str = Field(..., pattern="^(ORE|ORGANICS|EQUIPMENT|FUEL|LUXURY|TECHNOLOGY|COLONISTS)$")
+    action: str = Field(..., pattern="^(buy|sell)$")
     quantity: int = Field(..., gt=0, le=10000)
 
 
@@ -65,7 +65,7 @@ class TradeCascadeRequest(BaseModel):
 
 class MarketObservationRequest(BaseModel):
     """Record a market observation (auto-recorded when at port)"""
-    commodity: str = Field(..., regex="^(ORE|ORGANICS|EQUIPMENT|FUEL|LUXURY|TECHNOLOGY|COLONISTS)$")
+    commodity: str = Field(..., pattern="^(ORE|ORGANICS|EQUIPMENT|FUEL|LUXURY|TECHNOLOGY|COLONISTS)$")
     observed_price: float = Field(..., gt=0, le=1000000)
     observed_quantity: int = Field(..., gt=0)
 
@@ -78,7 +78,7 @@ class MarketObservationRequest(BaseModel):
 async def create_quantum_trade(
     request: QuantumTradeRequest,
     player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_async_session)
 ) -> Dict[str, Any]:
     """
     Create a quantum trade in superposition
@@ -131,7 +131,7 @@ async def create_quantum_trade(
 async def execute_ghost_trade(
     request: GhostTradeRequest,
     player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_async_session)
 ) -> Dict[str, Any]:
     """
     Run a ghost trade simulation
@@ -195,7 +195,7 @@ async def execute_ghost_trade(
 async def collapse_quantum_trade(
     trade_id: str,
     player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_async_session)
 ) -> Dict[str, Any]:
     """
     Collapse quantum superposition and execute the trade
@@ -241,7 +241,7 @@ async def collapse_quantum_trade(
 async def create_trade_cascade(
     request: TradeCascadeRequest,
     player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_async_session)
 ) -> Dict[str, Any]:
     """
     Create a trade cascade through explored territory
@@ -325,7 +325,7 @@ async def create_trade_cascade(
 async def execute_cascade_step(
     cascade_id: str,
     player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_async_session)
 ) -> Dict[str, Any]:
     """
     Execute the next step in a trade cascade
@@ -360,7 +360,7 @@ async def execute_cascade_step(
 async def get_my_trading_patterns(
     pattern_type: Optional[str] = None,
     player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_async_session)
 ) -> Dict[str, Any]:
     """
     Get player's evolved trading patterns (Trade DNA)
@@ -370,8 +370,8 @@ async def get_my_trading_patterns(
         
         patterns = await aria_service.get_evolved_patterns(
             player_id=str(player.id),
-            pattern_type=pattern_type,
-            db=db
+            db=db,
+            pattern_type=pattern_type
         )
         
         return {
@@ -404,7 +404,7 @@ async def get_my_trading_patterns(
 async def record_market_observation(
     request: MarketObservationRequest,
     player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_async_session)
 ) -> Dict[str, Any]:
     """
     Manually record a market observation
@@ -468,7 +468,7 @@ async def record_market_observation(
 @router.get("/quantum-state")
 async def get_quantum_engine_state(
     player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_async_session)
 ) -> Dict[str, Any]:
     """
     Get current state of the quantum trading engine
@@ -504,7 +504,7 @@ async def get_quantum_engine_state(
 @router.get("/recommendations")
 async def get_quantum_recommendations(
     player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_async_session)
 ) -> Dict[str, Any]:
     """
     Get AI-powered quantum trade recommendations

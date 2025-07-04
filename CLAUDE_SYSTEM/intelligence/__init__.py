@@ -1,1 +1,0 @@
-# CLAUDE.md Intelligence Layer - Living Development Intelligence

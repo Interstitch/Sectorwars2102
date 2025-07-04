@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import require_admin
 from src.models.user import User
 from src.services.combat_analytics_service import CombatAnalyticsService
@@ -88,7 +88,7 @@ async def get_live_combat_feed(
     sector_id: Optional[UUID] = Query(None, description="Filter by sector"),
     active_only: bool = Query(True, description="Show only active combats"),
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """
     Get live/recent combat activities.
@@ -125,7 +125,7 @@ async def intervene_in_combat(
     combat_id: UUID,
     request: CombatInterventionRequest,
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """
     Perform admin intervention in ongoing combat.
@@ -176,7 +176,7 @@ async def get_combat_balance_analytics(
     timeframe: str = Query("7d", description="Timeframe: 1d, 7d, 30d"),
     group_by: str = Query("ship_type", description="Group by: ship_type, player_level, combat_type, overall"),
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """
     Get combat balance analytics and win rates.
@@ -212,7 +212,7 @@ async def get_combat_disputes(
     status: Optional[str] = Query(None, description="Filter by status: pending_review, investigating, resolved"),
     limit: int = Query(50, ge=1, le=100, description="Number of disputes to return"),
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """
     Get combat-related disputes and suspicious activities.
@@ -245,7 +245,7 @@ async def get_combat_disputes(
 @router.get("/dashboard-summary")
 async def get_combat_dashboard_summary(
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """
     Get a comprehensive summary for the combat dashboard.

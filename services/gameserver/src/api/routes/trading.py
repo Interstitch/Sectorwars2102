@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 from datetime import datetime, UTC
 from pydantic import BaseModel
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_user, get_current_player
 from src.models.user import User
 from src.models.player import Player
@@ -35,7 +35,7 @@ class MarketInfoResponse(BaseModel):
 @router.post("/buy")
 async def buy_resource(
     trade_request: TradeRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
@@ -146,7 +146,7 @@ async def buy_resource(
 @router.post("/sell")
 async def sell_resource(
     trade_request: TradeRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
@@ -240,7 +240,7 @@ async def sell_resource(
 @router.get("/market/{port_id}", response_model=MarketInfoResponse)
 async def get_market_info(
     port_id: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
@@ -279,7 +279,7 @@ async def get_market_info(
 @router.post("/dock")
 async def dock_at_port(
     dock_request: PortDockRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
@@ -342,7 +342,7 @@ async def dock_at_port(
 
 @router.post("/undock")
 async def undock_from_port(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
@@ -385,7 +385,7 @@ async def undock_from_port(
 @router.get("/history")
 async def get_trading_history(
     limit: int = 20,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):

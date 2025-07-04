@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from src.auth.jwt import decode_token
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.models.user import User
 from src.models.player import Player
 
@@ -16,7 +16,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login/direct")
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme), 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ) -> User:
     """
     Dependency to get the current authenticated user from the token.
@@ -83,7 +83,7 @@ def admin_or_options(
 
 async def get_current_player(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ) -> Player:
     """
     Dependency to get the current player associated with the authenticated user.
@@ -173,7 +173,7 @@ async def validate_websocket_token(token: str, db: AsyncSession) -> Player:
     return player
 
 
-async def validate_ai_access(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> str:
+async def validate_ai_access(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_async_session)) -> str:
     """
     Validate access to AI features and return player_id
     Used by enhanced AI routes

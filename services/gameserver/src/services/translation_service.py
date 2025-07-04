@@ -20,7 +20,7 @@ from src.models.translation import (
     DEFAULT_LANGUAGES, DEFAULT_NAMESPACES
 )
 from src.models.user import User
-from src.core.database import get_db
+from src.core.database import get_async_session
 
 logger = logging.getLogger(__name__)
 
@@ -829,6 +829,6 @@ class TranslationService:
 
 
 # Service factory function
-def get_translation_service(db: Session = Depends(get_db)) -> TranslationService:
+def get_translation_service(db: Session = Depends(get_async_session)) -> TranslationService:
     """Get translation service instance"""
     return TranslationService(db)

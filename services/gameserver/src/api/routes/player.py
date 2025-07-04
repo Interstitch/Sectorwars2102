@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.models.ship import Ship
@@ -80,7 +80,7 @@ class AvailableMovesResponse(BaseModel):
 @router.get("/state", response_model=PlayerStateResponse)
 async def get_player_state(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get current player state including credits, turns, ship, and location"""
     return PlayerStateResponse(
@@ -99,7 +99,7 @@ async def get_player_state(
 @router.get("/ships", response_model=List[ShipResponse])
 async def get_player_ships(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get all ships owned by the current player"""
     ships = db.query(Ship).filter(Ship.owner_id == player.id).all()
@@ -127,7 +127,7 @@ async def get_player_ships(
 @router.get("/current-ship", response_model=ShipResponse)
 async def get_current_ship(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get the player's current active ship"""
     if not player.current_ship_id:
@@ -162,7 +162,7 @@ async def get_current_ship(
 @router.get("/current-sector", response_model=SectorResponse)
 async def get_current_sector(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get details about the player's current sector"""
     sector = db.query(Sector).filter(Sector.sector_id == player.current_sector_id).first()
@@ -190,7 +190,7 @@ async def get_current_sector(
 async def move_to_sector(
     sector_id: int,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Move the player to a specified sector"""
     # Use MovementService to handle movement properly
@@ -215,7 +215,7 @@ async def move_to_sector(
 @router.get("/available-moves", response_model=AvailableMovesResponse)
 async def get_available_moves(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get available movement options from the player's current sector"""
     # Use MovementService to get properly calculated moves

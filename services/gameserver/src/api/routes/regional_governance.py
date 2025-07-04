@@ -10,7 +10,7 @@ from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
 import uuid
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_user, require_auth
 from src.models.user import User
 from src.models.region import (
@@ -82,7 +82,7 @@ async def verify_region_owner(db: AsyncSession, user: User) -> Region:
 @router.get("/my-region")
 async def get_my_region(
     current_user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get information about the user's owned region"""
     region = await verify_region_owner(db, current_user)
@@ -118,7 +118,7 @@ async def get_my_region(
 @router.get("/my-region/stats")
 async def get_regional_stats(
     current_user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get comprehensive statistics for the user's region"""
     region = await verify_region_owner(db, current_user)
@@ -211,7 +211,7 @@ async def get_regional_stats(
 async def update_economic_config(
     config: EconomicConfigUpdate,
     current_user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Update economic configuration for the user's region"""
     region = await verify_region_owner(db, current_user)
@@ -246,7 +246,7 @@ async def update_economic_config(
 async def update_governance_config(
     config: GovernanceConfigUpdate,
     current_user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Update governance configuration for the user's region"""
     region = await verify_region_owner(db, current_user)
@@ -276,7 +276,7 @@ async def update_governance_config(
 @router.get("/my-region/policies")
 async def get_regional_policies(
     current_user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get all policies for the user's region"""
     region = await verify_region_owner(db, current_user)
@@ -311,7 +311,7 @@ async def get_regional_policies(
 async def create_policy(
     policy_data: PolicyCreate,
     current_user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Create a new policy proposal for the user's region"""
     region = await verify_region_owner(db, current_user)
@@ -351,7 +351,7 @@ async def create_policy(
 @router.get("/my-region/elections")
 async def get_regional_elections(
     current_user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get all elections for the user's region"""
     region = await verify_region_owner(db, current_user)
@@ -381,7 +381,7 @@ async def get_regional_elections(
 async def start_election(
     election_data: ElectionCreate,
     current_user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Start a new election for the user's region"""
     region = await verify_region_owner(db, current_user)
@@ -430,7 +430,7 @@ async def start_election(
 @router.get("/my-region/treaties")
 async def get_regional_treaties(
     current_user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Get all treaties for the user's region"""
     region = await verify_region_owner(db, current_user)
@@ -473,7 +473,7 @@ async def get_regional_treaties(
 async def update_cultural_identity(
     culture_data: CulturalUpdate,
     current_user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_session)
 ):
     """Update cultural identity for the user's region"""
     region = await verify_region_owner(db, current_user)
@@ -498,7 +498,7 @@ async def update_cultural_identity(
 @router.get("/my-region/members")
 async def get_regional_members(
     current_user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_session),
     limit: int = 100,
     offset: int = 0
 ):

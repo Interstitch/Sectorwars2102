@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from uuid import uuid4
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.core.config import settings
 from src.models.user import User
 from src.models.admin_credentials import AdminCredentials
@@ -25,7 +25,7 @@ class CreateAdminRequest(BaseModel):
 @router.get("/check-admin-exists")
 async def check_admin_exists(
     username: str = Query(..., description="Username to check"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """
     Check if an admin user with the given username exists.
@@ -44,7 +44,7 @@ async def check_admin_exists(
 @router.post("/create-admin", status_code=status.HTTP_201_CREATED)
 async def create_admin(
     request: CreateAdminRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """
     Create an admin user for testing purposes.

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 import logging
 import random
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_admin
 from src.models.user import User
 from src.models.player import Player
@@ -136,7 +136,7 @@ async def get_colony_production(
     timeRange: str = Query("day", pattern="^(hour|day|week|month)$"),
     resource: str = Query("all", pattern="^(all|energy|minerals|food|water)$"),
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get colony production data for monitoring"""
     try:
@@ -372,7 +372,7 @@ async def get_colony_production(
 @router.get("/colonization/genesis-devices")
 async def get_genesis_devices(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get genesis device tracking data"""
     try:
@@ -556,7 +556,7 @@ async def get_genesis_devices(
 @router.get("/colonization/planets")
 async def get_admin_colonization_planets(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get planetary management data for admin"""
     try:

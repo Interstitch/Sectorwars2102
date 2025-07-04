@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_admin_user
 from src.models.game_event import GameEvent, EventTemplate, EventEffect, EventParticipation, EventType, EventStatus
 from src.models.player import Player
@@ -71,7 +71,7 @@ async def get_events(
     status_filter: Optional[str] = Query(None),
     type_filter: Optional[str] = Query(None),
     search_term: Optional[str] = Query(None),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get paginated events with filters"""
@@ -151,7 +151,7 @@ async def get_events(
 
 @router.get("/stats", response_model=EventStatsResponse)
 async def get_event_stats(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get event statistics"""
@@ -179,7 +179,7 @@ async def get_event_stats(
 
 @router.get("/templates", response_model=List[EventTemplateResponse])
 async def get_event_templates(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get available event templates"""
@@ -215,7 +215,7 @@ async def get_event_templates(
 @router.post("/", response_model=GameEventResponse)
 async def create_event(
     event_data: CreateEventRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Create a new game event"""
@@ -289,7 +289,7 @@ async def create_event(
 async def update_event(
     event_id: str,
     event_data: CreateEventRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Update an existing event"""
@@ -362,7 +362,7 @@ async def update_event(
 @router.post("/{event_id}/activate")
 async def activate_event(
     event_id: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Activate a scheduled event"""
@@ -391,7 +391,7 @@ async def activate_event(
 @router.post("/{event_id}/deactivate")
 async def deactivate_event(
     event_id: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Deactivate an active event"""
@@ -420,7 +420,7 @@ async def deactivate_event(
 @router.delete("/{event_id}")
 async def delete_event(
     event_id: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Delete an event (only if not active)"""

@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.services.player_combat_service import PlayerCombatService
@@ -64,7 +64,7 @@ class CombatStatusResponse(BaseModel):
 async def engage_combat(
     request: CombatEngageRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Initiate combat with a target."""
     service = PlayerCombatService(db)
@@ -92,7 +92,7 @@ async def engage_combat(
 async def get_combat_status(
     combatId: str,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get the current status of a combat."""
     service = PlayerCombatService(db)

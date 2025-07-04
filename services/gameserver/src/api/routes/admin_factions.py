@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_admin_user
 from src.models.user import User
 from src.models.faction import Faction, FactionType, FactionMission
@@ -94,7 +94,7 @@ class FactionDetailResponse(BaseModel):
 # Admin Endpoints
 @router.get("/", response_model=List[FactionDetailResponse])
 async def list_all_factions(
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     admin_user: User = Depends(get_current_admin_user)
 ):
     """Get detailed list of all factions (admin only)."""
@@ -126,7 +126,7 @@ async def list_all_factions(
 @router.post("/", response_model=FactionDetailResponse)
 async def create_faction(
     request: FactionCreateRequest,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     admin_user: User = Depends(get_current_admin_user)
 ):
     """Create a new faction (admin only)."""
@@ -175,7 +175,7 @@ async def create_faction(
 async def update_faction(
     faction_id: UUID,
     request: FactionUpdateRequest,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     admin_user: User = Depends(get_current_admin_user)
 ):
     """Update a faction (admin only)."""
@@ -216,7 +216,7 @@ async def update_faction(
 @router.delete("/{faction_id}")
 async def delete_faction(
     faction_id: UUID,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     admin_user: User = Depends(get_current_admin_user)
 ):
     """Delete a faction (admin only)."""
@@ -252,7 +252,7 @@ async def delete_faction(
 async def update_faction_territory(
     faction_id: UUID,
     request: TerritoryUpdateRequest,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     admin_user: User = Depends(get_current_admin_user)
 ):
     """Update faction territory control (admin only)."""
@@ -280,7 +280,7 @@ async def update_faction_territory(
 async def create_faction_mission(
     faction_id: UUID,
     request: MissionCreateRequest,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     admin_user: User = Depends(get_current_admin_user)
 ):
     """Create a new mission for a faction (admin only)."""
@@ -321,7 +321,7 @@ async def create_faction_mission(
 async def update_player_reputation(
     faction_id: UUID,
     request: ReputationUpdateRequest,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     admin_user: User = Depends(get_current_admin_user)
 ):
     """Update a player's reputation with a faction (admin only)."""
@@ -354,7 +354,7 @@ async def update_player_reputation(
 @router.get("/missions/all")
 async def list_all_missions(
     active_only: bool = True,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     admin_user: User = Depends(get_current_admin_user)
 ):
     """Get all missions across all factions (admin only)."""

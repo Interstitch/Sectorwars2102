@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_admin_user
 from src.models.market_transaction import MarketTransaction, MarketPrice, PriceHistory, EconomicMetrics, PriceAlert, TransactionType
 from src.models.player import Player
@@ -56,7 +56,7 @@ async def get_market_data(
     commodity_filter: Optional[str] = Query(None, description="Filter by commodity"),
     sector_filter: Optional[str] = Query(None, description="Filter by sector"),
     limit: int = Query(100, le=500),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get current market data across all ports"""
@@ -94,7 +94,7 @@ async def get_market_data(
 @router.get("/metrics", response_model=EconomicMetricsResponse)
 async def get_economic_metrics(
     time_period: str = Query("24h", description="Time period: 24h, 7d, 30d"),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get economic health metrics"""
@@ -164,7 +164,7 @@ async def get_economic_metrics(
 @router.get("/price-alerts", response_model=List[PriceAlertResponse])
 async def get_price_alerts(
     active_only: bool = Query(True, description="Only show active alerts"),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get price alerts for admin monitoring"""
@@ -210,7 +210,7 @@ async def get_price_history(
     commodity: str,
     port_id: Optional[str] = Query(None, description="Specific port ID"),
     days: int = Query(7, le=90, description="Number of days of history"),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get price history for a commodity"""
@@ -249,7 +249,7 @@ async def get_price_history(
 @router.post("/intervention")
 async def price_intervention(
     intervention: PriceInterventionRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Admin intervention to adjust market prices"""
@@ -318,7 +318,7 @@ async def get_recent_transactions(
     transaction_type: Optional[str] = Query(None),
     commodity: Optional[str] = Query(None),
     player_id: Optional[str] = Query(None),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get recent market transactions for admin monitoring"""
@@ -361,7 +361,7 @@ async def get_recent_transactions(
 @router.post("/create-alert")
 async def create_price_alert(
     alert_data: Dict[str, Any],
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Create a new price monitoring alert"""
@@ -385,7 +385,7 @@ async def create_price_alert(
 @router.delete("/alerts/{alert_id}")
 async def delete_price_alert(
     alert_id: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Delete a price alert"""

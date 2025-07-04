@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.models.faction import Faction, FactionType, FactionMission
@@ -126,7 +126,7 @@ class TerritoryResponse(BaseModel):
 # API Endpoints
 @router.get("/", response_model=List[FactionResponse])
 async def list_factions(
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get list of all factions."""
@@ -137,7 +137,7 @@ async def list_factions(
 
 @router.get("/reputation", response_model=List[ReputationResponse])
 async def get_player_reputations(
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get current player's reputation with all factions."""
@@ -154,7 +154,7 @@ async def get_player_reputations(
 @router.get("/{faction_id}/reputation", response_model=ReputationResponse)
 async def get_faction_reputation(
     faction_id: UUID,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get player's reputation with a specific faction."""
@@ -177,7 +177,7 @@ async def get_faction_reputation(
 @router.get("/missions", response_model=List[MissionResponse])
 async def get_available_missions(
     faction_id: Optional[UUID] = Query(None, description="Filter by faction ID"),
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get available missions for the current player."""
@@ -189,7 +189,7 @@ async def get_available_missions(
 @router.get("/{faction_id}/missions", response_model=List[MissionResponse])
 async def get_faction_missions(
     faction_id: UUID,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get available missions from a specific faction."""
@@ -208,7 +208,7 @@ async def get_faction_missions(
 async def accept_mission(
     faction_id: UUID,
     request: AcceptMissionRequest,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Accept a mission from a faction."""
@@ -242,7 +242,7 @@ async def accept_mission(
 @router.get("/{faction_id}/territory", response_model=TerritoryResponse)
 async def get_faction_territory(
     faction_id: UUID,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get the territory controlled by a faction."""
@@ -263,7 +263,7 @@ async def get_faction_territory(
 @router.get("/{faction_id}/pricing-modifier")
 async def get_pricing_modifier(
     faction_id: UUID,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get the pricing modifier for trading at faction-controlled ports."""

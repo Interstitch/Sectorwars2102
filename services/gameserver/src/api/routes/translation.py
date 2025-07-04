@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.services.translation_service import TranslationService, get_translation_service
 from src.auth.dependencies import get_current_user, get_current_admin_user
 from src.models.user import User

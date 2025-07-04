@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.models.first_login import ShipChoice
@@ -64,7 +64,7 @@ class CompleteFirstLoginResponse(BaseModel):
 @router.get("/status", response_model=FirstLoginStatusResponse)
 async def get_first_login_status(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Check if the player needs to go through the first login experience"""
@@ -96,7 +96,7 @@ async def get_first_login_status(
 @router.post("/session", response_model=FirstLoginSessionResponse)
 async def start_first_login_session(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Start or resume a first login session"""
@@ -138,7 +138,7 @@ async def start_first_login_session(
 async def claim_ship(
     claim: ShipClaimRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Claim a ship and record the player's initial dialogue response"""
@@ -220,7 +220,7 @@ async def answer_dialogue(
     exchange_id: UUID,
     response: DialogueResponse,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     ai_service: AIDialogueService = Depends(get_ai_dialogue_service),
     security_service: AISecurityService = Depends(get_security_service)
 ):
@@ -297,7 +297,7 @@ async def answer_dialogue(
 @router.post("/complete", response_model=CompleteFirstLoginResponse)
 async def complete_first_login(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Complete the first login process and grant the player their ship and credits"""
@@ -327,7 +327,7 @@ async def complete_first_login(
 @router.get("/debug", include_in_schema=False)
 async def debug_first_login_state(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Debug endpoint to check player's first login state"""
@@ -370,7 +370,7 @@ async def debug_first_login_state(
 @router.delete("/session")
 async def reset_first_login_session(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Reset the player's first login session to start fresh"""

@@ -408,7 +408,7 @@ def validate_ship_specifications(db: Session) -> bool:
 
 if __name__ == "__main__":
     # For testing purposes
-    from src.core.database import get_db
+    from src.core.database import get_async_session
     
     db = next(get_db())
     try:

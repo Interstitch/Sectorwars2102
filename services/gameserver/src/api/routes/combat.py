@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_admin_user
 from src.models.combat_log import CombatLog, CombatStats
 from src.models.player import Player
@@ -49,7 +49,7 @@ async def get_combat_logs(
     outcome_filter: Optional[str] = Query(None, description="Filter by outcome"),
     limit: int = Query(100, le=1000),
     offset: int = Query(0),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get paginated combat logs with filters"""
@@ -132,7 +132,7 @@ async def get_combat_logs(
 @router.get("/stats", response_model=CombatStatsResponse)
 async def get_combat_stats(
     time_filter: str = Query("24h"),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get combat statistics"""
@@ -202,7 +202,7 @@ async def get_combat_stats(
 @router.get("/balance", response_model=BalanceMetricsResponse)
 async def get_balance_metrics(
     time_filter: str = Query("7d"),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get combat balance metrics for game balancing"""
@@ -287,7 +287,7 @@ async def get_balance_metrics(
 async def resolve_combat_dispute(
     combat_id: str,
     resolution: Dict[str, Any],
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
 ):
     """Resolve a disputed combat result"""

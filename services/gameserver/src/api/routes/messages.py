@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.services.message_service import MessageService
@@ -34,7 +34,7 @@ class MessageResponse(BaseModel):
 async def send_message(
     request: MessageCreateRequest,
     current_player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Send a message to another player or team"""
     try:
@@ -79,7 +79,7 @@ async def get_inbox(
     page: int = Query(1, ge=1),
     unread_only: bool = Query(False),
     current_player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get player's inbox messages"""
     try:
@@ -102,7 +102,7 @@ async def get_team_messages(
     team_id: UUID,
     page: int = Query(1, ge=1),
     current_player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get messages for a specific team"""
     try:
@@ -126,7 +126,7 @@ async def get_team_messages(
 async def mark_message_read(
     message_id: UUID,
     current_player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Mark a message as read"""
     try:
@@ -149,7 +149,7 @@ async def mark_message_read(
 async def delete_message(
     message_id: UUID,
     current_player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Delete a message (soft delete)"""
     try:
@@ -172,7 +172,7 @@ async def delete_message(
 async def get_conversations(
     page: int = Query(1, ge=1),
     current_player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Get conversation threads"""
     try:
@@ -194,7 +194,7 @@ async def flag_message(
     message_id: UUID,
     reason: str = Query(..., min_length=10, max_length=255),
     current_player: Player = Depends(get_current_player),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_async_session)
 ):
     """Flag a message for moderation"""
     try:

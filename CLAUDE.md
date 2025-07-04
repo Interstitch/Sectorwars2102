@@ -21,7 +21,6 @@ docker-compose ps                                # Verify all services running
 **Success Criteria**: At least 1 viable ideas documented with priority scores
 
 **Actions**:
-- Run `python CLAUDE_SYSTEM/claude-system.py --analyze` for comprehensive insights
 - Research modern game dev patterns and competing implementations
 - Brainstorm unique features: multiplayer patterns, mobile/web accessibility, AI enhancements
 - Prioritize using scoring matrix: Impact (1-5) × Feasibility (1-5) ÷ Effort (1-5)
@@ -94,13 +93,6 @@ npx playwright test --reporter=html                          # Generate coverage
 git status && git diff                                # Review all changes
 git add -A && git commit -m "feat: descriptive msg"  # Commit with conventional format
 git push origin main                                  # Deploy changes
-```
-
-**Analysis & Improvement**:
-```bash
-python CLAUDE_SYSTEM/claude-system.py --analyze      # Comprehensive analysis
-python CLAUDE_SYSTEM/claude-system.py --heal         # Auto-fix opportunities  
-python CLAUDE_SYSTEM/claude-system.py --report       # Generate metrics dashboard
 ```
 
 **Reflection Requirements**:
