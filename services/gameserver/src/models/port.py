@@ -196,10 +196,14 @@ class Port(Base):
     description = Column(String, nullable=True)
     special_services = Column(ARRAY(String), nullable=False, default=[])
     
+    # Regional association
+    region_id = Column(UUID(as_uuid=True), ForeignKey("regions.id"), nullable=True)
+    
     # Relationships
     owner = relationship("Player", secondary=player_ports, back_populates="ports")
     sector = relationship("Sector", foreign_keys=[sector_uuid], back_populates="ports")
     market = relationship("Market", back_populates="port", uselist=False, cascade="all, delete-orphan")
+    region = relationship("Region", back_populates="ports")
     
     def __repr__(self):
         return f"<Port {self.name} (Class {self.port_class.value}, {self.type.name}) - Sector: {self.sector_id}, Status: {self.status.name}>"

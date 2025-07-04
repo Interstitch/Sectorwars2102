@@ -34,3 +34,7 @@ from src.models.translation import (
     Language, TranslationNamespace, TranslationKey, 
     UserLanguagePreference, TranslationAuditLog, TranslationProgress
 )
+from src.models.aria_personal_intelligence import (
+    ARIAPersonalMemory, ARIAMarketIntelligence, ARIAExplorationMap,
+    ARIATradingPattern, ARIAQuantumCache, ARIASecurityLog
+)

@@ -135,11 +135,15 @@ class Planet(Base):
     genesis_created = Column(Boolean, nullable=False, default=False)
     genesis_device_id = Column(UUID(as_uuid=True), ForeignKey("genesis_devices.id"), nullable=True)
     
+    # Regional association
+    region_id = Column(UUID(as_uuid=True), ForeignKey("regions.id"), nullable=True)
+    
     # Relationships
     owner = relationship("Player", secondary=player_planets, back_populates="planets")
     sector = relationship("Sector", foreign_keys=[sector_uuid], back_populates="planets")
     genesis_device = relationship("GenesisDevice", foreign_keys=[genesis_device_id], back_populates="planet")
     formation = relationship("PlanetFormation", foreign_keys="[PlanetFormation.resulting_planet_id]", back_populates="resulting_planet", uselist=False)
+    region = relationship("Region", back_populates="planets")
     
     def __repr__(self):
         return f"<Planet {self.name} ({self.type.name}) - Sector: {self.sector_id}, Status: {self.status.name}>" 

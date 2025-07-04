@@ -15,7 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.core.config import settings
-from src.core.database import Base, engine, get_async_session
+from src.core.database import Base, async_engine, get_async_session
 from src.api.api import api_router
 from src.utils.error_handling import setup_error_handling
 
@@ -104,7 +104,7 @@ async def startup_event():
     
     try:
         # Create database tables
-        async with engine.begin() as conn:
+        async with async_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables initialized")
     except Exception as e:
