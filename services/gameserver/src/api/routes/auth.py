@@ -355,12 +355,16 @@ async def register_user(
     db.add(player_creds)
     db.commit()
     
-    # Also create a Player record
+    # Get the starting sector
+    from src.models.sector import Sector
     from src.models.player import Player
+    starting_sector = db.query(Sector).first()
+    
+    # Also create a Player record
     player = Player(
         user_id=new_user.id,
         nickname=username,
-        current_sector_id=1,  # Default starting sector
+        current_sector_id=starting_sector.id if starting_sector else None,  # Use proper sector UUID
         credits=10000  # Starting credits
     )
     db.add(player)

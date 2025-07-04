@@ -113,6 +113,15 @@ async def create_player_for_user(db: Session, user: User) -> Player:
     Create a Player record for a User (OAuth or otherwise).
     Also creates a starter ship for the player.
     """
+    # Get the starting sector (first available sector)
+    from src.models.sector import Sector
+    starting_sector = db.query(Sector).first()
+    if not starting_sector:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No sectors available in the game"
+        )
+    
     # Create player
     player = Player(
         user_id=user.id,
@@ -120,8 +129,8 @@ async def create_player_for_user(db: Session, user: User) -> Player:
         credits=1000,   # Starting credits (as per FIRST_LOGIN.md)
         turns=1000,     # Starting turns
         reputation={},  # Empty reputation
-        home_sector_id=1,     # Start in sector 1
-        current_sector_id=1,  # Start in sector 1
+        home_sector_id=starting_sector.id,     # Use proper sector UUID
+        current_sector_id=starting_sector.id,  # Use proper sector UUID
         is_ported=False,
         is_landed=False,
         team_id=None,
@@ -140,7 +149,7 @@ async def create_player_for_user(db: Session, user: User) -> Player:
         name="Escape Pod",
         type=ShipType.ESCAPE_POD,  # Start with escape pod
         owner_id=player.id,
-        sector_id=1,  # Start in sector 1
+        sector_id=starting_sector.id,  # Use proper UUID from sector
         cargo={},
         current_speed=1.0,
         base_speed=1.0,
