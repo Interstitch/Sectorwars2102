@@ -43,13 +43,26 @@ app.add_middleware(
 )
 
 # CORS middleware
+allowed_origins = ["*"] if settings.DEVELOPMENT_MODE else [
+    settings.get_frontend_url(),
+    "https://*.app.github.dev",
+    "https://*.repl.co"
+]
+
+# Always allow localhost origins for development
+if settings.DEVELOPMENT_MODE:
+    allowed_origins = ["*"]
+else:
+    allowed_origins.extend([
+        "http://localhost:3000",
+        "http://localhost:3001", 
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001"
+    ])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.DEVELOPMENT_MODE else [
-        settings.get_frontend_url(),
-        "https://*.app.github.dev",
-        "https://*.repl.co"
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

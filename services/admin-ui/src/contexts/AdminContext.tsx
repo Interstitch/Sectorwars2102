@@ -185,7 +185,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   
   // Set up axios instance (headers set per request)
   const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || '',
+    baseURL: '/api/v1',
   });
   
   // Load admin stats

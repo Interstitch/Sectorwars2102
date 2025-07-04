@@ -78,11 +78,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('Attempting to refresh token with refresh_token:', refreshTokenStr.substring(0, 5) + '...');
       
-      // Use API URL from environment or default to relative URL
-      const directApiUrl = import.meta.env.VITE_API_URL || '';
+      // Use relative URL to go through Vite proxy
+      const apiPath = '/api/v1';
       
       const response = await fetch(
-        `${directApiUrl}/auth/refresh`,
+        `${apiPath}/auth/refresh`,
         { 
           method: 'POST',
           headers: { 
@@ -249,15 +249,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('Attempting login with username:', username);
       
-      // Use API URL from environment or default to relative URL
-      const directApiUrl = import.meta.env.VITE_API_URL || '';
-      console.log('Using API URL:', directApiUrl || 'via proxy');
+      // Use relative URL to go through Vite proxy
+      const apiPath = '/api/v1';
+      console.log('Using API via Vite proxy');
       
       try {
         console.log('Attempting direct login call to gameserver API');
         
         // Use fetch API instead of axios for better control
-        const directResponse = await fetch(`${directApiUrl}/auth/login/direct`, {
+        const directResponse = await fetch(`${apiPath}/auth/login/direct`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -326,7 +326,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Get user data
         console.log('Fetching user data from /auth/me');
         try {
-          const userResponse = await fetch(`${directApiUrl}/auth/me`, {
+          const userResponse = await fetch(`${apiPath}/auth/me`, {
             headers: {
               'Authorization': `Bearer ${access_token}`,
               'Content-Type': 'application/json',
@@ -375,9 +375,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     
     try {
-      const directApiUrl = import.meta.env.VITE_API_URL || '';
+      const apiPath = '/api/v1';
       
-      const response = await fetch(`${directApiUrl}/auth/mfa/verify`, {
+      const response = await fetch(`${apiPath}/auth/mfa/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -407,7 +407,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
       
       // Get user data
-      const userResponse = await fetch(`${directApiUrl}/auth/me`, {
+      const userResponse = await fetch(`${apiPath}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${data.access_token}`,
           'Content-Type': 'application/json',
@@ -431,9 +431,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   
   // Enable MFA for current user
   const enableMFA = async () => {
-    const directApiUrl = import.meta.env.VITE_API_URL || '';
+    const apiPath = '/api/v1';
     
-    const response = await fetch(`${directApiUrl}/auth/mfa/generate`, {
+    const response = await fetch(`${apiPath}/auth/mfa/generate`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -455,9 +455,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   
   // Confirm MFA setup
   const confirmMFASetup = async (code: string, secret: string) => {
-    const directApiUrl = import.meta.env.VITE_API_URL || '';
+    const apiPath = '/api/v1';
     
-    const response = await fetch(`${directApiUrl}/auth/mfa/confirm`, {
+    const response = await fetch(`${apiPath}/auth/mfa/confirm`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
