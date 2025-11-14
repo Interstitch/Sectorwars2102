@@ -5,11 +5,11 @@ import * as d3 from 'd3';
 const Universe: React.FC = () => {
   const { 
     galaxyState, 
-    regions, 
+    zones, 
     clusters,
     sectors,
     loadGalaxyInfo,
-    loadRegions,
+    loadZones,
     loadClusters,
     loadSectors,
     generateGalaxy,
@@ -71,7 +71,7 @@ const Universe: React.FC = () => {
 
   useEffect(() => {
     if (galaxyState) {
-      loadRegions();
+      loadZones();
       loadSectors();
     }
   }, [galaxyState]);
@@ -195,7 +195,7 @@ const Universe: React.FC = () => {
       await addSectors(galaxyState.id, addSectorsCount, sectorConfig);
       setShowAddSectorsForm(false);
       await loadGalaxyInfo();
-      await loadRegions();
+      await loadZones();
       await loadSectors();
     } catch (error) {
       console.error('Error adding sectors:', error);
@@ -594,7 +594,7 @@ const Universe: React.FC = () => {
                           <span className="dashboard-stat-icon">🗺️</span>
                           <h4 className="dashboard-stat-title">Regions</h4>
                         </div>
-                        <div className="dashboard-stat-value">{regions.length}</div>
+                        <div className="dashboard-stat-value">{zones.length}</div>
                         <div className="dashboard-stat-detail">
                           Federation: {galaxyState.zone_distribution.federation}%<br/>
                           Border: {galaxyState.zone_distribution.border}%<br/>
@@ -688,7 +688,7 @@ const Universe: React.FC = () => {
                     onChange={(e) => setSelectedRegion(e.target.value || null)}
                   >
                     <option value="">All Regions</option>
-                    {regions.map(region => (
+                    {zones.map(region => (
                       <option key={region.id} value={region.id}>
                         {region.name} ({region.sector_count} sectors)
                       </option>
@@ -803,7 +803,7 @@ const Universe: React.FC = () => {
 
                 <div className="regions-list">
                   <h3>Regions & Clusters</h3>
-                  {regions.map(region => (
+                  {zones.map(region => (
                     <div key={region.id} className="region-item">
                       <div className="region-header">
                         <h4>{region.name}</h4>

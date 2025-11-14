@@ -32,7 +32,7 @@ interface MapData {
 }
 
 const UniverseEditor: React.FC = () => {
-  const { galaxyState, regions, clusters, sectors, loadSectors } = useAdmin();
+  const { galaxyState, zones, clusters, sectors, loadSectors } = useAdmin();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [selectedSector, setSelectedSector] = useState<SectorNode | null>(null);
@@ -147,8 +147,8 @@ const UniverseEditor: React.FC = () => {
       const y = radius * Math.sin(angle) + 500;
       
       // Assign to random region/cluster
-      const regionId = regions.length > 0 
-        ? regions[Math.floor(Math.random() * regions.length)].id 
+      const regionId = zones.length > 0 
+        ? zones[Math.floor(Math.random() * zones.length)].id 
         : 'region-1';
       
       const clusterId = clusters.length > 0
@@ -335,7 +335,7 @@ const UniverseEditor: React.FC = () => {
               onChange={(e) => setSelectedRegion(e.target.value || null)}
             >
               <option value="">All Regions</option>
-              {regions.map(region => (
+              {zones.map(region => (
                 <option key={region.id} value={region.id}>
                   {region.name}
                 </option>

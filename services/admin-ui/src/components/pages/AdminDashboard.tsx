@@ -7,12 +7,12 @@ const AdminDashboard: React.FC = () => {
   const { 
     adminStats, 
     galaxyState, 
-    regions, 
+    zones, 
     users,
     players,
     loadAdminStats,
     loadGalaxyInfo,
-    loadRegions,
+    loadZones,
     loadUsers,
     loadPlayers,
     isLoading,
@@ -32,9 +32,9 @@ const AdminDashboard: React.FC = () => {
   // Load regions when galaxy info is loaded
   useEffect(() => {
     if (galaxyState) {
-      loadRegions();
+      loadZones();
     }
-  }, [galaxyState, loadRegions]);
+  }, [galaxyState, loadZones]);
   
   return (
     <div className="page-container">
@@ -147,9 +147,9 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   
                   <div className="mb-6">
-                    <h5 className="font-semibold text-primary mb-3">Regions ({regions.length})</h5>
+                    <h5 className="font-semibold text-primary mb-3">Regions ({zones.length})</h5>
                     <div className="grid grid-cols-1 gap-2 mb-4">
-                      {regions.map((region: any) => (
+                      {zones.map((region: any) => (
                         <div key={region.id} className="flex justify-between items-center p-3 bg-secondary rounded">
                           <div>
                             <div className="font-medium">{region.name}</div>
