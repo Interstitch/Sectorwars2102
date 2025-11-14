@@ -169,7 +169,7 @@ const UniverseManager: React.FC = () => {
           }
         }
       } else {
-        alert('Failed to generate galaxy');
+        alert('Failed to create universe');
       }
     }
   };
@@ -438,7 +438,7 @@ const UniverseManager: React.FC = () => {
   const renderGalaxyOverview = () => (
     <div className="galaxy-overview">
       <div className="galaxy-header">
-        <h2>{galaxyState?.name || 'No Galaxy'}</h2>
+        <h2>{galaxyState?.name || 'No Universe'}</h2>
         {galaxyState && (
           <button 
             className="btn btn-outline"
@@ -515,7 +515,7 @@ const UniverseManager: React.FC = () => {
         </div>
       ) : (
         <div className="no-galaxy">
-          <p>No galaxy exists yet. Create one to begin!</p>
+          <p>No universe exists yet. Bang one into existence to begin!</p>
           <button 
             className="btn btn-primary btn-lg"
             onClick={() => setShowGalaxyGenerator(true)}
