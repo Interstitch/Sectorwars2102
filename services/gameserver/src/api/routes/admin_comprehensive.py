@@ -999,10 +999,10 @@ async def get_planets_comprehensive(
         
         # Get total count
         total_count = query.count()
-        
-        # Apply pagination
+
+        # Apply pagination with explicit ordering by sector ID
         offset = (page - 1) * limit
-        planets = query.offset(offset).limit(limit).all()
+        planets = query.order_by(Planet.sector_id.asc()).offset(offset).limit(limit).all()
         
         # Build response data
         planets_data = []
