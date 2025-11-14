@@ -849,13 +849,16 @@ async def clear_all_galaxy_data(
     """Clear all galaxy data for testing purposes"""
     try:
         # Delete all universe data in correct order to avoid foreign key constraints
-        db.query(Sector).delete()
-        db.query(WarpTunnel).delete()
-        db.query(Cluster).delete()
-        db.query(Region).delete()
-        db.query(Galaxy).delete()
+        # Must delete children before parents to avoid FK violations
+        db.query(Port).delete()          # Ports reference Sectors
+        db.query(Planet).delete()        # Planets reference Sectors
+        db.query(WarpTunnel).delete()    # Warp tunnels reference Sectors
+        db.query(Sector).delete()        # Sectors reference Clusters
+        db.query(Cluster).delete()       # Clusters reference GalaxyZones
+        db.query(GalaxyZone).delete()    # GalaxyZones reference Galaxy (cosmological zones, NOT business territories)
+        db.query(Galaxy).delete()        # Finally delete Galaxy
         db.commit()
-        
+
         return {"message": "All galaxy data cleared successfully"}
         
     except Exception as e:
