@@ -251,7 +251,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
   
-  // Load regions
+  // Load zones
   const loadZones = async () => {
     if (!user || !user.is_admin || !galaxyState) return;
 
@@ -401,7 +401,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       // After clearing, reset all state
       setGalaxyState(null);
-      setRegions([]);
+      setZones([]);
       setClusters([]);
       setSectors([]);
       
@@ -560,7 +560,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [user]);
   
-  // Load regions when galaxy is loaded
+  // Load zones when galaxy is loaded
   useEffect(() => {
     if (galaxyState) {
       loadZones();
