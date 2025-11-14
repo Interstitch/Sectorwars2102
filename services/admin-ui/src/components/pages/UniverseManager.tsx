@@ -444,7 +444,7 @@ const UniverseManager: React.FC = () => {
             className="btn btn-outline"
             onClick={() => setShowGalaxyGenerator(true)}
           >
-            🔄 Regenerate Universe
+            🔄 Regenerate Galaxy
           </button>
         )}
       </div>
