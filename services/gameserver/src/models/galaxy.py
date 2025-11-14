@@ -9,10 +9,11 @@ from sqlalchemy.orm import relationship
 from src.core.database import Base
 
 
-class RegionType(enum.Enum):
-    FEDERATION = "FEDERATION"
-    BORDER = "BORDER"
-    FRONTIER = "FRONTIER"
+class ZoneType(enum.Enum):
+    """Cosmological zone classification (NOT business territories)"""
+    FEDERATION = "FEDERATION"  # High security, developed, regulated
+    BORDER = "BORDER"           # Medium security, contested, mixed
+    FRONTIER = "FRONTIER"       # Low security, lawless, resource-rich
 
 
 class Galaxy(Base):
@@ -107,7 +108,7 @@ class Galaxy(Base):
     description = Column(String, nullable=False, default="A standard galaxy with 500 sectors")
     
     # Relationships
-    regions = relationship("GalaxyRegion", back_populates="galaxy", cascade="all, delete-orphan")
+    zones = relationship("GalaxyZone", back_populates="galaxy", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Galaxy {self.name} - {self.statistics.get('total_sectors', 0)} sectors>"
@@ -127,17 +128,21 @@ class Galaxy(Base):
         pass
 
 
-class GalaxyRegion(Base):
-    __tablename__ = "galaxy_regions"
+class GalaxyZone(Base):
+    """
+    Cosmological zone within a galaxy (Federation/Border/Frontier).
+    NOT to be confused with Territory (business/ownership concept).
+    """
+    __tablename__ = "galaxy_zones"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-    
+
     # Relationships and structure
     galaxy_id = Column(UUID(as_uuid=True), ForeignKey("galaxies.id", ondelete="CASCADE"), nullable=False)
-    type = Column(Enum(RegionType, name="region_type"), nullable=False)
+    type = Column(Enum(ZoneType, name="zone_type"), nullable=False)
     sector_count = Column(Integer, nullable=False, default=0)
     discover_difficulty = Column(Integer, nullable=False, default=1)  # 1-10 scale
     
@@ -217,8 +222,8 @@ class GalaxyRegion(Base):
     description = Column(String, nullable=True)
     
     # Relationships
-    galaxy = relationship("Galaxy", back_populates="regions")
-    clusters = relationship("Cluster", back_populates="region", cascade="all, delete-orphan")
-    
+    galaxy = relationship("Galaxy", back_populates="zones")
+    clusters = relationship("Cluster", back_populates="zone", cascade="all, delete-orphan")
+
     def __repr__(self):
-        return f"<GalaxyRegion {self.name} ({self.type.name}) - {self.sector_count} sectors>"
+        return f"<GalaxyZone {self.name} ({self.type.name}) - {self.sector_count} sectors>"

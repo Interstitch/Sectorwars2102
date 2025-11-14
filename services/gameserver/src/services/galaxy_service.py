@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Tuple, Set, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from src.models.galaxy import Galaxy, GalaxyRegion, RegionType
+from src.models.galaxy import Galaxy, GalaxyZone, ZoneType
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
@@ -74,19 +74,19 @@ class GalaxyGenerator:
         logger.info(f"Region distribution: Federation: {federation_count}, "
                    f"Border: {border_count}, Frontier: {frontier_count}")
         
-        # Create regions
-        federation_region = self._create_region(galaxy, "Federation Space", RegionType.FEDERATION, federation_count)
-        border_region = self._create_region(galaxy, "Border Zone", RegionType.BORDER, border_count)
-        frontier_region = self._create_region(galaxy, "Frontier", RegionType.FRONTIER, frontier_count)
+        # Create zones
+        federation_zone = self._create_zone(galaxy, "Federation Space", ZoneType.FEDERATION, federation_count)
+        border_zone = self._create_zone(galaxy, "Border Zone", ZoneType.BORDER, border_count)
+        frontier_zone = self._create_zone(galaxy, "Frontier", ZoneType.FRONTIER, frontier_count)
         
-        # Create clusters in each region
-        self._create_clusters(federation_region, cluster_count=5, avg_sectors_per_cluster=federation_count//5)
-        self._create_clusters(border_region, cluster_count=8, avg_sectors_per_cluster=border_count//8)
-        self._create_clusters(frontier_region, cluster_count=10, avg_sectors_per_cluster=frontier_count//10)
+        # Create clusters in each zone
+        self._create_clusters(federation_zone, cluster_count=5, avg_sectors_per_cluster=federation_count//5)
+        self._create_clusters(border_zone, cluster_count=8, avg_sectors_per_cluster=border_count//8)
+        self._create_clusters(frontier_zone, cluster_count=10, avg_sectors_per_cluster=frontier_count//10)
         
         # Create sectors in each cluster
-        for region in [federation_region, border_region, frontier_region]:
-            for cluster in region.clusters:
+        for zone in [federation_zone, border_zone, frontier_zone]:
+            for cluster in zone.clusters:
                 self._create_sectors_for_cluster(cluster)
         
         # Connect sectors with warps
@@ -109,43 +109,43 @@ class GalaxyGenerator:
         logger.info(f"Galaxy '{name}' generation completed with {self.sectors_generated} sectors")
         return galaxy
     
-    def _create_region(self, galaxy: Galaxy, name: str, region_type: RegionType, sector_count: int) -> GalaxyRegion:
-        """Create a region within the galaxy."""
+    def _create_zone(self, galaxy: Galaxy, name: str, zone_type: ZoneType, sector_count: int) -> GalaxyZone:
+        """Create a cosmological zone within the galaxy."""
         security_levels = {
-            RegionType.FEDERATION: 0.9,
-            RegionType.BORDER: 0.5,
-            RegionType.FRONTIER: 0.2
+            ZoneType.FEDERATION: 0.9,
+            ZoneType.BORDER: 0.5,
+            ZoneType.FRONTIER: 0.2
         }
-        
+
         resource_richness = {
-            RegionType.FEDERATION: 0.8,  # Developed but somewhat depleted
-            RegionType.BORDER: 1.2,      # Good balance
-            RegionType.FRONTIER: 1.6     # Resource rich but dangerous
+            ZoneType.FEDERATION: 0.8,  # Developed but somewhat depleted
+            ZoneType.BORDER: 1.2,      # Good balance
+            ZoneType.FRONTIER: 1.6     # Resource rich but dangerous
         }
-        
-        region = GalaxyRegion(
+
+        zone = GalaxyZone(
             name=name,
             galaxy_id=galaxy.id,
-            type=region_type,
+            type=zone_type,
             sector_count=sector_count,
-            security_level=security_levels[region_type],
-            resource_richness=resource_richness[region_type],
-            controlling_faction=self._get_default_faction_for_region(region_type),
-            description=f"{name} - {region_type.name} region with {sector_count} sectors"
+            security_level=security_levels[zone_type],
+            resource_richness=resource_richness[zone_type],
+            controlling_faction=self._get_default_faction_for_zone(zone_type),
+            description=f"{name} - {zone_type.name} cosmological zone with {sector_count} sectors"
         )
-        
-        self.db.add(region)
+
+        self.db.add(zone)
         self.db.flush()
-        return region
+        return zone
     
-    def _create_clusters(self, region: GalaxyRegion, cluster_count: int, avg_sectors_per_cluster: int) -> List[Cluster]:
-        """Create clusters within a region."""
+    def _create_clusters(self, zone: GalaxyZone, cluster_count: int, avg_sectors_per_cluster: int) -> List[Cluster]:
+        """Create clusters within a cosmological zone."""
         clusters = []
-        total_sectors = region.sector_count
+        total_sectors = zone.sector_count
         remaining_sectors = total_sectors
-        
-        # Determine cluster types appropriate for this region
-        cluster_types = self._get_cluster_types_for_region(region.type)
+
+        # Determine cluster types appropriate for this zone
+        cluster_types = self._get_cluster_types_for_zone(zone.type)
         
         for i in range(cluster_count):
             # Calculate sectors for this cluster (last cluster gets remainder)
@@ -161,16 +161,16 @@ class GalaxyGenerator:
             
             # Choose a cluster type
             cluster_type = random.choice(cluster_types)
-            
+
             # Create the cluster
-            cluster_name = f"{region.name} Cluster {chr(65 + i)}"  # A, B, C, etc.
+            cluster_name = f"{zone.name} Cluster {chr(65 + i)}"  # A, B, C, etc.
             cluster = Cluster(
                 name=cluster_name,
-                region_id=region.id,
+                zone_id=zone.id,
                 type=cluster_type,
                 sector_count=cluster_sectors,
-                is_discovered=region.type == RegionType.FEDERATION,  # Federation clusters start discovered
-                warp_stability=self._get_warp_stability_for_region(region.type),
+                is_discovered=zone.type == ZoneType.FEDERATION,  # Federation clusters start discovered
+                warp_stability=self._get_warp_stability_for_zone(zone.type),
                 description=f"{cluster_name} - {cluster_type.name} cluster with {cluster_sectors} sectors"
             )
             
@@ -217,7 +217,7 @@ class GalaxyGenerator:
                 z_coord=coords[2],
                 radiation_level=self._get_radiation_level_for_sector_type(sector_type),
                 hazard_level=self._get_hazard_level_for_sector_type(sector_type),
-                resources=self._generate_sector_resources(cluster.region.resource_richness),
+                resources=self._generate_sector_resources(cluster.zone.resource_richness),
                 description=f"{sector_name} - {sector_type.name} sector in {cluster.name}"
             )
             
@@ -583,34 +583,34 @@ class GalaxyGenerator:
         })
     
     # Helper methods for generation
-    def _get_default_faction_for_region(self, region_type: RegionType) -> str:
-        """Determine the default controlling faction for a region."""
+    def _get_default_faction_for_zone(self, zone_type: ZoneType) -> str:
+        """Determine the default controlling faction for a cosmological zone."""
         faction_map = {
-            RegionType.FEDERATION: "terran_federation",
-            RegionType.BORDER: "mercantile_guild",
-            RegionType.FRONTIER: "frontier_coalition"
+            ZoneType.FEDERATION: "terran_federation",
+            ZoneType.BORDER: "mercantile_guild",
+            ZoneType.FRONTIER: "frontier_coalition"
         }
-        return faction_map.get(region_type, "contested")
+        return faction_map.get(zone_type, "contested")
     
-    def _get_cluster_types_for_region(self, region_type: RegionType) -> List[ClusterType]:
-        """Get appropriate cluster types for a region."""
-        if region_type == RegionType.FEDERATION:
+    def _get_cluster_types_for_zone(self, zone_type: ZoneType) -> List[ClusterType]:
+        """Get appropriate cluster types for a cosmological zone."""
+        if zone_type == ZoneType.FEDERATION:
             return [ClusterType.POPULATION_CENTER, ClusterType.TRADE_HUB, ClusterType.STANDARD]
-        elif region_type == RegionType.BORDER:
-            return [ClusterType.TRADE_HUB, ClusterType.RESOURCE_RICH, ClusterType.MILITARY_ZONE, 
+        elif zone_type == ZoneType.BORDER:
+            return [ClusterType.TRADE_HUB, ClusterType.RESOURCE_RICH, ClusterType.MILITARY_ZONE,
                     ClusterType.CONTESTED, ClusterType.STANDARD]
         else:  # FRONTIER
             return [ClusterType.FRONTIER_OUTPOST, ClusterType.RESOURCE_RICH, ClusterType.SPECIAL_INTEREST,
                     ClusterType.CONTESTED, ClusterType.STANDARD]
     
-    def _get_warp_stability_for_region(self, region_type: RegionType) -> float:
-        """Get warp stability for a region."""
+    def _get_warp_stability_for_zone(self, zone_type: ZoneType) -> float:
+        """Get warp stability for a cosmological zone."""
         stability_map = {
-            RegionType.FEDERATION: 0.95,  # Very stable
-            RegionType.BORDER: 0.8,       # Mostly stable
-            RegionType.FRONTIER: 0.6      # Less stable
+            ZoneType.FEDERATION: 0.95,  # Very stable
+            ZoneType.BORDER: 0.8,       # Mostly stable
+            ZoneType.FRONTIER: 0.6      # Less stable
         }
-        return stability_map.get(region_type, 0.7)
+        return stability_map.get(zone_type, 0.7)
     
     def _get_sector_types_for_cluster(self, cluster_type: ClusterType) -> List[SectorType]:
         """Get appropriate sector types for a cluster."""
@@ -840,31 +840,31 @@ class GalaxyGenerator:
         # Get appropriate port types for this cluster
         appropriate_types = port_type_map.get(cluster_type, [PortType.TRADING, PortType.OUTPOST])
         
-        # In frontier regions, chance of black market
-        if sector.cluster.region.type == RegionType.FRONTIER and random.random() < 0.3:
+        # In frontier zones, chance of black market
+        if sector.cluster.zone.type == ZoneType.FRONTIER and random.random() < 0.3:
             appropriate_types.append(PortType.BLACK_MARKET)
         
         return random.choice(appropriate_types)
     
     def _choose_port_class_for_sector(self, sector: Sector) -> PortClass:
-        """Choose appropriate port class for a sector based on cluster and region type."""
+        """Choose appropriate port class for a sector based on cluster and zone type."""
         cluster_type = sector.cluster.type
-        region_type = sector.cluster.region.type
-        
+        zone_type = sector.cluster.zone.type
+
         # Special case for Sector 1 (Sol System)
         if sector.sector_id == 1:
             return PortClass.CLASS_0
-        
-        # Different probabilities based on region
-        if region_type == RegionType.FEDERATION:
+
+        # Different probabilities based on zone
+        if zone_type == ZoneType.FEDERATION:
             # Federation space has more advanced ports
             weights = {
                 PortClass.CLASS_1: 5, PortClass.CLASS_2: 5, PortClass.CLASS_3: 15,
                 PortClass.CLASS_4: 20, PortClass.CLASS_5: 10, PortClass.CLASS_6: 15,
                 PortClass.CLASS_7: 15, PortClass.CLASS_10: 10, PortClass.CLASS_11: 5
             }
-        elif region_type == RegionType.BORDER:
-            # Border regions have mixed classes
+        elif zone_type == ZoneType.BORDER:
+            # Border zones have mixed classes
             weights = {
                 PortClass.CLASS_1: 15, PortClass.CLASS_2: 15, PortClass.CLASS_3: 20,
                 PortClass.CLASS_4: 10, PortClass.CLASS_5: 15, PortClass.CLASS_6: 15,
@@ -897,23 +897,23 @@ class GalaxyGenerator:
         return random.choice(choices) if choices else PortClass.CLASS_6
     
     def _choose_faction_for_sector(self, sector: Sector) -> Optional[str]:
-        """Choose controlling faction for a sector based on region."""
-        region_type = sector.cluster.region.type
-        
-        # Default factions by region
+        """Choose controlling faction for a sector based on cosmological zone."""
+        zone_type = sector.cluster.zone.type
+
+        # Default factions by zone
         faction_map = {
-            RegionType.FEDERATION: ["terran_federation", "nova_scientific_institute"],
-            RegionType.BORDER: ["mercantile_guild", "astral_mining_consortium", "terran_federation"],
-            RegionType.FRONTIER: ["frontier_coalition", "fringe_alliance", "mercantile_guild"]
+            ZoneType.FEDERATION: ["terran_federation", "nova_scientific_institute"],
+            ZoneType.BORDER: ["mercantile_guild", "astral_mining_consortium", "terran_federation"],
+            ZoneType.FRONTIER: ["frontier_coalition", "fringe_alliance", "mercantile_guild"]
         }
-        
-        # Get factions for this region
-        factions = faction_map.get(region_type, ["contested"])
-        
+
+        # Get factions for this zone
+        factions = faction_map.get(zone_type, ["contested"])
+
         # 20% chance of no specific faction control
         if random.random() < 0.2:
             return None
-        
+
         return random.choice(factions)
     
     def _get_specialization_for_port_type(self, port_type: PortType) -> str:
@@ -1018,10 +1018,10 @@ class GalaxyGenerator:
         elif sector.type == SectorType.VOID:
             return random.choice([PlanetType.ICE, PlanetType.BARREN])
         
-        # Regions affect planet types too
-        region_type = sector.cluster.region.type
-        
-        if region_type == RegionType.FEDERATION:
+        # Zones affect planet types too
+        zone_type = sector.cluster.zone.type
+
+        if zone_type == ZoneType.FEDERATION:
             weights = {
                 PlanetType.TERRAN: 30,
                 PlanetType.OCEANIC: 15,
@@ -1032,7 +1032,7 @@ class GalaxyGenerator:
                 PlanetType.ICE: 5,
                 PlanetType.ARTIFICIAL: 10
             }
-        elif region_type == RegionType.BORDER:
+        elif zone_type == ZoneType.BORDER:
             weights = {
                 PlanetType.TERRAN: 15,
                 PlanetType.OCEANIC: 10,

@@ -1,0 +1,55 @@
+{
+  "name": "Sectorwars2102 Development Environment",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "18"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    }
+  },
+  "forwardPorts": [3000, 3001, 8080, 5433, 6379, 80, 443],
+  "portsAttributes": {
+    "3000": {
+      "label": "Player Client",
+      "onAutoForward": "openBrowser"
+    },
+    "3001": {
+      "label": "Admin UI",
+      "onAutoForward": "openBrowser"
+    },
+    "8080": {
+      "label": "Game Server API",
+      "onAutoForward": "notify"
+    },
+    "5433": {
+      "label": "PostgreSQL Database",
+      "onAutoForward": "silent"
+    },
+    "6379": {
+      "label": "Redis Cache",
+      "onAutoForward": "silent"
+    },
+    "80": {
+      "label": "Nginx HTTP",
+      "onAutoForward": "notify"
+    },
+    "443": {
+      "label": "Nginx HTTPS",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "echo 'Devcontainer setup complete'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-json"
+      ]
+    }
+  }
+}

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 import logging
 
-from src.core.database import get_async_session
+from src.core.database import get_db
 from src.auth.dependencies import get_current_user_from_token, get_current_admin_user
 from src.models.user import User
 from src.models.player import Player
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/ws", tags=["websocket"])
 async def websocket_endpoint(
     websocket: WebSocket,
     token: Optional[str] = Query(None),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """
     WebSocket endpoint for real-time multiplayer features.
@@ -98,7 +98,7 @@ async def websocket_endpoint(
 async def admin_websocket_endpoint(
     websocket: WebSocket,
     token: Optional[str] = Query(None),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """
     Admin WebSocket endpoint for real-time admin dashboard updates.
@@ -217,7 +217,7 @@ async def get_sector_players(
 async def get_team_players(
     team_id: str,
     current_user: User = Depends(get_current_admin_user),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ) -> dict:
     """Get list of online players in a specific team"""
     

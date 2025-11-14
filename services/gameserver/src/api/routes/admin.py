@@ -7,11 +7,11 @@ import random
 import math
 import logging
 
-from src.core.database import get_async_session
+from src.core.database import get_db
 from src.auth.dependencies import get_current_admin
 from src.models.user import User
 from src.models.player import Player
-from src.models.galaxy import Galaxy, GalaxyRegion
+from src.models.galaxy import Galaxy, GalaxyZone
 from src.models.cluster import Cluster
 from src.models.sector import Sector
 from src.models.warp_tunnel import WarpTunnel
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 @router.get("/users", response_model=dict)
 async def get_all_users(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get all users for admin panel"""
     users = db.query(User).all()
@@ -69,7 +69,7 @@ async def get_all_users(
 @router.get("/players", response_model=dict)
 async def get_all_players(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get all player accounts for admin panel"""
     try:
@@ -150,7 +150,7 @@ async def get_all_players(
 @router.get("/colonies", response_model=dict)
 async def get_all_colonies(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get all colonies (planets) for admin panel"""
     planets = db.query(Planet).all()
@@ -199,7 +199,7 @@ async def get_all_colonies(
 @router.get("/teams", response_model=dict)
 async def get_all_teams(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get all teams for admin panel"""
     try:
@@ -257,7 +257,7 @@ async def get_all_teams(
 @router.get("/teams/analytics", response_model=dict)
 async def get_teams_analytics(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get team analytics for admin dashboard"""
     try:
@@ -344,7 +344,7 @@ async def get_teams_analytics(
 @router.get("/stats", response_model=dict)
 async def get_admin_stats(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get statistics for admin dashboard"""
     try:
@@ -476,7 +476,7 @@ async def get_admin_stats(
 @router.get("/galaxy")
 async def get_galaxy_info(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get galaxy information for admin panel"""
     # Get the first galaxy (in the future, might support multiple galaxies)
@@ -582,7 +582,7 @@ async def get_galaxy_info(
 async def generate_galaxy(
     request: GalaxyGenerateRequest,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Generate a new galaxy with specified configuration"""
     # Check if a galaxy already exists
@@ -627,53 +627,41 @@ async def generate_galaxy(
         print(f"Galaxy generation error: {error_details}")
         raise HTTPException(status_code=500, detail=f"Failed to generate galaxy: {str(e)}")
 
-@router.get("/galaxy/{galaxy_id}/regions", response_model=dict)
-async def get_galaxy_regions(
+@router.get("/galaxy/{galaxy_id}/zones", response_model=dict)
+async def get_galaxy_zones(
     galaxy_id: str,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
-    """Get all regions in a galaxy"""
-    regions = db.query(Region).filter(Region.galaxy_id == galaxy_id).all()
-    
-    region_list = [
-        {
-            "id": str(region.id),
-            "name": region.name,
-            "type": region.type.value,
-            "created_at": region.created_at.isoformat(),
-            "galaxy_id": str(region.galaxy_id),
-            "total_sectors": region.total_sectors,
-            "sector_count": region.sector_count,  # Legacy support
-            "discover_difficulty": region.discover_difficulty,
-            "security": region.security,
-            "faction_control": region.faction_control,
-            "resources": region.resources,
-            "development": region.development,
-            "border_sectors": region.border_sectors,
-            "player_controlled_sectors": region.player_controlled_sectors,
-            "player_controlled_resources": region.player_controlled_resources,
-            "discovery_status": region.discovery_status,
-            "special_features": region.special_features,
-            "description": region.description,
-            # Legacy support for frontend
-            "controlling_faction": region.controlling_faction,
-            "security_level": region.security_level,
-            "resource_richness": region.resource_richness
-        }
-        for region in regions
-    ]
-    
-    return {"regions": region_list}
+    """Get all cosmological zones in a galaxy"""
+    zones = db.query(GalaxyZone).filter(GalaxyZone.galaxy_id == galaxy_id).all()
 
-@router.get("/regions/{region_id}/clusters", response_model=dict)
-async def get_region_clusters(
-    region_id: str,
+    zone_list = [
+        {
+            "id": str(zone.id),
+            "name": zone.name,
+            "type": zone.type.value,
+            "created_at": zone.created_at.isoformat(),
+            "galaxy_id": str(zone.galaxy_id),
+            "sector_count": zone.sector_count,
+            # Legacy support for frontend
+            "controlling_faction": zone.controlling_faction,
+            "security_level": zone.security_level,
+            "resource_richness": zone.resource_richness
+        }
+        for zone in zones
+    ]
+
+    return {"zones": zone_list}
+
+@router.get("/zones/{zone_id}/clusters", response_model=dict)
+async def get_zone_clusters(
+    zone_id: str,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
-    """Get all clusters in a region"""
-    clusters = db.query(Cluster).filter(Cluster.region_id == region_id).all()
+    """Get all clusters in a cosmological zone"""
+    clusters = db.query(Cluster).filter(Cluster.zone_id == zone_id).all()
     
     cluster_list = [
         {
@@ -681,7 +669,7 @@ async def get_region_clusters(
             "name": cluster.name,
             "type": cluster.type.value,
             "created_at": cluster.created_at.isoformat(),
-            "region_id": str(cluster.region_id),
+            "zone_id": str(cluster.zone_id),
             "sector_count": cluster.sector_count,
             "is_discovered": cluster.is_discovered,
             "discovery_requirement": cluster.discovery_requirement,
@@ -711,9 +699,9 @@ async def get_region_clusters(
 @router.get("/clusters", response_model=dict)
 async def get_all_clusters(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
-    """Get all clusters across all regions"""
+    """Get all clusters across all zones"""
     clusters = db.query(Cluster).all()
     
     cluster_list = [
@@ -722,7 +710,7 @@ async def get_all_clusters(
             "name": cluster.name,
             "type": cluster.type.value,
             "created_at": cluster.created_at.isoformat(),
-            "region_id": str(cluster.region_id),
+            "zone_id": str(cluster.zone_id),
             "sector_count": cluster.sector_count,
             "is_discovered": cluster.is_discovered,
             "discovery_requirement": cluster.discovery_requirement,
@@ -756,7 +744,7 @@ async def get_all_sectors(
     limit: int = 100,
     offset: int = 0,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get sectors with optional filtering"""
     query = db.query(Sector)
@@ -807,7 +795,7 @@ async def get_all_sectors(
 async def create_warp_tunnel(
     request: WarpTunnelCreateRequest,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Create a warp tunnel between two sectors"""
     try:
@@ -856,7 +844,7 @@ async def create_warp_tunnel(
 @router.delete("/galaxy/clear", response_model=dict)
 async def clear_all_galaxy_data(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Clear all galaxy data for testing purposes"""
     try:
@@ -878,7 +866,7 @@ async def clear_all_galaxy_data(
 async def delete_galaxy(
     galaxy_id: str,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Delete a galaxy and all its contents"""
     try:
@@ -900,7 +888,7 @@ async def delete_galaxy(
 async def get_sector_port(
     sector_id: int,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get port details for a specific sector"""
     port = db.query(Port).filter(Port.sector_id == sector_id).first()
@@ -960,7 +948,7 @@ async def get_sector_port(
 async def get_sector_planet(
     sector_id: int,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get planet details for a specific sector"""
     planet = db.query(Planet).filter(Planet.sector_id == sector_id).first()
@@ -1008,7 +996,7 @@ async def get_sector_planet(
 async def get_sector_ships(
     sector_id: int,
     _: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get all ships currently in a specific sector"""
     from src.models.ship import Ship
@@ -1031,7 +1019,7 @@ async def get_sector_ships(
 @router.get("/alliances", response_model=dict)
 async def get_all_alliances(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get all alliances for admin panel"""
     try:
@@ -1071,7 +1059,7 @@ async def update_port(
     port_id: str,
     port_updates: dict,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Update port details including commodity quantities"""
     try:

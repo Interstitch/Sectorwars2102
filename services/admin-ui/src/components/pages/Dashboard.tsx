@@ -61,18 +61,16 @@ const Dashboard: React.FC = () => {
   };
 
   const fetchDashboardData = async () => {
-    const apiUrl = getApiUrl();
-    
     try {
       // Prepare headers with authentication
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      
-      // Fetch all dashboard data concurrently
+
+      // Fetch all dashboard data concurrently (using relative URLs via proxy)
       const [dbHealthRes, aiHealthRes, gameServerRes, adminStatsRes] = await Promise.all([
-        axios.get(`${apiUrl}/api/v1/status/database`, { headers }),
-        axios.get(`${apiUrl}/api/v1/status/ai/providers`, { headers }),
-        axios.get(`${apiUrl}/api/v1/status`, { headers }),
-        axios.get(`${apiUrl}/api/v1/admin/stats`, { headers })
+        axios.get('/api/v1/status/database', { headers }),
+        axios.get('/api/v1/status/ai/providers', { headers }),
+        axios.get('/api/v1/status', { headers }),
+        axios.get('/api/v1/admin/stats', { headers })
       ]);
 
       // Process system health data

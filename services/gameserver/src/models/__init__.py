@@ -12,7 +12,7 @@ from src.models.planet import Planet, player_planets
 from src.models.port import Port, player_ports
 
 # New models
-from src.models.galaxy import Galaxy, GalaxyRegion, RegionType
+from src.models.galaxy import Galaxy, GalaxyZone, ZoneType
 from src.models.region import Region, RegionalMembership, RegionalPolicy, RegionalElection, RegionalVote, RegionalTreaty, InterRegionalTravel
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, sector_warps

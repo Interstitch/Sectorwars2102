@@ -29,7 +29,7 @@ class GameEventResponse(BaseModel):
     status: str
     start_time: datetime
     end_time: Optional[datetime]
-    affected_regions: List[str]
+    affected_zones: List[str]  # Cosmological zones (Federation/Border/Frontier)
     effects: List[EventEffectResponse]
     participation_count: int
     rewards_distributed: int
@@ -60,7 +60,7 @@ class CreateEventRequest(BaseModel):
     event_type: str
     start_time: datetime
     end_time: Optional[datetime]
-    affected_regions: List[str]
+    affected_zones: List[str]  # Cosmological zones (Federation/Border/Frontier)
     effects: List[Dict[str, Any]]
 
 
@@ -231,7 +231,7 @@ async def create_event(
         status=EventStatus.SCHEDULED,
         start_time=event_data.start_time,
         end_time=event_data.end_time,
-        affected_sectors=event_data.affected_regions,
+        affected_sectors=event_data.affected_zones,
         created_by_id=admin_player.id if admin_player else None,
         created_at=datetime.utcnow()
     )

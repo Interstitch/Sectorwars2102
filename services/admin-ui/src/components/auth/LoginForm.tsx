@@ -7,8 +7,8 @@ interface LoginFormProps {
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [debug, setDebug] = useState<string>('');
@@ -21,7 +21,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   useEffect(() => {
     // Use API_URL from environment or relative URL via proxy
     const apiUrl = import.meta.env.VITE_API_URL || '';
-    setDebug(`Using API at ${apiUrl || 'via proxy'}\nDefault credentials: admin/admin`);
+    setDebug(`Using API at ${apiUrl || 'via proxy'}`);
   }, []);
   
   // Function to make a direct login request to test the API
@@ -41,8 +41,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
           'Accept': 'application/json',
         },
         body: JSON.stringify({
-          username: 'admin',
-          password: 'admin'
+          username: username,
+          password: password
         })
       });
       

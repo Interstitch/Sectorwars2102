@@ -114,7 +114,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 async def startup_event():
     """Initialize application"""
     logger.info("Starting Sectorwars 2102 Game Server...")
-    
+
     try:
         # Create database tables
         async with async_engine.begin() as conn:
@@ -122,7 +122,22 @@ async def startup_event():
         logger.info("Database tables initialized")
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
-    
+
+    # Initialize default admin user if needed
+    try:
+        from src.auth.admin import create_default_admin
+        from src.core.database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            create_default_admin(db)
+            logger.info("Admin user initialization completed")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Admin user initialization failed: {e}")
+        # Don't crash the server if admin creation fails
+
     logger.info("Sectorwars 2102 Game Server started successfully")
 
 
@@ -150,8 +165,8 @@ async def health_check():
     """Health check endpoint"""
     try:
         # Test database connection
-        from src.core.database import async_session_maker
-        async with async_session_maker() as session:
+        from src.core.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as session:
             from sqlalchemy import text
             await session.execute(text("SELECT 1"))
         

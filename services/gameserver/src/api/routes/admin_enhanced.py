@@ -9,7 +9,7 @@ import uuid
 from src.core.database import get_async_session
 from src.auth.dependencies import get_current_admin
 from src.models.user import User
-from src.models.galaxy import Galaxy, GalaxyRegion, RegionType
+from src.models.galaxy import Galaxy, GalaxyZone, ZoneType
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, SectorSpecialType
 from src.models.warp_tunnel import WarpTunnel
@@ -191,13 +191,13 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
     border_sectors = int(config.total_sectors * config.region_distribution["border"] / 100)
     frontier_sectors = config.total_sectors - federation_sectors - border_sectors
     
-    # Create regions
-    regions = []
-    
-    # Federation region
-    federation_region = GalaxyRegion(
+    # Create cosmological zones
+    zones = []
+
+    # Federation zone
+    federation_zone = GalaxyZone(
         name="Federation Space",
-        type=RegionType.FEDERATION,
+        type=ZoneType.FEDERATION,
         galaxy_id=galaxy.id,
         total_sectors=federation_sectors,
         sector_count=0,
@@ -235,13 +235,13 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
         security_level=0.9,
         resource_richness=config.resource_distribution["federation"]["max"] / 100
     )
-    db.add(federation_region)
-    regions.append(federation_region)
-    
-    # Border region
-    border_region = GalaxyRegion(
+    db.add(federation_zone)
+    zones.append(federation_zone)
+
+    # Border zone
+    border_zone = GalaxyZone(
         name="Border Zone",
-        type=RegionType.BORDER,
+        type=ZoneType.BORDER,
         galaxy_id=galaxy.id,
         total_sectors=border_sectors,
         sector_count=0,
@@ -279,13 +279,13 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
         security_level=0.5,
         resource_richness=config.resource_distribution["border"]["max"] / 100
     )
-    db.add(border_region)
-    regions.append(border_region)
-    
-    # Frontier region
-    frontier_region = GalaxyRegion(
+    db.add(border_zone)
+    zones.append(border_zone)
+
+    # Frontier zone
+    frontier_zone = GalaxyZone(
         name="Frontier Territory",
-        type=RegionType.FRONTIER,
+        type=ZoneType.FRONTIER,
         galaxy_id=galaxy.id,
         total_sectors=frontier_sectors,
         sector_count=0,
@@ -321,25 +321,25 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
         security_level=0.2,
         resource_richness=config.resource_distribution["frontier"]["max"] / 100
     )
-    db.add(frontier_region)
-    regions.append(frontier_region)
-    
+    db.add(frontier_zone)
+    zones.append(frontier_zone)
+
     db.commit()
-    
-    # Generate clusters and sectors for each region
+
+    # Generate clusters and sectors for each zone
     sector_id_counter = 1
-    
-    for region in regions:
-        # Calculate number of clusters (3-5 per region)
+
+    for zone in zones:
+        # Calculate number of clusters (3-5 per zone)
         num_clusters = random.randint(3, 5)
-        sectors_per_cluster = region.total_sectors // num_clusters
-        
-        # Get region-specific configurations
-        region_type_key = region.type.value.lower()
-        hazard_min = config.hazard_levels[region_type_key]["min"]
-        hazard_max = config.hazard_levels[region_type_key]["max"]
-        resource_min = config.resource_distribution[region_type_key]["min"]
-        resource_max = config.resource_distribution[region_type_key]["max"]
+        sectors_per_cluster = zone.total_sectors // num_clusters
+
+        # Get zone-specific configurations
+        zone_type_key = zone.type.value.lower()
+        hazard_min = config.hazard_levels[zone_type_key]["min"]
+        hazard_max = config.hazard_levels[zone_type_key]["max"]
+        resource_min = config.resource_distribution[zone_type_key]["min"]
+        resource_max = config.resource_distribution[zone_type_key]["max"]
         
         for cluster_idx in range(num_clusters):
             # Create cluster
@@ -349,26 +349,24 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
             ])
             
             cluster = Cluster(
-                name=f"{region.name} Cluster {cluster_idx + 1}",
+                name=f"{zone.name} Cluster {cluster_idx + 1}",
                 type=cluster_type,
-                region_id=region.id,
-                total_sectors=sectors_per_cluster,
-                sector_count=0,
-                discovery_requirements={
+                zone_id=zone.id,
+                sector_count=sectors_per_cluster,
+                discovery_requirement={
                     "minimum_sectors_discovered": cluster_idx * 5,
                     "required_reputation": 0,
                     "special_conditions": []
                 },
-                cluster_resources={
+                stats={
                     "resource_value": random.randint(resource_min, resource_max),
                     "danger_level": random.randint(hazard_min, hazard_max) * 10,
                     "development_index": random.randint(20, 80)
                 },
                 faction_influence={
-                    region.controlling_faction: random.randint(40, 80)
+                    zone.controlling_faction: random.randint(40, 80)
                 },
-                internal_warp_gates=random.randint(2, 5),
-                external_warp_gates=random.randint(1, 3)
+                warp_stability=0.8
             )
             db.add(cluster)
             db.commit()
@@ -387,7 +385,7 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
                 
                 # Calculate coordinates (clustered distribution)
                 cluster_center_x = cluster_idx * 20 + random.uniform(-5, 5)
-                cluster_center_y = region.type.value * 20 + random.uniform(-5, 5)
+                cluster_center_y = hash(zone.type.value) % 100 * 20 + random.uniform(-5, 5)
                 x = cluster_center_x + random.uniform(-10, 10)
                 y = cluster_center_y + random.uniform(-10, 10)
                 z = random.uniform(-5, 5)
@@ -404,7 +402,7 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
                     y_coord=int(y),
                     z_coord=int(z),
                     hazard_level=random.uniform(hazard_min, hazard_max),
-                    is_discovered=region.type == RegionType.FEDERATION,  # Federation starts discovered
+                    is_discovered=zone.type == ZoneType.FEDERATION,  # Federation starts discovered
                     navhazard=sector_special_type in [SectorSpecialType.NEBULA, SectorSpecialType.WARP_STORM],
                     radiation=sector_special_type == SectorSpecialType.RADIATION_ZONE,
                     gravity_well=sector_special_type == SectorSpecialType.WARP_STORM,
@@ -428,8 +426,8 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
             cluster.sector_count = sectors_per_cluster
             db.commit()
         
-        # Update region sector count
-        region.sector_count = region.total_sectors
+        # Update zone sector count
+        zone.sector_count = zone.sector_count
         db.commit()
     
     # Generate ports based on density configuration
@@ -439,12 +437,12 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
     
     for i in range(min(total_ports, len(available_sectors))):
         sector = available_sectors[i]
-        # Determine port class based on region
-        region = db.query(Region).join(Cluster).filter(Cluster.id == sector.cluster_id).first()
-        
-        if region.type == RegionType.FEDERATION:
+        # Determine port class based on cosmological zone
+        zone = db.query(GalaxyZone).join(Cluster).filter(Cluster.id == sector.cluster_id).first()
+
+        if zone.type == ZoneType.FEDERATION:
             port_class = random.choice([3, 4, 5, 5])  # More high-class ports
-        elif region.type == RegionType.BORDER:
+        elif zone.type == ZoneType.BORDER:
             port_class = random.choice([2, 3, 3, 4])
         else:  # FRONTIER
             port_class = random.choice([1, 1, 2, 3])
@@ -538,23 +536,23 @@ async def generate_enhanced_galaxy_structure(db: Session, galaxy: Galaxy, config
     db.commit()
     
     # Generate warp tunnels based on configuration
-    for region in regions:
-        region_type_key = region.type.value.lower()
-        min_warps = config.warp_tunnel_config["min_per_region"]
-        max_warps = config.warp_tunnel_config["max_per_region"]
+    for zone in zones:
+        zone_type_key = zone.type.value.lower()
+        min_warps = config.warp_tunnel_config["min_per_zone"]
+        max_warps = config.warp_tunnel_config["max_per_zone"]
         num_warps = random.randint(min_warps, max_warps)
-        
-        # Get sectors in this region
-        region_sectors = db.query(Sector).join(Cluster).filter(
-            Cluster.region_id == region.id
+
+        # Get sectors in this zone
+        zone_sectors = db.query(Sector).join(Cluster).filter(
+            Cluster.zone_id == zone.id
         ).all()
-        
-        if len(region_sectors) < 2:
+
+        if len(zone_sectors) < 2:
             continue
-        
+
         for _ in range(num_warps):
-            source = random.choice(region_sectors)
-            target = random.choice([s for s in region_sectors if s.id != source.id])
+            source = random.choice(zone_sectors)
+            target = random.choice([s for s in zone_sectors if s.id != source.id])
             
             # Check if warp already exists
             existing = db.query(WarpTunnel).filter(

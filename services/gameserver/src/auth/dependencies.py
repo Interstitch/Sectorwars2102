@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from src.auth.jwt import decode_token
-from src.core.database import get_async_session
+from src.core.database import get_async_session, get_db
 from src.models.user import User
 from src.models.player import Player
 
@@ -15,8 +15,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login/direct")
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme), 
-    db: Session = Depends(get_async_session)
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
 ) -> User:
     """
     Dependency to get the current authenticated user from the token.
@@ -83,7 +83,7 @@ def admin_or_options(
 
 async def get_current_player(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ) -> Player:
     """
     Dependency to get the current player associated with the authenticated user.

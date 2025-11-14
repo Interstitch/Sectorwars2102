@@ -21,7 +21,7 @@ from src.models.planet import Planet
 from src.models.port import Port, PortStatus
 from src.models.sector import Sector
 from src.models.cluster import Cluster
-from src.models.galaxy import Galaxy, GalaxyRegion
+from src.models.galaxy import Galaxy, GalaxyZone
 from src.models.warp_tunnel import WarpTunnel
 from src.models.team import Team
 from src.services.galaxy_service import GalaxyService
@@ -211,7 +211,7 @@ class GameEventRequest(BaseModel):
     event_type: str
     title: str
     description: str
-    affected_regions: List[str]
+    affected_zones: List[str]  # Cosmological zones (Federation/Border/Frontier)
     duration_hours: int
     effects: List[Dict[str, Any]]
 
@@ -856,7 +856,7 @@ async def get_sectors_comprehensive(
                 name=sector.name,
                 type=sector.type.value,
                 cluster_id=str(sector.cluster_id),
-                region_name=sector.cluster.region.name,
+                zone_name=sector.cluster.zone.name,
                 x_coord=sector.x_coord,
                 y_coord=sector.y_coord,
                 z_coord=sector.z_coord,
