@@ -16,6 +16,8 @@ from src.models.planet import Planet
 from src.models.port import Port
 from src.models.warp_tunnel import WarpTunnel
 from src.models.region import Region
+from src.models.cluster import Cluster
+from src.models.zone import Zone
 
 import logging
 
@@ -232,20 +234,25 @@ class NexusGenerationService:
             }
         }
     
-    async def generate_central_nexus(self, session: AsyncSession) -> Dict[str, Any]:
+    async def generate_central_nexus(self, session: AsyncSession, galaxy_id: str) -> Dict[str, Any]:
         """Generate the complete Central Nexus galaxy"""
         logger.info("Starting Central Nexus galaxy generation...")
-        
+
         try:
             # Check if Central Nexus already exists
             existing_nexus = await self._check_existing_nexus(session)
             if existing_nexus:
                 logger.info("Central Nexus already exists, skipping generation")
                 return {"status": "exists", "nexus_id": str(existing_nexus.id)}
-            
+
             # Create Central Nexus region entry
             nexus_region = await self._create_nexus_region(session)
-            
+
+            # Create zone and cluster for Central Nexus
+            nexus_cluster = await self._create_nexus_zone_and_cluster(
+                session, galaxy_id, str(nexus_region.id)
+            )
+
             generation_stats = {
                 "total_sectors": 0,
                 "total_ports": 0,
@@ -254,43 +261,44 @@ class NexusGenerationService:
                 "districts_created": 0,
                 "generation_time": datetime.utcnow()
             }
-            
+
             # Generate each district
             for district_type, config in self.districts_config.items():
                 logger.info(f"Generating district: {config['name']}")
-                
+
                 district_stats = await self._generate_district(
-                    session, 
-                    nexus_region.id,
-                    district_type, 
+                    session,
+                    str(nexus_region.id),
+                    str(nexus_cluster.id),
+                    district_type,
                     config
                 )
-                
+
                 # Update overall stats
                 generation_stats["total_sectors"] += district_stats["sectors"]
-                generation_stats["total_ports"] += district_stats["ports"] 
+                generation_stats["total_ports"] += district_stats["ports"]
                 generation_stats["total_planets"] += district_stats["planets"]
                 generation_stats["total_warp_gates"] += district_stats["warp_gates"]
                 generation_stats["districts_created"] += 1
-                
+
                 logger.info(f"District {config['name']} completed: {district_stats}")
-            
+
             # Generate inter-regional warp gates
-            await self._generate_inter_regional_gates(session, nexus_region.id)
-            
+            await self._generate_inter_regional_gates(session, str(nexus_region.id))
+
             # Create special galactic features
-            await self._create_galactic_features(session, nexus_region.id)
-            
+            await self._create_galactic_features(session, str(nexus_region.id))
+
             await session.commit()
-            
+
             logger.info(f"Central Nexus generation completed: {generation_stats}")
-            
+
             return {
                 "status": "completed",
                 "nexus_id": str(nexus_region.id),
                 "stats": generation_stats
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to generate Central Nexus: {e}")
             await session.rollback()
@@ -324,36 +332,83 @@ class NexusGenerationService:
             },
             aesthetic_theme={
                 "primary_color": "#805ad5",
-                "secondary_color": "#553c9a", 
+                "secondary_color": "#553c9a",
                 "style": "futuristic",
                 "atmosphere": "cosmopolitan"
             }
         )
-        
+
         session.add(nexus_region)
         await session.flush()
         return nexus_region
+
+    async def _create_nexus_zone_and_cluster(self, session: AsyncSession, galaxy_id: str, region_id: str) -> Cluster:
+        """Create a single Zone and Cluster for the entire Central Nexus"""
+        # Create the Central Nexus zone
+        nexus_zone = Zone(
+            name="Central Nexus Zone",
+            type="FEDERATION",  # Central authority like Federation
+            description="The galactic hub connecting all regional territories",
+            min_security_level=5,
+            max_security_level=10,
+            resource_richness=8,
+            danger_level=1,
+            discovery_bonus=1000,
+            galaxy_id=galaxy_id,
+            is_discovered=True
+        )
+        session.add(nexus_zone)
+        await session.flush()
+
+        # Create a single large cluster for all Central Nexus sectors
+        nexus_cluster = Cluster(
+            name="Central Nexus Core",
+            zone_id=nexus_zone.id,
+            region_id=region_id,
+            type="DENSE",  # Highly connected cluster
+            sector_count=self.total_sectors,
+            density=0.9,  # Very dense
+            hazard_level=1,  # Very safe
+            is_discovered=True
+        )
+        session.add(nexus_cluster)
+        await session.flush()
+
+        return nexus_cluster
     
     async def _generate_district(
         self,
         session: AsyncSession,
         region_id: str,
+        cluster_id: str,
         district_type: str,
         config: Dict[str, Any]
     ) -> Dict[str, int]:
         """Generate sectors, ports, and planets for a district"""
-        
+
         start_sector, end_sector = config["sector_range"]
         stats = {"sectors": 0, "ports": 0, "planets": 0, "warp_gates": 0}
-        
+
         batch_sectors = []
         batch_ports = []
         batch_planets = []
-        
+
         for sector_num in range(start_sector, end_sector + 1):
-            # Create sector
+            # Generate coordinates for this sector (simple grid layout)
+            grid_size = int(math.sqrt(self.total_sectors)) + 1
+            x_coord = (sector_num - 1) % grid_size
+            y_coord = (sector_num - 1) // grid_size
+            z_coord = 0  # Central Nexus is on a flat plane
+
+            # Create sector with ALL required NOT NULL fields
             sector_data = {
-                "sector_number": sector_num,
+                "sector_id": sector_num,  # Required INTEGER NOT NULL
+                "name": f"Nexus Sector {sector_num}",  # Required VARCHAR NOT NULL
+                "cluster_id": cluster_id,  # Required UUID NOT NULL
+                "x_coord": x_coord,  # Required INTEGER NOT NULL
+                "y_coord": y_coord,  # Required INTEGER NOT NULL
+                "z_coord": z_coord,  # Required INTEGER NOT NULL
+                "sector_number": sector_num,  # Optional INTEGER
                 "region_id": region_id,
                 "district": district_type,
                 "security_level": config["security_level"],
@@ -639,9 +694,17 @@ class NexusGenerationService:
         nexus_region = await self._check_existing_nexus(session)
         if not nexus_region:
             raise ValueError("Central Nexus does not exist")
-        
+
+        # Get Central Nexus cluster
+        result = await session.execute(
+            select(Cluster).where(Cluster.region_id == nexus_region.id)
+        )
+        nexus_cluster = result.scalar_one_or_none()
+        if not nexus_cluster:
+            raise ValueError("Central Nexus cluster does not exist")
+
         start_sector, end_sector = config["sector_range"]
-        
+
         if preserve_player_data:
             # More careful regeneration preserving player assets
             # This would be implemented for live updates
@@ -653,10 +716,10 @@ class NexusGenerationService:
                     Sector.sector_number.between(start_sector, end_sector)
                 )
             )
-        
+
         # Generate the district
         stats = await self._generate_district(
-            session, nexus_region.id, district_type, config
+            session, str(nexus_region.id), str(nexus_cluster.id), district_type, config
         )
         
         await session.commit()

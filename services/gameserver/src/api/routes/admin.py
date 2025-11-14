@@ -619,7 +619,7 @@ async def generate_galaxy(
         central_nexus_created = False
         try:
             logger.info("Auto-generating Central Nexus as part of universe creation...")
-            nexus_result = await nexus_generation_service.generate_central_nexus(async_db)
+            nexus_result = await nexus_generation_service.generate_central_nexus(async_db, str(galaxy.id))
             central_nexus_created = nexus_result.get("status") in ["completed", "exists"]
             if central_nexus_created:
                 logger.info(f"Central Nexus generation: {nexus_result.get('status')}")
