@@ -539,7 +539,7 @@ async def get_galaxy_info(
         "name": galaxy.name,
         "created_at": galaxy.created_at.isoformat(),
         "last_updated": galaxy.last_updated.isoformat(),
-        "region_distribution": galaxy.region_distribution,
+        "zone_distribution": galaxy.region_distribution,  # Map region_distribution to zone_distribution for frontend
         "statistics": {
             "total_sectors": total_sectors,
             "discovered_sectors": discovered_sectors,
