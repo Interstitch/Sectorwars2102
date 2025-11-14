@@ -133,8 +133,9 @@ const UniverseManager: React.FC = () => {
       console.error('Error generating galaxy:', error);
       
       // Check if error is due to existing galaxy (HTTP 400)
-      if (error?.response?.status === 400 && 
-          error?.response?.data?.detail?.includes('already exists')) {
+      // Backend may return error in either 'detail' or 'message' field
+      const errorMessage = error?.response?.data?.detail || error?.response?.data?.message || '';
+      if (error?.response?.status === 400 && errorMessage.includes('already exists')) {
         const shouldClear = window.confirm(
           'A galaxy already exists. Would you like to clear the existing galaxy data and generate a new one?\n\n' +
           'Warning: This will permanently delete all current galaxy data including sectors, planets, ports, and warp tunnels.'
