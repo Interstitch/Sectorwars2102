@@ -420,7 +420,7 @@ const UniverseManager: React.FC = () => {
                                  galaxyConfig.zone_distribution.border + 
                                  galaxyConfig.zone_distribution.frontier) !== 100}
         >
-          {isLoading ? '🌌 Creating Universe...' : '💥 Bang Into Existence!'}
+          {isLoading ? '🌌 Creating Galaxy...' : '💥 Bang a New Galaxy!'}
         </button>
         {galaxyState && (
           <button 
@@ -520,7 +520,7 @@ const UniverseManager: React.FC = () => {
             className="btn btn-primary btn-lg"
             onClick={() => setShowGalaxyGenerator(true)}
           >
-            💥 Bang Into Existence!
+            💥 Bang a New Galaxy!
           </button>
         </div>
       )}
