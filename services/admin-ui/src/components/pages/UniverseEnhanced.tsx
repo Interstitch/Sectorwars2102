@@ -7,7 +7,7 @@ import './universe-enhanced.css';
 interface GalaxyConfig {
   name: string;
   total_sectors: number;
-  region_distribution: {
+  zone_distribution: {  // Cosmological zones (Federation/Border/Frontier)
     federation: number;
     border: number;
     frontier: number;
@@ -132,7 +132,7 @@ const UniverseEnhanced: React.FC = () => {
   const [galaxyConfig, setGalaxyConfig] = useState<GalaxyConfig>({
     name: 'New Galaxy',
     total_sectors: 500,
-    region_distribution: {
+    zone_distribution: {
       federation: 25,
       border: 35,
       frontier: 40
@@ -182,7 +182,7 @@ const UniverseEnhanced: React.FC = () => {
 
   // Calculate distribution percentages
   const calculateDistributionTotal = () => {
-    const { federation, border, frontier } = galaxyConfig.region_distribution;
+    const { federation, border, frontier } = galaxyConfig.zone_distribution;
     return federation + border + frontier;
   };
 
@@ -237,16 +237,16 @@ const UniverseEnhanced: React.FC = () => {
         <div className="distribution-total">Total: {calculateDistributionTotal()}%</div>
         
         <div className="form-group">
-          <label>Federation: {galaxyConfig.region_distribution.federation}%</label>
+          <label>Federation: {galaxyConfig.zone_distribution.federation}%</label>
           <input 
             type="range" 
             min="0" 
             max="100" 
-            value={galaxyConfig.region_distribution.federation}
+            value={galaxyConfig.zone_distribution.federation}
             onChange={(e) => setGalaxyConfig({
               ...galaxyConfig, 
-              region_distribution: {
-                ...galaxyConfig.region_distribution,
+              zone_distribution: {
+                ...galaxyConfig.zone_distribution,
                 federation: parseInt(e.target.value)
               }
             })}
@@ -255,16 +255,16 @@ const UniverseEnhanced: React.FC = () => {
         </div>
         
         <div className="form-group">
-          <label>Border: {galaxyConfig.region_distribution.border}%</label>
+          <label>Border: {galaxyConfig.zone_distribution.border}%</label>
           <input 
             type="range" 
             min="0" 
             max="100" 
-            value={galaxyConfig.region_distribution.border}
+            value={galaxyConfig.zone_distribution.border}
             onChange={(e) => setGalaxyConfig({
               ...galaxyConfig, 
-              region_distribution: {
-                ...galaxyConfig.region_distribution,
+              zone_distribution: {
+                ...galaxyConfig.zone_distribution,
                 border: parseInt(e.target.value)
               }
             })}
@@ -273,16 +273,16 @@ const UniverseEnhanced: React.FC = () => {
         </div>
         
         <div className="form-group">
-          <label>Frontier: {galaxyConfig.region_distribution.frontier}%</label>
+          <label>Frontier: {galaxyConfig.zone_distribution.frontier}%</label>
           <input 
             type="range" 
             min="0" 
             max="100" 
-            value={galaxyConfig.region_distribution.frontier}
+            value={galaxyConfig.zone_distribution.frontier}
             onChange={(e) => setGalaxyConfig({
               ...galaxyConfig, 
-              region_distribution: {
-                ...galaxyConfig.region_distribution,
+              zone_distribution: {
+                ...galaxyConfig.zone_distribution,
                 frontier: parseInt(e.target.value)
               }
             })}

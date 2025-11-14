@@ -25,6 +25,9 @@ class Galaxy(Base):
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     
     # Structure
+    # NOTE: Database column is "region_distribution" but API responses map this to "zone_distribution"
+    # to distinguish from business territories (player-owned regions via PayPal subscriptions).
+    # This field represents COSMOLOGICAL ZONES (Federation/Border/Frontier gameplay structure).
     region_distribution = Column(JSONB, nullable=False, default={
         "federation": 25,  # Percentage of Federation space
         "border": 35,      # Percentage of Border space

@@ -6,7 +6,7 @@ import './universe-enhanced.css';
 interface GalaxyConfig {
   name: string;
   total_sectors: number;
-  region_distribution: {
+  zone_distribution: {  // Cosmological zones (Federation/Border/Frontier)
     federation: number;
     border: number;
     frontier: number;
@@ -143,7 +143,7 @@ const UniverseDataCorrect: React.FC = () => {
   const [galaxyConfig, setGalaxyConfig] = useState<GalaxyConfig>({
     name: 'New Galaxy',
     total_sectors: 100,
-    region_distribution: {
+    zone_distribution: {
       federation: 25,
       border: 35,
       frontier: 40
@@ -180,9 +180,9 @@ const UniverseDataCorrect: React.FC = () => {
 
   // Handle galaxy generation
   const handleGenerateGalaxy = async () => {
-    const total = galaxyConfig.region_distribution.federation + 
-                 galaxyConfig.region_distribution.border + 
-                 galaxyConfig.region_distribution.frontier;
+    const total = galaxyConfig.zone_distribution.federation + 
+                 galaxyConfig.zone_distribution.border + 
+                 galaxyConfig.zone_distribution.frontier;
     
     if (total !== 100) {
       alert('Region distribution must total 100%');
@@ -234,22 +234,22 @@ const UniverseDataCorrect: React.FC = () => {
       <div className="config-section">
         <h4>Region Distribution (Must total 100%)</h4>
         <div className="distribution-total">
-          Total: {galaxyConfig.region_distribution.federation + 
-                  galaxyConfig.region_distribution.border + 
-                  galaxyConfig.region_distribution.frontier}%
+          Total: {galaxyConfig.zone_distribution.federation + 
+                  galaxyConfig.zone_distribution.border + 
+                  galaxyConfig.zone_distribution.frontier}%
         </div>
         
         <div className="form-group">
-          <label>Federation (~25%): {galaxyConfig.region_distribution.federation}%</label>
+          <label>Federation (~25%): {galaxyConfig.zone_distribution.federation}%</label>
           <input 
             type="range" 
             min="0" 
             max="100" 
-            value={galaxyConfig.region_distribution.federation}
+            value={galaxyConfig.zone_distribution.federation}
             onChange={(e) => setGalaxyConfig({
               ...galaxyConfig, 
-              region_distribution: {
-                ...galaxyConfig.region_distribution,
+              zone_distribution: {
+                ...galaxyConfig.zone_distribution,
                 federation: parseInt(e.target.value)
               }
             })}
@@ -258,16 +258,16 @@ const UniverseDataCorrect: React.FC = () => {
         </div>
         
         <div className="form-group">
-          <label>Border (~35%): {galaxyConfig.region_distribution.border}%</label>
+          <label>Border (~35%): {galaxyConfig.zone_distribution.border}%</label>
           <input 
             type="range" 
             min="0" 
             max="100" 
-            value={galaxyConfig.region_distribution.border}
+            value={galaxyConfig.zone_distribution.border}
             onChange={(e) => setGalaxyConfig({
               ...galaxyConfig, 
-              region_distribution: {
-                ...galaxyConfig.region_distribution,
+              zone_distribution: {
+                ...galaxyConfig.zone_distribution,
                 border: parseInt(e.target.value)
               }
             })}
@@ -276,16 +276,16 @@ const UniverseDataCorrect: React.FC = () => {
         </div>
         
         <div className="form-group">
-          <label>Frontier (~40%): {galaxyConfig.region_distribution.frontier}%</label>
+          <label>Frontier (~40%): {galaxyConfig.zone_distribution.frontier}%</label>
           <input 
             type="range" 
             min="0" 
             max="100" 
-            value={galaxyConfig.region_distribution.frontier}
+            value={galaxyConfig.zone_distribution.frontier}
             onChange={(e) => setGalaxyConfig({
               ...galaxyConfig, 
-              region_distribution: {
-                ...galaxyConfig.region_distribution,
+              zone_distribution: {
+                ...galaxyConfig.zone_distribution,
                 frontier: parseInt(e.target.value)
               }
             })}
@@ -1183,22 +1183,22 @@ const UniverseDataCorrect: React.FC = () => {
                           <div className="region-bar">
                             <span>Federation</span>
                             <div className="bar-container">
-                              <div className="bar-fill federation" style={{width: `${galaxyState.region_distribution.federation}%`}}></div>
-                              <span className="bar-value">{galaxyState.region_distribution.federation}%</span>
+                              <div className="bar-fill federation" style={{width: `${galaxyState.zone_distribution.federation}%`}}></div>
+                              <span className="bar-value">{galaxyState.zone_distribution.federation}%</span>
                             </div>
                           </div>
                           <div className="region-bar">
                             <span>Border</span>
                             <div className="bar-container">
-                              <div className="bar-fill border" style={{width: `${galaxyState.region_distribution.border}%`}}></div>
-                              <span className="bar-value">{galaxyState.region_distribution.border}%</span>
+                              <div className="bar-fill border" style={{width: `${galaxyState.zone_distribution.border}%`}}></div>
+                              <span className="bar-value">{galaxyState.zone_distribution.border}%</span>
                             </div>
                           </div>
                           <div className="region-bar">
                             <span>Frontier</span>
                             <div className="bar-container">
-                              <div className="bar-fill frontier" style={{width: `${galaxyState.region_distribution.frontier}%`}}></div>
-                              <span className="bar-value">{galaxyState.region_distribution.frontier}%</span>
+                              <div className="bar-fill frontier" style={{width: `${galaxyState.zone_distribution.frontier}%`}}></div>
+                              <span className="bar-value">{galaxyState.zone_distribution.frontier}%</span>
                             </div>
                           </div>
                         </div>

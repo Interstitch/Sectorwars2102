@@ -614,7 +614,7 @@ async def generate_galaxy(
             "id": str(galaxy.id),
             "name": galaxy.name,
             "created_at": galaxy.created_at.isoformat(),
-            "region_distribution": galaxy.region_distribution,
+            "zone_distribution": galaxy.region_distribution,  # Map region_distribution to zone_distribution for frontend
             "statistics": galaxy.statistics,
             "state": galaxy.state,
             "message": f"Galaxy '{galaxy.name}' created successfully"

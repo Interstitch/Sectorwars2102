@@ -47,7 +47,7 @@ export interface GalaxyStats {
 export interface GalaxyConfiguration {
   name: string;
   total_sectors: number;
-  region_distribution: {
+  zone_distribution: {  // Cosmological zones (Federation/Border/Frontier) - NOT business territories
     federation: number;
     border: number;
     frontier: number;

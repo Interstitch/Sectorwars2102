@@ -163,20 +163,20 @@ const AdminDashboard: React.FC = () => {
                     </div>
                     
                     <div className="flex h-2 rounded bg-gray-200 overflow-hidden">
-                      <div 
-                        className="bg-blue-500" 
-                        style={{width: `${galaxyState.region_distribution.federation}%`}}
-                        title={`Federation: ${galaxyState.region_distribution.federation}%`}
+                      <div
+                        className="bg-blue-500"
+                        style={{width: `${galaxyState.zone_distribution.federation}%`}}
+                        title={`Federation: ${galaxyState.zone_distribution.federation}%`}
                       ></div>
-                      <div 
-                        className="bg-yellow-500" 
-                        style={{width: `${galaxyState.region_distribution.border}%`}}
-                        title={`Border: ${galaxyState.region_distribution.border}%`}
+                      <div
+                        className="bg-yellow-500"
+                        style={{width: `${galaxyState.zone_distribution.border}%`}}
+                        title={`Border: ${galaxyState.zone_distribution.border}%`}
                       ></div>
-                      <div 
-                        className="bg-red-500" 
-                        style={{width: `${galaxyState.region_distribution.frontier}%`}}
-                        title={`Frontier: ${galaxyState.region_distribution.frontier}%`}
+                      <div
+                        className="bg-red-500"
+                        style={{width: `${galaxyState.zone_distribution.frontier}%`}}
+                        title={`Frontier: ${galaxyState.zone_distribution.frontier}%`}
                       ></div>
                     </div>
                   </div>

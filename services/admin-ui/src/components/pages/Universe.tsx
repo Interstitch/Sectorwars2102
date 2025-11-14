@@ -135,7 +135,7 @@ const Universe: React.FC = () => {
         planet_density: planetDensity,
         warp_tunnel_probability: warpTunnelProbability,
         faction_territory_size: factionTerritorySize,
-        region_distribution: regionDistribution
+        zone_distribution: regionDistribution
       });
       setShowGenerateForm(false);
       setNewGalaxyName('');
@@ -162,7 +162,7 @@ const Universe: React.FC = () => {
               planet_density: planetDensity,
               warp_tunnel_probability: warpTunnelProbability,
               faction_territory_size: factionTerritorySize,
-              region_distribution: regionDistribution
+              zone_distribution: regionDistribution
             });
             setShowGenerateForm(false);
             setNewGalaxyName('');
@@ -596,9 +596,9 @@ const Universe: React.FC = () => {
                         </div>
                         <div className="dashboard-stat-value">{regions.length}</div>
                         <div className="dashboard-stat-detail">
-                          Federation: {galaxyState.region_distribution.federation}%<br/>
-                          Border: {galaxyState.region_distribution.border}%<br/>
-                          Frontier: {galaxyState.region_distribution.frontier}%
+                          Federation: {galaxyState.zone_distribution.federation}%<br/>
+                          Border: {galaxyState.zone_distribution.border}%<br/>
+                          Frontier: {galaxyState.zone_distribution.frontier}%
                         </div>
                       </div>
 
@@ -659,14 +659,14 @@ const Universe: React.FC = () => {
                     <div className="card">
                       <div className="card-body">
                         <div className="space-y-4">
-                          {Object.entries(galaxyState.region_distribution).map(([region, count]) => (
+                          {Object.entries(galaxyState.zone_distribution).map(([region, count]) => (
                             <div key={region} className="flex justify-between items-center">
                               <div className="font-medium text-primary">{region.replace(/_/g, ' ').toUpperCase()}</div>
                               <div className="flex items-center gap-4 flex-1 max-w-md">
                                 <div className="flex-1 bg-surface-secondary rounded-full h-2">
                                   <div 
                                     className="bg-primary h-2 rounded-full transition-all duration-300" 
-                                    style={{ width: `${(count / (galaxyState.region_distribution.federation + galaxyState.region_distribution.border + galaxyState.region_distribution.frontier)) * 100}%` }}
+                                    style={{ width: `${(count / (galaxyState.zone_distribution.federation + galaxyState.zone_distribution.border + galaxyState.zone_distribution.frontier)) * 100}%` }}
                                   />
                                 </div>
                                 <span className="text-sm font-semibold text-muted min-w-8">{count}%</span>
