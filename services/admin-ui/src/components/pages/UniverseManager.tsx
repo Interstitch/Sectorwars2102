@@ -440,11 +440,11 @@ const UniverseManager: React.FC = () => {
       <div className="galaxy-header">
         <h2>{galaxyState?.name || 'No Universe'}</h2>
         {galaxyState && (
-          <button 
+          <button
             className="btn btn-outline"
             onClick={() => setShowGalaxyGenerator(true)}
           >
-            🔄 Regenerate Galaxy
+            🔄 Regenerate Universe
           </button>
         )}
       </div>
@@ -487,7 +487,7 @@ const UniverseManager: React.FC = () => {
           </div>
 
           <div className="region-distribution">
-            <h3>Region Distribution</h3>
+            <h3>Cosmological Zone Distribution</h3>
             <div className="region-bars">
               <div className="region-bar">
                 <span className="region-label">Federation</span>
@@ -516,11 +516,11 @@ const UniverseManager: React.FC = () => {
       ) : (
         <div className="no-galaxy">
           <p>No universe exists yet. Bang one into existence to begin!</p>
-          <button 
+          <button
             className="btn btn-primary btn-lg"
             onClick={() => setShowGalaxyGenerator(true)}
           >
-            🌌 Create New Galaxy
+            💥 Bang Into Existence!
           </button>
         </div>
       )}
