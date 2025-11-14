@@ -259,7 +259,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setError(null);
 
     try {
-      const response = await api.get<{zones: Zone[]}>(`/api/v1/admin/galaxy/${galaxyState.id}/zones`, {
+      const response = await api.get<{zones: Zone[]}>(`/admin/galaxy/${galaxyState.id}/zones`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setZones(response.data.zones || []);
@@ -348,7 +348,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const response = await api.post('/admin/galaxy/generate-enhanced', config);
       console.log('generateEnhancedGalaxy: Got response:', response.data);
       await loadGalaxyInfo();
-      await loadRegions();
+      await loadZones();
       await loadSectors();
     } catch (error) {
       console.error('Error generating enhanced galaxy:', error);
@@ -367,14 +367,14 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setError(null);
     
     try {
-      await api.post(`/api/v1/admin/galaxy/${galaxyId}/sectors/add`, {
+      await api.post(`/admin/galaxy/${galaxyId}/sectors/add`, {
         num_sectors: numSectors,
         config
       });
       
       // After adding sectors, reload galaxy info
       await loadGalaxyInfo();
-      await loadRegions();
+      await loadZones();
       
       // If a region was specified, reload its clusters
       if (config?.region_id) {
@@ -514,7 +514,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setError(null);
     
     try {
-      await api.post(`/api/v1/admin/users/${userId}/activate`);
+      await api.post(`/admin/users/${userId}/activate`);
       
       // Update local state
       setUsers(users.map(u => 
@@ -536,7 +536,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setError(null);
     
     try {
-      await api.post(`/api/v1/admin/users/${userId}/deactivate`);
+      await api.post(`/admin/users/${userId}/deactivate`);
       
       // Update local state
       setUsers(users.map(u => 
