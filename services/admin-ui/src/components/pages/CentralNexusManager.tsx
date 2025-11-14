@@ -46,8 +46,7 @@ const CentralNexusManager: React.FC = () => {
   const [stats, setStats] = useState<NexusStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'districts' | 'generation'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'districts'>('overview');
 
   useEffect(() => {
     loadNexusStatus();
@@ -94,47 +93,6 @@ const CentralNexusManager: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load stats:', err);
-    }
-  };
-
-  const generateNexus = async (forceRegenerate: boolean = false) => {
-    if (!confirm('Are you sure you want to generate the Central Nexus? This process takes 15-20 minutes.')) {
-      return;
-    }
-
-    setGenerating(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/v1/nexus/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          force_regenerate: forceRegenerate,
-          preserve_player_data: true
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        alert(`Generation started: ${result.message}`);
-        setTimeout(() => {
-          loadNexusStatus();
-          loadDistricts();
-          loadStats();
-        }, 2000);
-      } else {
-        const error = await response.json();
-        setError(error.detail || 'Failed to start generation');
-      }
-    } catch (err) {
-      setError('Network error occurred');
-      console.error('Generation error:', err);
-    } finally {
-      setGenerating(false);
     }
   };
 
@@ -201,23 +159,17 @@ const CentralNexusManager: React.FC = () => {
       )}
 
       <div className="nexus-tabs">
-        <button 
+        <button
           className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
           onClick={() => setActiveTab('overview')}
         >
           Overview
         </button>
-        <button 
+        <button
           className={`tab-button ${activeTab === 'districts' ? 'active' : ''}`}
           onClick={() => setActiveTab('districts')}
         >
           Districts
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'generation' ? 'active' : ''}`}
-          onClick={() => setActiveTab('generation')}
-        >
-          Generation
         </button>
       </div>
 
@@ -287,30 +239,29 @@ const CentralNexusManager: React.FC = () => {
             <div className="quick-actions">
               <h3>Quick Actions</h3>
               <div className="action-buttons">
-                <button 
+                <button
                   onClick={() => loadNexusStatus()}
                   className="action-button refresh"
                   disabled={loading}
                 >
                   Refresh Status
                 </button>
-                <button 
+                <button
                   onClick={() => loadStats()}
                   className="action-button refresh"
                   disabled={loading}
                 >
                   Refresh Stats
                 </button>
-                {!nexusStatus?.exists && (
-                  <button 
-                    onClick={() => generateNexus()}
-                    className="action-button generate"
-                    disabled={generating}
-                  >
-                    {generating ? 'Generating...' : 'Generate Nexus'}
-                  </button>
-                )}
               </div>
+              {!nexusStatus?.exists && (
+                <div className="info-card" style={{ marginTop: '16px' }}>
+                  <p>
+                    Central Nexus auto-generates when you create a new galaxy.
+                    Use the "Bang a New Galaxy!" button on the Universe Management page.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -384,78 +335,6 @@ const CentralNexusManager: React.FC = () => {
                 {nexusStatus?.exists ? 'Loading districts...' : 'Central Nexus not generated yet'}
               </div>
             )}
-          </div>
-        )}
-
-        {activeTab === 'generation' && (
-          <div className="generation-tab">
-            <h3>Central Nexus Generation</h3>
-            
-            <div className="generation-info">
-              <div className="info-card">
-                <h4>About Central Nexus</h4>
-                <p>
-                  The Central Nexus is the galactic hub containing 5,000 sectors across 10 specialized districts.
-                  It serves as the connection point between all regional territories and provides unique galactic services.
-                </p>
-                
-                <h5>District Types:</h5>
-                <ul>
-                  <li><strong>Commerce Central:</strong> Primary trading hub with premium markets</li>
-                  <li><strong>Diplomatic Quarter:</strong> Embassies and inter-regional negotiations</li>
-                  <li><strong>Industrial Zone:</strong> Manufacturing and shipyard complexes</li>
-                  <li><strong>Residential District:</strong> Living quarters and citizen services</li>
-                  <li><strong>Transit Hub:</strong> Warp gates and transportation infrastructure</li>
-                  <li><strong>High Security Zone:</strong> Restricted access premium facilities</li>
-                  <li><strong>Cultural Center:</strong> Events, festivals, and cultural exchange</li>
-                  <li><strong>Research Campus:</strong> Technology development and innovation</li>
-                  <li><strong>Free Trade Zone:</strong> Unrestricted commerce and trading</li>
-                  <li><strong>Gateway Plaza:</strong> Welcome center and orientation services</li>
-                </ul>
-              </div>
-
-              <div className="generation-controls">
-                <h4>Generation Options</h4>
-                
-                {nexusStatus?.exists ? (
-                  <div className="regeneration-section">
-                    <p className="warning">
-                      ⚠️ Central Nexus already exists. Regeneration will rebuild all sectors.
-                    </p>
-                    <button 
-                      onClick={() => generateNexus(true)}
-                      className="action-button regenerate-full"
-                      disabled={generating}
-                    >
-                      {generating ? 'Regenerating...' : 'Force Regenerate Entire Nexus'}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="initial-generation-section">
-                    <p>
-                      Generate the Central Nexus galaxy with all districts and infrastructure.
-                      This process takes approximately 15-20 minutes to complete.
-                    </p>
-                    <button 
-                      onClick={() => generateNexus()}
-                      className="action-button generate-initial"
-                      disabled={generating}
-                    >
-                      {generating ? 'Generating...' : 'Generate Central Nexus'}
-                    </button>
-                  </div>
-                )}
-
-                <div className="generation-status">
-                  {generating && (
-                    <div className="progress-indicator">
-                      <div className="spinner"></div>
-                      <span>Generating Central Nexus... This may take several minutes.</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from typing import Optional
 from pydantic import BaseModel
@@ -7,8 +8,9 @@ import random
 import math
 import logging
 
-from src.core.database import get_db
+from src.core.database import get_db, get_async_session
 from src.auth.dependencies import get_current_admin
+from src.services.nexus_generation_service import nexus_generation_service
 from src.models.user import User
 from src.models.player import Player
 from src.models.galaxy import Galaxy, GalaxyZone
@@ -18,6 +20,7 @@ from src.models.warp_tunnel import WarpTunnel
 from src.models.port import Port
 from src.models.planet import Planet
 from src.models.team import Team
+from src.models.region import Region
 from src.schemas.user import UserAdminResponse
 
 # Request schemas for universe management
@@ -582,34 +585,49 @@ async def get_galaxy_info(
 async def generate_galaxy(
     request: GalaxyGenerateRequest,
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    async_db: AsyncSession = Depends(get_async_session)
 ):
     """Generate a new galaxy with specified configuration"""
     # Check if a galaxy already exists
     existing_galaxy = db.query(Galaxy).first()
     if existing_galaxy:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail="A galaxy already exists. Delete the existing galaxy first."
         )
-    
+
     try:
         # Use the comprehensive GalaxyGenerator service
         from src.services.galaxy_service import GalaxyGenerator
-        
+
         generator = GalaxyGenerator(db)
-        
+
         # Prepare configuration with region distribution
         config = request.config or {}
         config.update({
             "federation_percentage": request.federation_percentage,
-            "border_percentage": request.border_percentage, 
+            "border_percentage": request.border_percentage,
             "frontier_percentage": request.frontier_percentage
         })
-        
+
         # Generate complete galaxy with ports, planets, and warp tunnels
         galaxy = generator.generate_galaxy(request.name, request.num_sectors, config)
-        
+
+        # Auto-generate Central Nexus after galaxy creation
+        # This creates the galactic hub that connects starting areas to player-owned regions
+        central_nexus_created = False
+        try:
+            logger.info("Auto-generating Central Nexus as part of universe creation...")
+            nexus_result = await nexus_generation_service.generate_central_nexus(async_db)
+            central_nexus_created = nexus_result.get("status") in ["completed", "exists"]
+            if central_nexus_created:
+                logger.info(f"Central Nexus generation: {nexus_result.get('status')}")
+        except Exception as nexus_error:
+            # Don't fail galaxy generation if nexus fails - can be retried later
+            logger.error(f"Central Nexus auto-generation failed (non-fatal): {nexus_error}")
+            logger.info("Galaxy created successfully, but Central Nexus must be generated manually")
+
         return {
             "id": str(galaxy.id),
             "name": galaxy.name,
@@ -617,9 +635,10 @@ async def generate_galaxy(
             "zone_distribution": galaxy.region_distribution,  # Map region_distribution to zone_distribution for frontend
             "statistics": galaxy.statistics,
             "state": galaxy.state,
-            "message": f"Galaxy '{galaxy.name}' created successfully"
+            "central_nexus_created": central_nexus_created,
+            "message": f"Galaxy '{galaxy.name}' created successfully" + (" with Central Nexus" if central_nexus_created else " (Central Nexus generation pending)")
         }
-        
+
     except Exception as e:
         db.rollback()
         import traceback
@@ -853,13 +872,14 @@ async def clear_all_galaxy_data(
         db.query(Port).delete()          # Ports reference Sectors
         db.query(Planet).delete()        # Planets reference Sectors
         db.query(WarpTunnel).delete()    # Warp tunnels reference Sectors
-        db.query(Sector).delete()        # Sectors reference Clusters
+        db.query(Sector).delete()        # Sectors reference Clusters AND Regions
         db.query(Cluster).delete()       # Clusters reference GalaxyZones
+        db.query(Region).delete()        # Regions (includes Central Nexus), referenced by Sectors
         db.query(GalaxyZone).delete()    # GalaxyZones reference Galaxy (cosmological zones, NOT business territories)
         db.query(Galaxy).delete()        # Finally delete Galaxy
         db.commit()
 
-        return {"message": "All galaxy data cleared successfully"}
+        return {"message": "All galaxy data cleared successfully (including Central Nexus)"}
         
     except Exception as e:
         db.rollback()
