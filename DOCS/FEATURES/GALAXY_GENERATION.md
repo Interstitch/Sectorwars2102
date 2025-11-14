@@ -12,12 +12,12 @@ The game galaxy is divided into distinct sectors (typically 500), each with its 
 
 - **Warp Lanes**: Each sector connects to multiple others via warp lanes, creating navigation routes
 - **Strategic Connectivity**: Certain sectors serve as important hubs with multiple connections
-- **Region Variations**: Different areas of the galaxy have distinct characteristics and challenges
-- **Exploration Opportunities**: All pathways and regions remain hidden until discovered by each player
+- **Cosmological Zone Variations**: Different areas of the galaxy have distinct characteristics and challenges
+- **Exploration Opportunities**: All pathways and zones remain hidden until discovered by each player
 
-### Galaxy Regions
+### Cosmological Zones
 
-The galaxy is divided into three main region types, each offering different gameplay experiences:
+The galaxy is divided into three main cosmological zone types, each offering different gameplay experiences:
 
 #### Federation Space (Sectors 1-7)
 - Safe, well-connected starting area for new players
@@ -25,7 +25,7 @@ The galaxy is divided into three main region types, each offering different game
 - Protected from player-vs-player combat
 - Stable economic conditions with reliable trade goods
 
-#### Border Regions (~20%-80% of universe)
+#### Border Zone (~20%-80% of universe)
 - Moderate security with occasional pirate encounters
 - Mix of established ports and unexploited opportunities
 - Main territories for player economic competition
@@ -95,7 +95,7 @@ Players must master the universe's layout to maximize efficiency:
 - Controlling strategic sectors with multiple connections
 - Setting up ambush points along known trade routes
 - Defending valuable territories from rival players
-- Coordinating team operations across different regions
+- Coordinating team operations across different cosmological zones
 
 ## Future Galaxy Evolution
 
@@ -110,7 +110,7 @@ The galaxy of Sector Wars 2102 is designed to evolve over time:
 
 The galaxy generation system balances several key gameplay elements:
 
-- **Predictability vs. Exploration**: Certain regions remain constant while others encourage discovery
+- **Predictability vs. Exploration**: Certain cosmological zones remain constant while others encourage discovery
 - **Safety vs. Opportunity**: Safer areas provide fewer rewards than dangerous frontiers
 - **Competition vs. Cooperation**: Limited resources create competition while encouraging team play
-- **Accessibility vs. Mastery**: New players can easily navigate core regions while veterans benefit from deep knowledge of the complete galaxy
+- **Accessibility vs. Mastery**: New players can easily navigate core zones while veterans benefit from deep knowledge of the complete galaxy

@@ -9,13 +9,13 @@ Sectors are the basic spatial units in Sector Wars 2102, representing distinct r
 Sectors exist within a defined hierarchical structure:
 - Sectors are the lowest-level navigable space units
 - Multiple sectors form a **Cluster**
-- Clusters are organized into **Regions**
-- Regions collectively form the **Galaxy**
+- Clusters are organized into **Cosmological Zones**
+- Cosmological Zones collectively form the **Galaxy**
 
 ## Data Model
 
 ```typescript
-export enum SectorRegionType {
+export enum SectorZoneType {
   FEDERATION = "FEDERATION",     // Core, civilized, high security
   BORDER = "BORDER",             // Moderate security, mixed control
   FRONTIER = "FRONTIER"          // Low security, primarily unexplored
@@ -71,7 +71,7 @@ export interface SectorResources {
 export interface SectorModel {
   id: number;                    // Unique sector identifier
   name?: string;                 // Optional sector name (if notable)
-  region_type: SectorRegionType; // What region this sector belongs to
+  zone_type: SectorZoneType;     // What cosmological zone this sector belongs to
   special_type: SectorSpecialType; // Any special characteristics
   
   // Connections
@@ -96,7 +96,7 @@ export interface SectorModel {
   
   // Hierarchical Relationship
   cluster_id: number;            // Parent cluster ID
-  region_id: number;             // Parent region ID
+  zone_id: number;               // Parent cosmological zone ID
   
   // Coordinates and Navigation
   x: number;                     // X coordinate in galaxy map
@@ -122,12 +122,12 @@ export interface SectorModel {
 1. **Standard Movement**: Moving between adjacent sectors costs 1 turn
 2. **Warp Tunnels**: Long-distance warp tunnels cost 1-3 turns based on distance
 3. **Nav Hazards**: Hazardous sectors may have movement penalties or damage risk
-4. **Region Effects**: Different regions have different security and encounter rates
+4. **Zone Effects**: Different cosmological zones have different security and encounter rates
 
 ## Sector Control and Ownership
 
 Sectors can be controlled by:
-1. **Factions**: Default control based on region type
+1. **Factions**: Default control based on cosmological zone type
 2. **Players**: Through deployment of defense drones
 3. **Teams**: Through coordinated defense networks
 4. **Ports**: Port ownership grants some sector control benefits
@@ -147,7 +147,7 @@ Sectors can be controlled by:
 4. **Radiation Zone**: Hull damage over time, special shielding needed
 5. **Warp Storm**: Temporary disruption of warp tunnels
 
-## Region Distribution
+## Cosmological Zone Distribution
 
 1. **Federation Space**: ~25% of sectors, highest security
 2. **Border Zones**: ~35% of sectors, moderate security

@@ -2,13 +2,13 @@
 
 ## Overview
 
-The Galaxy in Sector Wars 2102 represents the entire game world, consisting of approximately 500 sectors organized into clusters and regions. The galaxy has a defined hierarchical structure with varying characteristics across different areas, providing diverse gameplay experiences from secure Federation space to the wild Frontier regions.
+The Galaxy in Sector Wars 2102 represents the entire game world, consisting of approximately 500 sectors organized into clusters and zones. The galaxy has a defined hierarchical structure with varying characteristics across different areas, providing diverse gameplay experiences from secure Federation space to the wild Frontier zones.
 
 ## Hierarchy
 
 The Galaxy follows a clear hierarchical structure:
 1. **Galaxy**: The top-level container for all game space
-2. **Regions**: Large areas with distinct characteristics (Federation, Border, Frontier)
+2. **Cosmological Zones**: Large areas with distinct characteristics (Federation, Border, Frontier)
 3. **Clusters**: Groups of 10-25 interconnected sectors sharing similar traits
 4. **Sectors**: Individual space areas that players directly navigate through
 
@@ -62,7 +62,7 @@ export interface GalaxyEvents {
   active_events: {               // Currently active galaxy events
     id: string;
     type: string;                // Event type
-    affected_regions: string[];  // Regions impacted
+    affected_zones: string[];  // Cosmological Zones impacted
     start_time: Date;            // When event started
     end_time: Date | null;       // When event will end (null if permanent)
     description: string;         // Human-readable description
@@ -71,7 +71,7 @@ export interface GalaxyEvents {
   scheduled_events: {            // Upcoming events
     id: string;
     type: string;
-    affected_regions: string[];
+    affected_zones: string[];
     start_time: Date;
     duration_hours: number;
     description: string;
@@ -85,8 +85,8 @@ export interface GalaxyModel {
   last_updated: Date;            // Last update timestamp
   
   // Structure
-  regions: string[];             // Region IDs
-  region_distribution: {         // Region size distribution
+  zones: string[];             // Zone IDs
+  zone_distribution: {         // Zone size distribution
     federation: number;          // Percentage of Federation space
     border: number;              // Percentage of Border space
     frontier: number;            // Percentage of Frontier space
@@ -110,7 +110,7 @@ export interface GalaxyModel {
   // Game Rules
   default_turns_per_day: number; // Default turn allocation
   combat_penalties: {            // Penalties for illegal combat
-    [regionType: string]: string;
+    [zoneType: string]: string;
   };
   economic_modifiers: {          // Economic balance factors
     [resourceType: string]: number;
@@ -125,8 +125,8 @@ export interface GalaxyModel {
 
 ## Galaxy Structure
 
-1. **Regions**: 3 primary regions (Federation, Border, Frontier)
-2. **Clusters**: 20-40 clusters across all regions
+1. **Cosmological Zones**: 3 primary zones (Federation, Border, Frontier)
+2. **Clusters**: 20-40 clusters across all zones
 3. **Sectors**: Approximately 500 total sectors
 4. **Warps**: Connections between adjacent sectors
 5. **Warp Tunnels**: Long-distance connections between distant sectors
@@ -134,8 +134,8 @@ export interface GalaxyModel {
 ## Structural Hierarchy
 Each element in the galaxy exists within a clear hierarchical relationship:
 
-- **Galaxy** contains multiple **Regions**
-- Each **Region** contains multiple **Clusters**
+- **Galaxy** contains multiple **Cosmological Zones**
+- Each **Zone** contains multiple **Clusters**
 - Each **Cluster** contains multiple **Sectors**
 - **Sectors** connect to other sectors via **Warps** and **Warp Tunnels**
 - **Sectors** may contain **Planets** and **Ports**
@@ -147,7 +147,7 @@ Each element in the galaxy exists within a clear hierarchical relationship:
 3. **One-Way Warps**: 2-8% of warps should be one-directional
 4. **Resources**: Every sector should have at least one harvestable resource
 
-## Regional Distribution
+## Zoneal Distribution
 
 1. **Federation Space**: ~25% of the galaxy
 2. **Border Zone**: ~35% of the galaxy
@@ -165,7 +165,7 @@ Galaxy generation follows these principles:
 
 The galaxy supports dynamic events that affect gameplay:
 1. **Warp Storms**: Temporarily disable warp tunnels
-2. **Resource Booms**: Increased yields in specific regions
+2. **Resource Booms**: Increased yields in specific zones
 3. **Faction Conflicts**: Changes in faction-controlled territory
 4. **Economic Shifts**: Market price fluctuations
 5. **Special Discoveries**: New resources or technologies

@@ -9,7 +9,7 @@ Warp Tunnels in Sector Wars 2102 are special pathways that allow for instantaneo
 Warp Tunnels function as connectors between different parts of the galaxy hierarchy:
 - They can connect sectors within the same cluster
 - They can connect sectors across different clusters
-- They can connect sectors across different regions
+- They can connect sectors across different cosmological zones
 
 ## Data Model
 
@@ -27,7 +27,7 @@ export enum WarpTunnelStability {
 export interface WarpTunnelEndpoint {
   sector_id: number;             // Sector ID of endpoint
   cluster_id: string;            // Cluster ID containing sector
-  region_id: string;             // Region ID containing cluster
+  zone_id: string;               // Cosmological zone ID containing cluster
   coordinates: {                 // Galaxy map coordinates
     x: number;
     y: number;

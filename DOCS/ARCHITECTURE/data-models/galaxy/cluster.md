@@ -7,9 +7,9 @@ Clusters in Sector Wars 2102 are groupings of sectors that form a cohesive spati
 ## Position in Galaxy Hierarchy
 
 Clusters occupy a specific level in the galaxy's structure:
-- Clusters are contained within **Regions**
+- Clusters are contained within **Cosmological Zones**
 - Each cluster contains multiple **Sectors**
-- Multiple clusters form a complete **Region**
+- Multiple clusters form a complete **Cosmological Zone**
 - All clusters are part of the overall **Galaxy**
 
 ## Data Model
@@ -81,7 +81,7 @@ export interface ClusterModel {
   id: string;                    // Unique identifier
   name: string;                  // Cluster name
   type: ClusterType;             // Cluster classification
-  region_id: string;             // Parent region ID (hierarchical relationship)
+  zone_id: string;               // Parent cosmological zone ID (hierarchical relationship)
   created_at: Date;              // When cluster was created
   
   // Structure
@@ -147,7 +147,7 @@ Clusters are generated using procedural generation with the following parameters
 1. **Size**: 10-25 sectors per cluster
 2. **Connectivity**: Internal sector connections ensure navigability
 3. **Type Distribution**: Specific distribution of sector types based on cluster type
-4. **Resource Distribution**: Resources based on cluster type and region
+4. **Resource Distribution**: Resources based on cluster type and cosmological zone
 5. **Faction Influence**: Primary controlling faction and influence levels
 
 ## Cluster Types and Characteristics

@@ -133,7 +133,7 @@ async def get_events(
             status=event.status.value if isinstance(event.status, EventStatus) else event.status,
             start_time=event.start_time,
             end_time=event.end_time,
-            affected_regions=event.affected_sectors or [],
+            affected_zones=event.affected_zones or [],
             effects=effect_responses,
             participation_count=participation_count,
             rewards_distributed=event.rewards_distributed or 0,
@@ -231,7 +231,7 @@ async def create_event(
         status=EventStatus.SCHEDULED,
         start_time=event_data.start_time,
         end_time=event_data.end_time,
-        affected_sectors=event_data.affected_zones,
+        affected_zones=event_data.affected_zones,
         created_by_id=admin_player.id if admin_player else None,
         created_at=datetime.utcnow()
     )
@@ -276,7 +276,7 @@ async def create_event(
         status=new_event.status.value,
         start_time=new_event.start_time,
         end_time=new_event.end_time,
-        affected_regions=new_event.affected_sectors or [],
+        affected_zones=new_event.affected_zones or [],
         effects=effect_responses,
         participation_count=0,
         rewards_distributed=0,
@@ -304,7 +304,7 @@ async def update_event(
     event.event_type = EventType(event_data.event_type)
     event.start_time = event_data.start_time
     event.end_time = event_data.end_time
-    event.affected_sectors = event_data.affected_regions
+    event.affected_zones = event_data.affected_zones
     
     # Remove old effects and create new ones
     db.query(EventEffect).filter(EventEffect.event_id == event.id).delete()
@@ -350,7 +350,7 @@ async def update_event(
         status=event.status.value,
         start_time=event.start_time,
         end_time=event.end_time,
-        affected_regions=event.affected_sectors or [],
+        affected_zones=event.affected_zones or [],
         effects=effect_responses,
         participation_count=participation_count,
         rewards_distributed=event.rewards_distributed or 0,
