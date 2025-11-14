@@ -17,7 +17,7 @@ from src.models.port import Port
 from src.models.warp_tunnel import WarpTunnel
 from src.models.region import Region
 from src.models.cluster import Cluster
-from src.models.zone import Zone
+from src.models.galaxy import GalaxyZone
 
 import logging
 
@@ -345,7 +345,7 @@ class NexusGenerationService:
     async def _create_nexus_zone_and_cluster(self, session: AsyncSession, galaxy_id: str, region_id: str) -> Cluster:
         """Create a single Zone and Cluster for the entire Central Nexus"""
         # Create the Central Nexus zone
-        nexus_zone = Zone(
+        nexus_zone = GalaxyZone(
             name="Central Nexus Zone",
             type="FEDERATION",  # Central authority like Federation
             description="The galactic hub connecting all regional territories",
