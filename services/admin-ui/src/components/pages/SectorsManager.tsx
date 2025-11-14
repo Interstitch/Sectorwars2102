@@ -23,12 +23,12 @@ interface Sector {
 }
 
 const SectorsManager: React.FC = () => {
-  const { 
-    galaxyState, 
-    regions, 
+  const {
+    galaxyState,
+    zones,
     clusters,
     loadGalaxyInfo,
-    loadRegions,
+    loadZones,
     loadClusters,
     isLoading,
     error
@@ -60,10 +60,10 @@ const SectorsManager: React.FC = () => {
     loadGalaxyInfo();
   }, []);
   
-  // Load regions when galaxy info is loaded
+  // Load zones when galaxy info is loaded
   useEffect(() => {
     if (galaxyState) {
-      loadRegions();
+      loadZones();
     }
   }, [galaxyState]);
   
@@ -116,10 +116,10 @@ const SectorsManager: React.FC = () => {
   useEffect(() => {
     if (selectedRegion) {
       loadClusters(selectedRegion);
-    } else if (regions.length > 0) {
+    } else if (zones.length > 0) {
       loadClusters();
     }
-  }, [selectedRegion, regions]);
+  }, [selectedRegion, zones]);
   
   // Reset cluster selection when region changes
   useEffect(() => {
@@ -229,16 +229,16 @@ const SectorsManager: React.FC = () => {
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="form-group">
                   <label htmlFor="region-filter" className="form-label">Region</label>
-                  <select 
-                    id="region-filter" 
+                  <select
+                    id="region-filter"
                     className="form-select"
                     value={selectedRegion}
                     onChange={handleRegionChange}
                   >
                     <option value="">All Regions</option>
-                    {regions.map(region => (
-                      <option key={region.id} value={region.id}>
-                        {region.name} ({region.type})
+                    {zones.map(zone => (
+                      <option key={zone.id} value={zone.id}>
+                        {zone.name} ({zone.type})
                       </option>
                     ))}
                   </select>
