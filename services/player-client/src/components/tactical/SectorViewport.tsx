@@ -73,24 +73,10 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
       return;
     }
 
-    console.log('🎨 Starting animation loop', { width, height, particleCount: particlesRef.current.length });
-
-    let frameCount = 0;
     const animate = () => {
-      // TEMPORARY DEBUG: Use bright background to test visibility
-      if (frameCount < 30) {
-        ctx.fillStyle = 'rgb(255, 0, 255)'; // Bright magenta for testing
-      } else {
-        ctx.fillStyle = 'rgba(5, 8, 16, 0.15)';
-      }
+      // Fade background for trail effect
+      ctx.fillStyle = 'rgba(5, 8, 16, 0.15)';
       ctx.fillRect(0, 0, width, height);
-
-      // Debug: Log first few frames
-      if (frameCount < 3) {
-        console.log(`🎨 Frame ${frameCount}: Drawing ${particlesRef.current.length} particles`);
-        frameCount++;
-      }
-      frameCount++;
 
       // Draw starfield background
       drawStarfield(ctx, width, height);
@@ -158,26 +144,13 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
     }
   };
 
-  // Debug logging
-  useEffect(() => {
-    console.log('🎨 SectorViewport render:', {
-      width,
-      height,
-      sectorType,
-      sectorName,
-      portsCount: ports?.length || 0,
-      planetsCount: planets?.length || 0
-    });
-  }, [width, height, sectorType, sectorName, ports, planets]);
-
   return (
-    <div className="sector-viewport-container" style={{ border: '2px solid red' }}>
+    <div className="sector-viewport-container">
       <canvas
         ref={canvasRef}
         width={width}
         height={height}
         className="sector-viewport-canvas"
-        style={{ border: '3px solid lime', backgroundColor: 'blue' }}
         onMouseMove={handleMouseMove}
         onClick={handleClick}
       />
