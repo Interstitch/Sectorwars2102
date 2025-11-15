@@ -283,8 +283,14 @@ class NexusGenerationService:
 
                 logger.info(f"District {config['name']} completed: {district_stats}")
 
-            # Generate inter-regional warp gates
-            await self._generate_inter_regional_gates(session, str(nexus_region.id))
+            # TODO: Generate inter-regional warp gates
+            # Commented out for now because:
+            # 1. WarpTunnel.destination_sector_id is NOT NULL but we don't know destinations yet
+            # 2. Both origin/destination need UUIDs (sectors.id), not integers (sector_id)
+            # 3. Inter-regional gates require knowing what regions exist to connect to
+            # This should be implemented as a separate admin action after regions are created
+            # await self._generate_inter_regional_gates(session, str(nexus_region.id))
+            logger.info("Skipping inter-regional warp gate generation (to be implemented after regions exist)")
 
             # Create special galactic features
             await self._create_galactic_features(session, str(nexus_region.id))
@@ -320,9 +326,9 @@ class NexusGenerationService:
             subscription_tier="nexus",
             status="active",
             governance_type="autocracy",
-            tax_rate=0.00,  # No taxes in Central Nexus
+            tax_rate=0.05,  # Minimum allowed by check constraint (0.05-0.25)
             economic_specialization="galactic_hub",
-            starting_credits=0,  # No direct spawning
+            starting_credits=100,  # Minimum allowed by check constraint (>= 100)
             starting_ship="none",
             total_sectors=self.total_sectors,
             language_pack={
@@ -349,27 +355,37 @@ class NexusGenerationService:
             name="Central Nexus Zone",
             type="FEDERATION",  # Central authority like Federation
             description="The galactic hub connecting all regional territories",
-            min_security_level=5,
-            max_security_level=10,
-            resource_richness=8,
-            danger_level=1,
-            discovery_bonus=1000,
+            security_level=8.5,  # High security (average of 5-10)
+            resource_richness=8.0,  # Rich resources
             galaxy_id=galaxy_id,
-            is_discovered=True
+            sector_count=self.total_sectors,
+            discover_difficulty=1,  # Easy to discover (already discovered)
+            discovery_status=100  # Fully discovered
         )
         session.add(nexus_zone)
         await session.flush()
 
         # Create a single large cluster for all Central Nexus sectors
+        from src.models.cluster import ClusterType
+
         nexus_cluster = Cluster(
             name="Central Nexus Core",
             zone_id=nexus_zone.id,
-            region_id=region_id,
-            type="DENSE",  # Highly connected cluster
+            type=ClusterType.TRADE_HUB,  # Trade hub cluster type for Central Nexus
             sector_count=self.total_sectors,
-            density=0.9,  # Very dense
-            hazard_level=1,  # Very safe
-            is_discovered=True
+            is_discovered=True,
+            discovery_requirement={},  # No special requirements - already discovered
+            description="The central hub of the galaxy, connecting all regions",
+            is_hidden=False,
+            warp_stability=0.95,  # Very stable for warp travel
+            economic_value=10,  # Highest economic value
+            resources={},  # Resources defined at sector level
+            faction_influence={},  # Neutral zone
+            nav_hazards=[],  # Safe navigation
+            recommended_ship_class="any",  # All ship classes welcome
+            x_coord=0,  # Central coordinates
+            y_coord=0,
+            z_coord=0
         )
         session.add(nexus_cluster)
         await session.flush()
@@ -478,142 +494,118 @@ class NexusGenerationService:
         config: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Generate a port configuration for a sector"""
-        
-        # Port types based on district
-        port_types = {
-            NexusDistrictType.COMMERCE_CENTRAL: ["mega_market", "trading_hub", "financial_center"],
-            NexusDistrictType.DIPLOMATIC_QUARTER: ["embassy_dock", "diplomatic_station", "neutral_port"],
-            NexusDistrictType.INDUSTRIAL_ZONE: ["industrial_complex", "manufacturing_station", "shipyard"],
-            NexusDistrictType.RESIDENTIAL_DISTRICT: ["residential_hub", "service_station", "commercial_center"],
-            NexusDistrictType.TRANSIT_HUB: ["transit_station", "cargo_hub", "passenger_terminal"],
-            NexusDistrictType.HIGH_SECURITY_ZONE: ["secure_facility", "vault_station", "premium_dock"],
-            NexusDistrictType.CULTURAL_CENTER: ["cultural_hub", "entertainment_complex", "museum_dock"],
-            NexusDistrictType.RESEARCH_CAMPUS: ["research_station", "lab_complex", "innovation_hub"],
-            NexusDistrictType.FREE_TRADE_ZONE: ["free_port", "black_market", "smuggler_haven"],
-            NexusDistrictType.GATEWAY_PLAZA: ["welcome_center", "orientation_hub", "gateway_station"]
+        from src.models.port import PortClass, PortType, PortStatus
+
+        # Map districts to appropriate port types
+        district_to_port_type = {
+            NexusDistrictType.COMMERCE_CENTRAL: PortType.TRADING,
+            NexusDistrictType.DIPLOMATIC_QUARTER: PortType.DIPLOMATIC,
+            NexusDistrictType.INDUSTRIAL_ZONE: PortType.INDUSTRIAL,
+            NexusDistrictType.RESIDENTIAL_DISTRICT: PortType.TRADING,
+            NexusDistrictType.TRANSIT_HUB: PortType.TRADING,
+            NexusDistrictType.HIGH_SECURITY_ZONE: PortType.MILITARY,
+            NexusDistrictType.CULTURAL_CENTER: PortType.TRADING,
+            NexusDistrictType.RESEARCH_CAMPUS: PortType.SCIENTIFIC,
+            NexusDistrictType.FREE_TRADE_ZONE: PortType.BLACK_MARKET,
+            NexusDistrictType.GATEWAY_PLAZA: PortType.TRADING
         }
-        
-        port_type = random.choice(port_types.get(district_type, ["standard_port"]))
-        
-        # Generate port class based on district importance
-        port_classes = ["A", "B", "C", "D", "E"]
+
+        port_type = district_to_port_type.get(district_type, PortType.TRADING)
+
+        # Generate port class based on district importance (use numeric classes)
         if district_type in [NexusDistrictType.COMMERCE_CENTRAL, NexusDistrictType.DIPLOMATIC_QUARTER]:
-            port_class = random.choices(port_classes, weights=[0.4, 0.3, 0.2, 0.1, 0.0])[0]
+            port_class = random.choice([PortClass.CLASS_0, PortClass.CLASS_1, PortClass.CLASS_9, PortClass.CLASS_10])
         elif district_type == NexusDistrictType.HIGH_SECURITY_ZONE:
-            port_class = random.choices(port_classes, weights=[0.6, 0.3, 0.1, 0.0, 0.0])[0]
+            port_class = random.choice([PortClass.CLASS_0, PortClass.CLASS_1])
+        elif district_type == NexusDistrictType.INDUSTRIAL_ZONE:
+            port_class = random.choice([PortClass.CLASS_2, PortClass.CLASS_3, PortClass.CLASS_6])
         else:
-            port_class = random.choices(port_classes, weights=[0.2, 0.3, 0.3, 0.15, 0.05])[0]
-        
+            port_class = random.choice([PortClass.CLASS_4, PortClass.CLASS_5, PortClass.CLASS_6, PortClass.CLASS_7])
+
+        # Determine size based on district type
+        if district_type in [NexusDistrictType.COMMERCE_CENTRAL, NexusDistrictType.TRANSIT_HUB]:
+            size = random.randint(7, 10)  # Large ports
+        elif district_type in [NexusDistrictType.DIPLOMATIC_QUARTER, NexusDistrictType.HIGH_SECURITY_ZONE]:
+            size = random.randint(6, 8)  # Medium-large ports
+        else:
+            size = random.randint(4, 7)  # Medium ports
+
+        # Create port dict with only required fields - Column defaults will handle the rest
         return {
+            "name": f"Nexus {district_type.replace('_', ' ').title()} {sector_num}",
             "sector_id": sector_num,
             "region_id": region_id,
             "port_class": port_class,
-            "port_type": port_type,
-            "name": f"Nexus {district_type.replace('_', ' ').title()} Port {sector_num}",
-            "commodities": self._generate_commodities_for_district(district_type),
-            "services": config["special_features"],
-            "docking_fee": self._calculate_docking_fee(port_class, district_type),
-            "security_level": config["security_level"],
-            "created_at": datetime.utcnow()
+            "type": port_type,
+            "status": PortStatus.OPERATIONAL,
+            "size": size
         }
     
     def _generate_planet_for_sector(
         self,
-        sector_num: int, 
+        sector_num: int,
         region_id: str,
         district_type: str,
         config: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Generate a planet configuration for a sector"""
-        
-        # Planet types based on district
-        planet_types = {
-            NexusDistrictType.COMMERCE_CENTRAL: ["trade_world", "financial_center", "market_planet"],
-            NexusDistrictType.DIPLOMATIC_QUARTER: ["embassy_world", "neutral_ground", "diplomatic_center"],
-            NexusDistrictType.INDUSTRIAL_ZONE: ["factory_world", "mining_planet", "industrial_complex"],
-            NexusDistrictType.RESIDENTIAL_DISTRICT: ["residential_world", "luxury_planet", "garden_world"],
-            NexusDistrictType.TRANSIT_HUB: ["transit_world", "logistics_center", "transport_hub"],
-            NexusDistrictType.HIGH_SECURITY_ZONE: ["secure_world", "vault_planet", "restricted_access"],
-            NexusDistrictType.CULTURAL_CENTER: ["cultural_world", "art_planet", "festival_ground"],
-            NexusDistrictType.RESEARCH_CAMPUS: ["research_world", "academic_planet", "lab_world"],
-            NexusDistrictType.FREE_TRADE_ZONE: ["free_world", "frontier_planet", "lawless_world"],
-            NexusDistrictType.GATEWAY_PLAZA: ["gateway_world", "welcome_planet", "orientation_center"]
+        from src.models.planet import PlanetType, PlanetStatus
+
+        # Map districts to appropriate planet types
+        district_to_planet_type = {
+            NexusDistrictType.COMMERCE_CENTRAL: PlanetType.TERRAN,
+            NexusDistrictType.DIPLOMATIC_QUARTER: PlanetType.TERRAN,
+            NexusDistrictType.INDUSTRIAL_ZONE: PlanetType.BARREN,
+            NexusDistrictType.RESIDENTIAL_DISTRICT: PlanetType.TROPICAL,
+            NexusDistrictType.TRANSIT_HUB: PlanetType.TERRAN,
+            NexusDistrictType.HIGH_SECURITY_ZONE: PlanetType.MOUNTAINOUS,
+            NexusDistrictType.CULTURAL_CENTER: PlanetType.JUNGLE,
+            NexusDistrictType.RESEARCH_CAMPUS: PlanetType.OCEANIC,
+            NexusDistrictType.FREE_TRADE_ZONE: PlanetType.DESERT,
+            NexusDistrictType.GATEWAY_PLAZA: PlanetType.TERRAN
         }
-        
-        planet_type = random.choice(planet_types.get(district_type, ["standard_planet"]))
-        
+
+        planet_type = district_to_planet_type.get(district_type, PlanetType.TERRAN)
+
+        # Determine habitability based on planet type
+        habitability_map = {
+            PlanetType.TERRAN: random.randint(70, 100),
+            PlanetType.TROPICAL: random.randint(80, 100),
+            PlanetType.JUNGLE: random.randint(60, 90),
+            PlanetType.OCEANIC: random.randint(50, 80),
+            PlanetType.MOUNTAINOUS: random.randint(40, 70),
+            PlanetType.DESERT: random.randint(30, 60),
+            PlanetType.BARREN: random.randint(10, 40),
+            PlanetType.ICE: random.randint(20, 50),
+            PlanetType.VOLCANIC: random.randint(10, 30)
+        }
+
+        habitability_score = habitability_map.get(planet_type, 50)
+        status = PlanetStatus.HABITABLE if habitability_score > 50 else PlanetStatus.UNINHABITABLE
+
+        # Determine max population based on size and habitability
+        size = random.randint(4, 9)
+        max_population = int((size * habitability_score * 100000) / 10)
+
+        # Create planet dict with only required fields - Column defaults will handle the rest
         return {
+            "name": f"Nexus {district_type.replace('_', ' ').title()} {sector_num}",
             "sector_id": sector_num,
             "region_id": region_id,
-            "planet_type": planet_type,
-            "name": f"Nexus {district_type.replace('_', ' ').title()} {sector_num}",
-            "population": self._calculate_population(config["population_density"]),
-            "development_level": config["development_level"],
-            "security_level": config["security_level"],
-            "special_features": config["special_features"],
+            "type": planet_type,
+            "status": status,
+            "size": size,
+            "position": random.randint(2, 5),
+            "gravity": round(random.uniform(0.7, 1.5), 1),
+            "temperature": round(random.uniform(-20, 40), 1),
+            "water_coverage": round(random.uniform(0, 80), 1) if planet_type not in [PlanetType.DESERT, PlanetType.VOLCANIC, PlanetType.BARREN] else round(random.uniform(0, 10), 1),
+            "habitability_score": habitability_score,
+            "resource_richness": round(random.uniform(1.0, 2.5), 1),
             "resources": self._generate_planet_resources(district_type),
-            "created_at": datetime.utcnow()
+            "max_population": max_population
         }
     
-    def _generate_commodities_for_district(self, district_type: str) -> List[str]:
-        """Generate appropriate commodities for district type"""
-        commodities_map = {
-            NexusDistrictType.COMMERCE_CENTRAL: [
-                "galactic_credits", "precious_metals", "luxury_goods", "exotic_materials",
-                "financial_instruments", "rare_artifacts", "premium_components"
-            ],
-            NexusDistrictType.DIPLOMATIC_QUARTER: [
-                "diplomatic_documents", "cultural_artifacts", "ceremonial_items",
-                "luxury_gifts", "translation_devices", "security_equipment"
-            ],
-            NexusDistrictType.INDUSTRIAL_ZONE: [
-                "raw_materials", "industrial_components", "heavy_machinery",
-                "construction_materials", "energy_cells", "manufacturing_tools"
-            ],
-            NexusDistrictType.RESIDENTIAL_DISTRICT: [
-                "consumer_goods", "food_supplies", "medical_supplies",
-                "entertainment_systems", "household_items", "personal_effects"
-            ],
-            NexusDistrictType.FREE_TRADE_ZONE: [
-                "contraband", "black_market_goods", "illegal_substances",
-                "weapons", "stolen_goods", "unregulated_tech"
-            ]
-        }
-        
-        base_commodities = ["fuel", "water", "oxygen", "basic_supplies"]
-        district_commodities = commodities_map.get(district_type, [])
-        
-        return base_commodities + random.sample(
-            district_commodities, 
-            min(len(district_commodities), random.randint(3, 6))
-        )
-    
-    def _calculate_docking_fee(self, port_class: str, district_type: str) -> int:
-        """Calculate docking fee based on port class and district"""
-        base_fees = {"A": 1000, "B": 500, "C": 250, "D": 100, "E": 50}
-        district_multipliers = {
-            NexusDistrictType.HIGH_SECURITY_ZONE: 5.0,
-            NexusDistrictType.COMMERCE_CENTRAL: 2.0,
-            NexusDistrictType.DIPLOMATIC_QUARTER: 3.0,
-            NexusDistrictType.FREE_TRADE_ZONE: 0.5,
-            NexusDistrictType.RESEARCH_CAMPUS: 1.5
-        }
-        
-        base_fee = base_fees.get(port_class, 100)
-        multiplier = district_multipliers.get(district_type, 1.0)
-        
-        return int(base_fee * multiplier)
-    
-    def _calculate_population(self, density: str) -> int:
-        """Calculate planet population based on density"""
-        populations = {
-            "low": random.randint(10000, 100000),
-            "medium": random.randint(100000, 1000000),
-            "high": random.randint(1000000, 10000000),
-            "very_high": random.randint(10000000, 100000000)
-        }
-        return populations.get(density, 500000)
-    
+    # Removed unused helper methods - Port/Planet Column defaults handle most initialization
     def _generate_planet_resources(self, district_type: str) -> List[str]:
         """Generate planet resources based on district type"""
         resource_map = {
@@ -631,7 +623,19 @@ class NexusGenerationService:
         return resource_map.get(district_type, ["standard_resources"])
     
     async def _generate_inter_regional_gates(self, session: AsyncSession, region_id: str):
-        """Generate warp gates connecting to regional territories"""
+        """Generate warp gates connecting to regional territories
+
+        TODO: This method is currently not functional and needs to be rewritten because:
+        1. WarpTunnel.origin_sector_id and destination_sector_id are UUIDs (sectors.id foreign keys)
+        2. This code passes integer sector_id values (4001-4099) instead of UUIDs
+        3. WarpTunnel.destination_sector_id is NOT NULL but we don't have destinations yet
+        4. Inter-regional gates need to know what regions exist to connect to
+
+        This should be reimplemented as a separate admin action that:
+        - Queries available regions and their sectors
+        - Looks up actual Sector UUID values (sectors.id) for both origin and destination
+        - Creates bidirectional gate pairs connecting Central Nexus to each region
+        """
         logger.info("Generating inter-regional warp gates...")
         
         # Create major warp gates in Gateway Plaza
