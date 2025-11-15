@@ -523,19 +523,23 @@
   z-index: 5;
 }
 
-/* Monitor label - embedded in bezel */
+/* Monitor label - UI element displayed on screen */
 .monitor-label {
   position: absolute;
-  top: 0.25rem;
-  left: 0.5rem;
-  font-size: 0.6rem;
+  top: 0;
+  left: 0;
+  right: 0;
+  font-size: 0.65rem;
   font-weight: 700;
-  letter-spacing: 0.2em;
-  color: rgba(0, 217, 255, 0.8);
+  letter-spacing: 0.15em;
+  color: rgba(0, 217, 255, 0.9);
   text-shadow: 0 0 8px rgba(0, 217, 255, 0.6);
-  background: transparent;
-  padding: 0;
-  z-index: 10;
+  background: linear-gradient(180deg, rgba(0, 217, 255, 0.15) 0%, rgba(0, 217, 255, 0.05) 100%);
+  border-bottom: 1px solid rgba(0, 217, 255, 0.3);
+  padding: 0.4rem 0.75rem;
+  text-align: center;
+  z-index: 15;
+  backdrop-filter: blur(4px);
 }
 
 /* Bezel corner bolts - rivets on the outer bezel */
@@ -580,7 +584,7 @@
   background: rgba(0, 5, 10, 0.98);
   border: 1px solid rgba(0, 217, 255, 0.2);
   border-radius: 4px;
-  padding: 0.75rem;
+  padding: 2.25rem 0.75rem 0.75rem 0.75rem;
   overflow-y: auto;
   overflow-x: hidden;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
