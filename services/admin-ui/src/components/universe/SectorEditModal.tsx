@@ -817,12 +817,14 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
     </div>
   );
 
-  const renderWarpTunnelsTab = () => {
-    // Fetch tunnels when tab is first activated
-    if (warpTunnels === null && activeTab === 'tunnels') {
+  // Fetch warp tunnels when the tunnels tab is activated
+  useEffect(() => {
+    if (activeTab === 'tunnels' && warpTunnels === null) {
       fetchWarpTunnels();
     }
+  }, [activeTab]);
 
+  const renderWarpTunnelsTab = () => {
     return (
       <div className="tab-content">
         <div className="warp-tunnels-section">
