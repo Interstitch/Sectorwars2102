@@ -196,7 +196,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setToken(accessToken);
         
         // Try to get user profile
-        const response = await axios.get<User>(`${apiUrl}/auth/me`);
+        const response = await axios.get<User>('/api/v1/auth/me');
         setUser(response.data);
         console.log('Auth successful - user loaded:', response.data);
       } catch (error: any) {
@@ -204,7 +204,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (error?.response?.status === 429) {
           console.warn('Rate limit hit during auth check - will retry in a moment');
           // Don't clear auth data on rate limit errors
-          setLoading(false);
+          setIsLoading(false);
           return;
         }
         
@@ -214,7 +214,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (error?.response?.status !== 429) {
           try {
             await refreshToken();
-            const userResponse = await axios.get<User>(`${apiUrl}/auth/me`);
+            const userResponse = await axios.get<User>('/api/v1/auth/me');
             setUser(userResponse.data);
             console.log('Auth successful after refresh');
           } catch (refreshError: any) {
@@ -492,7 +492,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Call logout endpoint to invalidate refresh token, but don't wait for it
     if (refreshTokenStr) {
       // Set a short timeout to avoid CORS issues during page navigation
-      axios.post(`${apiUrl}/auth/logout`, { refresh_token: refreshTokenStr }, {
+      axios.post('/api/v1/auth/logout', { refresh_token: refreshTokenStr }, {
         timeout: 1000 // 1 second timeout
       }).catch(() => {
         // Just log the error, don't block logout
