@@ -888,19 +888,36 @@ async def get_ports_comprehensive(
     filter_class: Optional[str] = None,
     filter_type: Optional[str] = None,
     filter_owner: Optional[str] = None,
+    owner_id: Optional[str] = Query(None, description="Filter by exact player/owner UUID"),
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Get comprehensive port information"""
     try:
         query = db.query(Port)
-        
+
         # Apply filters
         if filter_class:
             query = query.filter(Port.port_class == filter_class)
         if filter_type:
             query = query.filter(Port.type == filter_type)
-        if filter_owner:
+        if owner_id:
+            # Filter by exact owner ID (UUID)
+            try:
+                from uuid import UUID
+                owner_uuid = UUID(owner_id)
+                query = query.filter(Port.owner_id == owner_uuid)
+            except ValueError:
+                # Invalid UUID, return empty result
+                return {
+                    "ports": [],
+                    "total_count": 0,
+                    "page": page,
+                    "limit": limit,
+                    "total_pages": 0
+                }
+        elif filter_owner:
+            # Filter by username pattern (legacy support)
             query = query.join(Player).join(User).filter(User.username.ilike(f"%{filter_owner}%"))
         
         # Get total count
@@ -977,17 +994,34 @@ async def get_planets_comprehensive(
     filter_type: Optional[str] = None,
     filter_owner: Optional[str] = None,
     filter_colonized: Optional[bool] = None,
+    owner_id: Optional[str] = Query(None, description="Filter by exact player/owner UUID"),
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Get comprehensive planet information"""
     try:
         query = db.query(Planet)
-        
+
         # Apply filters
         if filter_type:
             query = query.filter(Planet.type == filter_type)
-        if filter_owner:
+        if owner_id:
+            # Filter by exact owner ID (UUID)
+            try:
+                from uuid import UUID
+                owner_uuid = UUID(owner_id)
+                query = query.filter(Planet.owner_id == owner_uuid)
+            except ValueError:
+                # Invalid UUID, return empty result
+                return {
+                    "planets": [],
+                    "total_count": 0,
+                    "page": page,
+                    "limit": limit,
+                    "total_pages": 0
+                }
+        elif filter_owner:
+            # Filter by username pattern (legacy support)
             query = query.join(Player).join(User).filter(User.username.ilike(f"%{filter_owner}%"))
         if filter_colonized is not None:
             if filter_colonized:
@@ -1650,6 +1684,7 @@ async def get_planets(
     filter_type: Optional[str] = None,
     filter_owner: Optional[str] = None,
     filter_colonized: Optional[bool] = None,
+    owner_id: Optional[str] = Query(None, description="Filter by exact player/owner UUID"),
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
@@ -1660,6 +1695,7 @@ async def get_planets(
         filter_type=filter_type,
         filter_owner=filter_owner,
         filter_colonized=filter_colonized,
+        owner_id=owner_id,
         current_admin=current_admin,
         db=db
     )
@@ -1671,6 +1707,7 @@ async def get_ports(
     filter_class: Optional[str] = None,
     filter_type: Optional[str] = None,
     filter_owner: Optional[str] = None,
+    owner_id: Optional[str] = Query(None, description="Filter by exact player/owner UUID"),
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
@@ -1681,6 +1718,7 @@ async def get_ports(
         filter_class=filter_class,
         filter_type=filter_type,
         filter_owner=filter_owner,
+        owner_id=owner_id,
         current_admin=current_admin,
         db=db
     )

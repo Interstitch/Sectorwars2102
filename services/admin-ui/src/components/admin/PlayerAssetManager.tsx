@@ -44,27 +44,37 @@ const PlayerAssetManager: React.FC<PlayerAssetManagerProps> = ({
   const loadPlayerAssets = async () => {
     setLoading(true);
     try {
-      // Load player's current assets
+      // Load player's current assets using existing admin endpoints with owner_id filter
       const [shipsRes, planetsRes, portsRes] = await Promise.all([
-        api.get(`/api/v1/admin/players/${player.id}/ships`),
-        api.get(`/api/v1/admin/players/${player.id}/planets`),
-        api.get(`/api/v1/admin/players/${player.id}/ports`)
+        api.get(`/api/v1/admin/ships?ownerId=${player.id}`),
+        api.get(`/api/v1/admin/planets?owner_id=${player.id}`),
+        api.get(`/api/v1/admin/ports?owner_id=${player.id}`)
       ]);
 
-      // Load available assets that can be assigned
+      // Load unowned assets (assets available for assignment)
       const [availableShipsRes, availablePlanetsRes, availablePortsRes] = await Promise.all([
-        api.get('/api/v1/admin/assets/ships/unowned'),
-        api.get('/api/v1/admin/assets/planets/unowned'),
-        api.get('/api/v1/admin/assets/ports/unowned')
+        // For ships, get all ships and filter client-side for unowned (TODO: add backend support)
+        api.get('/api/v1/admin/ships?limit=100'),
+        // For planets, use filter_colonized=false to get uncolonized planets
+        api.get('/api/v1/admin/planets?filter_colonized=false&limit=100'),
+        // For ports, get all and filter client-side (TODO: add backend support)
+        api.get('/api/v1/admin/ports?limit=100')
       ]);
+
+      // Filter unowned ships and ports client-side
+      const allShips = (availableShipsRes.data as any)?.ships || [];
+      const unownedShips = allShips.filter((ship: any) => !ship.owner || ship.owner.id === null || ship.owner.id === 'null');
+
+      const allPorts = (availablePortsRes.data as any)?.ports || [];
+      const unownedPorts = allPorts.filter((port: any) => !port.owner_id || port.owner_id === null);
 
       setAssets({
         ships: (shipsRes.data as any)?.ships || [],
         planets: (planetsRes.data as any)?.planets || [],
         ports: (portsRes.data as any)?.ports || [],
-        availableShips: (availableShipsRes.data as any)?.ships || [],
+        availableShips: unownedShips,
         availablePlanets: (availablePlanetsRes.data as any)?.planets || [],
-        availablePorts: (availablePortsRes.data as any)?.ports || []
+        availablePorts: unownedPorts
       });
     } catch (error) {
       console.error('Failed to load player assets:', error);
