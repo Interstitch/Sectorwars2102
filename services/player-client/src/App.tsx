@@ -44,100 +44,10 @@ function MainApp() {
   const [authMode, setAuthMode] = useState<'none' | 'login' | 'register'>('none');
   const navigate = useNavigate();
   
-  // Get API URL - use gameserver directly
+  // Simple API URL - use env var or default to localhost:8080
   const getApiUrl = () => {
-    // If an environment variable is explicitly set, use it as override
-    if (import.meta.env.VITE_API_URL) {
-      console.log('Using VITE_API_URL override:', import.meta.env.VITE_API_URL);
-      return import.meta.env.VITE_API_URL;
-    }
-
-    const windowUrl = window.location.origin;
-    console.log('Current window URL:', windowUrl);
-
-    // For GitHub Codespaces, use direct gameserver URL
-    if (windowUrl.includes('.app.github.dev')) {
-      console.log('GitHub Codespaces detected - using direct gameserver URL');
-      // Replace port 3000 with 8080 for gameserver
-      const gameserverUrl = windowUrl.replace('-3000.app.github.dev', '-8080.app.github.dev');
-      console.log('Using gameserver URL:', gameserverUrl);
-      return gameserverUrl;
-    }
-
-    // Use direct gameserver URL - port 8080 for the gameserver
-    console.log('Using direct gameserver URL for API requests');
-    
-    // Point directly to the gameserver at port 8080
-    return 'http://localhost:8080';
+    return import.meta.env.VITE_API_URL || 'http://localhost:8080';
   };
-  
-  // Get full API URL for display purposes, showing the complete endpoint
-  const getFullApiUrl = () => {
-    const baseUrl = getApiUrl();
-    if (baseUrl) {
-      // Try the path that matches what's defined in the gameserver's main.py
-      return `${baseUrl}/api/v1/status`;
-    } else {
-      // If using proxy, show the window origin + proxy path
-      return `${window.location.origin}/api/v1/status`;
-    }
-  };
-  
-  // Get the URLs that will actually be tried
-  const getAllTestUrls = () => {
-    const baseUrl = getApiUrl();
-    const endpoints = [
-      '/api/status',
-      '/api/status/', 
-      '/api/v1/status',
-      '/api/v1/status/',
-      '/api/version',
-      '/api/v1/status/version',
-      '/'
-    ];
-    
-    if (baseUrl) {
-      return endpoints.map(endpoint => `${baseUrl}${endpoint}`).join('\n');
-    } else {
-      return endpoints.map(endpoint => `${window.location.origin}${endpoint}`).join('\n');
-    }
-  };
-
-  // Create a special axios instance for GitHub Codespaces
-  const createCodespacesAxios = () => {
-    const instance = axios.create();
-    
-    // Add a response interceptor to handle redirect responses
-    instance.interceptors.response.use(
-      (response) => {
-        // If it's a redirect, check for port doubling
-        if (response.status >= 300 && response.status < 400 && response.headers.location) {
-          const location = response.headers.location;
-          console.log(`Intercepted redirect to: ${location}`);
-          
-          // Check if location has duplicated port
-          if (location.includes(':8080')) {
-            // We'll handle this redirect manually
-            const fixedLocation = location.replace(':8080', '');
-            console.log(`Fixed redirect location: ${fixedLocation}`);
-            
-            // Store the fixed location for the caller to use
-            response.headers.fixedLocation = fixedLocation;
-          }
-        }
-        return response;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
-    
-    return instance;
-  };
-  
-  // Create the instance if we're in Codespaces
-  const isCodespaces = window.location.hostname.includes('.app.github.dev');
-  const codespacesAxios = isCodespaces ? createCodespacesAxios() : null;
 
   useEffect(() => {
     // Check for auth parameter in URL (coming from OAuth)
@@ -157,9 +67,6 @@ function MainApp() {
           
           // Set axios auth header
           axios.defaults.headers.common['Authorization'] = `Bearer ${authData.accessToken}`;
-          if (codespacesAxios) {
-            codespacesAxios.defaults.headers.common['Authorization'] = `Bearer ${authData.accessToken}`;
-          }
           
           // Remove the auth parameter from URL to avoid exposing tokens
           const url = new URL(window.location.href);
@@ -171,181 +78,25 @@ function MainApp() {
       }
     }
     
-    const apiUrl = getApiUrl()
-    console.log('Checking API status at:', apiUrl)
+    const apiUrl = getApiUrl();
+    console.log('Checking API status at:', apiUrl);
 
     const checkApiStatus = async () => {
       try {
-        console.log('Starting API status check. App version: 0.1.1');
-        
-        // Try multiple endpoints in order of reliability
-        const endpoints = [
-          // Simplified ping endpoint - most reliable
-          { path: '/api/status/ping', name: 'ping endpoint' },
-          { path: '/api/v1/status/ping', name: 'versioned ping endpoint' },
-          
-          // Direct API endpoints - prefer these for maximum compatibility
-          { path: '/api/status', name: 'direct status' },
-          { path: '/api/status/', name: 'direct status with trailing slash' },
-          
-          // Main versioned API endpoints
-          { path: '/api/v1/status', name: 'versioned status' },
-          { path: '/api/v1/status/', name: 'versioned status with trailing slash' },
-          
-          // Version endpoints as alternative
-          { path: '/api/version', name: 'direct version' },
-          { path: '/api/v1/status/version', name: 'versioned status/version' },
-          
-          // Root endpoints as last resort
-          { path: '/', name: 'server root' }
-        ];
-        
-        // Try each endpoint until one works
-        for (const endpoint of endpoints) {
-          try {
-            console.log(`Trying ${endpoint.name} endpoint: ${apiUrl}${endpoint.path}`)
-            // For Codespaces, handle redirects ourselves to prevent port doubling
-            const isCodespaces = window.location.hostname.includes('.app.github.dev');
-            const options = {
-              // Disable auto-redirects in Codespaces
-              validateStatus: function (status) {
-                return status < 500; // Accept any status code less than 500
-              },
-              headers: {
-                // Add headers to help with Codespaces port forwarding
-                'X-Forwarded-Host': window.location.host,
-                'X-Forwarded-Proto': 'https'
-              }
-            };
-            
-            console.log(`Request options:`, options);
-            
-            // Use our special Codespaces axios instance if available
-            const axiosToUse = isCodespaces && codespacesAxios ? codespacesAxios : axios;
-            console.log(`Using ${isCodespaces ? 'Codespaces' : 'standard'} axios instance`);
-            
-            const response = await axiosToUse.get(`${apiUrl}${endpoint.path}`, options)
-            
-            // Special handling for GitHub Codespaces redirects
-            if (isCodespaces && response.status >= 300 && response.status < 400) {
-              console.log(`Received redirect status: ${response.status}`);
-              
-              // Check for the location header (regular or our fixed one)
-              const location = response.headers.location;
-              const fixedLocation = response.headers.fixedLocation || location;
-              
-              if (location) {
-                console.log(`Redirect location: ${location}`);
-                if (fixedLocation !== location) {
-                  console.log(`Using fixed location: ${fixedLocation}`);
-                }
-                
-                try {
-                  // Check for double port issue
-                  if (location.includes(':8080') && location.includes('-8080.app.github.dev')) {
-                    console.log(`⚠️ Detected double port in redirect URL, fixing it...`);
-                  }
-                  
-                  // Follow the redirect manually with the appropriate URL
-                  console.log(`Following redirect to: ${fixedLocation}`);
-                  const redirectResponse = await axiosToUse.get(fixedLocation, {
-                    ...options,
-                    // Still no auto-redirects
-                  });
-                  
-                  // If we get a successful response, use it
-                  if (redirectResponse.status >= 200 && redirectResponse.status < 300) {
-                    console.log(`Redirect successful:`, redirectResponse.data);
-                    setApiStatus('Connected');
-                    setApiMessage((redirectResponse.data as ApiResponse).message || `Game API Server is operational (redirected)`);
-                    setApiEnvironment((redirectResponse.data as ApiResponse).environment || 'gameserver');
-                    return;
-                  } else if (redirectResponse.status >= 300 && redirectResponse.status < 400) {
-                    // Try one more level of redirection
-                    const nestedLocation = redirectResponse.headers.location;
-                    const nestedFixedLocation = 
-                      (nestedLocation && nestedLocation.includes(':8080') && nestedLocation.includes('-8080.app.github.dev')) 
-                        ? nestedLocation.replace(':8080', '') 
-                        : nestedLocation;
-                    
-                    console.log(`Another redirect detected to: ${nestedFixedLocation}`);
-                    try {
-                      const nestedResponse = await axiosToUse.get(nestedFixedLocation, {
-                        ...options,
-                        // No auto-redirects
-                      });
-                      
-                      if (nestedResponse.status >= 200 && nestedResponse.status < 300) {
-                        console.log(`Final redirect successful:`, nestedResponse.data);
-                        setApiStatus('Connected');
-                        setApiMessage((nestedResponse.data as ApiResponse).message || `Game API Server operational`);
-                        setApiEnvironment((nestedResponse.data as ApiResponse).environment || 'gameserver');
-                        return;
-                      }
-                    } catch (nestedError) {
-                      console.warn(`Failed to follow nested redirect:`, nestedError);
-                    }
-                  }
-                } catch (redirectError) {
-                  console.warn(`Failed to follow redirect:`, redirectError);
-                }
-                
-                // Just mark as connected if any response comes back
-                setApiStatus('Connected (with redirect)');
-                setApiMessage(`Game server is responding`);
-                setApiEnvironment('gameserver');
-                return;
-              }
-            }
-            
-            // Accept any 2xx status as success
-            if (response.status >= 200 && response.status < 300) {
-              console.log(`API connection successful via ${endpoint.name} endpoint`, response.data);
-              setApiStatus('Connected');
-              
-              // Extract message and environment based on endpoint
-              if (endpoint.path.includes('version')) {
-                setApiMessage(`Game API Server v${(response.data as ApiResponse).version || '0.1.0'}`);
-              } else if (endpoint.path.includes('ping')) {
-                setApiMessage(`Game API Server is operational (ping: ${(response.data as ApiResponse).ping})`);
-              } else {
-                setApiMessage((response.data as ApiResponse).message || 'Game API Server is operational');
-              }
-              
-              setApiEnvironment((response.data as ApiResponse).environment || 'gameserver');
-              
-              // Log success for debugging
-              console.log(`SUCCESS: Connected to API via ${endpoint.name}`);
-              return;
-            }
-          } catch (endpointError) {
-            // More detailed error logging
-            console.warn(`${endpoint.name} endpoint failed:`, endpointError);
-            const err = endpointError as any;
-            if (err.response) {
-              // The request was made and the server responded with a status code
-              // that falls out of the range of 2xx
-              console.error('Error response data:', err.response.data);
-              console.error('Error response status:', err.response.status);
-              console.error('Error response headers:', err.response.headers);
-            } else if (err.request) {
-              // The request was made but no response was received
-              console.error('Error request (no response received):', err.request);
-            } else {
-              // Something happened in setting up the request that triggered an Error
-              console.error('Error message:', err.message);
-            }
-            console.error('Error config:', err.config);
-          }
+        const response = await axios.get(`${apiUrl}/api/v1/status`, {
+          timeout: 5000
+        });
+
+        if (response.status === 200 && response.data) {
+          setApiStatus('Online');
+          setApiMessage(response.data.message || 'Game server operational');
+          setApiEnvironment(response.data.environment || 'production');
         }
-        
-        // If we get here, all endpoints failed
-        throw new Error('All API endpoints failed')
       } catch (error) {
-        console.error('Error connecting to API (all attempts failed):', error)
-        console.error('apiUrl used:', apiUrl)
-        console.error('Current location:', window.location.toString())
-        setApiStatus('Error connecting to API')
+        console.error('API status check failed:', error);
+        setApiStatus('Offline');
+        setApiMessage('Unable to connect to game server');
+        setApiEnvironment('');
       }
     }
 
@@ -449,6 +200,10 @@ function MainApp() {
             <p className="subtitle">The Future of Space Trading</p>
           </div>
           <div className="header-actions">
+            <div className="status-indicator-header" title={`Server: ${apiStatus} - ${apiMessage}`}>
+              <span className={`status-dot ${apiStatus === 'Online' ? 'online' : 'offline'}`}></span>
+              <span className="status-text-compact">{apiStatus}</span>
+            </div>
             {!isAuthenticated && (
               <>
                 <button className="header-btn" onClick={handleLoginClick}>Login</button>
@@ -725,44 +480,39 @@ function MainApp() {
               </div>
             </section>
 
-            {/* Status and News Section */}
-            <section className="sidebar-content">
-              <div className="status-section">
-                <h3>Game Server Status</h3>
-                <div className="status-indicator">
-                  <span className={`status-dot ${apiStatus.includes('Connected') ? 'connected' : 'disconnected'}`}></span>
-                  <span className="status-text">{apiStatus}</span>
-                </div>
-                {apiStatus.includes('Connected') ? (
-                  <div className="api-info">
-                    <p><strong>Message:</strong> {apiMessage}</p>
-                    <p><strong>Environment:</strong> {apiEnvironment}</p>
-                  </div>
-                ) : (
-                  <div className="api-info error-info">
-                    <p><strong>API URL:</strong> {getFullApiUrl()}</p>
-                    <p><strong>URLs tried:</strong></p>
-                    <pre className="api-urls-tried">{getAllTestUrls()}</pre>
-                  </div>
-                )}
+            {/* Latest Updates Section */}
+            <section className="updates-section">
+              <div className="section-header">
+                <h2 className="section-title">Latest Updates</h2>
+                <p className="section-subtitle">Stay informed about the newest features and improvements</p>
               </div>
 
-              <div className="news-section">
-                <h3>Latest Updates</h3>
-                <div className="news-item">
-                  <span className="news-date">December 2024</span>
-                  <h4 className="news-title">AI Trading Assistant ARIA Launched</h4>
-                  <p className="news-desc">Revolutionary AI companion now helps players with personalized market analysis and trading recommendations.</p>
+              <div className="updates-grid">
+                <div className="update-card">
+                  <div className="update-icon">🤖</div>
+                  <div className="update-content">
+                    <span className="update-date">December 2024</span>
+                    <h3>AI Trading Assistant ARIA Launched</h3>
+                    <p>Revolutionary AI companion now helps players with personalized market analysis and trading recommendations.</p>
+                  </div>
                 </div>
-                <div className="news-item">
-                  <span className="news-date">November 2024</span>
-                  <h4 className="news-title">Quantum Warp Tunnels Live</h4>
-                  <p className="news-desc">Players can now build warp gates to access hidden sectors and expand the universe.</p>
+
+                <div className="update-card">
+                  <div className="update-icon">🌀</div>
+                  <div className="update-content">
+                    <span className="update-date">November 2024</span>
+                    <h3>Quantum Warp Tunnels Live</h3>
+                    <p>Players can now build warp gates to access hidden sectors and expand the universe.</p>
+                  </div>
                 </div>
-                <div className="news-item">
-                  <span className="news-date">October 2024</span>
-                  <h4 className="news-title">Genesis Devices Released</h4>
-                  <p className="news-desc">Create new planets in empty space using advanced terraforming technology.</p>
+
+                <div className="update-card">
+                  <div className="update-icon">🌍</div>
+                  <div className="update-content">
+                    <span className="update-date">October 2024</span>
+                    <h3>Genesis Devices Released</h3>
+                    <p>Create new planets in empty space using advanced terraforming technology.</p>
+                  </div>
                 </div>
               </div>
             </section>
