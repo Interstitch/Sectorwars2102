@@ -157,10 +157,13 @@ const GameDashboard: React.FC = () => {
               <div className="hud-overlay top-left">
                 <div className="hud-label">LOCATION</div>
                 <div className="hud-value">
-                  {currentSector.region_name ? `${currentSector.region_name.toUpperCase()} - ` : ''}
+                  {currentSector.region_name && currentSector.region_name.toUpperCase()}
+                  {currentSector.region_name && ' - '}
                   SECTOR {currentSector.sector_number || currentSector.sector_id}
                 </div>
-                <div className="hud-value-secondary">{currentSector.name.toUpperCase()}</div>
+                <div className="hud-value-secondary">
+                  {currentSector.type ? currentSector.type.replace(/_/g, ' ').toUpperCase() : 'STANDARD'}
+                </div>
                 {playerState && (
                   <div className="hud-pilot">
                     <span className="status-indicator online"></span>
