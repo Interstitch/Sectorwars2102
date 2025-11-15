@@ -93,8 +93,9 @@ async def get_ships(
 ):
     """Get all ships with optional filters and pagination."""
     
-    # Build query - join with ShipSpecification to get cargo capacity
-    query = db.query(Ship, ShipSpecification).join(
+    # Build query - outer join with ShipSpecification to get cargo capacity
+    # Use outerjoin in case ShipSpecification table is not populated
+    query = db.query(Ship, ShipSpecification).outerjoin(
         ShipSpecification, Ship.type == ShipSpecification.type
     )
 
@@ -150,7 +151,8 @@ async def get_ships(
 
         # Calculate cargo usage
         cargo_used = sum(cargo.values()) if cargo else 0
-        cargo_capacity = spec.max_cargo
+        # Get cargo capacity from spec if available, otherwise use default
+        cargo_capacity = spec.max_cargo if spec else 10  # Default to 10 if no spec
         cargo_percent = (cargo_used / cargo_capacity * 100) if cargo_capacity > 0 else 0
 
         ship_data = {
