@@ -14,7 +14,7 @@ from src.core.database import get_async_session
 from src.models.sector import Sector
 from src.models.planet import Planet
 from src.models.port import Port
-from src.models.warp_tunnel import WarpTunnel
+from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
 from src.models.region import Region
 from src.models.cluster import Cluster
 from src.models.galaxy import GalaxyZone
@@ -283,14 +283,11 @@ class NexusGenerationService:
 
                 logger.info(f"District {config['name']} completed: {district_stats}")
 
-            # TODO: Generate inter-regional warp gates
-            # Commented out for now because:
-            # 1. WarpTunnel.destination_sector_id is NOT NULL but we don't know destinations yet
-            # 2. Both origin/destination need UUIDs (sectors.id), not integers (sector_id)
-            # 3. Inter-regional gates require knowing what regions exist to connect to
-            # This should be implemented as a separate admin action after regions are created
-            # await self._generate_inter_regional_gates(session, str(nexus_region.id))
-            logger.info("Skipping inter-regional warp gate generation (to be implemented after regions exist)")
+            # Generate intra-regional warp tunnels for navigation within Central Nexus
+            logger.info("Generating warp tunnels for Central Nexus sectors...")
+            warp_tunnel_count = await self._generate_warp_tunnels(session, str(nexus_region.id))
+            generation_stats["total_warp_gates"] = warp_tunnel_count
+            logger.info(f"Created {warp_tunnel_count} warp tunnels")
 
             # Create special galactic features
             await self._create_galactic_features(session, str(nexus_region.id))
@@ -730,6 +727,191 @@ class NexusGenerationService:
         
         logger.info(f"District {district_type} regenerated: {stats}")
         return stats
+
+    async def _generate_warp_tunnels(self, session: AsyncSession, region_id: str) -> int:
+        """Generate warp tunnels for Central Nexus sectors with density based on sector numbers.
+
+        Lower sector numbers get more warp tunnels (4-7 tunnels) while higher sector numbers
+        get fewer (2-4 tunnels) to represent diminishing connectivity towards the periphery.
+        """
+        logger.info("Building sectors map for warp tunnel generation...")
+
+        # Query all sectors in this region with their coordinates
+        result = await session.execute(
+            select(Sector).where(Sector.region_id == region_id)
+        )
+        all_sectors = result.scalars().all()
+
+        if not all_sectors:
+            logger.warning("No sectors found for warp tunnel generation")
+            return 0
+
+        # Build sectors_map: sector_id (int) -> Sector object
+        sectors_map = {sector.sector_id: sector for sector in all_sectors}
+        all_sector_ids = list(sectors_map.keys())
+
+        sector_connections = {sector_id: 0 for sector_id in all_sector_ids}
+        created_tunnels = set()
+
+        logger.info(f"Creating warp tunnel network for {len(all_sectors)} sectors")
+
+        # First pass: Ensure every sector has at least 1 connection
+        for source_num in all_sector_ids:
+            if sector_connections[source_num] == 0:
+                # Find a connection for this isolated sector
+                available_targets = [s for s in all_sector_ids if s != source_num]
+                if available_targets:
+                    dest_num = random.choice(available_targets)
+                    await self._create_single_warp_tunnel(
+                        session, source_num, dest_num, sectors_map, created_tunnels, sector_connections
+                    )
+
+        # Second pass: Add more connections based on sector number density
+        # Lower sector numbers = more tunnels (4-7), higher numbers = fewer (2-4)
+        for source_num in all_sector_ids:
+            current_connections = sector_connections[source_num]
+
+            # Calculate target connections based on sector number
+            # Sectors 1-1000: 4-7 tunnels
+            # Sectors 1001-3000: 3-5 tunnels
+            # Sectors 3001-5000: 2-4 tunnels
+            if source_num <= 1000:
+                target_connections = random.randint(4, 7)
+            elif source_num <= 3000:
+                target_connections = random.randint(3, 5)
+            else:
+                target_connections = random.randint(2, 4)
+
+            # Add more connections if needed
+            while current_connections < target_connections:
+                # Find a suitable destination
+                available_targets = [s for s in all_sector_ids
+                                   if s != source_num and
+                                   (source_num, s) not in created_tunnels and
+                                   (s, source_num) not in created_tunnels]
+
+                if not available_targets:
+                    break  # No more available targets
+
+                # Prefer connecting to sectors with fewer connections
+                available_targets.sort(key=lambda x: sector_connections[x])
+
+                # Choose from the least connected sectors (with some randomness)
+                choice_pool_size = min(5, len(available_targets))
+                dest_num = random.choice(available_targets[:choice_pool_size])
+
+                await self._create_single_warp_tunnel(
+                    session, source_num, dest_num, sectors_map, created_tunnels, sector_connections
+                )
+                current_connections += 1
+
+        total_tunnels = len(created_tunnels)
+        avg_connections = sum(sector_connections.values()) / len(sector_connections)
+        logger.info(f"Created {total_tunnels} warp tunnels, average {avg_connections:.1f} connections per sector")
+
+        return total_tunnels
+
+    async def _create_single_warp_tunnel(
+        self,
+        session: AsyncSession,
+        source_num: int,
+        dest_num: int,
+        sectors_map: Dict[int, Sector],
+        created_tunnels: set,
+        sector_connections: dict
+    ) -> None:
+        """Create a single warp tunnel between two sectors."""
+        source = sectors_map[source_num]
+        dest = sectors_map[dest_num]
+
+        # Calculate distance
+        distance = self._calculate_sector_distance(source, dest)
+
+        # Create warp tunnel
+        tunnel_name = f"Nexus Warp {source_num}-{dest_num}"
+        tunnel_type = self._choose_warp_tunnel_type()
+
+        # Most tunnels are bidirectional (85%), some are one-way (15%)
+        is_bidirectional = random.random() > 0.15
+
+        tunnel = WarpTunnel(
+            name=tunnel_name,
+            origin_sector_id=source.id,  # UUID from sectors.id
+            destination_sector_id=dest.id,  # UUID from sectors.id
+            type=tunnel_type,
+            status=WarpTunnelStatus.ACTIVE,
+            is_bidirectional=is_bidirectional,
+            stability=self._get_stability_for_tunnel_type(tunnel_type),
+            turn_cost=self._get_turn_cost_for_tunnel_type(tunnel_type, distance),
+            is_public=True,
+            description=f"Warp tunnel connecting Sector {source_num} to Sector {dest_num}"
+        )
+
+        session.add(tunnel)
+        await session.flush()
+
+        # Track the connection
+        created_tunnels.add((source_num, dest_num))
+        sector_connections[source_num] += 1
+
+        # If bidirectional, count for destination too
+        if is_bidirectional:
+            sector_connections[dest_num] += 1
+
+    def _calculate_sector_distance(self, sector1: Sector, sector2: Sector) -> float:
+        """Calculate 3D distance between sectors."""
+        return ((sector1.x_coord - sector2.x_coord) ** 2 +
+                (sector1.y_coord - sector2.y_coord) ** 2 +
+                (sector1.z_coord - sector2.z_coord) ** 2) ** 0.5
+
+    def _choose_warp_tunnel_type(self) -> WarpTunnelType:
+        """Choose a warp tunnel type randomly."""
+        weights = {
+            WarpTunnelType.STANDARD: 60,
+            WarpTunnelType.QUANTUM: 15,
+            WarpTunnelType.ANCIENT: 10,
+            WarpTunnelType.ARTIFICIAL: 8,
+            WarpTunnelType.UNSTABLE: 5,
+            WarpTunnelType.ONE_WAY: 2
+        }
+
+        choices = []
+        for tunnel_type, weight in weights.items():
+            choices.extend([tunnel_type] * weight)
+
+        return random.choice(choices)
+
+    def _get_stability_for_tunnel_type(self, tunnel_type: WarpTunnelType) -> float:
+        """Get stability value for a warp tunnel type."""
+        stability_map = {
+            WarpTunnelType.NATURAL: random.uniform(0.8, 0.95),
+            WarpTunnelType.ARTIFICIAL: random.uniform(0.8, 0.95),
+            WarpTunnelType.STANDARD: random.uniform(0.9, 1.0),
+            WarpTunnelType.QUANTUM: random.uniform(0.7, 0.9),
+            WarpTunnelType.ANCIENT: random.uniform(0.5, 0.8),
+            WarpTunnelType.UNSTABLE: random.uniform(0.3, 0.6),
+            WarpTunnelType.ONE_WAY: random.uniform(0.7, 0.95)
+        }
+        return stability_map.get(tunnel_type, 0.8)
+
+    def _get_turn_cost_for_tunnel_type(self, tunnel_type: WarpTunnelType, distance: float) -> int:
+        """Calculate turn cost for a warp tunnel."""
+        # Base cost based on standard distance
+        base_cost = max(1, int(distance / 10))
+
+        # Adjust based on tunnel type
+        multiplier_map = {
+            WarpTunnelType.NATURAL: 1.0,
+            WarpTunnelType.ARTIFICIAL: 0.7,
+            WarpTunnelType.STANDARD: 1.0,
+            WarpTunnelType.QUANTUM: 0.5,  # Faster
+            WarpTunnelType.ANCIENT: 0.8,
+            WarpTunnelType.UNSTABLE: 1.5,  # Slower, riskier
+            WarpTunnelType.ONE_WAY: 0.9
+        }
+
+        adjusted_cost = int(base_cost * multiplier_map.get(tunnel_type, 1.0))
+        return max(1, adjusted_cost)  # Ensure at least 1 turn
 
 
 # Singleton instance
