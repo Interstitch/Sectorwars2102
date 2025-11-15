@@ -168,7 +168,7 @@ async def get_ships(
             "sector": {
                 "id": str(ship.sector_id) if ship.sector_id else None,
                 "name": ship.sector.name if ship.sector else "Deep Space",
-                "coordinates": f"({ship.sector.x}, {ship.sector.y})" if ship.sector else "Unknown"
+                "coordinates": f"({ship.sector.x_coord}, {ship.sector.y_coord}, {ship.sector.z_coord})" if ship.sector else "Unknown"
             },
             "health": {
                 "hull": hull,
