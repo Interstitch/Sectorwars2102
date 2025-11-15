@@ -1,0 +1,120 @@
+/* ============================================
+   SECTOR VIEWPORT - Living Canvas Display
+   ============================================ */
+
+.sector-viewport-container {
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: radial-gradient(circle at center, rgba(10, 14, 26, 0.95) 0%, rgba(5, 8, 16, 0.98) 100%);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.sector-viewport-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: crisp-edges;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* Viewport Overlay - HUD elements */
+.viewport-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.viewport-label {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, rgba(10, 14, 26, 0.9) 0%, rgba(5, 8, 16, 0.95) 100%);
+  border: 1px solid rgba(0, 217, 255, 0.5);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #00d9ff;
+  text-shadow: 0 0 10px rgba(0, 217, 255, 0.8);
+  box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+  animation: label-pulse 3s ease-in-out infinite;
+}
+
+/* Scanline effect overlay */
+.sector-viewport-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 217, 255, 0.03) 1px,
+    rgba(0, 0, 0, 0.15) 2px
+  );
+  pointer-events: none;
+  opacity: 0.4;
+  animation: scanline-drift 12s linear infinite;
+}
+
+/* Corner brackets - HUD frame */
+.sector-viewport-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    linear-gradient(90deg, rgba(0, 217, 255, 0.5) 0%, transparent 2%, transparent 98%, rgba(0, 217, 255, 0.5) 100%),
+    linear-gradient(0deg, rgba(0, 217, 255, 0.5) 0%, transparent 2%, transparent 98%, rgba(0, 217, 255, 0.5) 100%);
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* Animations */
+@keyframes label-pulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+    border-color: rgba(0, 217, 255, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(0, 217, 255, 0.5);
+    border-color: rgba(0, 217, 255, 0.7);
+  }
+}
+
+@keyframes scanline-drift {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(50px);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .viewport-label {
+    font-size: 0.7rem;
+    padding: 0.4rem 0.8rem;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .viewport-label,
+  .sector-viewport-container::before {
+    animation: none;
+  }
+}

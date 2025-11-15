@@ -8,6 +8,9 @@ import TradingInterface from '../trading/TradingInterface';
 import QuantumTradingInterface from '../trading/QuantumTradingInterface';
 import EnhancedAIAssistant from '../ai/EnhancedAIAssistant';
 import TacticalCard from '../tactical/TacticalCard';
+import SectorViewport from '../tactical/SectorViewport';
+import PortCard from '../tactical/PortCard';
+import PlanetCard from '../tactical/PlanetCard';
 import './game-dashboard.css';
 import '../tactical/tactical-layout.css';
 
@@ -180,6 +183,18 @@ const GameDashboard: React.FC = () => {
                       <h4>Sector {currentSector.id}: {currentSector.name}</h4>
                       <div className="tactical-badge">{currentSector.type}</div>
 
+                      {/* Living Sector Viewport */}
+                      <SectorViewport
+                        sectorType={currentSector.type}
+                        sectorName={currentSector.name}
+                        hazardLevel={currentSector.hazard_level}
+                        radiationLevel={currentSector.radiation_level}
+                        ports={portsInSector}
+                        planets={planetsInSector}
+                        width={450}
+                        height={300}
+                      />
+
                       {currentSector.hazard_level > 0 && (
                         <div className="sector-hazard-info">
                           <div className="hazard-label">⚠️ Hazard Level:</div>
@@ -227,50 +242,26 @@ const GameDashboard: React.FC = () => {
                 {/* Ports */}
                 {portsInSector.length > 0 && (
                   <TacticalCard title="SPACE PORTS" icon="🏢" glowColor="cyan" className="animate-slide-in">
-                    <div className="ports-list">
-                      {portsInSector.map(port => (
-                        <div key={port.id} className="port-item">
-                          <div className="port-details">
-                            <div className="port-name">{port.name}</div>
-                            <div className="tactical-badge">{port.type}</div>
-                            {port.faction_affiliation && (
-                              <div className="port-faction">Faction: {port.faction_affiliation}</div>
-                            )}
-                          </div>
-                          <button
-                            className="cockpit-btn primary dock-button"
-                            onClick={() => handleDock(port.id)}
-                            disabled={playerState?.is_ported}
-                          >
-                            DOCK
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                    {portsInSector.map(port => (
+                      <PortCard
+                        key={port.id}
+                        port={port}
+                        onDock={handleDock}
+                        isDocked={playerState?.is_ported || false}
+                      />
+                    ))}
                   </TacticalCard>
                 )}
 
                 {/* Planets */}
                 {planetsInSector.length > 0 && (
                   <TacticalCard title="PLANETS" icon="🪐" glowColor="purple" className="animate-slide-in">
-                    <div className="planets-list">
-                      {planetsInSector.map(planet => (
-                        <div key={planet.id} className="planet-item">
-                          <div className="planet-name">{planet.name}</div>
-                          <div className="tactical-badge success">{planet.type}</div>
-                          <div className="planet-status">{planet.status}</div>
-                          {planet.habitability_score > 0 && (
-                            <div className="planet-habitability">
-                              <div>Habitability:</div>
-                              <div className="progress-bar">
-                                <div className="progress-fill" style={{ width: `${planet.habitability_score}%` }}></div>
-                              </div>
-                              <div>{planet.habitability_score}%</div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                    {planetsInSector.map(planet => (
+                      <PlanetCard
+                        key={planet.id}
+                        planet={planet}
+                      />
+                    ))}
                   </TacticalCard>
                 )}
 
