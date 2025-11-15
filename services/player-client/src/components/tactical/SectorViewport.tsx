@@ -62,15 +62,30 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
     if (!isAnimating) return;
 
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      console.warn('🎨 Canvas ref is null');
+      return;
+    }
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.warn('🎨 Could not get 2D context');
+      return;
+    }
 
+    console.log('🎨 Starting animation loop', { width, height, particleCount: particlesRef.current.length });
+
+    let frameCount = 0;
     const animate = () => {
       // Clear canvas with fade effect for trails
       ctx.fillStyle = 'rgba(5, 8, 16, 0.15)';
       ctx.fillRect(0, 0, width, height);
+
+      // Debug: Log first few frames
+      if (frameCount < 3) {
+        console.log(`🎨 Frame ${frameCount}: Drawing ${particlesRef.current.length} particles`);
+        frameCount++;
+      }
 
       // Draw starfield background
       drawStarfield(ctx, width, height);
@@ -193,14 +208,18 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
 // Helper functions
 
 function getParticleCount(sectorType: string, hazardLevel: number): number {
+  // Normalize sector type
+  const normalizedType = sectorType?.toLowerCase() || 'normal';
+
   const baseCount = {
     'normal': 50,
+    'standard': 50,
     'nebula': 150,
     'asteroid_field': 80,
     'ice_field': 100,
     'radiation_zone': 120,
     'void': 20
-  }[sectorType] || 50;
+  }[normalizedType] || 50;
 
   return baseCount + (hazardLevel * 10);
 }
@@ -211,8 +230,12 @@ function createParticle(
   height: number,
   radiationLevel: number
 ): Particle {
+  // Normalize sector type
+  const normalizedType = sectorType?.toLowerCase() || 'normal';
+
   const colorSchemes = {
     'normal': ['#ffffff', '#c0c0c0', '#00d9ff'],
+    'standard': ['#ffffff', '#c0c0c0', '#00d9ff'],
     'nebula': ['#c961de', '#9333ea', '#00d9ff', '#00ff41'],
     'asteroid_field': ['#8b4513', '#a0522d', '#696969'],
     'ice_field': ['#00d9ff', '#88ddff', '#ffffff'],
@@ -220,7 +243,7 @@ function createParticle(
     'void': ['#1a1a2e', '#16213e', '#0f0f23']
   };
 
-  const colors = colorSchemes[sectorType as keyof typeof colorSchemes] || colorSchemes['normal'];
+  const colors = colorSchemes[normalizedType as keyof typeof colorSchemes] || colorSchemes['normal'];
   const color = colors[Math.floor(Math.random() * colors.length)];
 
   return {
@@ -243,17 +266,20 @@ function updateParticles(
   height: number,
   radiationLevel: number
 ) {
+  // Normalize sector type
+  const normalizedType = sectorType?.toLowerCase() || 'normal';
+
   particles.forEach(particle => {
     // Update position
     particle.x += particle.vx;
     particle.y += particle.vy;
 
     // Sector-specific behaviors
-    if (sectorType === 'nebula') {
+    if (normalizedType === 'nebula') {
       // Swirling motion
       particle.vx += Math.sin(particle.life * 0.01) * 0.02;
       particle.vy += Math.cos(particle.life * 0.01) * 0.02;
-    } else if (sectorType === 'radiation_zone') {
+    } else if (normalizedType === 'radiation_zone') {
       // Pulsing motion
       particle.opacity = 0.3 + Math.sin(particle.life * 0.05) * 0.3;
     }
@@ -570,6 +596,9 @@ function drawSectorEffects(
   hazardLevel: number,
   radiationLevel: number
 ) {
+  // Normalize sector type
+  const normalizedType = sectorType?.toLowerCase() || 'normal';
+
   // Radiation glow overlay
   if (radiationLevel > 0) {
     ctx.fillStyle = `rgba(0, 255, 65, ${radiationLevel * 0.1})`;
@@ -585,7 +614,7 @@ function drawSectorEffects(
   }
 
   // Sector-specific overlays
-  if (sectorType === 'void') {
+  if (normalizedType === 'void') {
     // Vignette effect for void sectors
     const gradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width / 2);
     gradient.addColorStop(0, 'rgba(5, 8, 16, 0)');

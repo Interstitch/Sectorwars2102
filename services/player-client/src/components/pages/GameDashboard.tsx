@@ -128,7 +128,7 @@ const GameDashboard: React.FC = () => {
             <>
               {/* Space viewport - edge to edge */}
               <SectorViewport
-                sectorType={currentSector.type}
+                sectorType={currentSector.type?.toLowerCase() || 'normal'}
                 sectorName={currentSector.name}
                 hazardLevel={currentSector.hazard_level}
                 radiationLevel={currentSector.radiation_level}
