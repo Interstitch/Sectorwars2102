@@ -989,56 +989,62 @@ async def get_sector_port(
 ):
     """Get port details for a specific sector"""
     port = db.query(Port).filter(Port.sector_id == sector_id).first()
-    
+
     if not port:
-        raise HTTPException(status_code=404, detail="No port found in this sector")
-    
+        return {
+            "has_port": False,
+            "port": None
+        }
+
     # Extract defense data from JSONB field
     defenses = port.defenses or {}
-    
+
     return {
-        "id": str(port.id),
-        "name": port.name,
-        "sector_id": port.sector_id,
-        "port_class": port.port_class.value if port.port_class else None,
-        "type": port.type.value if port.type else None,
-        "status": port.status.value if port.status else None,
-        "size": port.size,
-        "owner_id": str(port.owner_id) if port.owner_id else None,
-        "faction_affiliation": port.faction_affiliation,
-        "trade_volume": port.trade_volume,
-        "market_volatility": port.market_volatility,
-        "tax_rate": 5.0,  # Default tax rate - TODO: Add to Port model
-        
-        # Defense information from JSONB
-        "defense_level": defenses.get("defense_drones", 0),
-        "defense_drones": defenses.get("defense_drones", 0),
-        "max_defense_drones": defenses.get("max_defense_drones", 50),
-        "shields": defenses.get("shield_strength", 50),
-        "defense_weapons": defenses.get("defense_drones", 0),  # Using defense_drones as weapons count
-        "patrol_ships": defenses.get("patrol_ships", 0),
-        
-        # Services and pricing
-        "services": port.services,
-        "service_prices": port.service_prices,
-        "price_modifiers": port.price_modifiers,
-        "commodities": port.commodities,
-        
-        # Management
-        "ownership": port.ownership,
-        "is_player_ownable": port.is_player_ownable,
-        "reputation_threshold": port.reputation_threshold,
-        
-        # Market information
-        "last_market_update": port.last_market_update.isoformat() if port.last_market_update else None,
-        "market_update_frequency": port.market_update_frequency,
-        
-        # Special flags
-        "is_quest_hub": port.is_quest_hub,
-        "is_faction_headquarters": port.is_faction_headquarters,
-        
-        # Acquisition requirements
-        "acquisition_requirements": port.acquisition_requirements
+        "has_port": True,
+        "port": {
+            "id": str(port.id),
+            "name": port.name,
+            "sector_id": port.sector_id,
+            "port_class": port.port_class.value if port.port_class else None,
+            "type": port.type.value if port.type else None,
+            "status": port.status.value if port.status else None,
+            "size": port.size,
+            "owner_id": str(port.owner_id) if port.owner_id else None,
+            "faction_affiliation": port.faction_affiliation,
+            "trade_volume": port.trade_volume,
+            "market_volatility": port.market_volatility,
+            "tax_rate": 5.0,  # Default tax rate - TODO: Add to Port model
+
+            # Defense information from JSONB
+            "defense_level": defenses.get("defense_drones", 0),
+            "defense_drones": defenses.get("defense_drones", 0),
+            "max_defense_drones": defenses.get("max_defense_drones", 50),
+            "shields": defenses.get("shield_strength", 50),
+            "defense_weapons": defenses.get("defense_drones", 0),  # Using defense_drones as weapons count
+            "patrol_ships": defenses.get("patrol_ships", 0),
+
+            # Services and pricing
+            "services": port.services,
+            "service_prices": port.service_prices,
+            "price_modifiers": port.price_modifiers,
+            "commodities": port.commodities,
+
+            # Management
+            "ownership": port.ownership,
+            "is_player_ownable": port.is_player_ownable,
+            "reputation_threshold": port.reputation_threshold,
+
+            # Market information
+            "last_market_update": port.last_market_update.isoformat() if port.last_market_update else None,
+            "market_update_frequency": port.market_update_frequency,
+
+            # Special flags
+            "is_quest_hub": port.is_quest_hub,
+            "is_faction_headquarters": port.is_faction_headquarters,
+
+            # Acquisition requirements
+            "acquisition_requirements": port.acquisition_requirements
+        }
     }
 
 @router.get("/sectors/{sector_id}/planet", response_model=dict)
@@ -1049,44 +1055,50 @@ async def get_sector_planet(
 ):
     """Get planet details for a specific sector"""
     planet = db.query(Planet).filter(Planet.sector_id == sector_id).first()
-    
+
     if not planet:
-        raise HTTPException(status_code=404, detail="No planet found in this sector")
-    
+        return {
+            "has_planet": False,
+            "planet": None
+        }
+
     return {
-        "id": str(planet.id),
-        "name": planet.name,
-        "sector_id": planet.sector_id,
-        "type": planet.type.value if planet.type else None,
-        "status": planet.status.value if planet.status else None,
-        "size": planet.size,
-        "position": planet.position,
-        "gravity": planet.gravity,
-        "atmosphere": planet.atmosphere,
-        "temperature": planet.temperature,
-        "water_coverage": planet.water_coverage,
-        "habitability_score": planet.habitability_score,
-        "radiation_level": planet.radiation_level,
-        "resource_richness": planet.resource_richness,
-        "resources": planet.resources,
-        "special_resources": planet.special_resources,
-        "owner_id": str(planet.owner_id) if planet.owner_id else None,
-        "colonized_at": planet.colonized_at.isoformat() if planet.colonized_at else None,
-        "population": planet.population,
-        "max_population": planet.max_population,
-        "population_growth": planet.population_growth,
-        "economy": planet.economy,
-        "production": planet.production,
-        "production_efficiency": planet.production_efficiency,
-        "defense_level": planet.defense_level,
-        "shields": planet.shields,
-        "weapon_batteries": planet.weapon_batteries,
-        "last_attacked": planet.last_attacked.isoformat() if planet.last_attacked else None,
-        "last_production": planet.last_production.isoformat() if planet.last_production else None,
-        "active_events": planet.active_events,
-        "description": planet.description,
-        "genesis_created": planet.genesis_created,
-        "genesis_device_id": str(planet.genesis_device_id) if planet.genesis_device_id else None
+        "has_planet": True,
+        "planet": {
+            "id": str(planet.id),
+            "name": planet.name,
+            "sector_id": planet.sector_id,
+            "type": planet.type.value if planet.type else None,
+            "status": planet.status.value if planet.status else None,
+            "size": planet.size,
+            "position": planet.position,
+            "gravity": planet.gravity,
+            "atmosphere": planet.atmosphere,
+            "temperature": planet.temperature,
+            "water_coverage": planet.water_coverage,
+            "habitability_score": planet.habitability_score,
+            "radiation_level": planet.radiation_level,
+            "resource_richness": planet.resource_richness,
+            "resources": planet.resources,
+            "special_resources": planet.special_resources,
+            "owner_id": str(planet.owner_id) if planet.owner_id else None,
+            "colonized_at": planet.colonized_at.isoformat() if planet.colonized_at else None,
+            "population": planet.population,
+            "max_population": planet.max_population,
+            "population_growth": planet.population_growth,
+            "economy": planet.economy,
+            "production": planet.production,
+            "production_efficiency": planet.production_efficiency,
+            "defense_level": planet.defense_level,
+            "shields": planet.shields,
+            "weapon_batteries": planet.weapon_batteries,
+            "last_attacked": planet.last_attacked.isoformat() if planet.last_attacked else None,
+            "last_production": planet.last_production.isoformat() if planet.last_production else None,
+            "active_events": planet.active_events,
+            "description": planet.description,
+            "genesis_created": planet.genesis_created,
+            "genesis_device_id": str(planet.genesis_device_id) if planet.genesis_device_id else None
+        }
     }
 
 @router.get("/sectors/{sector_id}/ships", response_model=dict)
