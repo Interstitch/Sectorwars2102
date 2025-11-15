@@ -91,7 +91,7 @@ const GameDashboard: React.FC = () => {
                 <div className="log-header">ENCOUNTER LOG:</div>
                 <ul className="encounter-list">
                   {movementResult.encounters.map((encounter: any, index: number) => (
-                    <li key={index} className="encounter-item">
+                    <li key={`encounter-${encounter.type}-${index}`} className="encounter-item">
                       {encounter.type === 'players' && (
                         <span>
                           👥 PLAYERS DETECTED: {encounter.players.length}

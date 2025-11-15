@@ -146,6 +146,7 @@
   border-radius: 4px;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  max-width: 50%;
 }
 
 .port-section.clickable {
@@ -189,6 +190,13 @@
   line-height: 1.2;
 }
 
+.port-owner {
+  font-size: 0.6rem;
+  color: #00ff41;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .port-class {
   font-size: 0.6rem;
   color: rgba(255, 215, 0, 0.9);
@@ -206,8 +214,10 @@
 
 .port-info {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
 }
 
 .port-status {
@@ -216,22 +226,6 @@
   display: flex;
   align-items: center;
   gap: 0.2rem;
-}
-
-.port-services {
-  display: flex;
-  gap: 0.3rem;
-  font-size: 0.75rem;
-}
-
-.port-services span {
-  filter: drop-shadow(0 0 2px rgba(0, 217, 255, 0.3));
-}
-
-.no-services {
-  font-size: 0.6rem;
-  color: rgba(255, 255, 255, 0.4);
-  font-style: italic;
 }
 
 /* Responsive */

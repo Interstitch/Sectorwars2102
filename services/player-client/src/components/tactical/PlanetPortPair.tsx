@@ -77,37 +77,6 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
     11: 'Advanced Tech Hub'
   };
 
-  // Service icons - matched to backend service names
-  const serviceIcons: { [key: string]: string } = {
-    // Ship services
-    'ship_repair': '🔧',
-    'ship_maintenance': '🛠️',
-    'ship_upgrades': '⚙️',
-    'ship_dealer': '🚀',
-
-    // Trading & Economy
-    'trading': '💰',
-    'market_intelligence': '📊',
-    'storage_rental': '📦',
-
-    // Equipment & Items
-    'drone_shop': '🤖',
-    'mine_dealer': '💣',
-    'genesis_dealer': '🌱',
-
-    // Facilities
-    'refining_facility': '⚗️',
-    'luxury_amenities': '✨',
-    'diplomatic_services': '🤝',
-    'insurance': '🛡️',
-
-    // Legacy/Generic
-    'fuel': '⛽',
-    'repairs': '🔧',
-    'shipyard': '🚀',
-    'equipment': '⚙️',
-    'information': '📡'
-  };
 
   // Format population
   const formatPopulation = (pop: number | undefined) => {
@@ -120,23 +89,8 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
 
   const planetIcon = planetTypeIcons[planet.type?.toLowerCase()] || '🌍';
 
-  // Get available services
-  const availableServices = port?.services
-    ? Object.entries(port.services)
-        .filter(([_, available]) => available)
-        .map(([service, _]) => serviceIcons[service] || '❓')
-    : [];
-
-  // Debug: Check if port class is being sent
-  if (port) {
-    console.log('Port data check:', {
-      name: port.name,
-      hasClass: port.port_class !== undefined,
-      port_class: port.port_class,
-      type: port.type,
-      fullPort: port
-    });
-  }
+  // Get port owner display name
+  const portOwnerDisplay = port?.owner_name || (port?.faction_affiliation ? `${port.faction_affiliation} Faction` : null);
 
   const handlePlanetClick = () => {
     if (isLanded) return;
@@ -192,22 +146,16 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
           <div className="port-details">
             <div className="port-name-line">
               <span className="port-name">{port.name}</span>
+              {portOwnerDisplay && <span className="port-owner">{portOwnerDisplay}</span>}
+            </div>
+            <div className="port-info">
               {port.port_class !== undefined && (
                 <span className="port-class">Class {port.port_class}: {portClassNames[port.port_class] || 'Unknown'}</span>
               )}
               <span className="port-type">{port.type.replace(/_/g, ' ')}</span>
-            </div>
-            <div className="port-info">
               <span className="port-status">
                 {port.status.toLowerCase() === 'operational' ? '🟢' : '🔴'} {port.status}
               </span>
-              <div className="port-services">
-                {availableServices.length > 0 ? (
-                  availableServices.map((icon, i) => <span key={i}>{icon}</span>)
-                ) : (
-                  <span className="no-services">Offline</span>
-                )}
-              </div>
             </div>
           </div>
         </div>
