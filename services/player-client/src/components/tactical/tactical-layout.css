@@ -1,0 +1,200 @@
+/* ============================================
+   TACTICAL DASHBOARD - Two-Column Layout
+   ============================================ */
+
+.tactical-dashboard {
+  display: grid;
+  grid-template-columns: 480px 1fr;
+  gap: 1.5rem;
+  min-height: calc(100vh - 200px);
+  padding: 1.5rem;
+  animation: fade-in 0.5s ease-out;
+}
+
+/* Left Column: Tactical Situation */
+.tactical-column-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 220px);
+
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 217, 255, 0.5) rgba(10, 14, 26, 0.5);
+}
+
+.tactical-column-left::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tactical-column-left::-webkit-scrollbar-track {
+  background: rgba(10, 14, 26, 0.5);
+  border-radius: 4px;
+}
+
+.tactical-column-left::-webkit-scrollbar-thumb {
+  background: rgba(0, 217, 255, 0.5);
+  border-radius: 4px;
+}
+
+.tactical-column-left::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 217, 255, 0.7);
+}
+
+/* Right Column: Navigation Network */
+.tactical-column-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 600px;
+}
+
+/* Density Toggle */
+.density-toggle-container {
+  position: fixed;
+  top: 100px;
+  right: 2rem;
+  z-index: 1000;
+  animation: slide-in 0.4s ease-out;
+}
+
+.density-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, rgba(10, 14, 26, 0.95) 0%, rgba(5, 8, 16, 0.98) 100%);
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 24px;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.density-toggle-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(0, 217, 255, 0.7);
+}
+
+.density-toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.density-toggle-switch.active {
+  background: rgba(0, 217, 255, 0.3);
+}
+
+.density-toggle-slider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #00d9ff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0, 217, 255, 0.8);
+  transition: transform 0.3s ease;
+}
+
+.density-toggle-switch.active .density-toggle-slider {
+  transform: translateX(24px);
+}
+
+/* Simplified Mode Styles */
+.simplified-mode .tactical-column-left {
+  gap: 1.5rem;
+}
+
+.simplified-mode .tactical-card {
+  font-size: 1.1em;
+}
+
+.simplified-mode .tactical-card-content {
+  padding: 1.5rem;
+}
+
+.simplified-mode .tactical-card-title {
+  font-size: 1rem;
+}
+
+/* Hide secondary information in simplified mode */
+.simplified-mode .secondary-info {
+  display: none;
+}
+
+/* Reduce animations in simplified mode */
+.simplified-mode .tactical-card::before {
+  animation: none;
+}
+
+.simplified-mode .animate-glow-pulse,
+.simplified-mode .animate-pulse,
+.simplified-mode .shimmer-effect {
+  animation: none;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 1400px) {
+  .tactical-dashboard {
+    grid-template-columns: 400px 1fr;
+    gap: 1rem;
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .tactical-dashboard {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 1.5rem;
+  }
+
+  .tactical-column-left {
+    max-height: 400px;
+  }
+
+  .tactical-column-right {
+    min-height: 500px;
+  }
+
+  .density-toggle-container {
+    position: static;
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .tactical-dashboard {
+    padding: 0.75rem;
+    gap: 1rem;
+  }
+
+  .tactical-column-left {
+    max-height: 300px;
+  }
+
+  .tactical-column-right {
+    min-height: 400px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .tactical-dashboard,
+  .tactical-column-left,
+  .tactical-column-right,
+  .density-toggle-container {
+    animation: none;
+    transition: none;
+  }
+}

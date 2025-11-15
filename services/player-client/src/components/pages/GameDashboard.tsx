@@ -7,7 +7,9 @@ import GameLayout from '../layouts/GameLayout';
 import TradingInterface from '../trading/TradingInterface';
 import QuantumTradingInterface from '../trading/QuantumTradingInterface';
 import EnhancedAIAssistant from '../ai/EnhancedAIAssistant';
+import TacticalCard from '../tactical/TacticalCard';
 import './game-dashboard.css';
+import '../tactical/tactical-layout.css';
 
 const GameDashboard: React.FC = () => {
   const { 
@@ -168,182 +170,189 @@ const GameDashboard: React.FC = () => {
         {/* Tab Content */}
         <div className="hud-panel tab-content">
           {activeTab === 'overview' && (
-            <div className="overview-tab">
-              <div className="dashboard-grid">
-                <section className="cockpit-card current-location">
-                  <div className="cockpit-card-header">
-                    <h3 className="cockpit-card-title">CURRENT SECTOR</h3>
-                  </div>
-            {currentSector ? (
-              <div className="sector-details">
-                <h4>Sector {currentSector.id}: {currentSector.name}</h4>
-                <div className="sector-type-badge">{currentSector.type}</div>
-                
-                {currentSector.hazard_level > 0 && (
-                  <div className="sector-hazard-info">
-                    <div className="hazard-label">Hazard Level:</div>
-                    <div className={`hazard-level level-${Math.min(Math.ceil(currentSector.hazard_level / 2), 5)}`}>
-                      {currentSector.hazard_level}/10
+            <div className="tactical-dashboard">
+              {/* Left Column: Tactical Situation */}
+              <div className="tactical-column-left">
+                {/* Current Sector */}
+                <TacticalCard title="CURRENT SECTOR" icon="📍" glowColor="cyan">
+                  {currentSector ? (
+                    <div className="sector-details">
+                      <h4>Sector {currentSector.id}: {currentSector.name}</h4>
+                      <div className="tactical-badge">{currentSector.type}</div>
+
+                      {currentSector.hazard_level > 0 && (
+                        <div className="sector-hazard-info">
+                          <div className="hazard-label">⚠️ Hazard Level:</div>
+                          <div className="progress-bar">
+                            <div className="progress-fill" style={{ width: `${currentSector.hazard_level * 10}%` }}></div>
+                          </div>
+                          <div>{currentSector.hazard_level}/10</div>
+                        </div>
+                      )}
+
+                      {currentSector.radiation_level > 0 && (
+                        <div className="sector-radiation-info">
+                          <div className="radiation-label">☢️ Radiation:</div>
+                          <div className="progress-bar">
+                            <div className="progress-fill" style={{ width: `${currentSector.radiation_level * 100}%` }}></div>
+                          </div>
+                          <div>{(currentSector.radiation_level * 100).toFixed(1)}%</div>
+                        </div>
+                      )}
+
+                      {currentSector.special_features && currentSector.special_features.length > 0 && (
+                        <div className="special-features">
+                          <div className="features-label">Special Features:</div>
+                          <div className="features-list">
+                            {currentSector.special_features.map(feature => (
+                              <span key={feature} className="tactical-badge">
+                                {feature.replace(/_/g, ' ')}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {currentSector.description && (
+                        <div className="sector-description">
+                          {currentSector.description}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
-                
-                {currentSector.radiation_level > 0 && (
-                  <div className="sector-radiation-info">
-                    <div className="radiation-label">Radiation Level:</div>
-                    <div className={`radiation-level level-${Math.min(Math.ceil(currentSector.radiation_level * 5), 5)}`}>
-                      {(currentSector.radiation_level * 100).toFixed(1)}%
-                    </div>
-                  </div>
-                )}
-                
-                {currentSector.special_features && currentSector.special_features.length > 0 && (
-                  <div className="special-features">
-                    <div className="features-label">Special Features:</div>
-                    <div className="features-list">
-                      {currentSector.special_features.map(feature => (
-                        <span key={feature} className="feature-badge">
-                          {feature.replace(/_/g, ' ')}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {currentSector.description && (
-                  <div className="sector-description">
-                    {currentSector.description}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="unknown-location">
-                Location data unavailable
-              </div>
-            )}
-          </section>
-          
-          <section className="sector-objects">
-            <h3>Objects in Sector</h3>
-            
-            {!planetsInSector.length && !portsInSector.length ? (
-              <div className="empty-sector">
-                No significant objects detected in this sector
-              </div>
-            ) : (
-              <div className="objects-grid">
+                  ) : (
+                    <div>Location data unavailable</div>
+                  )}
+                </TacticalCard>
+
+                {/* Ports */}
                 {portsInSector.length > 0 && (
-                  <div className="ports-list">
-                    <h4>Space Ports</h4>
-                    <ul>
+                  <TacticalCard title="SPACE PORTS" icon="🏢" glowColor="cyan" className="animate-slide-in">
+                    <div className="ports-list">
                       {portsInSector.map(port => (
-                        <li key={port.id} className="port-item">
+                        <div key={port.id} className="port-item">
                           <div className="port-details">
                             <div className="port-name">{port.name}</div>
-                            <div className="port-type">{port.type} Port</div>
+                            <div className="tactical-badge">{port.type}</div>
                             {port.faction_affiliation && (
-                              <div className="port-faction">{port.faction_affiliation}</div>
+                              <div className="port-faction">Faction: {port.faction_affiliation}</div>
                             )}
                           </div>
-                          <button 
+                          <button
                             className="cockpit-btn primary dock-button"
                             onClick={() => handleDock(port.id)}
                             disabled={playerState?.is_ported}
                           >
                             DOCK
                           </button>
-                        </li>
+                        </div>
                       ))}
-                    </ul>
-                  </div>
+                    </div>
+                  </TacticalCard>
                 )}
-                
+
+                {/* Planets */}
                 {planetsInSector.length > 0 && (
-                  <div className="planets-list">
-                    <h4>Planets</h4>
-                    <ul>
+                  <TacticalCard title="PLANETS" icon="🪐" glowColor="purple" className="animate-slide-in">
+                    <div className="planets-list">
                       {planetsInSector.map(planet => (
-                        <li key={planet.id} className="planet-item">
+                        <div key={planet.id} className="planet-item">
                           <div className="planet-name">{planet.name}</div>
-                          <div className="planet-type">{planet.type} Planet</div>
+                          <div className="tactical-badge success">{planet.type}</div>
                           <div className="planet-status">{planet.status}</div>
                           {planet.habitability_score > 0 && (
                             <div className="planet-habitability">
-                              Habitability: {planet.habitability_score}/100
+                              <div>Habitability:</div>
+                              <div className="progress-bar">
+                                <div className="progress-fill" style={{ width: `${planet.habitability_score}%` }}></div>
+                              </div>
+                              <div>{planet.habitability_score}%</div>
                             </div>
                           )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
-          
-          <section className="navigation">
-            <h3>Navigation</h3>
-            
-            {(!availableMoves.warps.length && !availableMoves.tunnels.length) ? (
-              <div className="no-exits">
-                No exits from this sector
-              </div>
-            ) : (
-              <div className="navigation-options">
-                {availableMoves.warps.length > 0 && (
-                  <div className="warp-options">
-                    <h4>Standard Warps</h4>
-                    <div className="warp-grid">
-                      {availableMoves.warps.map(warp => (
-                        <button 
-                          key={warp.sector_id}
-                          className={`cockpit-btn secondary warp-movement ${!warp.can_afford ? 'disabled' : ''}`}
-                          onClick={() => handleMove(warp.sector_id)}
-                          disabled={!warp.can_afford}
-                        >
-                          <div className="warp-sector-id">Sector {warp.sector_id}</div>
-                          <div className="warp-name">{warp.name}</div>
-                          <div className="warp-type">{warp.type}</div>
-                          <div className="warp-cost">
-                            {warp.turn_cost} {warp.turn_cost === 1 ? 'turn' : 'turns'}
-                          </div>
-                        </button>
+                        </div>
                       ))}
                     </div>
-                  </div>
+                  </TacticalCard>
                 )}
-                
-                {availableMoves.tunnels.length > 0 && (
-                  <div className="tunnel-options">
-                    <h4>Warp Tunnels</h4>
-                    <div className="tunnel-grid">
-                      {availableMoves.tunnels.map(tunnel => (
-                        <button 
-                          key={tunnel.sector_id}
-                          className={`cockpit-btn special tunnel-movement ${!tunnel.can_afford ? 'disabled' : ''} tunnel-${(tunnel.stability ?? 0.5) < 0.5 ? 'unstable' : (tunnel.stability ?? 0.5) < 0.8 ? 'moderate' : 'stable'}`}
-                          onClick={() => handleMove(tunnel.sector_id)}
-                          disabled={!tunnel.can_afford}
-                        >
-                          <div className="tunnel-sector-id">Sector {tunnel.sector_id}</div>
-                          <div className="tunnel-name">{tunnel.name}</div>
-                          <div className="tunnel-type">{tunnel.tunnel_type}</div>
-                          <div className="tunnel-stability">
-                            <div className="stability-label">Stability:</div>
-                            <div className="stability-meter" style={{ width: `${(tunnel.stability ?? 0.5) * 100}%` }}></div>
-                          </div>
-                          <div className="tunnel-cost">
-                            {tunnel.turn_cost} {tunnel.turn_cost === 1 ? 'turn' : 'turns'}
-                          </div>
-                        </button>
+
+                {/* Contacts */}
+                <TacticalCard title={`CONTACTS (${sectorPlayers.length})`} icon="👥" glowColor="green" className="animate-slide-in">
+                  {sectorPlayers.length > 0 ? (
+                    <div className="contacts-list">
+                      {sectorPlayers.map((player: any) => (
+                        <div key={player.id} className="contact-item">
+                          <span className="status-indicator online"></span>
+                          <div className="contact-name">{player.username}</div>
+                          <div className="tactical-badge">Online</div>
+                        </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div>No other players in this sector</div>
+                  )}
+                </TacticalCard>
               </div>
-                )}
-              </section>
+
+              {/* Right Column: Navigation Network */}
+              <div className="tactical-column-right">
+                <TacticalCard title="NAVIGATION NETWORK" icon="🗺️" glowColor="cyan">
+                  {(!availableMoves.warps.length && !availableMoves.tunnels.length) ? (
+                    <div className="no-exits">No exits from this sector</div>
+                  ) : (
+                    <div className="navigation-options">
+                      {availableMoves.warps.length > 0 && (
+                        <div className="warp-options">
+                          <h4>Standard Warps</h4>
+                          <div className="warp-grid">
+                            {availableMoves.warps.map(warp => (
+                              <button
+                                key={warp.sector_id}
+                                className={`cockpit-btn secondary warp-movement ${!warp.can_afford ? 'disabled' : ''}`}
+                                onClick={() => handleMove(warp.sector_id)}
+                                disabled={!warp.can_afford}
+                              >
+                                <div className="warp-sector-id">Sector {warp.sector_id}</div>
+                                <div className="warp-name">{warp.name}</div>
+                                <div className="warp-type">{warp.type}</div>
+                                <div className="warp-cost">
+                                  {warp.turn_cost} {warp.turn_cost === 1 ? 'turn' : 'turns'}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {availableMoves.tunnels.length > 0 && (
+                        <div className="tunnel-options">
+                          <h4>Warp Tunnels</h4>
+                          <div className="tunnel-grid">
+                            {availableMoves.tunnels.map(tunnel => (
+                              <button
+                                key={tunnel.sector_id}
+                                className={`cockpit-btn special tunnel-movement ${!tunnel.can_afford ? 'disabled' : ''} tunnel-${(tunnel.stability ?? 0.5) < 0.5 ? 'unstable' : (tunnel.stability ?? 0.5) < 0.8 ? 'moderate' : 'stable'}`}
+                                onClick={() => handleMove(tunnel.sector_id)}
+                                disabled={!tunnel.can_afford}
+                              >
+                                <div className="tunnel-sector-id">Sector {tunnel.sector_id}</div>
+                                <div className="tunnel-name">{tunnel.name}</div>
+                                <div className="tunnel-type">{tunnel.tunnel_type}</div>
+                                <div className="tunnel-stability">
+                                  <div className="stability-label">Stability:</div>
+                                  <div className="stability-meter" style={{ width: `${(tunnel.stability ?? 0.5) * 100}%` }}></div>
+                                </div>
+                                <div className="tunnel-cost">
+                                  {tunnel.turn_cost} {tunnel.turn_cost === 1 ? 'turn' : 'turns'}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </TacticalCard>
+              </div>
             </div>
-          </div>
           )}
 
           {activeTab === 'trading' && playerState?.is_ported && (
