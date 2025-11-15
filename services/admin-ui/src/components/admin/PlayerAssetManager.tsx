@@ -234,7 +234,7 @@ const PlayerAssetManager: React.FC<PlayerAssetManagerProps> = ({
   const availableAssets = assets[`available${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}` as keyof AssetData] as any[];
 
   return (
-    <div className="player-asset-manager">
+    <div className="player-asset-manager" onClick={(e) => e.stopPropagation()}>
       <div className="manager-header">
         <h3>Asset Manager: {player.username}</h3>
         <button onClick={onClose} className="close-btn">×</button>

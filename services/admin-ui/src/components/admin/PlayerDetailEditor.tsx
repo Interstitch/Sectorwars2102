@@ -178,7 +178,7 @@ const PlayerDetailEditor: React.FC<PlayerDetailEditorProps> = ({ player, onClose
   };
 
   return (
-    <div className="player-detail-editor">
+    <div className="player-detail-editor" onClick={(e) => e.stopPropagation()}>
       <div className="editor-header">
         <h3>Edit Player: {player.username}</h3>
         <div className="header-actions">

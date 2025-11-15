@@ -222,7 +222,7 @@ const BulkOperationPanel: React.FC<BulkOperationPanelProps> = ({
   }
 
   return (
-    <div className="bulk-operation-panel">
+    <div className="bulk-operation-panel" onClick={(e) => e.stopPropagation()}>
       <div className="panel-header">
         <h3>Bulk Operations</h3>
         <span className="player-count">{selectedPlayers.length} players selected</span>

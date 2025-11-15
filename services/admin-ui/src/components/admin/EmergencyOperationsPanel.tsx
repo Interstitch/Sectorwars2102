@@ -265,7 +265,7 @@ const EmergencyOperationsPanel: React.FC<EmergencyOperationsPanelProps> = ({
   };
 
   return (
-    <div className="emergency-operations-panel">
+    <div className="emergency-operations-panel" onClick={(e) => e.stopPropagation()}>
       <div className="panel-header">
         <h3>🚨 Emergency Operations</h3>
         <div className="player-info">
