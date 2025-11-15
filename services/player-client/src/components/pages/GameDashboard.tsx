@@ -11,6 +11,7 @@ import TacticalCard from '../tactical/TacticalCard';
 import SectorViewport from '../tactical/SectorViewport';
 import PortCard from '../tactical/PortCard';
 import PlanetCard from '../tactical/PlanetCard';
+import NavigationMap from '../tactical/NavigationMap';
 import './game-dashboard.css';
 import '../tactical/tactical-layout.css';
 
@@ -286,60 +287,43 @@ const GameDashboard: React.FC = () => {
               {/* Right Column: Navigation Network */}
               <div className="tactical-column-right">
                 <TacticalCard title="NAVIGATION NETWORK" icon="🗺️" glowColor="cyan">
-                  {(!availableMoves.warps.length && !availableMoves.tunnels.length) ? (
-                    <div className="no-exits">No exits from this sector</div>
-                  ) : (
-                    <div className="navigation-options">
-                      {availableMoves.warps.length > 0 && (
-                        <div className="warp-options">
-                          <h4>Standard Warps</h4>
-                          <div className="warp-grid">
-                            {availableMoves.warps.map(warp => (
-                              <button
-                                key={warp.sector_id}
-                                className={`cockpit-btn secondary warp-movement ${!warp.can_afford ? 'disabled' : ''}`}
-                                onClick={() => handleMove(warp.sector_id)}
-                                disabled={!warp.can_afford}
-                              >
-                                <div className="warp-sector-id">Sector {warp.sector_id}</div>
-                                <div className="warp-name">{warp.name}</div>
-                                <div className="warp-type">{warp.type}</div>
-                                <div className="warp-cost">
-                                  {warp.turn_cost} {warp.turn_cost === 1 ? 'turn' : 'turns'}
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {availableMoves.tunnels.length > 0 && (
-                        <div className="tunnel-options">
-                          <h4>Warp Tunnels</h4>
-                          <div className="tunnel-grid">
-                            {availableMoves.tunnels.map(tunnel => (
-                              <button
-                                key={tunnel.sector_id}
-                                className={`cockpit-btn special tunnel-movement ${!tunnel.can_afford ? 'disabled' : ''} tunnel-${(tunnel.stability ?? 0.5) < 0.5 ? 'unstable' : (tunnel.stability ?? 0.5) < 0.8 ? 'moderate' : 'stable'}`}
-                                onClick={() => handleMove(tunnel.sector_id)}
-                                disabled={!tunnel.can_afford}
-                              >
-                                <div className="tunnel-sector-id">Sector {tunnel.sector_id}</div>
-                                <div className="tunnel-name">{tunnel.name}</div>
-                                <div className="tunnel-type">{tunnel.tunnel_type}</div>
-                                <div className="tunnel-stability">
-                                  <div className="stability-label">Stability:</div>
-                                  <div className="stability-meter" style={{ width: `${(tunnel.stability ?? 0.5) * 100}%` }}></div>
-                                </div>
-                                <div className="tunnel-cost">
-                                  {tunnel.turn_cost} {tunnel.turn_cost === 1 ? 'turn' : 'turns'}
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                  {currentSector && (
+                    <NavigationMap
+                      currentSectorId={currentSector.id}
+                      sectors={[
+                        // Current sector
+                        {
+                          id: currentSector.id,
+                          name: currentSector.name,
+                          type: currentSector.type,
+                          connected_sectors: [
+                            ...availableMoves.warps.map(w => w.sector_id),
+                            ...availableMoves.tunnels.map(t => t.sector_id)
+                          ]
+                        },
+                        // Available warp destinations
+                        ...availableMoves.warps.map(warp => ({
+                          id: warp.sector_id,
+                          name: warp.name,
+                          type: warp.type,
+                          connected_sectors: [currentSector.id] // Bidirectional connection
+                        })),
+                        // Available tunnel destinations
+                        ...availableMoves.tunnels.map(tunnel => ({
+                          id: tunnel.sector_id,
+                          name: tunnel.name,
+                          type: 'nebula', // Tunnels often through nebulas
+                          connected_sectors: [currentSector.id]
+                        }))
+                      ]}
+                      availableMoves={[
+                        ...availableMoves.warps.filter(w => w.can_afford).map(w => w.sector_id),
+                        ...availableMoves.tunnels.filter(t => t.can_afford).map(t => t.sector_id)
+                      ]}
+                      onNavigate={handleMove}
+                      width={600}
+                      height={600}
+                    />
                   )}
                 </TacticalCard>
               </div>

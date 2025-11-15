@@ -1,0 +1,178 @@
+/* ============================================
+   NAVIGATION MAP - Constellation Graph
+   ============================================ */
+
+.navigation-map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  background: radial-gradient(circle at center, rgba(10, 14, 26, 0.95) 0%, rgba(5, 8, 16, 0.98) 100%);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.navigation-map-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Connection Lines */
+.connection-line {
+  transition: stroke 0.3s ease, opacity 0.3s ease;
+  stroke-linecap: round;
+}
+
+.connection-line.current {
+  stroke-dasharray: 5, 5;
+  animation: dash-flow 1s linear infinite;
+}
+
+.connection-line.available {
+  stroke-dasharray: 3, 3;
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+/* Sector Nodes */
+.node-circle {
+  transition: r 0.2s ease, opacity 0.2s ease;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.node-circle.available {
+  cursor: pointer;
+}
+
+.node-circle.available:hover {
+  r: 14;
+  filter: drop-shadow(0 0 12px currentColor);
+}
+
+.node-circle.current {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px #00ff41);
+  }
+  50% {
+    filter: drop-shadow(0 0 16px #00ff41);
+  }
+}
+
+.node-glow {
+  transition: opacity 0.3s ease;
+  animation: glow-expand 2s ease-in-out infinite;
+}
+
+@keyframes glow-expand {
+  0%, 100% {
+    r: 16;
+    opacity: 0.3;
+  }
+  50% {
+    r: 20;
+    opacity: 0.1;
+  }
+}
+
+/* Node Labels */
+.node-label {
+  text-shadow: 0 0 8px currentColor, 0 0 4px rgba(0, 0, 0, 0.9);
+  font-family: monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  animation: label-appear 0.3s ease-out;
+}
+
+@keyframes label-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.current-indicator {
+  text-shadow: 0 0 10px #00ff41, 0 0 6px rgba(0, 0, 0, 0.9);
+  font-family: monospace;
+  letter-spacing: 0.1em;
+  animation: indicator-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes indicator-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Navigation Instructions */
+.navigation-instructions {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, rgba(10, 14, 26, 0.9) 0%, rgba(5, 8, 16, 0.95) 100%);
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  backdrop-filter: blur(10px);
+}
+
+.instruction-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.instruction-icon {
+  font-size: 1rem;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .navigation-map-container {
+    min-height: 500px;
+  }
+
+  .navigation-instructions {
+    font-size: 0.7rem;
+    padding: 0.6rem 0.8rem;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .connection-line.current,
+  .node-circle.current,
+  .node-glow,
+  .current-indicator {
+    animation: none;
+  }
+
+  .node-label {
+    animation: none;
+  }
+}
