@@ -132,151 +132,154 @@ const GameDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Tactical Dashboard - Single Screen View */}
+        {/* Tactical Dashboard - Cockpit Layout */}
         <div className="tactical-dashboard">
-              {/* Left Column: Tactical Situation */}
-              <div className="tactical-column-left">
-                {/* Current Sector */}
-                <TacticalCard title="CURRENT SECTOR" icon="📍" glowColor="cyan">
-                  {currentSector ? (
-                    <div className="sector-details">
-                      <h4>Sector {currentSector.id}: {currentSector.name}</h4>
+          {/* WINDSHIELD - Full-width viewport at top */}
+          <div className="tactical-windshield">
+            <TacticalCard title={currentSector ? `SECTOR ${currentSector.id}: ${currentSector.name.toUpperCase()}` : "CURRENT SECTOR"} icon="📍" glowColor="cyan">
+              {currentSector ? (
+                <div className="sector-details">
+                  {/* Living Sector Viewport */}
+                  <SectorViewport
+                    sectorType={currentSector.type}
+                    sectorName={currentSector.name}
+                    hazardLevel={currentSector.hazard_level}
+                    radiationLevel={currentSector.radiation_level}
+                    ports={portsInSector}
+                    planets={planetsInSector}
+                    width={window.innerWidth - 200}
+                    height={140}
+                  />
 
-                      {/* Living Sector Viewport */}
-                      <SectorViewport
-                        sectorType={currentSector.type}
-                        sectorName={currentSector.name}
-                        hazardLevel={currentSector.hazard_level}
-                        radiationLevel={currentSector.radiation_level}
-                        ports={portsInSector}
-                        planets={planetsInSector}
-                        width={350}
-                        height={120}
-                      />
-
-                      {currentSector.hazard_level > 0 && (
-                        <div className="sector-hazard-info">
-                          <div className="hazard-label">⚠️ Hazard Level:</div>
-                          <div className="progress-bar">
-                            <div className="progress-fill" style={{ width: `${currentSector.hazard_level * 10}%` }}></div>
-                          </div>
-                          <div>{currentSector.hazard_level}/10</div>
-                        </div>
-                      )}
-
-                      {currentSector.radiation_level > 0 && (
-                        <div className="sector-radiation-info">
-                          <div className="radiation-label">☢️ Radiation:</div>
-                          <div className="progress-bar">
-                            <div className="progress-fill" style={{ width: `${currentSector.radiation_level * 100}%` }}></div>
-                          </div>
-                          <div>{(currentSector.radiation_level * 100).toFixed(1)}%</div>
-                        </div>
-                      )}
-
-                      {currentSector.special_features && currentSector.special_features.length > 0 && (
-                        <div className="special-features">
-                          <div className="features-label">Special Features:</div>
-                          <div className="features-list">
-                            {currentSector.special_features.map(feature => (
-                              <span key={feature} className="tactical-badge">
-                                {feature.replace(/_/g, ' ')}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {currentSector.description && (
-                        <div className="sector-description">
-                          {currentSector.description}
-                        </div>
-                      )}
+                  {currentSector.hazard_level > 0 && (
+                    <div className="sector-hazard-info">
+                      <div className="hazard-label">⚠️ Hazard Level:</div>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${currentSector.hazard_level * 10}%` }}></div>
+                      </div>
+                      <div>{currentSector.hazard_level}/10</div>
                     </div>
-                  ) : (
-                    <div>Location data unavailable</div>
                   )}
-                </TacticalCard>
 
-                {/* Planetary Systems - Planets with Orbiting Stations */}
-                {planetsInSector.length > 0 && (
-                  <TacticalCard title="PLANETARY SYSTEMS" icon="🪐" glowColor="purple" className="animate-slide-in">
-                    {planetsInSector.map((planet, index) => (
-                      <PlanetPortPair
-                        key={planet.id}
-                        planet={planet}
-                        port={portsInSector[index] || null}
-                        onLandOnPlanet={handleLand}
-                        onDockAtPort={handleDock}
-                        isLanded={playerState?.is_landed || false}
-                        isDocked={playerState?.is_ported || false}
-                      />
-                    ))}
-                  </TacticalCard>
+                  {currentSector.radiation_level > 0 && (
+                    <div className="sector-radiation-info">
+                      <div className="radiation-label">☢️ Radiation:</div>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${currentSector.radiation_level * 100}%` }}></div>
+                      </div>
+                      <div>{(currentSector.radiation_level * 100).toFixed(1)}%</div>
+                    </div>
+                  )}
+
+                  {currentSector.special_features && currentSector.special_features.length > 0 && (
+                    <div className="special-features">
+                      <div className="features-label">Special Features:</div>
+                      <div className="features-list">
+                        {currentSector.special_features.map(feature => (
+                          <span key={feature} className="tactical-badge">
+                            {feature.replace(/_/g, ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {currentSector.description && (
+                    <div className="sector-description">
+                      {currentSector.description}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>Location data unavailable</div>
+              )}
+            </TacticalCard>
+          </div>
+
+          {/* COCKPIT PANELS - Three columns below windshield */}
+          <div className="tactical-cockpit-panels">
+            {/* LEFT PANEL: Navigation */}
+            <div className="tactical-panel-left">
+              <TacticalCard title="NAVIGATION NETWORK" icon="🗺️" glowColor="cyan">
+                {currentSector && (
+                  <NavigationMap
+                    currentSectorId={currentSector.id}
+                    sectors={[
+                      // Current sector
+                      {
+                        id: currentSector.id,
+                        name: currentSector.name,
+                        type: currentSector.type,
+                        connected_sectors: [
+                          ...availableMoves.warps.map(w => w.sector_id),
+                          ...availableMoves.tunnels.map(t => t.sector_id)
+                        ]
+                      },
+                      // Available warp destinations
+                      ...availableMoves.warps.map(warp => ({
+                        id: warp.sector_id,
+                        name: warp.name,
+                        type: warp.type,
+                        connected_sectors: [currentSector.id]
+                      })),
+                      // Available tunnel destinations
+                      ...availableMoves.tunnels.map(tunnel => ({
+                        id: tunnel.sector_id,
+                        name: tunnel.name,
+                        type: 'nebula',
+                        connected_sectors: [currentSector.id]
+                      }))
+                    ]}
+                    availableMoves={[
+                      ...availableMoves.warps.filter(w => w.can_afford).map(w => w.sector_id),
+                      ...availableMoves.tunnels.filter(t => t.can_afford).map(t => t.sector_id)
+                    ]}
+                    onNavigate={handleMove}
+                    width={300}
+                    height={300}
+                  />
                 )}
-
-                {/* Contacts */}
-                <TacticalCard title={`CONTACTS (${sectorPlayers.length})`} icon="👥" glowColor="green" className="animate-slide-in">
-                  {sectorPlayers.length > 0 ? (
-                    <div className="contacts-list">
-                      {sectorPlayers.map((player: any) => (
-                        <div key={player.id} className="contact-item">
-                          <span className="status-indicator online"></span>
-                          <div className="contact-name">{player.username}</div>
-                          <div className="tactical-badge">Online</div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div>No other players in this sector</div>
-                  )}
-                </TacticalCard>
-              </div>
-
-              {/* Right Column: Navigation Network */}
-              <div className="tactical-column-right">
-                <TacticalCard title="NAVIGATION NETWORK" icon="🗺️" glowColor="cyan">
-                  {currentSector && (
-                    <NavigationMap
-                      currentSectorId={currentSector.id}
-                      sectors={[
-                        // Current sector
-                        {
-                          id: currentSector.id,
-                          name: currentSector.name,
-                          type: currentSector.type,
-                          connected_sectors: [
-                            ...availableMoves.warps.map(w => w.sector_id),
-                            ...availableMoves.tunnels.map(t => t.sector_id)
-                          ]
-                        },
-                        // Available warp destinations
-                        ...availableMoves.warps.map(warp => ({
-                          id: warp.sector_id,
-                          name: warp.name,
-                          type: warp.type,
-                          connected_sectors: [currentSector.id] // Bidirectional connection
-                        })),
-                        // Available tunnel destinations
-                        ...availableMoves.tunnels.map(tunnel => ({
-                          id: tunnel.sector_id,
-                          name: tunnel.name,
-                          type: 'nebula', // Tunnels often through nebulas
-                          connected_sectors: [currentSector.id]
-                        }))
-                      ]}
-                      availableMoves={[
-                        ...availableMoves.warps.filter(w => w.can_afford).map(w => w.sector_id),
-                        ...availableMoves.tunnels.filter(t => t.can_afford).map(t => t.sector_id)
-                      ]}
-                      onNavigate={handleMove}
-                      width={400}
-                      height={400}
-                    />
-                  )}
-                </TacticalCard>
-              </div>
+              </TacticalCard>
             </div>
+
+            {/* CENTER PANEL: Planetary Systems */}
+            <div className="tactical-panel-center">
+              {planetsInSector.length > 0 && (
+                <TacticalCard title="PLANETARY SYSTEMS" icon="🪐" glowColor="purple" className="animate-slide-in">
+                  {planetsInSector.map((planet, index) => (
+                    <PlanetPortPair
+                      key={planet.id}
+                      planet={planet}
+                      port={portsInSector[index] || null}
+                      onLandOnPlanet={handleLand}
+                      onDockAtPort={handleDock}
+                      isLanded={playerState?.is_landed || false}
+                      isDocked={playerState?.is_ported || false}
+                    />
+                  ))}
+                </TacticalCard>
+              )}
+            </div>
+
+            {/* RIGHT PANEL: Contacts */}
+            <div className="tactical-panel-right">
+              <TacticalCard title={`CONTACTS (${sectorPlayers.length})`} icon="👥" glowColor="green" className="animate-slide-in">
+                {sectorPlayers.length > 0 ? (
+                  <div className="contacts-compact-list">
+                    {sectorPlayers.map((player: any) => (
+                      <div key={player.id} className="contact-list-item">
+                        <span className="status-indicator online"></span>
+                        <span className="contact-list-name">{player.username}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state">No other players in this sector</div>
+                )}
+              </TacticalCard>
+            </div>
+          </div>
+        </div>
 
 
         {/* Enhanced AI Assistant - ARIA */}

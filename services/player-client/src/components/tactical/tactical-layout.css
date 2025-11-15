@@ -1,17 +1,74 @@
 /* ============================================
-   TACTICAL DASHBOARD - Two-Column Layout
+   TACTICAL DASHBOARD - Cockpit Layout
    ============================================ */
 
 .tactical-dashboard {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
   gap: 0.75rem;
   min-height: calc(100vh - 200px);
   padding: 0.75rem;
   animation: fade-in 0.5s ease-out;
 }
 
-/* Left Column: Tactical Situation */
+/* Windshield - Full-width viewport at top */
+.tactical-windshield {
+  grid-column: 1;
+  width: 100%;
+}
+
+/* Cockpit Panels - Three columns below windshield */
+.tactical-cockpit-panels {
+  display: grid;
+  grid-template-columns: 280px 1fr 300px;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+/* Left Panel: Navigation */
+.tactical-panel-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 380px);
+
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 217, 255, 0.5) rgba(10, 14, 26, 0.5);
+}
+
+/* Center Panel: Main Interaction Area */
+.tactical-panel-center {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 380px);
+
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(147, 51, 234, 0.5) rgba(10, 14, 26, 0.5);
+}
+
+/* Right Panel: Contacts & Status */
+.tactical-panel-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 380px);
+
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 255, 65, 0.5) rgba(10, 14, 26, 0.5);
+}
+
+/* Legacy column classes for backward compatibility */
 .tactical-column-left {
   display: flex;
   flex-direction: column;
@@ -25,20 +82,33 @@
   scrollbar-color: rgba(0, 217, 255, 0.5) rgba(10, 14, 26, 0.5);
 }
 
+/* Scrollbar styles for all panels */
+.tactical-panel-left::-webkit-scrollbar,
+.tactical-panel-center::-webkit-scrollbar,
+.tactical-panel-right::-webkit-scrollbar,
 .tactical-column-left::-webkit-scrollbar {
   width: 8px;
 }
 
+.tactical-panel-left::-webkit-scrollbar-track,
+.tactical-panel-center::-webkit-scrollbar-track,
+.tactical-panel-right::-webkit-scrollbar-track,
 .tactical-column-left::-webkit-scrollbar-track {
   background: rgba(10, 14, 26, 0.5);
   border-radius: 4px;
 }
 
+.tactical-panel-left::-webkit-scrollbar-thumb,
+.tactical-panel-center::-webkit-scrollbar-thumb,
+.tactical-panel-right::-webkit-scrollbar-thumb,
 .tactical-column-left::-webkit-scrollbar-thumb {
   background: rgba(0, 217, 255, 0.5);
   border-radius: 4px;
 }
 
+.tactical-panel-left::-webkit-scrollbar-thumb:hover,
+.tactical-panel-center::-webkit-scrollbar-thumb:hover,
+.tactical-panel-right::-webkit-scrollbar-thumb:hover,
 .tactical-column-left::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 217, 255, 0.7);
 }
@@ -141,6 +211,52 @@
 .simplified-mode .animate-pulse,
 .simplified-mode .shimmer-effect {
   animation: none;
+}
+
+/* ============================================
+   ULTRA-COMPACT CONTACTS LIST
+   ============================================ */
+
+.contacts-compact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 100%;
+}
+
+.contact-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  background: rgba(0, 217, 255, 0.05);
+  border-left: 2px solid rgba(0, 255, 65, 0.3);
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.contact-list-item:hover {
+  background: rgba(0, 217, 255, 0.1);
+  border-left-color: rgba(0, 255, 65, 0.6);
+  transform: translateX(2px);
+}
+
+.contact-list-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #00d9ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.empty-state {
+  padding: 1rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+  font-style: italic;
 }
 
 /* Responsive Breakpoints */
