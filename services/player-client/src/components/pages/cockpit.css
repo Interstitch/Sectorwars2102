@@ -23,16 +23,47 @@
 .game-sidebar .cockpit-card {
   padding: 0.5rem !important;
   margin-bottom: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
 }
 
 .game-sidebar .cockpit-card-header {
   padding: 0.4rem 0.5rem !important;
   margin-bottom: 0.4rem !important;
+  min-height: 0 !important;
 }
 
 .game-sidebar .cockpit-card-title {
   font-size: 0.75rem !important;
   margin: 0 !important;
+  line-height: 1.2 !important;
+}
+
+/* Ensure navigation stays at bottom with logout button visible */
+.game-sidebar .game-nav {
+  margin-top: auto !important;
+  flex-shrink: 0 !important;
+}
+
+.game-sidebar .nav-header {
+  font-size: 0.7rem !important;
+  margin-bottom: 0.5rem !important;
+  padding-bottom: 0.25rem !important;
+}
+
+.game-sidebar .nav-list {
+  gap: 0.3rem !important;
+}
+
+.game-sidebar .nav-link {
+  font-size: 0.75rem !important;
+  padding: 0.5rem 0.75rem !important;
+  line-height: 1.2 !important;
+}
+
+.game-sidebar .nav-footer {
+  margin-top: 0.75rem !important;
+  padding-top: 0.5rem !important;
 }
 
 /* Ultra-compress Commander section */
@@ -122,7 +153,7 @@
 .cockpit-windshield {
   position: relative;
   width: 100%;
-  height: 45vh;
+  height: calc(40vh - 40px);
   overflow: hidden;
   background: #000;
 }
@@ -416,7 +447,7 @@
    ============================================ */
 
 .cockpit-console {
-  height: 55vh;
+  height: calc(60vh - 40px);
   background: linear-gradient(
     180deg,
     #1a1d24 0%,
@@ -427,7 +458,7 @@
   display: grid;
   grid-template-columns: 460px 1fr 340px;
   gap: 0;
-  padding: 1rem;
+  padding: 0.75rem;
   box-shadow:
     inset 0 8px 12px rgba(0, 0, 0, 0.6),
     0 -4px 20px rgba(0, 0, 0, 0.8);
@@ -543,7 +574,7 @@
   position: relative;
   width: 100%;
   height: 100%;
-  max-height: calc(55vh - 2rem);
+  max-height: calc(60vh - 6rem);
   background: rgba(0, 5, 10, 0.95);
   padding: 0.75rem;
   overflow-y: auto;
