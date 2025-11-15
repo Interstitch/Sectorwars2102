@@ -142,20 +142,20 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
           className={`port-section ${!isDocked && port.status.toLowerCase() === 'operational' ? 'clickable' : 'inactive'}`}
           onClick={handlePortClick}
         >
-          <span className="port-icon">🏢</span>
+          <span className="port-icon">🛰️</span>
           <div className="port-details">
             <div className="port-name-line">
-              <span className="port-name">{port.name}</span>
+              <div className="port-name-status">
+                <span className="port-name">{port.name}</span>
+                <span className="port-status">
+                  {port.status.toLowerCase() === 'operational' ? '🟢' : '🔴'}
+                </span>
+              </div>
               {portOwnerDisplay && <span className="port-owner">{portOwnerDisplay}</span>}
-            </div>
-            <div className="port-info">
               {port.port_class !== undefined && (
                 <span className="port-class">Class {port.port_class}: {portClassNames[port.port_class] || 'Unknown'}</span>
               )}
               <span className="port-type">{port.type.replace(/_/g, ' ')}</span>
-              <span className="port-status">
-                {port.status.toLowerCase() === 'operational' ? '🟢' : '🔴'} {port.status}
-              </span>
             </div>
           </div>
         </div>

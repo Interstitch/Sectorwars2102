@@ -163,7 +163,7 @@
 }
 
 .port-icon {
-  font-size: 1rem;
+  font-size: 1.2rem;
   flex-shrink: 0;
   filter: drop-shadow(0 0 6px rgba(0, 217, 255, 0.5));
 }
@@ -171,7 +171,7 @@
 .port-details {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
   min-width: 0;
   flex: 1;
 }
@@ -180,12 +180,19 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.15rem;
+  gap: 0.2rem;
+}
+
+.port-name-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
 }
 
 .port-name {
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 700;
   color: #00d9ff;
   line-height: 1.2;
 }
@@ -205,27 +212,17 @@
 }
 
 .port-type {
-  font-size: 0.55rem;
+  font-size: 0.6rem;
   color: rgba(0, 217, 255, 0.7);
   text-transform: uppercase;
   letter-spacing: 0.3px;
   font-weight: 500;
 }
 
-.port-info {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  align-items: center;
-}
-
 .port-status {
-  font-size: 0.6rem;
-  color: rgba(255, 255, 255, 0.8);
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
+  font-size: 0.9rem;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 /* Responsive */
