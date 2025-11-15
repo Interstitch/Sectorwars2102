@@ -90,11 +90,10 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
 
   // Debug logging
   if (port) {
-    console.log('PlanetPortPair - Port data:', {
-      name: port.name,
-      services: port.services,
-      availableServices
-    });
+    console.log('PlanetPortPair - Port:', port.name);
+    console.log('  Services:', JSON.stringify(port.services, null, 2));
+    console.log('  Available services:', availableServices);
+    console.log('  Full port object:', port);
   }
 
   const handlePlanetClick = () => {
