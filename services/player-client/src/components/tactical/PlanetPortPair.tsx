@@ -127,6 +127,17 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
         .map(([service, _]) => serviceIcons[service] || '❓')
     : [];
 
+  // Debug: Check if port class is being sent
+  if (port) {
+    console.log('Port data check:', {
+      name: port.name,
+      hasClass: port.class !== undefined,
+      class: port.class,
+      type: port.type,
+      fullPort: port
+    });
+  }
+
   const handlePlanetClick = () => {
     if (isLanded) return;
     if (confirm(`Land on ${planet.name}?`)) {
