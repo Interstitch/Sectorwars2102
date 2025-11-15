@@ -138,16 +138,16 @@ const GameDashboard: React.FC = () => {
                 height={Math.floor((window.innerHeight - 80) * 0.40)}
               />
 
-              {/* Cockpit frame vignette */}
-              <div className="cockpit-frame">
+              {/* Cockpit frame vignette - TEMPORARILY HIDDEN FOR DEBUG */}
+              <div className="cockpit-frame" style={{ display: 'none' }}>
                 <div className="frame-corner top-left"></div>
                 <div className="frame-corner top-right"></div>
                 <div className="frame-corner bottom-left"></div>
                 <div className="frame-corner bottom-right"></div>
               </div>
 
-              {/* HUD Overlays */}
-              <div className="hud-overlay top-left">
+              {/* HUD Overlays - TEMPORARILY HIDDEN FOR DEBUG */}
+              <div className="hud-overlay top-left" style={{ display: 'none' }}>
                 <div className="hud-label">LOCATION</div>
                 <div className="hud-value">SECTOR {currentSector.id}</div>
                 <div className="hud-value-secondary">{currentSector.name.toUpperCase()}</div>
@@ -160,7 +160,7 @@ const GameDashboard: React.FC = () => {
               </div>
 
               {currentSector.hazard_level > 0 && (
-                <div className="hud-overlay top-right hazard">
+                <div className="hud-overlay top-right hazard" style={{ display: 'none' }}>
                   <div className="hud-label">⚠️ HAZARD</div>
                   <div className="hud-value danger">{currentSector.hazard_level}/10</div>
                   <div className="hud-bar">
@@ -170,7 +170,7 @@ const GameDashboard: React.FC = () => {
               )}
 
               {currentSector.radiation_level > 0 && (
-                <div className="hud-overlay bottom-right radiation">
+                <div className="hud-overlay bottom-right radiation" style={{ display: 'none' }}>
                   <div className="hud-label">☢️ RADIATION</div>
                   <div className="hud-value warning">{(currentSector.radiation_level * 100).toFixed(1)}%</div>
                   <div className="hud-bar">
@@ -180,7 +180,7 @@ const GameDashboard: React.FC = () => {
               )}
 
               {currentSector.special_features && currentSector.special_features.length > 0 && (
-                <div className="hud-overlay bottom-left features">
+                <div className="hud-overlay bottom-left features" style={{ display: 'none' }}>
                   <div className="hud-label">ANOMALIES</div>
                   <div className="hud-features">
                     {currentSector.special_features.map(feature => (
@@ -193,7 +193,7 @@ const GameDashboard: React.FC = () => {
               )}
 
               {currentSector.description && (
-                <div className="hud-overlay bottom-center description">
+                <div className="hud-overlay bottom-center description" style={{ display: 'none' }}>
                   <div className="hud-description-text">{currentSector.description}</div>
                 </div>
               )}
