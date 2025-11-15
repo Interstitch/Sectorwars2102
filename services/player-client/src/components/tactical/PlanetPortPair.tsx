@@ -60,11 +60,33 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
     'jungle': '🌴'
   };
 
-  // Service icons
+  // Service icons - matched to backend service names
   const serviceIcons: { [key: string]: string } = {
+    // Ship services
+    'ship_repair': '🔧',
+    'ship_maintenance': '🛠️',
+    'ship_upgrades': '⚙️',
+    'ship_dealer': '🚀',
+
+    // Trading & Economy
+    'trading': '💰',
+    'market_intelligence': '📊',
+    'storage_rental': '📦',
+
+    // Equipment & Items
+    'drone_shop': '🤖',
+    'mine_dealer': '💣',
+    'genesis_dealer': '🌱',
+
+    // Facilities
+    'refining_facility': '⚗️',
+    'luxury_amenities': '✨',
+    'diplomatic_services': '🤝',
+    'insurance': '🛡️',
+
+    // Legacy/Generic
     'fuel': '⛽',
     'repairs': '🔧',
-    'trading': '💰',
     'shipyard': '🚀',
     'equipment': '⚙️',
     'information': '📡'
@@ -85,16 +107,8 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
   const availableServices = port?.services
     ? Object.entries(port.services)
         .filter(([_, available]) => available)
-        .map(([service, _]) => serviceIcons[service] || '•')
+        .map(([service, _]) => serviceIcons[service] || '❓')
     : [];
-
-  // Debug logging
-  if (port) {
-    console.log('PlanetPortPair - Port:', port.name);
-    console.log('  Services:', JSON.stringify(port.services, null, 2));
-    console.log('  Available services:', availableServices);
-    console.log('  Full port object:', port);
-  }
 
   const handlePlanetClick = () => {
     if (isLanded) return;
