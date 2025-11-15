@@ -433,16 +433,16 @@ class NexusGenerationService:
             batch_sectors.append(sector_data)
             stats["sectors"] += 1
             
-            # Generate port if probability allows
-            if random.random() < config["port_density"]:
+            # Generate port - ALWAYS create for Sector 1 (starter sector), otherwise use probability
+            if sector_num == 1 or random.random() < config["port_density"]:
                 port_data = self._generate_port_for_sector(
                     sector_num, region_id, district_type, config
                 )
                 batch_ports.append(port_data)
                 stats["ports"] += 1
-            
-            # Generate planet if probability allows
-            if random.random() < config["planet_density"]:
+
+            # Generate planet - ALWAYS create for Sector 1 (starter sector), otherwise use probability
+            if sector_num == 1 or random.random() < config["planet_density"]:
                 planet_data = self._generate_planet_for_sector(
                     sector_num, region_id, district_type, config
                 )
