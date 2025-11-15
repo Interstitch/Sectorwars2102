@@ -15,6 +15,7 @@ interface PlayerEditData {
   credits: number;
   turns: number;
   current_sector_id: number | null;
+  current_region_id: string | null;
   status: string;
   team_id: string | null;
   is_active: boolean;
@@ -27,31 +28,35 @@ const PlayerDetailEditor: React.FC<PlayerDetailEditorProps> = ({ player, onClose
     credits: player.credits,
     turns: player.turns,
     current_sector_id: player.current_sector_id,
+    current_region_id: player.current_region_id || null,
     status: player.status,
     team_id: player.team_id,
     is_active: player.status === 'active'
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [availableTeams, setAvailableTeams] = useState<any[]>([]);
+  const [availableRegions, setAvailableRegions] = useState<any[]>([]);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
 
   useEffect(() => {
     loadAvailableTeams();
+    loadAvailableRegions();
   }, []);
 
   useEffect(() => {
     // Check for unsaved changes
-    const hasChanges = 
+    const hasChanges =
       editData.username !== player.username ||
       editData.email !== player.email ||
       editData.credits !== player.credits ||
       editData.turns !== player.turns ||
       editData.current_sector_id !== player.current_sector_id ||
+      editData.current_region_id !== (player.current_region_id || null) ||
       editData.status !== player.status ||
       editData.team_id !== player.team_id;
-    
+
     setUnsavedChanges(hasChanges);
   }, [editData, player]);
 
@@ -61,6 +66,15 @@ const PlayerDetailEditor: React.FC<PlayerDetailEditorProps> = ({ player, onClose
       setAvailableTeams((response.data as any)?.teams || []);
     } catch (error) {
       console.error('Failed to load teams:', error);
+    }
+  };
+
+  const loadAvailableRegions = async () => {
+    try {
+      const response = await api.get('/api/v1/admin/regions');
+      setAvailableRegions((response.data as any)?.regions || []);
+    } catch (error) {
+      console.error('Failed to load regions:', error);
     }
   };
 
@@ -288,6 +302,22 @@ const PlayerDetailEditor: React.FC<PlayerDetailEditorProps> = ({ player, onClose
                   <button onClick={() => handleTurnsAdjustment(-100)}>-100</button>
                 </div>
               </div>
+            </div>
+
+            <div className="form-group">
+              <label>Current Region:</label>
+              <select
+                value={editData.current_region_id || ''}
+                onChange={(e) => handleFieldChange('current_region_id', e.target.value || null)}
+                disabled={loading}
+              >
+                <option value="">No Region</option>
+                {availableRegions.map(region => (
+                  <option key={region.id} value={region.id}>
+                    {region.display_name || region.name} ({region.total_sectors} sectors)
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group">

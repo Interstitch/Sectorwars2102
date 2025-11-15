@@ -225,6 +225,28 @@ async def get_all_players(
         # Return empty list if query fails completely
         return {"players": []}
 
+@router.get("/regions", response_model=dict)
+async def get_all_regions(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get all regions for admin panel"""
+    regions = db.query(Region).all()
+
+    region_list = [{
+        "id": str(region.id),
+        "name": region.name,
+        "display_name": region.display_name,
+        "total_sectors": region.total_sectors,
+        "status": region.status,
+        "subscription_tier": region.subscription_tier,
+        "starting_credits": region.starting_credits,
+        "governance_type": region.governance_type,
+        "tax_rate": float(region.tax_rate)
+    } for region in regions]
+
+    return {"regions": region_list}
+
 @router.patch("/players/{player_id}", response_model=dict)
 async def update_player(
     player_id: str,
@@ -284,12 +306,39 @@ async def update_player(
                 raise HTTPException(status_code=400, detail="Turns cannot be negative")
             player.turns = turns
 
+        # Handle region and sector location updates (region + sector = complete location)
+        if 'current_region_id' in update_data:
+            if update_data['current_region_id'] is None or update_data['current_region_id'] == '':
+                player.current_region_id = None
+            else:
+                # Verify region exists
+                region = db.query(Region).filter(Region.id == update_data['current_region_id']).first()
+                if not region:
+                    raise HTTPException(status_code=400, detail="Region not found")
+                player.current_region_id = update_data['current_region_id']
+
         if 'current_sector_id' in update_data and update_data['current_sector_id'] is not None:
             sector_id = int(update_data['current_sector_id'])
-            # Verify sector exists
-            sector = db.query(Sector).filter(Sector.sector_id == sector_id).first()
-            if not sector:
-                raise HTTPException(status_code=400, detail=f"Sector {sector_id} does not exist")
+
+            # Validate sector exists within the specified region (if region is set)
+            region_id = update_data.get('current_region_id') or player.current_region_id
+            if region_id:
+                # Check sector exists in the specific region
+                sector = db.query(Sector).filter(
+                    Sector.sector_id == sector_id,
+                    Sector.region_id == region_id
+                ).first()
+                if not sector:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Sector {sector_id} does not exist in the specified region"
+                    )
+            else:
+                # No region specified, just verify sector exists globally
+                sector = db.query(Sector).filter(Sector.sector_id == sector_id).first()
+                if not sector:
+                    raise HTTPException(status_code=400, detail=f"Sector {sector_id} does not exist")
+
             player.current_sector_id = sector_id
 
         if 'status' in update_data:
@@ -328,6 +377,7 @@ async def update_player(
             "credits": player.credits,
             "turns": player.turns,
             "current_sector_id": player.current_sector_id,
+            "current_region_id": str(player.current_region_id) if player.current_region_id else None,
             "current_ship_id": str(player.current_ship_id) if player.current_ship_id else None,
             "team_id": str(player.team_id) if player.team_id else None,
             "is_active": player.is_active,
