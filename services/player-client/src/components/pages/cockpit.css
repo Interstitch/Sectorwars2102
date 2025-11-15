@@ -176,11 +176,8 @@
 
 .cockpit-windshield .sector-viewport-canvas {
   display: block !important;
-  /* Override base CSS width: 100% to preserve canvas intrinsic dimensions */
-  width: unset !important;
-  height: unset !important;
-  max-width: 100% !important;
-  max-height: 100% !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Hide the viewport label since we have HUD overlays */
