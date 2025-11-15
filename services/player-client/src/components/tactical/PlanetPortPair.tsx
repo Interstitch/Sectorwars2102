@@ -17,6 +17,7 @@ interface Planet {
 interface Port {
   id: string;
   name: string;
+  class?: number;  // Port class 0-11 (from specification)
   type: string;
   status: string;
   owner_id?: string | null;
@@ -58,6 +59,22 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
     'oceanic': '🌊',
     'desert': '🏜️',
     'jungle': '🌴'
+  };
+
+  // Port class names (from specification)
+  const portClassNames: { [key: number]: string } = {
+    0: 'Sol System',
+    1: 'Mining Operation',
+    2: 'Agricultural Center',
+    3: 'Industrial Hub',
+    4: 'Distribution Center',
+    5: 'Collection Hub',
+    6: 'Mixed Market',
+    7: 'Resource Exchange',
+    8: 'Black Hole',
+    9: 'Nova',
+    10: 'Luxury Market',
+    11: 'Advanced Tech Hub'
   };
 
   // Service icons - matched to backend service names
@@ -157,18 +174,29 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
       {/* Port Section - Clickable if exists */}
       {port && (
         <div
-          className={`port-section ${!isDocked && port.status.toLowerCase() === 'active' ? 'clickable' : 'inactive'}`}
+          className={`port-section ${!isDocked && port.status.toLowerCase() === 'operational' ? 'clickable' : 'inactive'}`}
           onClick={handlePortClick}
         >
           <span className="port-icon">🏢</span>
           <div className="port-details">
-            <div className="port-name">{port.name}</div>
-            <div className="port-services">
-              {availableServices.length > 0 ? (
-                availableServices.map((icon, i) => <span key={i}>{icon}</span>)
-              ) : (
-                <span className="no-services">Offline</span>
+            <div className="port-name-line">
+              <span className="port-name">{port.name}</span>
+              {port.class !== undefined && (
+                <span className="port-class">Class {port.class}: {portClassNames[port.class] || 'Unknown'}</span>
               )}
+              <span className="port-type">{port.type.replace(/_/g, ' ')}</span>
+            </div>
+            <div className="port-info">
+              <span className="port-status">
+                {port.status.toLowerCase() === 'operational' ? '🟢' : '🔴'} {port.status}
+              </span>
+              <div className="port-services">
+                {availableServices.length > 0 ? (
+                  availableServices.map((icon, i) => <span key={i}>{icon}</span>)
+                ) : (
+                  <span className="no-services">Offline</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
