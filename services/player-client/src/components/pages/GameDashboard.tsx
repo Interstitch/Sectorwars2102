@@ -134,8 +134,8 @@ const GameDashboard: React.FC = () => {
                 radiationLevel={currentSector.radiation_level}
                 ports={portsInSector}
                 planets={planetsInSector}
-                width={window.innerWidth - 320}
-                height={(window.innerHeight - 80) * 0.40}
+                width={Math.floor(window.innerWidth - 320)}
+                height={Math.floor((window.innerHeight - 80) * 0.40)}
               />
 
               {/* Cockpit frame vignette */}
