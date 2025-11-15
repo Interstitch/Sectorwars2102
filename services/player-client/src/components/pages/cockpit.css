@@ -12,6 +12,109 @@
   flex-direction: column;
 }
 
+/* Override main-viewport padding for cockpit mode */
+.cockpit-mode .main-viewport,
+.game-dashboard.cockpit-mode {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Compress sidebar cockpit cards */
+.game-sidebar .cockpit-card {
+  padding: 0.5rem !important;
+  margin-bottom: 0 !important;
+}
+
+.game-sidebar .cockpit-card-header {
+  padding: 0.4rem 0.5rem !important;
+  margin-bottom: 0.4rem !important;
+}
+
+.game-sidebar .cockpit-card-title {
+  font-size: 0.75rem !important;
+  margin: 0 !important;
+}
+
+/* Ultra-compress Commander section */
+.game-sidebar .commander-name {
+  font-size: 0.85rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.game-sidebar .player-stats {
+  gap: 0.3rem !important;
+}
+
+.game-sidebar .stat-item {
+  padding: 0.3rem 0.4rem !important;
+}
+
+.game-sidebar .stat-label {
+  font-size: 0.65rem !important;
+}
+
+.game-sidebar .data-readout {
+  font-size: 0.85rem !important;
+}
+
+/* Ultra-compress Vessel Status section */
+.game-sidebar .ship-name {
+  font-size: 0.85rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.game-sidebar .ship-type {
+  font-size: 0.7rem !important;
+  margin-bottom: 0.4rem !important;
+}
+
+.game-sidebar .cargo-header {
+  font-size: 0.7rem !important;
+  margin: 0.4rem 0 0.25rem 0 !important;
+}
+
+.game-sidebar .cargo-list {
+  gap: 0.2rem !important;
+}
+
+.game-sidebar .cargo-item {
+  padding: 0.25rem 0.3rem !important;
+  font-size: 0.7rem !important;
+}
+
+.game-sidebar .empty-cargo,
+.game-sidebar .no-ship {
+  padding: 0.5rem !important;
+  font-size: 0.7rem !important;
+}
+
+/* Ultra-compress Nav Coords section */
+.game-sidebar .sector-name {
+  font-size: 0.85rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.game-sidebar .sector-designation {
+  font-size: 0.75rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.game-sidebar .sector-type {
+  font-size: 0.65rem !important;
+  padding: 0.2rem 0.3rem !important;
+  margin-bottom: 0.3rem !important;
+}
+
+.game-sidebar .sector-hazard {
+  padding: 0.25rem 0.3rem !important;
+  margin-top: 0.3rem !important;
+}
+
+.game-sidebar .unknown-sector {
+  padding: 0.5rem !important;
+  font-size: 0.7rem !important;
+}
+
 /* ============================================
    WINDSHIELD - Full immersive viewport
    ============================================ */
@@ -428,8 +531,9 @@
   position: relative;
   width: 100%;
   height: 100%;
+  max-height: calc(55vh - 2rem);
   background: rgba(0, 5, 10, 0.95);
-  padding: 1rem;
+  padding: 0.75rem;
   overflow-y: auto;
   overflow-x: hidden;
   z-index: 1;
