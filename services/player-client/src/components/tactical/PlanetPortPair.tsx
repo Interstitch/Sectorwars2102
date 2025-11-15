@@ -88,6 +88,15 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
         .map(([service, _]) => serviceIcons[service] || '•')
     : [];
 
+  // Debug logging
+  if (port) {
+    console.log('PlanetPortPair - Port data:', {
+      name: port.name,
+      services: port.services,
+      availableServices
+    });
+  }
+
   const handlePlanetClick = () => {
     if (isLanded) return;
     if (confirm(`Land on ${planet.name}?`)) {
