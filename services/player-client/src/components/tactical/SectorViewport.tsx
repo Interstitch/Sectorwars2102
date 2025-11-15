@@ -10,6 +10,7 @@ interface SectorViewportProps {
   planets?: any[];
   width?: number;
   height?: number;
+  onEntityClick?: (entity: { type: 'port' | 'planet'; id: string; name: string }) => void;
 }
 
 interface Particle {
@@ -32,12 +33,17 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
   ports = [],
   planets = [],
   width = 450,
-  height = 300
+  height = 300,
+  onEntityClick
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const animationFrameRef = useRef<number>();
   const [isAnimating, setIsAnimating] = useState(true);
+  const [hoveredEntity, setHoveredEntity] = useState<{ type: 'port' | 'planet'; name: string; x: number; y: number } | null>(null);
+
+  // Store entity positions for hit detection
+  const entityPositionsRef = useRef<Array<{ type: 'port' | 'planet'; id: string; name: string; x: number; y: number; radius: number }>>([]);
 
   // Initialize particles based on sector type
   useEffect(() => {
@@ -73,11 +79,14 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
       updateParticles(particlesRef.current, sectorType, width, height, radiationLevel);
       drawParticles(ctx, particlesRef.current);
 
-      // Draw planets
-      drawPlanets(ctx, planets, width, height);
+      // Clear entity positions and redraw
+      entityPositionsRef.current = [];
 
-      // Draw ports
-      drawPorts(ctx, ports, width, height);
+      // Draw planets with labels
+      drawPlanetsEnhanced(ctx, planets, width, height, entityPositionsRef.current);
+
+      // Draw ports with labels
+      drawPortsEnhanced(ctx, ports, width, height, entityPositionsRef.current);
 
       // Draw sector-specific effects
       drawSectorEffects(ctx, sectorType, width, height, hazardLevel, radiationLevel);
@@ -94,6 +103,41 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
     };
   }, [isAnimating, sectorType, hazardLevel, radiationLevel, ports, planets, width, height]);
 
+  // Mouse event handlers for interactivity
+  const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    // Check if mouse is over any entity
+    const hoveredItem = entityPositionsRef.current.find(entity => {
+      const dx = mouseX - entity.x;
+      const dy = mouseY - entity.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      return distance <= entity.radius;
+    });
+
+    if (hoveredItem) {
+      setHoveredEntity({ type: hoveredItem.type, name: hoveredItem.name, x: mouseX, y: mouseY });
+      canvas.style.cursor = 'pointer';
+    } else {
+      setHoveredEntity(null);
+      canvas.style.cursor = 'default';
+    }
+  };
+
+  const handleClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (hoveredEntity && onEntityClick) {
+      const entity = entityPositionsRef.current.find(e => e.name === hoveredEntity.name);
+      if (entity) {
+        onEntityClick({ type: entity.type, id: entity.id, name: entity.name });
+      }
+    }
+  };
+
   return (
     <div className="sector-viewport-container">
       <canvas
@@ -101,9 +145,34 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
         width={width}
         height={height}
         className="sector-viewport-canvas"
+        onMouseMove={handleMouseMove}
+        onClick={handleClick}
       />
       <div className="viewport-overlay">
         <div className="viewport-label">{sectorName}</div>
+        {hoveredEntity && (
+          <div
+            className="viewport-tooltip"
+            style={{
+              left: `${hoveredEntity.x + 10}px`,
+              top: `${hoveredEntity.y + 10}px`
+            }}
+          >
+            <div className="tooltip-type">{hoveredEntity.type === 'port' ? '🏢 PORT' : '🪐 PLANET'}</div>
+            <div className="tooltip-name">{hoveredEntity.name}</div>
+          </div>
+        )}
+      </div>
+      {/* Legend */}
+      <div className="viewport-legend">
+        <div className="legend-item">
+          <div className="legend-icon planet-icon">●</div>
+          <div className="legend-label">Planets</div>
+        </div>
+        <div className="legend-item">
+          <div className="legend-icon port-icon">⬡</div>
+          <div className="legend-label">Ports</div>
+        </div>
       </div>
     </div>
   );
@@ -269,6 +338,83 @@ function drawPlanets(
   });
 }
 
+// Enhanced version with labels and position tracking
+function drawPlanetsEnhanced(
+  ctx: CanvasRenderingContext2D,
+  planets: any[],
+  width: number,
+  height: number,
+  entityPositions: Array<{ type: 'port' | 'planet'; id: string; name: string; x: number; y: number; radius: number }>
+) {
+  if (!planets || planets.length === 0) return;
+
+  planets.forEach((planet, index) => {
+    // Position planets in consistent locations
+    const x = width * 0.2 + (index * 100);
+    const y = height * 0.3 + (Math.sin(index) * 50);
+    const radius = 20 + (index * 5);
+
+    // Track position for hit detection
+    entityPositions.push({
+      type: 'planet',
+      id: planet.id,
+      name: planet.name,
+      x,
+      y,
+      radius: radius + 5 // Slightly larger for easier clicking
+    });
+
+    // Planet body
+    const gradient = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, radius * 0.1, x, y, radius);
+
+    // Color based on planet type
+    const planetColors = {
+      'terran': { start: '#00ff41', mid: '#00d9ff', end: '#004d19' },
+      'ice': { start: '#88ddff', mid: '#00d9ff', end: '#001a33' },
+      'volcanic': { start: '#ff6b00', mid: '#ff0000', end: '#330000' },
+      'gas_giant': { start: '#ffb000', mid: '#c961de', end: '#1a0033' },
+      'barren': { start: '#8b4513', mid: '#696969', end: '#1a1a1a' }
+    };
+
+    const planetType = planet.type?.toLowerCase().replace('planettype.', '') || 'barren';
+    const colors = planetColors[planetType as keyof typeof planetColors] || planetColors['barren'];
+
+    gradient.addColorStop(0, colors.start);
+    gradient.addColorStop(0.5, colors.mid);
+    gradient.addColorStop(1, colors.end);
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Atmosphere glow
+    ctx.strokeStyle = colors.start;
+    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(x, y, radius + 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1.0;
+
+    // Draw label
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    // Label background
+    const labelY = y + radius + 8;
+    const labelWidth = ctx.measureText(planet.name).width + 8;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(x - labelWidth / 2, labelY, labelWidth, 16);
+
+    // Label text
+    ctx.fillStyle = colors.start;
+    ctx.fillText(planet.name, x, labelY + 2);
+  });
+}
+
 function drawPorts(
   ctx: CanvasRenderingContext2D,
   ports: any[],
@@ -320,6 +466,87 @@ function drawPorts(
       ctx.arc(x, y, 2, 0, Math.PI * 2);
       ctx.fill();
     }
+  });
+}
+
+// Enhanced version with labels and position tracking
+function drawPortsEnhanced(
+  ctx: CanvasRenderingContext2D,
+  ports: any[],
+  width: number,
+  height: number,
+  entityPositions: Array<{ type: 'port' | 'planet'; id: string; name: string; x: number; y: number; radius: number }>
+) {
+  if (!ports || ports.length === 0) return;
+
+  ports.forEach((port, index) => {
+    // Position ports in upper area
+    const x = width * 0.7 + (index * 80);
+    const y = height * 0.25 + (Math.cos(index) * 30);
+    const size = 15;
+
+    // Track position for hit detection
+    entityPositions.push({
+      type: 'port',
+      id: port.id,
+      name: port.name,
+      x,
+      y,
+      radius: size + 8 // Larger for easier clicking
+    });
+
+    // Port structure - hexagonal shape
+    ctx.strokeStyle = '#00d9ff';
+    ctx.fillStyle = 'rgba(0, 217, 255, 0.2)';
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i;
+      const px = x + size * Math.cos(angle);
+      const py = y + size * Math.sin(angle);
+      if (i === 0) {
+        ctx.moveTo(px, py);
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Docking ring glow
+    ctx.strokeStyle = '#00d9ff';
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(x, y, size + 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1.0;
+
+    // Blinking light
+    const blink = Math.sin(Date.now() * 0.005 + index) > 0.5;
+    if (blink) {
+      ctx.fillStyle = '#00ff41';
+      ctx.beginPath();
+      ctx.arc(x, y, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Draw label
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    // Label background
+    const labelY = y + size + 12;
+    const labelWidth = ctx.measureText(port.name).width + 8;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(x - labelWidth / 2, labelY, labelWidth, 16);
+
+    // Label text
+    ctx.fillStyle = '#00d9ff';
+    ctx.fillText(port.name, x, labelY + 2);
   });
 }
 

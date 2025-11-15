@@ -111,10 +111,92 @@
   }
 }
 
+/* Viewport Tooltip */
+.viewport-tooltip {
+  position: absolute;
+  background: linear-gradient(135deg, rgba(10, 14, 26, 0.95) 0%, rgba(5, 8, 16, 0.98) 100%);
+  border: 1px solid rgba(0, 217, 255, 0.6);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  pointer-events: none;
+  z-index: 1001;
+  box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
+  animation: tooltip-appear 0.2s ease-out;
+}
+
+.tooltip-type {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(0, 217, 255, 0.8);
+  margin-bottom: 0.25rem;
+}
+
+.tooltip-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #00d9ff;
+  text-shadow: 0 0 8px rgba(0, 217, 255, 0.5);
+  white-space: nowrap;
+}
+
+@keyframes tooltip-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Viewport Legend */
+.viewport-legend {
+  position: absolute;
+  bottom: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
+  background: linear-gradient(135deg, rgba(10, 14, 26, 0.9) 0%, rgba(5, 8, 16, 0.95) 100%);
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend-icon {
+  font-size: 1rem;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.legend-icon.planet-icon {
+  color: #9333ea;
+}
+
+.legend-icon.port-icon {
+  color: #00d9ff;
+}
+
+.legend-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
   .viewport-label,
-  .sector-viewport-container::before {
+  .sector-viewport-container::before,
+  .viewport-tooltip {
     animation: none;
   }
 }
