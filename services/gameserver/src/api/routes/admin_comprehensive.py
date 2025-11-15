@@ -2110,6 +2110,328 @@ async def get_sector_port(
         logger.error(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Failed to get sector port: {str(e)}")
 
+@router.get("/sectors/{sector_id}/warp-tunnels")
+async def get_sector_warp_tunnels(
+    sector_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get all warp tunnels for a specific sector (outgoing, incoming, and bidirectional)"""
+    try:
+        # Find the sector - try UUID first, fallback to integer sector_id
+        sector = None
+        try:
+            sector_uuid = uuid.UUID(sector_id)
+            sector = db.query(Sector).filter(Sector.id == sector_uuid).first()
+        except ValueError:
+            try:
+                sector_int = int(sector_id)
+                sector = db.query(Sector).filter(Sector.sector_id == sector_int).first()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid sector ID format")
+
+        if not sector:
+            raise HTTPException(status_code=404, detail="Sector not found")
+
+        # Get all tunnels where this sector is origin OR destination
+        outgoing_tunnels = db.query(WarpTunnel).filter(
+            WarpTunnel.origin_sector_id == sector.id
+        ).all()
+
+        incoming_tunnels = db.query(WarpTunnel).filter(
+            WarpTunnel.destination_sector_id == sector.id,
+            WarpTunnel.is_bidirectional == False  # Only show one-way incoming
+        ).all()
+
+        # Build response data
+        def format_tunnel(tunnel, is_outgoing=True):
+            """Format tunnel data for response"""
+            # Determine which sector to show (the "other" end)
+            if is_outgoing:
+                other_sector = tunnel.destination_sector
+                direction = "outgoing"
+            else:
+                other_sector = tunnel.origin_sector
+                direction = "incoming"
+
+            other_sector_num = other_sector.sector_id if other_sector else None
+            other_sector_name = other_sector.name if other_sector else "Unknown"
+            other_region_name = other_sector.region.name if other_sector and other_sector.region else "Unknown"
+
+            return {
+                "id": str(tunnel.id),
+                "name": tunnel.name,
+                "direction": direction,
+                "other_sector_id": other_sector_num,
+                "other_sector_name": other_sector_name,
+                "other_region_name": other_region_name,
+                "origin_sector_id": tunnel.origin_sector.sector_id if tunnel.origin_sector else None,
+                "destination_sector_id": tunnel.destination_sector.sector_id if tunnel.destination_sector else None,
+                "type": tunnel.type.value,
+                "status": tunnel.status.value,
+                "stability": tunnel.stability,
+                "is_bidirectional": tunnel.is_bidirectional,
+                "turn_cost": tunnel.turn_cost,
+                "energy_cost": tunnel.energy_cost,
+                "is_public": tunnel.is_public,
+                "total_traversals": tunnel.total_traversals,
+                "created_at": tunnel.created_at.isoformat()
+            }
+
+        outgoing_data = [format_tunnel(t, is_outgoing=True) for t in outgoing_tunnels]
+        incoming_data = [format_tunnel(t, is_outgoing=False) for t in incoming_tunnels]
+
+        return {
+            "sector_id": sector.sector_id,
+            "sector_name": sector.name,
+            "sector_uuid": str(sector.id),
+            "outgoing": outgoing_data,
+            "incoming": incoming_data,
+            "total_tunnels": len(outgoing_data) + len(incoming_data)
+        }
+
+    except ValueError as ve:
+        logger.error(f"Validation error getting warp tunnels for sector {sector_id}: {ve}")
+        raise HTTPException(status_code=422, detail=f"Validation error: {str(ve)}")
+    except Exception as e:
+        logger.error(f"Error getting warp tunnels for sector {sector_id}: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to get sector warp tunnels: {str(e)}")
+
+class WarpTunnelCreateRequest(BaseModel):
+    """Request model for creating a new warp tunnel"""
+    name: str = Field(..., max_length=100, description="Tunnel name")
+    destination_sector_id: int = Field(..., description="Destination sector number")
+    type: str = Field("STANDARD", description="Tunnel type (NATURAL, ARTIFICIAL, STANDARD, etc.)")
+    is_bidirectional: bool = Field(True, description="Can be used in both directions")
+    turn_cost: int = Field(5, ge=1, le=100, description="Turns required to traverse")
+    stability: float = Field(1.0, ge=0.0, le=1.0, description="Stability rating 0-1")
+    is_public: bool = Field(True, description="Whether anyone can use it")
+
+class WarpTunnelUpdateRequest(BaseModel):
+    """Request model for updating a warp tunnel"""
+    name: Optional[str] = Field(None, max_length=100)
+    type: Optional[str] = None
+    status: Optional[str] = None
+    is_bidirectional: Optional[bool] = None
+    turn_cost: Optional[int] = Field(None, ge=1, le=100)
+    stability: Optional[float] = Field(None, ge=0.0, le=1.0)
+    energy_cost: Optional[int] = Field(None, ge=0)
+    is_public: Optional[bool] = None
+
+@router.post("/sectors/{sector_id}/warp-tunnels")
+async def create_warp_tunnel(
+    sector_id: str,
+    tunnel_data: WarpTunnelCreateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Create a new warp tunnel from this sector to another"""
+    try:
+        # Find origin sector
+        origin_sector = None
+        try:
+            sector_uuid = uuid.UUID(sector_id)
+            origin_sector = db.query(Sector).filter(Sector.id == sector_uuid).first()
+        except ValueError:
+            try:
+                sector_int = int(sector_id)
+                origin_sector = db.query(Sector).filter(Sector.sector_id == sector_int).first()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid sector ID format")
+
+        if not origin_sector:
+            raise HTTPException(status_code=404, detail="Origin sector not found")
+
+        # Find destination sector (by sector_id number within same region)
+        dest_sector = db.query(Sector).filter(
+            Sector.sector_id == tunnel_data.destination_sector_id,
+            Sector.region_id == origin_sector.region_id  # Must be same region
+        ).first()
+
+        if not dest_sector:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Destination sector {tunnel_data.destination_sector_id} not found in same region"
+            )
+
+        # Validation: no self-loops
+        if origin_sector.id == dest_sector.id:
+            raise HTTPException(status_code=400, detail="Cannot create tunnel from sector to itself")
+
+        # Check for duplicate tunnels
+        existing = db.query(WarpTunnel).filter(
+            WarpTunnel.origin_sector_id == origin_sector.id,
+            WarpTunnel.destination_sector_id == dest_sector.id
+        ).first()
+
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Tunnel already exists from sector {origin_sector.sector_id} to {dest_sector.sector_id}"
+            )
+
+        # Import WarpTunnelType and WarpTunnelStatus enums
+        from src.models.warp_tunnel import WarpTunnelType, WarpTunnelStatus
+
+        # Validate and convert type
+        try:
+            tunnel_type = WarpTunnelType[tunnel_data.type.upper()]
+        except KeyError:
+            raise HTTPException(status_code=400, detail=f"Invalid tunnel type: {tunnel_data.type}")
+
+        # Create the tunnel
+        new_tunnel = WarpTunnel(
+            name=tunnel_data.name,
+            origin_sector_id=origin_sector.id,
+            destination_sector_id=dest_sector.id,
+            type=tunnel_type,
+            status=WarpTunnelStatus.ACTIVE,
+            is_bidirectional=tunnel_data.is_bidirectional,
+            stability=tunnel_data.stability,
+            turn_cost=tunnel_data.turn_cost,
+            energy_cost=0,
+            is_public=tunnel_data.is_public
+        )
+
+        db.add(new_tunnel)
+        db.commit()
+        db.refresh(new_tunnel)
+
+        return {
+            "success": True,
+            "message": f"Warp tunnel created from sector {origin_sector.sector_id} to {dest_sector.sector_id}",
+            "tunnel": {
+                "id": str(new_tunnel.id),
+                "name": new_tunnel.name,
+                "origin_sector_id": origin_sector.sector_id,
+                "destination_sector_id": dest_sector.sector_id,
+                "type": new_tunnel.type.value,
+                "is_bidirectional": new_tunnel.is_bidirectional,
+                "turn_cost": new_tunnel.turn_cost
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating warp tunnel: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to create warp tunnel: {str(e)}")
+
+@router.put("/warp-tunnels/{tunnel_id}")
+async def update_warp_tunnel(
+    tunnel_id: str,
+    tunnel_data: WarpTunnelUpdateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Update an existing warp tunnel"""
+    try:
+        # Find the tunnel
+        try:
+            tunnel_uuid = uuid.UUID(tunnel_id)
+            tunnel = db.query(WarpTunnel).filter(WarpTunnel.id == tunnel_uuid).first()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid tunnel ID format")
+
+        if not tunnel:
+            raise HTTPException(status_code=404, detail="Warp tunnel not found")
+
+        # Import enums
+        from src.models.warp_tunnel import WarpTunnelType, WarpTunnelStatus
+
+        # Update provided fields
+        update_data = tunnel_data.dict(exclude_unset=True)
+
+        for field, value in update_data.items():
+            if field == "type" and value:
+                try:
+                    tunnel.type = WarpTunnelType[value.upper()]
+                except KeyError:
+                    raise HTTPException(status_code=400, detail=f"Invalid tunnel type: {value}")
+            elif field == "status" and value:
+                try:
+                    tunnel.status = WarpTunnelStatus[value.upper()]
+                except KeyError:
+                    raise HTTPException(status_code=400, detail=f"Invalid tunnel status: {value}")
+            else:
+                setattr(tunnel, field, value)
+
+        db.commit()
+        db.refresh(tunnel)
+
+        return {
+            "success": True,
+            "message": "Warp tunnel updated successfully",
+            "tunnel": {
+                "id": str(tunnel.id),
+                "name": tunnel.name,
+                "type": tunnel.type.value,
+                "status": tunnel.status.value,
+                "is_bidirectional": tunnel.is_bidirectional,
+                "turn_cost": tunnel.turn_cost,
+                "stability": tunnel.stability
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating warp tunnel {tunnel_id}: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to update warp tunnel: {str(e)}")
+
+@router.delete("/warp-tunnels/{tunnel_id}")
+async def delete_warp_tunnel(
+    tunnel_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Delete a warp tunnel"""
+    try:
+        # Find the tunnel
+        try:
+            tunnel_uuid = uuid.UUID(tunnel_id)
+            tunnel = db.query(WarpTunnel).filter(WarpTunnel.id == tunnel_uuid).first()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid tunnel ID format")
+
+        if not tunnel:
+            raise HTTPException(status_code=404, detail="Warp tunnel not found")
+
+        # Store info for response
+        tunnel_info = {
+            "name": tunnel.name,
+            "origin_sector_id": tunnel.origin_sector.sector_id if tunnel.origin_sector else None,
+            "destination_sector_id": tunnel.destination_sector.sector_id if tunnel.destination_sector else None,
+            "is_bidirectional": tunnel.is_bidirectional
+        }
+
+        # Delete the tunnel
+        db.delete(tunnel)
+        db.commit()
+
+        return {
+            "success": True,
+            "message": f"Warp tunnel '{tunnel_info['name']}' deleted successfully",
+            "was_bidirectional": tunnel_info["is_bidirectional"]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting warp tunnel {tunnel_id}: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete warp tunnel: {str(e)}")
+
 @router.get("/warp-tunnels", response_model=Dict[str, Any])
 async def get_warp_tunnels(
     page: int = Query(1, ge=1),

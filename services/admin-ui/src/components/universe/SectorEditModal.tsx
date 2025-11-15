@@ -69,6 +69,10 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
   const [planetDetails, setPlanetDetails] = useState<any>(null);
   const [portDetails, setPortDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [warpTunnels, setWarpTunnels] = useState<any>(null);
+  const [loadingTunnels, setLoadingTunnels] = useState(false);
+  const [showTunnelForm, setShowTunnelForm] = useState(false);
+  const [editingTunnel, setEditingTunnel] = useState<any>(null);
   const navigate = useNavigate();
   const [planetFormData, setPlanetFormData] = useState({
     name: '',
@@ -89,6 +93,15 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
     faction_affiliation: '',
     trade_volume: 100,
     market_volatility: 50
+  });
+  const [tunnelFormData, setTunnelFormData] = useState({
+    name: '',
+    destination_sector_id: 1,
+    type: 'STANDARD',
+    is_bidirectional: true,
+    turn_cost: 5,
+    stability: 1.0,
+    is_public: true
   });
 
   // Initialize form data when sector changes
@@ -117,7 +130,7 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
       });
       setHasUnsavedChanges(false);
       setError(null);
-      
+
       // Fetch detailed planet and port information
       fetchSectorDetails();
     }
@@ -125,13 +138,13 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
 
   const fetchSectorDetails = async () => {
     if (!sector) return;
-    
+
     setLoadingDetails(true);
     try {
       // Fetch planet details
       const planetResponse = await api.get(`/api/v1/admin/sectors/${sector.id}/planet`);
       setPlanetDetails(planetResponse.data);
-      
+
       // Fetch port details
       const portResponse = await api.get(`/api/v1/admin/sectors/${sector.id}/port`);
       setPortDetails(portResponse.data);
@@ -142,6 +155,21 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
       setPortDetails({ has_port: false, port: null });
     } finally {
       setLoadingDetails(false);
+    }
+  };
+
+  const fetchWarpTunnels = async () => {
+    if (!sector) return;
+
+    setLoadingTunnels(true);
+    try {
+      const response = await api.get(`/api/v1/admin/sectors/${sector.id}/warp-tunnels`);
+      setWarpTunnels(response.data);
+    } catch (err) {
+      console.error('Error fetching warp tunnels:', err);
+      setWarpTunnels({ outgoing: [], incoming: [], total_tunnels: 0 });
+    } finally {
+      setLoadingTunnels(false);
     }
   };
 
@@ -294,6 +322,94 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
   const handleNavigateToPort = (portId: string) => {
     navigate(`/universe/ports?portId=${portId}`);
     onClose(); // Close the modal when navigating
+  };
+
+  const handleCreateTunnel = () => {
+    setShowTunnelForm(true);
+    setEditingTunnel(null);
+  };
+
+  const handleSubmitTunnel = async () => {
+    if (!sector) return;
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      if (editingTunnel) {
+        // Update existing tunnel
+        const response = await api.put(`/api/v1/admin/warp-tunnels/${editingTunnel.id}`, tunnelFormData);
+        if (response.status === 200) {
+          setShowTunnelForm(false);
+          setEditingTunnel(null);
+          await fetchWarpTunnels(); // Refresh the list
+          setError(null);
+        }
+      } else {
+        // Create new tunnel
+        const response = await api.post(`/api/v1/admin/sectors/${sector.id}/warp-tunnels`, tunnelFormData);
+        if (response.status === 200) {
+          setShowTunnelForm(false);
+          await fetchWarpTunnels(); // Refresh the list
+          setError(null);
+          // Reset form
+          setTunnelFormData({
+            name: '',
+            destination_sector_id: 1,
+            type: 'STANDARD',
+            is_bidirectional: true,
+            turn_cost: 5,
+            stability: 1.0,
+            is_public: true
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error('Error saving warp tunnel:', err);
+      setError(err.response?.data?.detail || 'Failed to save warp tunnel');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEditTunnel = (tunnel: any) => {
+    setEditingTunnel(tunnel);
+    setTunnelFormData({
+      name: tunnel.name,
+      destination_sector_id: tunnel.other_sector_id,
+      type: tunnel.type,
+      is_bidirectional: tunnel.is_bidirectional,
+      turn_cost: tunnel.turn_cost,
+      stability: tunnel.stability,
+      is_public: tunnel.is_public
+    });
+    setShowTunnelForm(true);
+  };
+
+  const handleDeleteTunnel = async (tunnelId: string, tunnelName: string, isBidirectional: boolean) => {
+    const confirmMessage = isBidirectional
+      ? `Delete tunnel "${tunnelName}"? This will remove travel in BOTH directions.`
+      : `Delete tunnel "${tunnelName}"?`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      const response = await api.delete(`/api/v1/admin/warp-tunnels/${tunnelId}`);
+      if (response.status === 200) {
+        await fetchWarpTunnels(); // Refresh the list
+        setError(null);
+      }
+    } catch (err: any) {
+      console.error('Error deleting warp tunnel:', err);
+      setError(err.response?.data?.detail || 'Failed to delete warp tunnel');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const renderBasicTab = () => (
@@ -701,6 +817,215 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
     </div>
   );
 
+  const renderWarpTunnelsTab = () => {
+    // Fetch tunnels when tab is first activated
+    if (warpTunnels === null && activeTab === 'tunnels') {
+      fetchWarpTunnels();
+    }
+
+    return (
+      <div className="tab-content">
+        <div className="warp-tunnels-section">
+          <div className="section-header">
+            <h4>Warp Tunnels ({warpTunnels?.total_tunnels || 0})</h4>
+            <button
+              type="button"
+              className="create-content-button"
+              onClick={handleCreateTunnel}
+            >
+              Create Tunnel
+            </button>
+          </div>
+
+          {loadingTunnels ? (
+            <div className="content-loading">Loading warp tunnels...</div>
+          ) : (
+            <>
+              {/* Outgoing Tunnels */}
+              {warpTunnels?.outgoing && warpTunnels.outgoing.length > 0 && (
+                <div className="tunnels-group">
+                  <h5>Outgoing Tunnels (→)</h5>
+                  <div className="tunnels-list">
+                    {warpTunnels.outgoing.map((tunnel: any) => (
+                      <div key={tunnel.id} className="tunnel-item">
+                        <div className="tunnel-header">
+                          <span className="tunnel-name">{tunnel.name}</span>
+                          {tunnel.is_bidirectional && <span className="tunnel-badge bidirectional">↔</span>}
+                          <span className="tunnel-destination">→ Sector {tunnel.other_sector_id}</span>
+                        </div>
+                        <div className="tunnel-details">
+                          <span className="detail-item">Type: {tunnel.type}</span>
+                          <span className="detail-item">Status: {tunnel.status}</span>
+                          <span className="detail-item">Cost: {tunnel.turn_cost} turns</span>
+                          <span className="detail-item">Stability: {(tunnel.stability * 100).toFixed(0)}%</span>
+                        </div>
+                        <div className="tunnel-actions">
+                          <button
+                            type="button"
+                            className="edit-button"
+                            onClick={() => handleEditTunnel(tunnel)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="delete-button"
+                            onClick={() => handleDeleteTunnel(tunnel.id, tunnel.name, tunnel.is_bidirectional)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Incoming One-Way Tunnels */}
+              {warpTunnels?.incoming && warpTunnels.incoming.length > 0 && (
+                <div className="tunnels-group">
+                  <h5>Incoming One-Way Tunnels (←)</h5>
+                  <div className="tunnels-list">
+                    {warpTunnels.incoming.map((tunnel: any) => (
+                      <div key={tunnel.id} className="tunnel-item">
+                        <div className="tunnel-header">
+                          <span className="tunnel-name">{tunnel.name}</span>
+                          <span className="tunnel-destination">← Sector {tunnel.other_sector_id}</span>
+                        </div>
+                        <div className="tunnel-details">
+                          <span className="detail-item">Type: {tunnel.type}</span>
+                          <span className="detail-item">Status: {tunnel.status}</span>
+                          <span className="detail-item">Cost: {tunnel.turn_cost} turns</span>
+                          <span className="detail-item">Stability: {(tunnel.stability * 100).toFixed(0)}%</span>
+                        </div>
+                        <div className="tunnel-actions">
+                          <button
+                            type="button"
+                            className="delete-button"
+                            onClick={() => handleDeleteTunnel(tunnel.id, tunnel.name, tunnel.is_bidirectional)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {(!warpTunnels || (warpTunnels.outgoing.length === 0 && warpTunnels.incoming.length === 0)) && (
+                <div className="empty-state">
+                  <p>No warp tunnels found for this sector.</p>
+                  <p className="hint">Create a tunnel to connect this sector to another.</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Tunnel Creation/Edit Form */}
+          {showTunnelForm && (
+            <div className="creation-form">
+              <h4>{editingTunnel ? 'Edit Warp Tunnel' : 'Create Warp Tunnel'}</h4>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Tunnel Name</label>
+                  <input
+                    type="text"
+                    value={tunnelFormData.name}
+                    onChange={(e) => setTunnelFormData({...tunnelFormData, name: e.target.value})}
+                    placeholder="Enter tunnel name..."
+                  />
+                </div>
+                {!editingTunnel && (
+                  <div className="form-group">
+                    <label>Destination Sector #</label>
+                    <input
+                      type="number"
+                      value={tunnelFormData.destination_sector_id}
+                      onChange={(e) => setTunnelFormData({...tunnelFormData, destination_sector_id: parseInt(e.target.value)})}
+                      min={1}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Tunnel Type</label>
+                  <select
+                    value={tunnelFormData.type}
+                    onChange={(e) => setTunnelFormData({...tunnelFormData, type: e.target.value})}
+                  >
+                    <option value="NATURAL">Natural</option>
+                    <option value="ARTIFICIAL">Artificial</option>
+                    <option value="STANDARD">Standard</option>
+                    <option value="QUANTUM">Quantum</option>
+                    <option value="ANCIENT">Ancient</option>
+                    <option value="UNSTABLE">Unstable</option>
+                    <option value="ONE_WAY">One-Way</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Turn Cost</label>
+                  <input
+                    type="number"
+                    value={tunnelFormData.turn_cost}
+                    onChange={(e) => setTunnelFormData({...tunnelFormData, turn_cost: parseInt(e.target.value)})}
+                    min={1}
+                    max={100}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Stability</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={tunnelFormData.stability}
+                    onChange={(e) => setTunnelFormData({...tunnelFormData, stability: parseFloat(e.target.value)})}
+                    min={0}
+                    max={1}
+                  />
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={tunnelFormData.is_bidirectional}
+                      onChange={(e) => setTunnelFormData({...tunnelFormData, is_bidirectional: e.target.checked})}
+                    />
+                    Bidirectional (can travel both ways)
+                  </label>
+                </div>
+                <div className="form-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={tunnelFormData.is_public}
+                      onChange={(e) => setTunnelFormData({...tunnelFormData, is_public: e.target.checked})}
+                    />
+                    Public (anyone can use)
+                  </label>
+                </div>
+              </div>
+              <div className="form-actions">
+                <button type="button" onClick={() => { setShowTunnelForm(false); setEditingTunnel(null); }}>Cancel</button>
+                <button
+                  type="button"
+                  onClick={handleSubmitTunnel}
+                  disabled={!tunnelFormData.name || isSaving}
+                >
+                  {isSaving ? 'Saving...' : (editingTunnel ? 'Update Tunnel' : 'Create Tunnel')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (!isOpen || !sector) return null;
 
   return (
@@ -736,19 +1061,26 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
           >
             Discovery
           </button>
-          <button 
+          <button
             className={`tab-button ${activeTab === 'control' ? 'active' : ''}`}
             onClick={() => setActiveTab('control')}
           >
             Control
           </button>
+          <button
+            className={`tab-button ${activeTab === 'tunnels' ? 'active' : ''}`}
+            onClick={() => setActiveTab('tunnels')}
+          >
+            Warp Tunnels
+          </button>
         </div>
-        
+
         <div className="modal-body">
           {activeTab === 'basic' && renderBasicTab()}
           {activeTab === 'physical' && renderPhysicalTab()}
           {activeTab === 'discovery' && renderDiscoveryTab()}
           {activeTab === 'control' && renderControlTab()}
+          {activeTab === 'tunnels' && renderWarpTunnelsTab()}
         </div>
         
         <div className="modal-footer">
