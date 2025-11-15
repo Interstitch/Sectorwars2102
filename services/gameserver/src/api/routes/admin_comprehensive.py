@@ -312,8 +312,20 @@ async def get_players_comprehensive(
             ships_count = ships_counts.get(player_id_str, 0)
             planets_count = planets_counts.get(player_id_str, 0)
             ports_count = ports_counts.get(player_id_str, 0)
-            
-            # Build base player data
+
+            # Calculate total asset value
+            total_asset_value = player.credits  # Start with credits
+
+            # Add ship values (simplified calculation)
+            if ships_count > 0:
+                # Estimate ship values without complex queries
+                estimated_ship_value = ships_count * 50000  # Default ship value
+                total_asset_value += estimated_ship_value
+
+            # Derive status from is_active (matching basic endpoint behavior)
+            status = "active" if player.user.is_active else "inactive"
+
+            # Build complete player data with all required fields
             player_data = {
                 "id": player_id_str,
                 "username": player.user.username,
@@ -324,45 +336,31 @@ async def get_players_comprehensive(
                 "current_ship_id": str(player.current_ship_id) if player.current_ship_id else None,
                 "team_id": str(player.team_id) if player.team_id else None,
                 "is_active": player.user.is_active,
+                "status": status,  # Always include status field
                 "last_login": player.last_game_login,
                 "created_at": player.user.created_at,
                 "ships_count": ships_count,
                 "planets_count": planets_count,
-                "ports_count": ports_count
-            }
-            
-            # Add enhanced asset information if requested
-            if include_assets:
-                # Calculate total asset value
-                total_asset_value = player.credits  # Start with credits
-                
-                # Add ship values (simplified calculation)
-                if ships_count > 0:
-                    # Estimate ship values without complex queries
-                    estimated_ship_value = ships_count * 50000  # Default ship value
-                    total_asset_value += estimated_ship_value
-                
-                player_data["assets"] = {
+                "ports_count": ports_count,
+                # Always include assets object (not conditional)
+                "assets": {
                     "ships_count": ships_count,
                     "planets_count": planets_count,
                     "ports_count": ports_count,
                     "total_value": total_asset_value
-                }
-            
-            # Add activity metrics if requested
-            if include_activity:
-                # Calculate activity metrics
-                now = datetime.utcnow()
-                today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-                
-                player_data["activity"] = {
-                    "last_login": player.last_game_login or player.user.created_at,
+                },
+                # Always include activity object (not conditional)
+                "activity": {
+                    "last_login": player.last_game_login.isoformat() if player.last_game_login else (player.user.created_at.isoformat() if player.user.created_at else None),
                     "session_count_today": 0,  # Would need session tracking
                     "actions_today": 0,  # Would need activity tracking
                     "total_trade_volume": 0,  # Would need trade history
                     "combat_rating": 0,  # Would need combat stats
                     "suspicious_activity": False  # Would need security analysis
-                }
+                },
+                # Always include ARIA field (null until data collection implemented)
+                "aria": None
+            }
             
             players_data.append(player_data)
         
