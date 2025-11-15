@@ -219,11 +219,136 @@ async def get_all_players(
                 })
         
         return {"players": player_list}
-        
+
     except Exception as e:
         logger.error(f"Error getting all players: {e}")
         # Return empty list if query fails completely
         return {"players": []}
+
+@router.patch("/players/{player_id}", response_model=dict)
+async def update_player(
+    player_id: str,
+    update_data: dict,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Update player information (admin only)"""
+    try:
+        # Find the player
+        player = db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise HTTPException(status_code=404, detail="Player not found")
+
+        # Get the associated user
+        user = db.query(User).filter(User.id == player.user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Associated user not found")
+
+        # Validate and update User fields
+        if 'username' in update_data and update_data['username'] != user.username:
+            # Check if username is already taken
+            existing_user = db.query(User).filter(
+                User.username == update_data['username'],
+                User.id != user.id
+            ).first()
+            if existing_user:
+                raise HTTPException(status_code=400, detail="Username already taken")
+            user.username = update_data['username']
+
+        if 'email' in update_data and update_data['email'] != user.email:
+            # Basic email validation
+            import re
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, update_data['email']):
+                raise HTTPException(status_code=400, detail="Invalid email format")
+
+            # Check if email is already taken
+            existing_user = db.query(User).filter(
+                User.email == update_data['email'],
+                User.id != user.id
+            ).first()
+            if existing_user:
+                raise HTTPException(status_code=400, detail="Email already taken")
+            user.email = update_data['email']
+
+        # Validate and update Player fields
+        if 'credits' in update_data:
+            credits = int(update_data['credits'])
+            if credits < 0:
+                raise HTTPException(status_code=400, detail="Credits cannot be negative")
+            player.credits = credits
+
+        if 'turns' in update_data:
+            turns = int(update_data['turns'])
+            if turns < 0:
+                raise HTTPException(status_code=400, detail="Turns cannot be negative")
+            player.turns = turns
+
+        if 'current_sector_id' in update_data and update_data['current_sector_id'] is not None:
+            sector_id = int(update_data['current_sector_id'])
+            # Verify sector exists
+            sector = db.query(Sector).filter(Sector.sector_id == sector_id).first()
+            if not sector:
+                raise HTTPException(status_code=400, detail=f"Sector {sector_id} does not exist")
+            player.current_sector_id = sector_id
+
+        if 'status' in update_data:
+            status = update_data['status']
+            if status not in ['active', 'inactive', 'banned', 'suspended']:
+                raise HTTPException(status_code=400, detail="Invalid status value")
+            # Map status to is_active
+            player.is_active = (status == 'active')
+
+        if 'team_id' in update_data:
+            if update_data['team_id'] is None or update_data['team_id'] == '':
+                player.team_id = None
+            else:
+                # Verify team exists
+                team = db.query(Team).filter(Team.id == update_data['team_id']).first()
+                if not team:
+                    raise HTTPException(status_code=400, detail="Team not found")
+                player.team_id = update_data['team_id']
+
+        # Commit changes
+        db.commit()
+        db.refresh(player)
+        db.refresh(user)
+
+        # Return updated player data in same format as GET /players
+        from src.models.ship import Ship
+        ships_count = db.query(Ship).filter(Ship.owner_id == player.id).count()
+        planets_count = db.query(Planet).filter(Planet.owner_id == player.id).count()
+        ports_count = db.query(Port).filter(Port.owner_id == player.id).count()
+
+        return {
+            "id": str(player.id),
+            "user_id": str(player.user_id),
+            "username": user.username,
+            "email": user.email,
+            "credits": player.credits,
+            "turns": player.turns,
+            "current_sector_id": player.current_sector_id,
+            "current_ship_id": str(player.current_ship_id) if player.current_ship_id else None,
+            "team_id": str(player.team_id) if player.team_id else None,
+            "is_active": player.is_active,
+            "status": "active" if player.is_active else "inactive",
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "last_login": user.last_login.isoformat() if user.last_login else None,
+            "assets": {
+                "ships_count": ships_count,
+                "planets_count": planets_count,
+                "ports_count": ports_count,
+                "total_value": player.credits
+            },
+            "message": "Player updated successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating player {player_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update player: {str(e)}")
 
 @router.get("/colonies", response_model=dict)
 async def get_all_colonies(
