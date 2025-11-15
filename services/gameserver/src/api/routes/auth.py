@@ -354,18 +354,41 @@ async def register_user(
     )
     db.add(player_creds)
     db.commit()
-    
-    # Get the starting sector
+
+    # Get Terran Space region and Sector 1 within it
     from src.models.sector import Sector
     from src.models.player import Player
-    starting_sector = db.query(Sector).first()
-    
-    # Also create a Player record
+    from src.models.region import Region
+
+    # Find Terran Space region
+    terran_space = db.query(Region).filter(Region.name == "terran-space").first()
+    if not terran_space:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Terran Space region not found. Galaxy may not be properly initialized."
+        )
+
+    # Find Sector 1 within Terran Space
+    starting_sector = db.query(Sector).filter(
+        Sector.sector_id == 1,
+        Sector.region_id == terran_space.id
+    ).first()
+
+    if not starting_sector:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Sector 1 not found in Terran Space. Galaxy may not be properly initialized."
+        )
+
+    # Create Player record with both sector and region assignments
     player = Player(
         user_id=new_user.id,
         nickname=username,
-        current_sector_id=starting_sector.id if starting_sector else None,  # Use proper sector UUID
-        credits=10000  # Starting credits
+        current_sector_id=1,  # Sector 1 (sector_id integer, not UUID)
+        home_sector_id=1,     # Sector 1 (sector_id integer, not UUID)
+        current_region_id=terran_space.id,  # Terran Space region UUID
+        home_region_id=terran_space.id,     # Terran Space region UUID
+        credits=10000  # Starting credits (Terran Space default)
     )
     db.add(player)
     db.commit()

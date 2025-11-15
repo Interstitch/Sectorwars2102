@@ -113,24 +113,41 @@ async def create_player_for_user(db: Session, user: User) -> Player:
     Create a Player record for a User (OAuth or otherwise).
     Also creates a starter ship for the player.
     """
-    # Get the starting sector (first available sector)
+    # Get the Terran Space region and Sector 1 within it
     from src.models.sector import Sector
-    starting_sector = db.query(Sector).first()
+    from src.models.region import Region
+
+    # Find Terran Space region
+    terran_space = db.query(Region).filter(Region.name == "terran-space").first()
+    if not terran_space:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Terran Space region not found. Galaxy may not be properly initialized."
+        )
+
+    # Find Sector 1 within Terran Space
+    starting_sector = db.query(Sector).filter(
+        Sector.sector_id == 1,
+        Sector.region_id == terran_space.id
+    ).first()
+
     if not starting_sector:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No sectors available in the game"
+            detail="Sector 1 not found in Terran Space. Galaxy may not be properly initialized."
         )
-    
-    # Create player
+
+    # Create player with both sector and region assignments
     player = Player(
         user_id=user.id,
         nickname=None,  # Can be set later by user
-        credits=1000,   # Starting credits (as per FIRST_LOGIN.md)
+        credits=10000,  # Starting credits (Terran Space default)
         turns=1000,     # Starting turns
         reputation={},  # Empty reputation
-        home_sector_id=starting_sector.id,     # Use proper sector UUID
-        current_sector_id=starting_sector.id,  # Use proper sector UUID
+        home_sector_id=1,     # Sector 1 (sector_id, not UUID)
+        current_sector_id=1,  # Sector 1 (sector_id, not UUID)
+        home_region_id=terran_space.id,     # Terran Space region UUID
+        current_region_id=terran_space.id,  # Terran Space region UUID
         is_ported=False,
         is_landed=False,
         team_id=None,
@@ -143,13 +160,13 @@ async def create_player_for_user(db: Session, user: User) -> Player:
     )
     db.add(player)
     db.flush()  # Get the player ID
-    
+
     # Create starter escape pod (as per FIRST_LOGIN.md)
     starter_ship = Ship(
         name="Escape Pod",
         type=ShipType.ESCAPE_POD,  # Start with escape pod
         owner_id=player.id,
-        sector_id=starting_sector.id,  # Use proper UUID from sector
+        sector_id=1,  # Sector 1 (sector_id integer, not UUID)
         cargo={},
         current_speed=1.0,
         base_speed=1.0,

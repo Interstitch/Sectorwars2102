@@ -104,10 +104,13 @@ class GalaxyGenerator:
 
         # Add special sectors
         self._add_special_sectors()
-        
+
+        # Create Terran Space region and assign sectors 1-300 to it
+        self._create_terran_space_region()
+
         # Update galaxy statistics
         self._update_galaxy_statistics(galaxy)
-        
+
         self.db.commit()
         logger.info(f"Galaxy '{name}' generation completed with {self.sectors_generated} sectors")
         return galaxy
@@ -685,7 +688,68 @@ class GalaxyGenerator:
                     
                     self.db.add(tunnel)
                     self.db.flush()
-    
+
+    def _create_terran_space_region(self) -> None:
+        """Create Terran Space region and assign sectors 1-300 to it."""
+        from src.models.region import Region
+        import json
+
+        logger.info("Creating Terran Space starter region...")
+
+        # Check if Terran Space already exists
+        terran_space = self.db.query(Region).filter(Region.name == "terran-space").first()
+
+        if not terran_space:
+            # Create Terran Space region
+            terran_space = Region(
+                id=uuid.uuid4(),
+                name="terran-space",
+                display_name="Terran Space",
+                status="active",
+                total_sectors=300,
+                subscription_tier="free",
+                starting_credits=10000,
+                starting_ship="merchant",
+                nexus_warp_gate_sector=270,  # Sectors 270-300 have gates to Central Nexus
+                governance_type="democracy",
+                voting_threshold=0.51,
+                election_frequency_days=90,
+                tax_rate=0.05,  # Minimum for non-nexus regions
+                economic_specialization="terran_colony",
+                trade_bonuses={},
+                language_pack={
+                    "currency": "credits",
+                    "greeting": "Welcome to Terran Space - Humanity's First Frontier",
+                    "government": "Terran Federation"
+                },
+                aesthetic_theme={
+                    "style": "militaristic",
+                    "atmosphere": "frontier",
+                    "primary_color": "#3b82f6",
+                    "secondary_color": "#1e40af"
+                },
+                traditions={},
+                social_hierarchy={},
+                active_players_30d=0,
+                total_trade_volume=0.0
+            )
+            self.db.add(terran_space)
+            self.db.flush()
+            logger.info(f"Created Terran Space region with ID: {terran_space.id}")
+        else:
+            logger.info(f"Terran Space region already exists with ID: {terran_space.id}")
+
+        # Assign sectors 1-300 to Terran Space
+        terran_sectors_count = min(300, self.sectors_generated)  # In case less than 300 sectors were generated
+
+        for sector_id in range(1, terran_sectors_count + 1):
+            if sector_id in self.sectors_map:
+                sector = self.sectors_map[sector_id]
+                sector.region_id = terran_space.id
+                logger.debug(f"Assigned Sector {sector_id} to Terran Space")
+
+        logger.info(f"Assigned {terran_sectors_count} sectors to Terran Space region")
+
     def _update_galaxy_statistics(self, galaxy: Galaxy) -> None:
         """Update the galaxy statistics based on generated content."""
         # Count ports
