@@ -138,6 +138,18 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
     }
   };
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🎨 SectorViewport render:', {
+      width,
+      height,
+      sectorType,
+      sectorName,
+      portsCount: ports?.length || 0,
+      planetsCount: planets?.length || 0
+    });
+  }, [width, height, sectorType, sectorName, ports, planets]);
+
   return (
     <div className="sector-viewport-container">
       <canvas
