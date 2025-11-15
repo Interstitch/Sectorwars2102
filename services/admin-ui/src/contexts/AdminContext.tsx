@@ -101,13 +101,35 @@ export interface PlayerAccount {
   id: string;
   user_id: string;
   username: string;
+  email: string;
   credits: number;
   turns: number;
   last_game_login: string | null;
   current_sector_id: number;
+  current_ship_id: string | null;
   ships_count: number;
   planets_count: number;
+  ports_count: number;
   team_id: string | null;
+  is_active: boolean;
+  status: string;
+  created_at: string | null;
+  last_login: string | null;
+  assets: {
+    ships_count: number;
+    planets_count: number;
+    ports_count: number;
+    total_value: number;
+  };
+  activity: {
+    last_login: string | null;
+    session_count_today: number;
+    actions_today: number;
+    total_trade_volume: number;
+    combat_rating: number;
+    suspicious_activity: boolean;
+  };
+  aria: any | null;  // Full ARIA type defined in playerManagement.ts
 }
 
 export interface SectorData {

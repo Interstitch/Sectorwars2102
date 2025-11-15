@@ -596,3 +596,58 @@
     grid-template-columns: 1fr;
   }
 }
+/* ARIA Empty State */
+.aria-empty-state {
+  padding: 32px;
+  text-align: center;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #cbd5e0;
+}
+
+.aria-empty-state .empty-state-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.aria-empty-state h5 {
+  margin: 0 0 12px 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.aria-empty-state p {
+  margin: 12px 0;
+  color: #5a6c7d;
+  line-height: 1.6;
+}
+
+.aria-empty-state ul {
+  text-align: left;
+  margin: 16px auto;
+  max-width: 400px;
+  list-style: none;
+  padding: 0;
+}
+
+.aria-empty-state ul li {
+  padding: 8px 0 8px 24px;
+  position: relative;
+  color: #5a6c7d;
+}
+
+.aria-empty-state ul li::before {
+  content: "•";
+  position: absolute;
+  left: 8px;
+  color: #3498db;
+  font-weight: bold;
+}
+
+.aria-empty-state .text-muted {
+  font-size: 0.9rem;
+  color: #95a5a6;
+  font-style: italic;
+  margin-top: 16px;
+}

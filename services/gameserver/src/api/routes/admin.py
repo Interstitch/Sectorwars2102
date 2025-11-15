@@ -115,17 +115,69 @@ async def get_all_players(
                 except Exception:
                     pass
                 
+                # Get email and user data safely
+                email = "unknown@example.com"
+                created_at = None
+                last_login = None
+                try:
+                    if player.user:
+                        email = player.user.email
+                        created_at = player.user.created_at.isoformat() if player.user.created_at else None
+                        last_login = player.user.last_login.isoformat() if player.user.last_login else None
+                except Exception:
+                    pass
+
+                # Get ports count
+                ports_count = 0
+                try:
+                    from src.models.port import Port
+                    ports_count = db.query(Port).filter(Port.owner_id == player.id).count()
+                except Exception:
+                    pass
+
+                # Calculate total asset value (simplified)
+                total_asset_value = getattr(player, 'credits', 0)
+
+                # Determine status
+                is_active = getattr(player, 'is_active', True)
+                status = "active" if is_active else "inactive"
+
                 player_list.append({
                     "id": str(player.id),
                     "user_id": str(player.user_id),
                     "username": username,
+                    "email": email,
                     "credits": getattr(player, 'credits', 0),
                     "turns": getattr(player, 'turns', 0),
                     "last_game_login": player.last_game_login.isoformat() if getattr(player, 'last_game_login', None) else None,
                     "current_sector_id": getattr(player, 'current_sector_id', 1),
+                    "current_ship_id": str(player.current_ship_id) if getattr(player, 'current_ship_id', None) else None,
                     "ships_count": ships_count,
                     "planets_count": planets_count,
-                    "team_id": team_id
+                    "ports_count": ports_count,
+                    "team_id": team_id,
+                    "is_active": is_active,
+                    "status": status,
+                    "created_at": created_at,
+                    "last_login": last_login,
+                    # Assets summary
+                    "assets": {
+                        "ships_count": ships_count,
+                        "planets_count": planets_count,
+                        "ports_count": ports_count,
+                        "total_value": total_asset_value
+                    },
+                    # Activity summary (defaults for now)
+                    "activity": {
+                        "last_login": last_login,
+                        "session_count_today": 0,
+                        "actions_today": 0,
+                        "total_trade_volume": 0,
+                        "combat_rating": 0,
+                        "suspicious_activity": False
+                    },
+                    # ARIA summary (empty for now - will populate when data collection is active)
+                    "aria": None
                 })
             except Exception as e:
                 logger.error(f"Error processing player {player.id}: {e}")
@@ -134,13 +186,35 @@ async def get_all_players(
                     "id": str(player.id),
                     "user_id": str(getattr(player, 'user_id', 'unknown')),
                     "username": f"Player-{player.id}",
+                    "email": "unknown@example.com",
                     "credits": 0,
                     "turns": 0,
                     "last_game_login": None,
                     "current_sector_id": 1,
+                    "current_ship_id": None,
                     "ships_count": 0,
                     "planets_count": 0,
-                    "team_id": None
+                    "ports_count": 0,
+                    "team_id": None,
+                    "is_active": True,
+                    "status": "active",
+                    "created_at": None,
+                    "last_login": None,
+                    "assets": {
+                        "ships_count": 0,
+                        "planets_count": 0,
+                        "ports_count": 0,
+                        "total_value": 0
+                    },
+                    "activity": {
+                        "last_login": None,
+                        "session_count_today": 0,
+                        "actions_today": 0,
+                        "total_trade_volume": 0,
+                        "combat_rating": 0,
+                        "suspicious_activity": False
+                    },
+                    "aria": None
                 })
         
         return {"players": player_list}

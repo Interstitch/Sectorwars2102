@@ -343,104 +343,113 @@ const PlayerDetailEditor: React.FC<PlayerDetailEditorProps> = ({ player, onClose
           <div className="aria-subtitle">
             Autonomous Resource Intelligence Assistant - {player.username}'s Personal AI
           </div>
-          <div className="aria-metrics-grid">
-            <div className="aria-metric-item">
-              <span className="aria-metric-label">AI Trust Level:</span>
-              <div className="aria-trust-bar">
-                <div 
-                  className="aria-trust-fill" 
-                  style={{ width: `${78}%` }}
-                />
-                <span className="aria-trust-text">78%</span>
-              </div>
-            </div>
-            <div className="aria-metric-item">
-              <span className="aria-metric-label">Recommendations Accepted:</span>
-              <span className="aria-metric-value">127 / 189 (67%)</span>
-            </div>
-            <div className="aria-metric-item">
-              <span className="aria-metric-label">Data Collection Points:</span>
-              <span className="aria-metric-value">2,847 interactions</span>
-            </div>
-            <div className="aria-metric-item">
-              <span className="aria-metric-label">Personal Model Status:</span>
-              <span className="aria-metric-value trained">Fully Trained</span>
-            </div>
-            <div className="aria-metric-item">
-              <span className="aria-metric-label">Trading Style Learned:</span>
-              <span className="aria-metric-value">Aggressive Trader</span>
-            </div>
-            <div className="aria-metric-item">
-              <span className="aria-metric-label">Last ARIA Interaction:</span>
-              <span className="aria-metric-value">12 minutes ago</span>
-            </div>
-            <div className="aria-metric-item">
-              <span className="aria-metric-label">AI-Generated Profits (7d):</span>
-              <span className="aria-metric-value credits">+47,290 credits</span>
-            </div>
-            <div className="aria-metric-item">
-              <span className="aria-metric-label">Behavioral Classification:</span>
-              <span className="aria-metric-value">Day Trader - Risk Tolerant</span>
-            </div>
-          </div>
 
-          <div className="aria-features-used">
-            <h5>Most Used ARIA Features</h5>
-            <div className="aria-feature-list">
-              <div className="aria-feature-item">
-                <span className="feature-icon">📈</span>
-                <span className="feature-name">Market Predictions</span>
-                <span className="feature-usage">89 uses</span>
+          {player.aria ? (
+            <>
+              <div className="aria-metrics-grid">
+                <div className="aria-metric-item">
+                  <span className="aria-metric-label">AI Trust Level:</span>
+                  <div className="aria-trust-bar">
+                    <div
+                      className="aria-trust-fill"
+                      style={{ width: `${player.aria.trust_level}%` }}
+                    />
+                    <span className="aria-trust-text">{player.aria.trust_level}%</span>
+                  </div>
+                </div>
+                <div className="aria-metric-item">
+                  <span className="aria-metric-label">Recommendations Accepted:</span>
+                  <span className="aria-metric-value">
+                    {player.aria.recommendations_accepted} / {player.aria.recommendations_total}
+                    ({Math.round((player.aria.recommendations_accepted / player.aria.recommendations_total) * 100)}%)
+                  </span>
+                </div>
+                <div className="aria-metric-item">
+                  <span className="aria-metric-label">Data Collection Points:</span>
+                  <span className="aria-metric-value">{player.aria.data_points.toLocaleString()} interactions</span>
+                </div>
+                <div className="aria-metric-item">
+                  <span className="aria-metric-label">Personal Model Status:</span>
+                  <span className="aria-metric-value trained">{player.aria.model_status}</span>
+                </div>
+                <div className="aria-metric-item">
+                  <span className="aria-metric-label">Trading Style Learned:</span>
+                  <span className="aria-metric-value">{player.aria.trading_style}</span>
+                </div>
+                <div className="aria-metric-item">
+                  <span className="aria-metric-label">Last ARIA Interaction:</span>
+                  <span className="aria-metric-value">
+                    {player.aria.last_interaction ? new Date(player.aria.last_interaction).toLocaleString() : 'Never'}
+                  </span>
+                </div>
+                <div className="aria-metric-item">
+                  <span className="aria-metric-label">AI-Generated Profits (7d):</span>
+                  <span className="aria-metric-value credits">
+                    {player.aria.ai_generated_profits_7d >= 0 ? '+' : ''}
+                    {player.aria.ai_generated_profits_7d.toLocaleString()} credits
+                  </span>
+                </div>
+                <div className="aria-metric-item">
+                  <span className="aria-metric-label">Behavioral Classification:</span>
+                  <span className="aria-metric-value">{player.aria.behavioral_classification}</span>
+                </div>
               </div>
-              <div className="aria-feature-item">
-                <span className="feature-icon">🗺️</span>
-                <span className="feature-name">Route Optimization</span>
-                <span className="feature-usage">67 uses</span>
-              </div>
-              <div className="aria-feature-item">
-                <span className="feature-icon">⚠️</span>
-                <span className="feature-name">Risk Warnings</span>
-                <span className="feature-usage">23 uses</span>
-              </div>
-              <div className="aria-feature-item">
-                <span className="feature-icon">💼</span>
-                <span className="feature-name">Trade Recommendations</span>
-                <span className="feature-usage">156 uses</span>
-              </div>
-            </div>
-          </div>
 
-          <div className="aria-status-alerts">
-            <div className="aria-alert info">
-              <span className="alert-icon">ℹ️</span>
-              <span className="alert-text">ARIA has learned {player.username}'s trading patterns and provides 94% accurate recommendations</span>
-            </div>
-            <div className="aria-alert success">
-              <span className="alert-icon">✅</span>
-              <span className="alert-text">Personal ML model is performing well with 0.85 silhouette score</span>
-            </div>
-          </div>
+              {player.aria.most_used_features && player.aria.most_used_features.length > 0 && (
+                <div className="aria-features-used">
+                  <h5>Most Used ARIA Features</h5>
+                  <div className="aria-feature-list">
+                    {player.aria.most_used_features.map((feature, index) => (
+                      <div key={index} className="aria-feature-item">
+                        <span className="feature-icon">🔹</span>
+                        <span className="feature-name">{feature.feature_name}</span>
+                        <span className="feature-usage">{feature.usage_count} uses</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          <div className="aria-controls">
-            <button 
-              onClick={() => alert('ARIA data would be reset')}
-              className="aria-btn reset"
-            >
-              🔄 Reset ARIA Learning
-            </button>
-            <button 
-              onClick={() => alert('ARIA would be retrained')}
-              className="aria-btn retrain"
-            >
-              🧠 Retrain Personal Model
-            </button>
-            <button 
-              onClick={() => alert('ARIA recommendations would be exported')}
-              className="aria-btn export"
-            >
-              📊 Export ARIA Data
-            </button>
-          </div>
+              <div className="aria-controls">
+                <button
+                  onClick={() => alert('ARIA data reset functionality will be implemented')}
+                  className="aria-btn reset"
+                >
+                  🔄 Reset ARIA Learning
+                </button>
+                <button
+                  onClick={() => alert('ARIA retrain functionality will be implemented')}
+                  className="aria-btn retrain"
+                >
+                  🧠 Retrain Personal Model
+                </button>
+                <button
+                  onClick={() => alert('ARIA export functionality will be implemented')}
+                  className="aria-btn export"
+                >
+                  📊 Export ARIA Data
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="aria-empty-state">
+              <div className="empty-state-icon">🤖</div>
+              <h5>ARIA Data Collection Not Started</h5>
+              <p>
+                This player's ARIA personal intelligence system has not collected any data yet.
+                ARIA will begin learning once the player:
+              </p>
+              <ul>
+                <li>Explores sectors and discovers new locations</li>
+                <li>Engages in trading at various ports</li>
+                <li>Makes strategic decisions in the game</li>
+              </ul>
+              <p className="text-muted">
+                Data collection is automatic and privacy-protected. Each player's ARIA is
+                completely isolated and learns only from their personal gameplay.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="editor-section">

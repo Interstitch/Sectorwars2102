@@ -2,13 +2,30 @@
 // Created: May 23, 2025
 // Purpose: Comprehensive types for enhanced player analytics and management
 
+// ARIA Personal Intelligence Summary
+export interface ARIASummary {
+  trust_level: number;  // 0-100
+  recommendations_accepted: number;
+  recommendations_total: number;
+  data_points: number;
+  model_status: string;  // "training" | "trained" | "inactive"
+  trading_style: string;
+  last_interaction: string | null;
+  ai_generated_profits_7d: number;
+  behavioral_classification: string;
+  most_used_features: Array<{
+    feature_name: string;
+    usage_count: number;
+  }>;
+}
+
 // Base model matching the actual API response
 export interface PlayerModel {
   // Core identification (from API)
   id: string;
   username: string;
   email: string;
-  
+
   // Game state (from API)
   credits: number;
   turns: number;
@@ -18,12 +35,12 @@ export interface PlayerModel {
   is_active: boolean;
   last_login: string | null;
   created_at: string;
-  
+
   // Asset counts (from API)
   ships_count: number;
   planets_count: number;
   ports_count: number;
-  
+
   // Computed/derived fields for UI
   status: 'active' | 'inactive' | 'banned';
   assets: {
@@ -33,13 +50,16 @@ export interface PlayerModel {
     total_value: number;
   };
   activity: {
-    last_login: string;
+    last_login: string | null;
     session_count_today: number;
     actions_today: number;
     total_trade_volume: number;
     combat_rating: number;
     suspicious_activity: boolean;
   };
+
+  // ARIA Personal Intelligence (null if no data collected yet)
+  aria: ARIASummary | null;
 }
 
 export interface FactionReputations {
