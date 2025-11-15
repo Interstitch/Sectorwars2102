@@ -135,7 +135,7 @@ const GameDashboard: React.FC = () => {
                 ports={portsInSector}
                 planets={planetsInSector}
                 width={window.innerWidth - 200}
-                height={window.innerHeight * 0.65}
+                height={window.innerHeight * 0.45}
               />
 
               {/* Cockpit frame vignette */}
