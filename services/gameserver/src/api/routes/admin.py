@@ -152,6 +152,7 @@ async def get_all_players(
                     "turns": getattr(player, 'turns', 0),
                     "last_game_login": player.last_game_login.isoformat() if getattr(player, 'last_game_login', None) else None,
                     "current_sector_id": getattr(player, 'current_sector_id', 1),
+                    "current_region_id": str(player.current_region_id) if getattr(player, 'current_region_id', None) else None,
                     "current_ship_id": str(player.current_ship_id) if getattr(player, 'current_ship_id', None) else None,
                     "ships_count": ships_count,
                     "planets_count": planets_count,

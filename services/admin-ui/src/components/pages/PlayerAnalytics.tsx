@@ -62,8 +62,12 @@ const PlayerAnalytics: React.FC = () => {
     actions: true
   });
 
+  // Regions for location display
+  const [regions, setRegions] = useState<any[]>([]);
+
   useEffect(() => {
     fetchPlayerData();
+    fetchRegions();
   }, [state.currentPage, state.filters, state.sortBy, state.sortOrder]);
 
   // Auto-refresh when real-time updates are enabled
@@ -156,6 +160,22 @@ const PlayerAnalytics: React.FC = () => {
       }));
     }
   }, [state.currentPage, state.pageSize, state.sortBy, state.sortOrder, state.filters]);
+
+  const fetchRegions = useCallback(async () => {
+    try {
+      const response = await api.get('/api/v1/admin/regions');
+      setRegions((response.data as any)?.regions || []);
+    } catch (error) {
+      console.error('Failed to fetch regions:', error);
+    }
+  }, []);
+
+  // Helper function to get region name from ID
+  const getRegionName = useCallback((regionId: string | null) => {
+    if (!regionId) return 'Unknown Region';
+    const region = regions.find(r => r.id === regionId);
+    return region?.display_name || region?.name || 'Unknown Region';
+  }, [regions]);
 
   // Enhanced player management functions (placeholder implementations)
   // These will be fully implemented when sub-components are added
@@ -511,7 +531,9 @@ const PlayerAnalytics: React.FC = () => {
                             )}
                             {visibleColumns.location && (
                               <td>
-                                <span className="text-sm">Sector {player.current_sector_id || 'Unknown'}</span>
+                                <span className="text-sm">
+                                  {getRegionName(player.current_region_id)}, Sector {player.current_sector_id || 'Unknown'}
+                                </span>
                               </td>
                             )}
                             {visibleColumns.activity && (
@@ -725,7 +747,9 @@ const PlayerAnalytics: React.FC = () => {
                       </div>
                       <div>
                         <div className="text-sm text-muted">Current Location</div>
-                        <div>Sector {state.selectedPlayer.current_sector_id || 'Unknown'}</div>
+                        <div>
+                          {getRegionName(state.selectedPlayer.current_region_id)}, Sector {state.selectedPlayer.current_sector_id || 'Unknown'}
+                        </div>
                       </div>
                       <div>
                         <div className="text-sm text-muted">Turns Remaining</div>
