@@ -47,8 +47,11 @@ class ShipResponse(BaseModel):
 class SectorResponse(BaseModel):
     id: str
     sector_id: int
+    sector_number: int | None = None  # Display number (may differ from sector_id in Central Nexus)
     name: str
     type: str
+    region_id: str | None = None
+    region_name: str | None = None
     hazard_level: int
     radiation_level: float
     resources: Dict[str, Any]
@@ -66,8 +69,11 @@ class MoveResponse(BaseModel):
 
 class MoveOption(BaseModel):
     sector_id: int
+    sector_number: int | None = None  # Display number
     name: str
     type: str
+    region_id: str | None = None
+    region_name: str | None = None
     turn_cost: int
     can_afford: bool
     tunnel_type: str = None
@@ -181,12 +187,20 @@ async def get_current_sector(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Current sector not found in your region"
         )
-    
+
+    # Get region name if sector belongs to a region
+    region_name = None
+    if sector.region:
+        region_name = sector.region.name
+
     return SectorResponse(
         id=str(sector.id),
         sector_id=sector.sector_id,
+        sector_number=sector.sector_number if sector.sector_number else sector.sector_id,
         name=sector.name,
         type=sector.type.value if hasattr(sector.type, 'value') else str(sector.type),
+        region_id=str(sector.region_id) if sector.region_id else None,
+        region_name=region_name,
         hazard_level=sector.hazard_level,
         radiation_level=sector.radiation_level,
         resources=sector.resources or {},
@@ -232,30 +246,44 @@ async def get_available_moves(
     movement_service = MovementService(db)
     available_moves = movement_service.get_available_moves(player.id)
     
-    # Convert the response to match our model
+    # Convert the response to match our model, enriching with region data
     warps = []
     tunnels = []
-    
+
     # Process direct warps
     for warp in available_moves.get("warps", []):
+        # Look up sector to get region information
+        sector = db.query(Sector).filter(Sector.sector_id == warp["sector_id"]).first()
+        region_name = sector.region.name if sector and sector.region else None
+
         warps.append(MoveOption(
             sector_id=warp["sector_id"],
+            sector_number=sector.sector_number if sector and sector.sector_number else warp["sector_id"],
             name=warp["name"],
             type=warp["type"],
+            region_id=str(sector.region_id) if sector and sector.region_id else None,
+            region_name=region_name,
             turn_cost=warp["turn_cost"],
             can_afford=warp["can_afford"]
         ))
-    
+
     # Process warp tunnels
     for tunnel in available_moves.get("tunnels", []):
+        # Look up sector to get region information
+        sector = db.query(Sector).filter(Sector.sector_id == tunnel["sector_id"]).first()
+        region_name = sector.region.name if sector and sector.region else None
+
         tunnels.append(MoveOption(
             sector_id=tunnel["sector_id"],
+            sector_number=sector.sector_number if sector and sector.sector_number else tunnel["sector_id"],
             name=tunnel["name"],
             type=tunnel["type"],
+            region_id=str(sector.region_id) if sector and sector.region_id else None,
+            region_name=region_name,
             turn_cost=tunnel["turn_cost"],
             can_afford=tunnel["can_afford"],
             tunnel_type=tunnel.get("tunnel_type"),
             stability=tunnel.get("stability")
         ))
-    
+
     return AvailableMovesResponse(warps=warps, tunnels=tunnels)

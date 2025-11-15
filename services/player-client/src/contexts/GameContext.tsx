@@ -21,13 +21,17 @@ export interface Ship {
 
 export interface Sector {
   id: number;
+  sector_id: number;
+  sector_number?: number;  // Display number (may differ from sector_id in Central Nexus)
   name: string;
   type: string;
+  region_id?: string | null;
+  region_name?: string | null;
   hazard_level: number;
   radiation_level: number;
   resources: Record<string, any>;
   players_present: any[];
-  special_features: string[];
+  special_features?: string[];
   description?: string;
 }
 
@@ -57,8 +61,11 @@ export interface Port {
 
 export interface MoveOption {
   sector_id: number;
+  sector_number?: number;  // Display number
   name: string;
   type: string;
+  region_id?: string | null;
+  region_name?: string | null;
   turn_cost: number;
   can_afford: boolean;
   tunnel_type?: string;

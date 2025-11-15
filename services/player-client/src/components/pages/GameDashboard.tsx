@@ -136,6 +136,13 @@ const GameDashboard: React.FC = () => {
                 planets={planetsInSector}
                 width={Math.floor(window.innerWidth - 320)}
                 height={Math.floor((window.innerHeight - 80) * 0.40)}
+                onEntityClick={(entity) => {
+                  if (entity.type === 'planet') {
+                    handleLand(entity.id);
+                  } else if (entity.type === 'port') {
+                    handleDock(entity.id);
+                  }
+                }}
               />
 
               {/* Cockpit frame vignette */}
@@ -149,7 +156,10 @@ const GameDashboard: React.FC = () => {
               {/* HUD Overlays */}
               <div className="hud-overlay top-left">
                 <div className="hud-label">LOCATION</div>
-                <div className="hud-value">SECTOR {currentSector.id}</div>
+                <div className="hud-value">
+                  {currentSector.region_name ? `${currentSector.region_name.toUpperCase()} - ` : ''}
+                  SECTOR {currentSector.sector_number || currentSector.sector_id}
+                </div>
                 <div className="hud-value-secondary">{currentSector.name.toUpperCase()}</div>
                 {playerState && (
                   <div className="hud-pilot">
@@ -216,12 +226,12 @@ const GameDashboard: React.FC = () => {
               <div className="screen-hud-content">
               {currentSector && (
                 <NavigationMap
-                  currentSectorId={currentSector.id}
+                  currentSectorId={currentSector.sector_id}
                   sectors={[
                     // Current sector
                     {
-                      id: currentSector.id,
-                      name: currentSector.name,
+                      id: currentSector.sector_id,
+                      name: `Sector ${currentSector.sector_number || currentSector.sector_id}`,
                       type: currentSector.type,
                       connected_sectors: [
                         ...availableMoves.warps.map(w => w.sector_id),
@@ -229,19 +239,35 @@ const GameDashboard: React.FC = () => {
                       ]
                     },
                     // Available warp destinations
-                    ...availableMoves.warps.map(warp => ({
-                      id: warp.sector_id,
-                      name: warp.name,
-                      type: warp.type,
-                      connected_sectors: [currentSector.id]
-                    })),
+                    ...availableMoves.warps.map(warp => {
+                      // Show region name if different from current region
+                      const showRegion = warp.region_id && warp.region_id !== currentSector.region_id;
+                      const displayName = showRegion
+                        ? `${warp.region_name} - Sector ${warp.sector_number || warp.sector_id}`
+                        : `Sector ${warp.sector_number || warp.sector_id}`;
+
+                      return {
+                        id: warp.sector_id,
+                        name: displayName,
+                        type: warp.type,
+                        connected_sectors: [currentSector.sector_id]
+                      };
+                    }),
                     // Available tunnel destinations
-                    ...availableMoves.tunnels.map(tunnel => ({
-                      id: tunnel.sector_id,
-                      name: tunnel.name,
-                      type: 'nebula',
-                      connected_sectors: [currentSector.id]
-                    }))
+                    ...availableMoves.tunnels.map(tunnel => {
+                      // Show region name if different from current region
+                      const showRegion = tunnel.region_id && tunnel.region_id !== currentSector.region_id;
+                      const displayName = showRegion
+                        ? `${tunnel.region_name} - Sector ${tunnel.sector_number || tunnel.sector_id}`
+                        : `Sector ${tunnel.sector_number || tunnel.sector_id}`;
+
+                      return {
+                        id: tunnel.sector_id,
+                        name: displayName,
+                        type: 'nebula',
+                        connected_sectors: [currentSector.sector_id]
+                      };
+                    })
                   ]}
                   availableMoves={[
                     ...availableMoves.warps.filter(w => w.can_afford).map(w => w.sector_id),
