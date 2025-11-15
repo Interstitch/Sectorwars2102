@@ -206,13 +206,14 @@ const GameDashboard: React.FC = () => {
           {/* LEFT MONITOR: Navigation */}
           <div className="console-monitor nav-monitor">
             <div className="monitor-bezel">
-              <div className="monitor-label">NAV</div>
               <div className="bezel-corner tl"></div>
               <div className="bezel-corner tr"></div>
               <div className="bezel-corner bl"></div>
               <div className="bezel-corner br"></div>
             </div>
             <div className="monitor-screen">
+              <div className="screen-hud-header">NAV</div>
+              <div className="screen-hud-content">
               {currentSector && (
                 <NavigationMap
                   currentSectorId={currentSector.id}
@@ -251,19 +252,21 @@ const GameDashboard: React.FC = () => {
                   height={300}
                 />
               )}
+              </div>
             </div>
           </div>
 
           {/* CENTER MONITOR: Planetary Systems */}
           <div className="console-monitor planetary-monitor">
             <div className="monitor-bezel">
-              <div className="monitor-label">PLANETARY</div>
               <div className="bezel-corner tl"></div>
               <div className="bezel-corner tr"></div>
               <div className="bezel-corner bl"></div>
               <div className="bezel-corner br"></div>
             </div>
             <div className="monitor-screen">
+              <div className="screen-hud-header">PLANETARY</div>
+              <div className="screen-hud-content">
               {planetsInSector.length > 0 ? (
                 planetsInSector.map((planet, index) => (
                   <PlanetPortPair
@@ -279,19 +282,21 @@ const GameDashboard: React.FC = () => {
               ) : (
                 <div className="empty-state">No planetary bodies detected</div>
               )}
+              </div>
             </div>
           </div>
 
           {/* RIGHT MONITOR: Contacts */}
           <div className="console-monitor comms-monitor">
             <div className="monitor-bezel">
-              <div className="monitor-label">COMMS</div>
               <div className="bezel-corner tl"></div>
               <div className="bezel-corner tr"></div>
               <div className="bezel-corner bl"></div>
               <div className="bezel-corner br"></div>
             </div>
             <div className="monitor-screen">
+              <div className="screen-hud-header">COMMS</div>
+              <div className="screen-hud-content">
               {sectorPlayers.length > 0 ? (
                 <div className="contacts-compact-list">
                   {sectorPlayers.map((player: any) => (
@@ -304,6 +309,7 @@ const GameDashboard: React.FC = () => {
               ) : (
                 <div className="empty-state">No signals detected</div>
               )}
+              </div>
             </div>
           </div>
         </div>
