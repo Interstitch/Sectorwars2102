@@ -43,6 +43,19 @@ function MainApp() {
   const [apiEnvironment, setApiEnvironment] = useState<string>('');
   const [authMode, setAuthMode] = useState<'none' | 'login' | 'register'>('none');
   const navigate = useNavigate();
+
+  // Live galaxy view state
+  const [activePlayers, setActivePlayers] = useState<number>(847);
+  const [activeSectors, setActiveSectors] = useState<number>(1247);
+  const [recentTrades, setRecentTrades] = useState<number>(15042);
+  const [aiConfidence, setAiConfidence] = useState<number>(98.7);
+  const [liveFeed, setLiveFeed] = useState<Array<{id: number, type: string, message: string, time: string}>>([
+    { id: 1, type: 'trade', message: 'Player [Voidwalker] traded 450 Organics at Sector 847', time: '2s ago' },
+    { id: 2, type: 'ai', message: 'ARIA detected profitable route: Sectors 102→847→1001', time: '5s ago' },
+    { id: 3, type: 'combat', message: 'Combat initiated in Sector 445 - 2 ships engaged', time: '8s ago' },
+    { id: 4, type: 'join', message: 'Player [Starforge] joined Universe Alpha', time: '12s ago' },
+    { id: 5, type: 'trade', message: 'Player [Nebula_Trader] sold 1200 Equipment at Sector 203', time: '18s ago' },
+  ]);
   
   // Simple API URL - use env var or default to localhost:8080
   const getApiUrl = () => {
@@ -152,10 +165,95 @@ function MainApp() {
     };
     
     checkAuth();
-    
+
     // Clean up interval on component unmount
     return () => clearInterval(intervalId)
   }, [])
+
+  // Animate live feed and stats
+  useEffect(() => {
+    const feedTemplates = [
+      { type: 'trade', templates: [
+        'Player [${name}] traded ${amount} ${commodity} at Sector ${sector}',
+        'Player [${name}] sold ${amount} ${commodity} for ${credits} credits',
+        'Bulk trade completed: ${amount} ${commodity} → Sector ${sector}',
+      ]},
+      { type: 'ai', templates: [
+        'ARIA detected profitable route: Sectors ${s1}→${s2}→${s3}',
+        'AI Alert: Market anomaly detected in Sector ${sector}',
+        'ARIA recommends: Buy ${commodity} at current prices',
+        'Neural network confidence: ${percent}% on ${commodity} surge',
+      ]},
+      { type: 'combat', templates: [
+        'Combat initiated in Sector ${sector} - ${count} ships engaged',
+        'Player [${name}] destroyed hostile ship in Sector ${sector}',
+        'Pirate attack reported in Sector ${sector}',
+      ]},
+      { type: 'join', templates: [
+        'Player [${name}] joined Universe Alpha',
+        'New commander [${name}] entered the galaxy',
+        'Captain [${name}] initialized neural link',
+      ]},
+      { type: 'warp', templates: [
+        'Warp tunnel activated: Sector ${s1} ↔ Sector ${s2}',
+        'Player [${name}] built warp gate at Sector ${sector}',
+        'New region discovered via quantum tunnel',
+      ]},
+    ];
+
+    const names = ['Voidwalker', 'Starforge', 'Nebula_Trader', 'QuantumPilot', 'CosmicHawk', 'Nexus', 'Eclipse', 'Photon', 'Astral'];
+    const commodities = ['Organics', 'Equipment', 'Ore', 'Fuel', 'Luxuries', 'Weapons'];
+
+    const generateFeedEntry = () => {
+      const category = feedTemplates[Math.floor(Math.random() * feedTemplates.length)];
+      const template = category.templates[Math.floor(Math.random() * category.templates.length)];
+
+      const message = template
+        .replace('${name}', names[Math.floor(Math.random() * names.length)])
+        .replace('${amount}', String(Math.floor(Math.random() * 2000) + 100))
+        .replace('${commodity}', commodities[Math.floor(Math.random() * commodities.length)])
+        .replace('${sector}', String(Math.floor(Math.random() * 1500) + 1))
+        .replace('${s1}', String(Math.floor(Math.random() * 500) + 1))
+        .replace('${s2}', String(Math.floor(Math.random() * 500) + 500))
+        .replace('${s3}', String(Math.floor(Math.random() * 500) + 1000))
+        .replace('${credits}', String(Math.floor(Math.random() * 50000) + 5000))
+        .replace('${count}', String(Math.floor(Math.random() * 5) + 2))
+        .replace('${percent}', String(Math.floor(Math.random() * 20) + 75));
+
+      return {
+        id: Date.now(),
+        type: category.type,
+        message,
+        time: 'now'
+      };
+    };
+
+    // Update live feed every 3 seconds
+    const feedInterval = setInterval(() => {
+      setLiveFeed(prev => {
+        const newEntry = generateFeedEntry();
+        const updated = [newEntry, ...prev.slice(0, 9)]; // Keep only 10 entries
+        return updated;
+      });
+    }, 3000);
+
+    // Update stats slightly every 5 seconds
+    const statsInterval = setInterval(() => {
+      setActivePlayers(prev => prev + Math.floor(Math.random() * 5) - 2);
+      setActiveSectors(prev => prev + Math.floor(Math.random() * 3) - 1);
+      setRecentTrades(prev => prev + Math.floor(Math.random() * 100) + 50);
+      setAiConfidence(prev => {
+        const change = (Math.random() - 0.5) * 2;
+        const newVal = prev + change;
+        return Math.max(85, Math.min(99.9, newVal));
+      });
+    }, 5000);
+
+    return () => {
+      clearInterval(feedInterval);
+      clearInterval(statsInterval);
+    };
+  }, []);
 
   const handleLoginClick = () => {
     setAuthMode('login');
@@ -229,67 +327,131 @@ function MainApp() {
           />
         ) : (
           <>
-            {/* Hero Section */}
-            <section className="hero-section">
-              <div className="hero-content">
-                <div className="hero-badge">
-                  <span className="badge-text">🚀 Revolutionary AI-Powered Space Trading</span>
-                </div>
-                <h1 className="hero-title">
-                  Command the Galaxy.<br />
-                  <span className="hero-title-accent">Shape the Universe.</span>
-                </h1>
-                <p className="hero-description">
-                  The first space trading game with AI consciousness. Build quantum warp tunnels, create planets with Genesis Devices, and expand the universe itself in this revolutionary multiplayer experience.
-                </p>
-                
-                <div className="hero-stats">
-                  <div className="stat-item">
-                    <div className="stat-number">1,000</div>
-                    <div className="stat-label">Turns per Day</div>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-number">∞</div>
-                    <div className="stat-label">Expanding Universe</div>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-number">24/7</div>
-                    <div className="stat-label">AI Trading Assistant</div>
-                  </div>
-                </div>
+            {/* Live Galaxy View Hero Section */}
+            <section className="hero-galaxy-live">
+              {/* Scanline effect overlay */}
+              <div className="scanline-overlay"></div>
 
-                <div className="cta-buttons">
-                  <button
-                    className="cta-primary"
-                    onClick={handleLoginClick}
-                  >
-                    🚀 Launch Into Space
-                  </button>
-                  <button
-                    className="cta-secondary"
-                    onClick={handleRegisterClick}
-                  >
-                    🌟 Join the Galaxy
+              {/* Left Terminal: Live Feed */}
+              <div className="terminal-feed">
+                <div className="terminal-header">
+                  <span className="terminal-title">⚡ LIVE FEED</span>
+                  <span className="terminal-blink">█</span>
+                </div>
+                <div className="terminal-content">
+                  {liveFeed.map((entry) => (
+                    <div key={entry.id} className={`feed-entry feed-${entry.type}`}>
+                      <span className="feed-time">[{entry.time}]</span>
+                      <span className="feed-message">{entry.message}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Center: Galaxy Map & Title */}
+              <div className="galaxy-center">
+                {/* SVG Sector Map */}
+                <svg className="sector-map" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <radialGradient id="sectorGlow" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" style={{stopColor: '#4d84fd', stopOpacity: 0.8}} />
+                      <stop offset="100%" style={{stopColor: '#4d84fd', stopOpacity: 0}} />
+                    </radialGradient>
+                    <filter id="glow">
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                  </defs>
+
+                  {/* Warp connections */}
+                  <g className="warp-connections" opacity="0.6">
+                    <line x1="300" y1="100" x2="450" y2="200" stroke="#00d9ff" strokeWidth="2" className="warp-line" />
+                    <line x1="450" y1="200" x2="500" y2="400" stroke="#00d9ff" strokeWidth="2" className="warp-line" />
+                    <line x1="500" y1="400" x2="300" y2="500" stroke="#c961de" strokeWidth="2" className="warp-line" />
+                    <line x1="300" y1="500" x2="150" y2="400" stroke="#c961de" strokeWidth="2" className="warp-line" />
+                    <line x1="150" y1="400" x2="100" y2="200" stroke="#00d9ff" strokeWidth="2" className="warp-line" />
+                    <line x1="100" y1="200" x2="300" y1="100" stroke="#00d9ff" strokeWidth="2" className="warp-line" />
+                    <line x1="300" y1="300" x2="300" y2="100" stroke="#a855f7" strokeWidth="1.5" className="warp-line" />
+                    <line x1="300" y1="300" x2="450" y2="200" stroke="#a855f7" strokeWidth="1.5" className="warp-line" />
+                    <line x1="300" y1="300" x2="500" y2="400" stroke="#a855f7" strokeWidth="1.5" className="warp-line" />
+                    <line x1="300" y1="300" x2="150" y2="400" stroke="#a855f7" strokeWidth="1.5" className="warp-line" />
+                  </g>
+
+                  {/* Sector nodes */}
+                  <g className="sector-nodes">
+                    <circle cx="300" cy="100" r="8" fill="#00d9ff" filter="url(#glow)" className="sector-node pulse-1" />
+                    <circle cx="450" cy="200" r="8" fill="#00d9ff" filter="url(#glow)" className="sector-node pulse-2" />
+                    <circle cx="500" cy="400" r="8" fill="#c961de" filter="url(#glow)" className="sector-node pulse-3" />
+                    <circle cx="300" cy="500" r="8" fill="#c961de" filter="url(#glow)" className="sector-node pulse-1" />
+                    <circle cx="150" cy="400" r="8" fill="#00d9ff" filter="url(#glow)" className="sector-node pulse-2" />
+                    <circle cx="100" cy="200" r="8" fill="#00d9ff" filter="url(#glow)" className="sector-node pulse-3" />
+                    <circle cx="300" cy="300" r="12" fill="#ffb000" filter="url(#glow)" className="sector-node sector-hub" />
+                  </g>
+
+                  {/* Animated ship */}
+                  <circle cx="300" cy="100" r="3" fill="#fff" className="ship-marker">
+                    <animateMotion dur="8s" repeatCount="indefinite">
+                      <mpath href="#shipPath" />
+                    </animateMotion>
+                  </circle>
+                  <path id="shipPath" d="M 300,100 L 450,200 L 500,400 L 300,500 L 150,400 L 100,200 Z" fill="none" />
+                </svg>
+
+                {/* Title Overlay */}
+                <div className="hero-title-overlay">
+                  <h1 className="hero-title-live">
+                    <span className="title-line-1">COMMAND THE</span>
+                    <span className="title-line-2">GALAXY</span>
+                  </h1>
+                  <p className="hero-subtitle-live">Neural Link Initialized • AI Consciousness Active</p>
+                  <button className="cta-neural-link" onClick={handleRegisterClick}>
+                    <span className="cta-icon">⚡</span>
+                    <span className="cta-text">INITIALIZE NEURAL LINK</span>
+                    <span className="cta-icon">⚡</span>
                   </button>
                 </div>
               </div>
-              
-              <div className="hero-visual">
-                <div className="galaxy-animation">
-                  <div className="star-field">
-                    {[...Array(50)].map((_, i) => (
-                      <div key={i} className={`star star-${(i % 3) + 1}`} 
-                           style={{
-                             left: `${Math.random() * 100}%`,
-                             top: `${Math.random() * 100}%`,
-                             animationDelay: `${Math.random() * 3}s`
-                           }}></div>
-                    ))}
+
+              {/* Right Terminal: System Status */}
+              <div className="terminal-status">
+                <div className="terminal-header">
+                  <span className="terminal-title">📊 SYSTEM STATUS</span>
+                  <span className="terminal-blink">█</span>
+                </div>
+                <div className="terminal-content">
+                  <div className="status-line">
+                    <span className="status-label">ACTIVE PLAYERS:</span>
+                    <span className="status-value status-cyan">{activePlayers.toLocaleString()}</span>
                   </div>
-                  <div className="central-hub">
-                    <div className="hub-core">🌌</div>
-                    <div className="orbit-ring"></div>
-                    <div className="pulse-ring"></div>
+                  <div className="status-line">
+                    <span className="status-label">ACTIVE SECTORS:</span>
+                    <span className="status-value status-purple">{activeSectors.toLocaleString()}</span>
+                  </div>
+                  <div className="status-line">
+                    <span className="status-label">TRADES (24H):</span>
+                    <span className="status-value status-green">{recentTrades.toLocaleString()}</span>
+                  </div>
+                  <div className="status-line status-ai">
+                    <span className="status-label">AI CONFIDENCE:</span>
+                    <span className="status-value status-amber">{aiConfidence.toFixed(1)}%</span>
+                  </div>
+                  <div className="status-bar">
+                    <div className="status-bar-fill" style={{width: `${aiConfidence}%`}}></div>
+                  </div>
+                  <div className="status-line status-divider">
+                    <span className="status-label">UNIVERSE STATUS:</span>
+                  </div>
+                  <div className="status-line">
+                    <span className="status-value status-success">● ONLINE</span>
+                  </div>
+                  <div className="status-line">
+                    <span className="status-value status-success">● ARIA AI ACTIVE</span>
+                  </div>
+                  <div className="status-line">
+                    <span className="status-value status-success">● WARP NETWORK STABLE</span>
                   </div>
                 </div>
               </div>
