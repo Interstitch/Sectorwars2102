@@ -17,7 +17,7 @@ from enum import Enum
 from src.core.database import get_db
 from src.auth.dependencies import get_current_user, require_admin
 from src.models.user import User
-from src.models.ship import Ship, ShipType, ShipStatus
+from src.models.ship import Ship, ShipType, ShipStatus, ShipSpecification
 from src.models.player import Player
 from src.models.sector import Sector
 from src.services.audit_service import AuditService, AuditAction
@@ -93,9 +93,11 @@ async def get_ships(
 ):
     """Get all ships with optional filters and pagination."""
     
-    # Build query
-    query = db.query(Ship)
-    
+    # Build query - join with ShipSpecification to get cargo capacity
+    query = db.query(Ship, ShipSpecification).join(
+        ShipSpecification, Ship.type == ShipSpecification.type
+    )
+
     # Apply filters
     if status:
         query = query.filter(Ship.status == status)
@@ -105,31 +107,52 @@ async def get_ships(
         query = query.filter(Ship.owner_id == owner_id)
     if sector_id:
         query = query.filter(Ship.sector_id == sector_id)
-    
+
     # Get total count for pagination
     total = query.count()
-    
+
     # Apply pagination
     offset = (page - 1) * limit
-    ships = query.offset(offset).limit(limit).all()
-    
+    results = query.offset(offset).limit(limit).all()
+
     # Calculate total pages
     total_pages = (total + limit - 1) // limit
-    
+
     # Format ship data
     ship_list = []
-    for ship in ships:
-        # Calculate condition based on armor/shields
-        condition = "excellent"
-        if ship.max_armor > 0:
-            armor_percent = (ship.armor / ship.max_armor) * 100
-            if armor_percent < 25:
-                condition = "critical"
-            elif armor_percent < 50:
-                condition = "poor"
-            elif armor_percent < 80:
-                condition = "fair"
-        
+    for ship, spec in results:
+        # Get JSONB data
+        combat = ship.combat or {}
+        cargo = ship.cargo or {}
+        maintenance = ship.maintenance or {}
+
+        # Calculate hull/shield percentages
+        hull = combat.get("hull", 0)
+        max_hull = combat.get("max_hull", 1)
+        hull_percent = (hull / max_hull * 100) if max_hull > 0 else 100
+
+        shields = combat.get("shields", 0)
+        max_shields = combat.get("max_shields", 1)
+        shields_percent = (shields / max_shields * 100) if max_shields > 0 else 100
+
+        # Calculate condition from maintenance or hull
+        condition_percent = maintenance.get("condition", hull_percent)
+        if condition_percent >= 90:
+            condition = "excellent"
+        elif condition_percent >= 70:
+            condition = "good"
+        elif condition_percent >= 50:
+            condition = "fair"
+        elif condition_percent >= 25:
+            condition = "poor"
+        else:
+            condition = "critical"
+
+        # Calculate cargo usage
+        cargo_used = sum(cargo.values()) if cargo else 0
+        cargo_capacity = spec.max_cargo
+        cargo_percent = (cargo_used / cargo_capacity * 100) if cargo_capacity > 0 else 0
+
         ship_data = {
             "id": str(ship.id),
             "name": ship.name,
@@ -146,21 +169,22 @@ async def get_ships(
                 "coordinates": f"({ship.sector.x}, {ship.sector.y})" if ship.sector else "Unknown"
             },
             "health": {
-                "armor": ship.armor,
-                "max_armor": ship.max_armor,
-                "armor_percent": round((ship.armor / ship.max_armor) * 100, 1) if ship.max_armor > 0 else 100,
-                "shields": ship.shields,
-                "max_shields": ship.max_shields,
-                "shields_percent": round((ship.shields / ship.max_shields) * 100, 1) if ship.max_shields > 0 else 100
+                "hull": hull,
+                "max_hull": max_hull,
+                "hull_percent": round(hull_percent, 1),
+                "shields": shields,
+                "max_shields": max_shields,
+                "shields_percent": round(shields_percent, 1),
+                "condition_percent": round(condition_percent, 1)
             },
             "cargo": {
-                "used": ship.cargo_used or 0,
-                "capacity": ship.cargo_capacity or 0,
-                "capacity_percent": round(((ship.cargo_used or 0) / (ship.cargo_capacity or 1)) * 100, 1)
+                "used": cargo_used,
+                "capacity": cargo_capacity,
+                "capacity_percent": round(cargo_percent, 1),
+                "contents": cargo
             },
-            "experience": ship.experience or 0,
             "created_at": ship.created_at.isoformat() if ship.created_at else None,
-            "last_action": ship.last_action.isoformat() if ship.last_action else None
+            "last_updated": ship.last_updated.isoformat() if ship.last_updated else None
         }
         ship_list.append(ship_data)
     
@@ -191,16 +215,31 @@ async def emergency_ship_action(
     message = ""
     
     if request.action == EmergencyAction.REPAIR:
-        # Fully repair ship
-        ship.armor = ship.max_armor
-        ship.shields = ship.max_shields
+        # Fully repair ship - restore combat stats and maintenance
+        combat = ship.combat or {}
+        combat["hull"] = combat.get("max_hull", 100)
+        combat["shields"] = combat.get("max_shields", 100)
+        ship.combat = combat
+
+        maintenance = ship.maintenance or {}
+        maintenance["condition"] = 100.0
+        maintenance["last_maintenance"] = datetime.utcnow().isoformat()
+        maintenance["repair_needed"] = False
+        ship.maintenance = maintenance
+
         ship.status = ShipStatus.DOCKED.value
+        ship.is_active = True
+        ship.is_destroyed = False
         message = f"Ship {ship.name} fully repaired"
-        
+
     elif request.action == EmergencyAction.REFUEL:
-        # Refuel ship (reset energy/fuel to max)
-        # Assuming fuel is represented by status change
+        # Refuel ship - restore condition and set to docked
+        maintenance = ship.maintenance or {}
+        maintenance["condition"] = 100.0
+        ship.maintenance = maintenance
+
         ship.status = ShipStatus.DOCKED.value
+        ship.is_active = True
         message = f"Ship {ship.name} refueled"
         
     elif request.action == EmergencyAction.TELEPORT:
@@ -263,63 +302,72 @@ async def get_fleet_health_report(
     
     by_status = {status: count for status, count in status_counts}
     
-    # Ships by condition (calculated from armor percentage)
+    # Ships by condition (calculated from hull/maintenance percentage)
     ships = db.query(Ship).all()
-    
+
     by_condition = {"excellent": 0, "good": 0, "fair": 0, "poor": 0, "critical": 0}
     maintenance_needed = []
     critical_issues = []
-    
+
     for ship in ships:
-        # Calculate condition
-        if ship.max_armor > 0:
-            armor_percent = (ship.armor / ship.max_armor) * 100
-        else:
-            armor_percent = 100
-            
-        if armor_percent >= 90:
+        # Get JSONB data
+        combat = ship.combat or {}
+        maintenance = ship.maintenance or {}
+
+        # Calculate hull percentage
+        hull = combat.get("hull", 0)
+        max_hull = combat.get("max_hull", 1)
+        hull_percent = (hull / max_hull * 100) if max_hull > 0 else 100
+
+        # Get condition from maintenance or use hull percentage
+        condition_percent = maintenance.get("condition", hull_percent)
+
+        # Determine condition category
+        if condition_percent >= 90:
             condition = "excellent"
-        elif armor_percent >= 70:
+        elif condition_percent >= 70:
             condition = "good"
-        elif armor_percent >= 50:
+        elif condition_percent >= 50:
             condition = "fair"
-        elif armor_percent >= 25:
+        elif condition_percent >= 25:
             condition = "poor"
         else:
             condition = "critical"
-            
+
         by_condition[condition] += 1
-        
-        # Ships needing maintenance (< 70% armor)
-        if armor_percent < 70:
+
+        # Ships needing maintenance (< 70% condition)
+        if condition_percent < 70:
             ship_info = {
                 "id": str(ship.id),
                 "name": ship.name,
                 "type": ship.type,
                 "owner": ship.owner.user.username if ship.owner else "Unassigned",
                 "sector": ship.sector.name if ship.sector else "Deep Space",
-                "armor_percent": round(armor_percent, 1),
+                "condition_percent": round(condition_percent, 1),
+                "hull_percent": round(hull_percent, 1),
                 "status": ship.status
             }
             maintenance_needed.append(ship_info)
-            
-        # Critical issues (< 25% armor or destroyed status)
-        if armor_percent < 25 or ship.status == ShipStatus.DESTROYED.value:
+
+        # Critical issues (< 25% condition or destroyed)
+        if condition_percent < 25 or ship.is_destroyed or ship.status == ShipStatus.DESTROYED.value:
             critical_info = {
                 "id": str(ship.id),
                 "name": ship.name,
                 "type": ship.type,
                 "owner": ship.owner.user.username if ship.owner else "Unassigned",
                 "sector": ship.sector.name if ship.sector else "Deep Space",
-                "issue": "Critical damage" if armor_percent < 25 else "Destroyed",
-                "armor_percent": round(armor_percent, 1),
+                "issue": "Destroyed" if ship.is_destroyed else "Critical damage",
+                "condition_percent": round(condition_percent, 1),
+                "hull_percent": round(hull_percent, 1),
                 "status": ship.status
             }
             critical_issues.append(critical_info)
-    
-    # Sort lists by severity
-    maintenance_needed.sort(key=lambda x: x["armor_percent"])
-    critical_issues.sort(key=lambda x: x["armor_percent"])
+
+    # Sort lists by severity (lowest condition first)
+    maintenance_needed.sort(key=lambda x: x["condition_percent"])
+    critical_issues.sort(key=lambda x: x["condition_percent"])
     
     return HealthReportResponse(
         total_ships=total_ships,
@@ -356,30 +404,72 @@ async def create_ship(
             Ship.type == request.type.value
         ).scalar()
         ship_name = f"{owner.user.username}'s {request.type.value.replace('_', ' ').title()} #{ship_count + 1}"
-    
-    # Get ship specifications based on type
-    ship_specs = get_ship_specifications(request.type)
-    
-    # Create new ship
+
+    # Get ship specification from database
+    spec = db.query(ShipSpecification).filter(
+        ShipSpecification.type == request.type
+    ).first()
+
+    if not spec:
+        raise HTTPException(status_code=400, detail=f"No specification found for ship type {request.type.value}")
+
+    # Create new ship with proper JSONB initialization
     new_ship = Ship(
         name=ship_name,
-        type=request.type.value,
+        type=request.type,
         owner_id=request.owner_id,
         sector_id=request.sector_id,
-        status=ShipStatus.DOCKED.value,
-        armor=ship_specs["max_armor"],
-        max_armor=ship_specs["max_armor"],
-        shields=ship_specs["max_shields"],
-        max_shields=ship_specs["max_shields"],
-        firepower=ship_specs["firepower"],
-        cargo_capacity=ship_specs["cargo_capacity"],
-        cargo_used=0,
-        speed=ship_specs["speed"],
-        experience=0,
-        created_at=datetime.utcnow(),
-        last_action=datetime.utcnow()
+        base_speed=spec.speed,
+        current_speed=spec.speed,
+        turn_cost=spec.turn_cost,
+        warp_capable=spec.warp_compatible,
+        is_active=True,
+        status=ShipStatus.DOCKED,
+
+        # Initialize maintenance JSONB
+        maintenance={
+            "condition": 100.0,
+            "last_maintenance": datetime.utcnow().isoformat(),
+            "next_maintenance": None,
+            "repair_needed": False
+        },
+
+        # Initialize empty cargo JSONB
+        cargo={},
+
+        # Initialize combat JSONB from specifications
+        combat={
+            "shields": spec.max_shields,
+            "max_shields": spec.max_shields,
+            "shield_recharge_rate": spec.shield_recharge_rate,
+            "hull": spec.hull_points,
+            "max_hull": spec.hull_points,
+            "evasion": spec.evasion,
+            "attack_rating": spec.attack_rating,
+            "defense_rating": spec.defense_rating
+        },
+
+        # Genesis and equipment
+        genesis_devices=0,
+        max_genesis_devices=spec.max_genesis_devices,
+        mines=0,
+        max_mines=spec.max_drones,
+        has_automated_maintenance=False,
+        has_cloaking=False,
+
+        # Initialize upgrades as empty array
+        upgrades=[],
+
+        # No insurance initially
+        insurance=None,
+
+        # Special flags
+        is_destroyed=False,
+        is_flagship=False,
+        purchase_value=spec.base_cost,
+        current_value=spec.base_cost
     )
-    
+
     db.add(new_ship)
     db.flush()  # Get ID
     
@@ -407,8 +497,8 @@ async def create_ship(
         "ship": {
             "id": str(new_ship.id),
             "name": new_ship.name,
-            "type": new_ship.type,
-            "status": new_ship.status,
+            "type": new_ship.type.value,
+            "status": new_ship.status.value,
             "owner": {
                 "id": str(owner.id),
                 "name": owner.user.username
@@ -417,7 +507,17 @@ async def create_ship(
                 "id": str(sector.id),
                 "name": sector.name
             },
-            "specs": ship_specs,
+            "specs": {
+                "speed": spec.speed,
+                "max_cargo": spec.max_cargo,
+                "max_shields": spec.max_shields,
+                "hull_points": spec.hull_points,
+                "attack_rating": spec.attack_rating,
+                "defense_rating": spec.defense_rating,
+                "base_cost": spec.base_cost
+            },
+            "combat": new_ship.combat,
+            "maintenance": new_ship.maintenance,
             "created_at": new_ship.created_at.isoformat()
         }
     }
@@ -468,51 +568,8 @@ async def delete_ship(
     return DeleteShipResponse(success=True)
 
 
-def get_ship_specifications(ship_type: ShipType) -> Dict[str, int]:
-    """Get ship specifications based on type."""
-    specs = {
-        ShipType.SCOUT_SHIP: {
-            "max_armor": 1000,
-            "max_shields": 500,
-            "firepower": 300,
-            "cargo_capacity": 50,
-            "speed": 8
-        },
-        ShipType.LIGHT_FREIGHTER: {
-            "max_armor": 1500,
-            "max_shields": 750,
-            "firepower": 200,
-            "cargo_capacity": 200,
-            "speed": 5
-        },
-        ShipType.CARGO_HAULER: {
-            "max_armor": 2000,
-            "max_shields": 1000,
-            "firepower": 150,
-            "cargo_capacity": 500,
-            "speed": 3
-        },
-        ShipType.COLONY_SHIP: {
-            "max_armor": 3000,
-            "max_shields": 2000,
-            "firepower": 100,
-            "cargo_capacity": 1000,
-            "speed": 2
-        },
-        ShipType.ESCAPE_POD: {
-            "max_armor": 200,
-            "max_shields": 100,
-            "firepower": 0,
-            "cargo_capacity": 10,
-            "speed": 6
-        },
-        ShipType.CARRIER: {
-            "max_armor": 5000,
-            "max_shields": 3000,
-            "firepower": 800,
-            "cargo_capacity": 300,
-            "speed": 4
-        }
-    }
-    
-    return specs.get(ship_type, specs[ShipType.SCOUT_SHIP])
+# DEPRECATED: Ship specifications are now fetched from ShipSpecification database table
+# This function used incorrect field names (armor instead of hull) and is no longer used
+# def get_ship_specifications(ship_type: ShipType) -> Dict[str, int]:
+#     """Get ship specifications based on type."""
+#     # See ShipSpecification model for actual specifications
