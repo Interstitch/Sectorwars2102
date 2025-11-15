@@ -35,28 +35,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [mfaSessionToken, setMfaSessionToken] = useState<string | null>(null);
-  
-  // Get API URL based on environment
-  const getApiUrl = () => {
-    // If an environment variable is explicitly set, use it
-    if (import.meta.env.VITE_API_URL) {
-      return import.meta.env.VITE_API_URL;
-    }
 
-    const windowUrl = window.location.origin;
-    console.log('Current window URL:', windowUrl);
-
-    // In all environments, use relative URLs that go through the Vite proxy
-    // This works in Docker, Replit, and local development because Vite is 
-    // configured to proxy /api requests to the gameserver
-    console.log('Using Vite proxy through relative URL');
-    return '';
-  };
-
-  // Initialize API URL
-  const apiUrl = getApiUrl();
-  
-  console.log('Initialized API URL:', apiUrl);
+  /**
+   * API URL Strategy: Use Relative URLs for Proxy Architecture
+   *
+   * We use relative URLs (/api/v1/*) instead of absolute URLs to ensure
+   * compatibility across all deployment environments:
+   *
+   * - Development (Codespaces/Local): Vite dev server proxies /api/* to gameserver:8080
+   * - Production (Docker): Nginx reverse proxy routes /api/v1/* to gameserver backend
+   * - Multi-regional: Nginx handles regional routing transparently
+   *
+   * This pattern avoids CORS issues and works consistently across environments.
+   * See vite.config.ts (lines 38-70) and nginx.conf (lines 157-179) for proxy configs.
+   *
+   * If future deployments require different API URLs (CDN, mobile apps, etc.),
+   * implement environment-based configuration at that time.
+   */
   
   // Helper function to clear auth data
   const clearAuthData = () => {
