@@ -102,7 +102,7 @@ async def get_ships(
     if type:
         query = query.filter(Ship.type == type)
     if owner_id:
-        query = query.filter(Ship.player_id == owner_id)
+        query = query.filter(Ship.owner_id == owner_id)
     if sector_id:
         query = query.filter(Ship.sector_id == sector_id)
     
@@ -137,8 +137,8 @@ async def get_ships(
             "status": ship.status,
             "condition": condition,
             "owner": {
-                "id": str(ship.player_id) if ship.player_id else None,
-                "name": ship.player.name if ship.player else "Unassigned"
+                "id": str(ship.owner_id) if ship.owner_id else None,
+                "name": ship.owner.user.username if ship.owner else "Unassigned"
             },
             "sector": {
                 "id": str(ship.sector_id) if ship.sector_id else None,
@@ -296,7 +296,7 @@ async def get_fleet_health_report(
                 "id": str(ship.id),
                 "name": ship.name,
                 "type": ship.type,
-                "owner": ship.player.name if ship.player else "Unassigned",
+                "owner": ship.owner.user.username if ship.owner else "Unassigned",
                 "sector": ship.sector.name if ship.sector else "Deep Space",
                 "armor_percent": round(armor_percent, 1),
                 "status": ship.status
@@ -309,7 +309,7 @@ async def get_fleet_health_report(
                 "id": str(ship.id),
                 "name": ship.name,
                 "type": ship.type,
-                "owner": ship.player.name if ship.player else "Unassigned",
+                "owner": ship.owner.user.username if ship.owner else "Unassigned",
                 "sector": ship.sector.name if ship.sector else "Deep Space",
                 "issue": "Critical damage" if armor_percent < 25 else "Destroyed",
                 "armor_percent": round(armor_percent, 1),
@@ -352,10 +352,10 @@ async def create_ship(
     ship_name = request.name
     if not ship_name:
         ship_count = db.query(func.count(Ship.id)).filter(
-            Ship.player_id == request.owner_id,
+            Ship.owner_id == request.owner_id,
             Ship.type == request.type.value
         ).scalar()
-        ship_name = f"{owner.name}'s {request.type.value.replace('_', ' ').title()} #{ship_count + 1}"
+        ship_name = f"{owner.user.username}'s {request.type.value.replace('_', ' ').title()} #{ship_count + 1}"
     
     # Get ship specifications based on type
     ship_specs = get_ship_specifications(request.type)
@@ -364,7 +364,7 @@ async def create_ship(
     new_ship = Ship(
         name=ship_name,
         type=request.type.value,
-        player_id=request.owner_id,
+        owner_id=request.owner_id,
         sector_id=request.sector_id,
         status=ShipStatus.DOCKED.value,
         armor=ship_specs["max_armor"],
@@ -394,7 +394,7 @@ async def create_ship(
             "name": ship_name,
             "type": request.type.value,
             "owner_id": str(request.owner_id),
-            "owner_name": owner.name,
+            "owner_name": owner.user.username,
             "sector_id": str(request.sector_id),
             "sector_name": sector.name
         }
@@ -411,7 +411,7 @@ async def create_ship(
             "status": new_ship.status,
             "owner": {
                 "id": str(owner.id),
-                "name": owner.name
+                "name": owner.user.username
             },
             "sector": {
                 "id": str(sector.id),
@@ -440,7 +440,7 @@ async def delete_ship(
     ship_info = {
         "name": ship.name,
         "type": ship.type,
-        "owner": ship.player.name if ship.player else "Unassigned",
+        "owner": ship.owner.user.username if ship.owner else "Unassigned",
         "sector": ship.sector.name if ship.sector else "Deep Space"
     }
     
