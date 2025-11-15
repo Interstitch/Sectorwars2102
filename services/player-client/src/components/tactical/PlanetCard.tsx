@@ -9,6 +9,7 @@ interface PlanetCardProps {
     status: string;
     sector_id: number;
     owner_id?: string | null;
+    owner_name?: string | null;
     resources?: {
       [key: string]: any;
     };
@@ -16,9 +17,11 @@ interface PlanetCardProps {
     max_population?: number;
     habitability_score?: number;
   };
+  onLand?: (planetId: string) => void;
+  isLanded?: boolean;
 }
 
-const PlanetCard: React.FC<PlanetCardProps> = ({ planet }) => {
+const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onLand, isLanded = false }) => {
   // Planet type configurations
   const planetTypeInfo: {
     [key: string]: { icon: string; color: string; climate: string };
@@ -94,8 +97,10 @@ const PlanetCard: React.FC<PlanetCardProps> = ({ planet }) => {
           </div>
         </div>
         <div className="planet-status">
-          {planet.owner_id ? (
-            <span className="status-owned">👤 Owned</span>
+          {planet.owner_id || planet.owner_name || planet.name === 'New Earth' ? (
+            <span className="status-owned">
+              👤 {planet.owner_name || (planet.name === 'New Earth' ? 'Terran Federation' : 'Owned')}
+            </span>
           ) : (
             <span className="status-unclaimed">○ Unclaimed</span>
           )}
@@ -170,6 +175,19 @@ const PlanetCard: React.FC<PlanetCardProps> = ({ planet }) => {
           </div>
         )}
       </div>
+
+      {/* Planet Footer - Landing Button */}
+      {onLand && (
+        <div className="planet-card-footer">
+          <button
+            className={`planet-land-button ${isLanded ? 'disabled' : ''}`}
+            onClick={() => !isLanded && onLand(planet.id)}
+            disabled={isLanded}
+          >
+            {isLanded ? '🛸 LANDED' : '🌍 LAND ON PLANET'}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

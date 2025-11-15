@@ -58,6 +58,13 @@ const GameDashboard: React.FC = () => {
       console.error('Error docking at port:', error);
     }
   };
+
+  const handleLand = async (planetId: string) => {
+    // TODO: Implement landOnPlanet API call when backend endpoint is ready
+    console.log('Landing on planet:', planetId);
+    // Placeholder: For now, just show a message
+    alert('Landing functionality coming soon! This will allow you to collect population from planets like New Earth.');
+  };
   
   // If the player needs to complete the first login experience, the FirstLoginContainer
   // component will be shown by the App component, so we don't need to render the dashboard
@@ -182,7 +189,6 @@ const GameDashboard: React.FC = () => {
                   {currentSector ? (
                     <div className="sector-details">
                       <h4>Sector {currentSector.id}: {currentSector.name}</h4>
-                      <div className="tactical-badge">{currentSector.type}</div>
 
                       {/* Living Sector Viewport */}
                       <SectorViewport
@@ -261,6 +267,8 @@ const GameDashboard: React.FC = () => {
                       <PlanetCard
                         key={planet.id}
                         planet={planet}
+                        onLand={handleLand}
+                        isLanded={playerState?.is_landed || false}
                       />
                     ))}
                   </TacticalCard>

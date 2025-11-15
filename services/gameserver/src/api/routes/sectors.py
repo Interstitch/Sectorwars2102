@@ -51,16 +51,26 @@ async def get_sector_planets(
     db: Session = Depends(get_db)
 ):
     """Get all planets in a specific sector"""
-    # Verify sector exists
-    sector = db.query(Sector).filter(Sector.sector_id == sector_id).first()
+    # Get player's current region (or None for regionless sectors)
+    player_region_id = player.current_region_id
+
+    # Verify sector exists in player's current region
+    sector_query = db.query(Sector).filter(Sector.sector_id == sector_id)
+    if player_region_id:
+        sector_query = sector_query.filter(Sector.region_id == player_region_id)
+    else:
+        # For players without region, get sectors with no region
+        sector_query = sector_query.filter(Sector.region_id == None)
+
+    sector = sector_query.first()
     if not sector:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Sector not found"
+            detail=f"Sector {sector_id} not found in your region"
         )
-    
-    # Get all planets in the sector
-    planets = db.query(Planet).filter(Planet.sector_id == sector_id).all()
+
+    # Get all planets in this specific sector (by UUID)
+    planets = db.query(Planet).filter(Planet.sector_uuid == sector.id).all()
     
     planet_responses = []
     for planet in planets:
@@ -86,16 +96,26 @@ async def get_sector_ports(
     db: Session = Depends(get_db)
 ):
     """Get all ports in a specific sector"""
-    # Verify sector exists
-    sector = db.query(Sector).filter(Sector.sector_id == sector_id).first()
+    # Get player's current region (or None for regionless sectors)
+    player_region_id = player.current_region_id
+
+    # Verify sector exists in player's current region
+    sector_query = db.query(Sector).filter(Sector.sector_id == sector_id)
+    if player_region_id:
+        sector_query = sector_query.filter(Sector.region_id == player_region_id)
+    else:
+        # For players without region, get sectors with no region
+        sector_query = sector_query.filter(Sector.region_id == None)
+
+    sector = sector_query.first()
     if not sector:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Sector not found"
+            detail=f"Sector {sector_id} not found in your region"
         )
-    
-    # Get all ports in the sector
-    ports = db.query(Port).filter(Port.sector_id == sector_id).all()
+
+    # Get all ports in this specific sector (by UUID)
+    ports = db.query(Port).filter(Port.sector_uuid == sector.id).all()
     
     port_responses = []
     for port in ports:
