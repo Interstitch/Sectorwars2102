@@ -9,8 +9,7 @@ import QuantumTradingInterface from '../trading/QuantumTradingInterface';
 import EnhancedAIAssistant from '../ai/EnhancedAIAssistant';
 import TacticalCard from '../tactical/TacticalCard';
 import SectorViewport from '../tactical/SectorViewport';
-import PortCard from '../tactical/PortCard';
-import PlanetCard from '../tactical/PlanetCard';
+import PlanetPortPair from '../tactical/PlanetPortPair';
 import NavigationMap from '../tactical/NavigationMap';
 import './game-dashboard.css';
 import '../tactical/tactical-layout.css';
@@ -152,7 +151,7 @@ const GameDashboard: React.FC = () => {
                         ports={portsInSector}
                         planets={planetsInSector}
                         width={350}
-                        height={250}
+                        height={120}
                       />
 
                       {currentSector.hazard_level > 0 && (
@@ -199,29 +198,18 @@ const GameDashboard: React.FC = () => {
                   )}
                 </TacticalCard>
 
-                {/* Ports */}
-                {portsInSector.length > 0 && (
-                  <TacticalCard title="SPACE PORTS" icon="🏢" glowColor="cyan" className="animate-slide-in">
-                    {portsInSector.map(port => (
-                      <PortCard
-                        key={port.id}
-                        port={port}
-                        onDock={handleDock}
-                        isDocked={playerState?.is_ported || false}
-                      />
-                    ))}
-                  </TacticalCard>
-                )}
-
-                {/* Planets */}
+                {/* Planetary Systems - Planets with Orbiting Stations */}
                 {planetsInSector.length > 0 && (
-                  <TacticalCard title="PLANETS" icon="🪐" glowColor="purple" className="animate-slide-in">
-                    {planetsInSector.map(planet => (
-                      <PlanetCard
+                  <TacticalCard title="PLANETARY SYSTEMS" icon="🪐" glowColor="purple" className="animate-slide-in">
+                    {planetsInSector.map((planet, index) => (
+                      <PlanetPortPair
                         key={planet.id}
                         planet={planet}
-                        onLand={handleLand}
+                        port={portsInSector[index] || null}
+                        onLandOnPlanet={handleLand}
+                        onDockAtPort={handleDock}
                         isLanded={playerState?.is_landed || false}
+                        isDocked={playerState?.is_ported || false}
                       />
                     ))}
                   </TacticalCard>
@@ -282,8 +270,8 @@ const GameDashboard: React.FC = () => {
                         ...availableMoves.tunnels.filter(t => t.can_afford).map(t => t.sector_id)
                       ]}
                       onNavigate={handleMove}
-                      width={450}
-                      height={450}
+                      width={400}
+                      height={400}
                     />
                   )}
                 </TacticalCard>

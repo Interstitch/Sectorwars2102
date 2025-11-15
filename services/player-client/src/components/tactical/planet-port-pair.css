@@ -1,0 +1,211 @@
+/* ============================================
+   PLANET-PORT PAIR - Ultra-Compact Orbital View
+   ============================================ */
+
+.planet-port-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: linear-gradient(135deg, rgba(15, 20, 35, 0.9) 0%, rgba(8, 12, 22, 0.95) 100%);
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-bottom: 0.4rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.planet-port-pair::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(147, 51, 234, 0.03) 0px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+}
+
+/* Planet Section */
+.planet-section {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex: 1;
+  min-width: 0;
+}
+
+.planet-section.clickable {
+  cursor: pointer;
+}
+
+.planet-section.clickable:hover {
+  background: rgba(147, 51, 234, 0.15);
+  transform: scale(1.02);
+}
+
+.planet-section.landed {
+  background: rgba(147, 51, 234, 0.2);
+  border-left: 2px solid #9333ea;
+}
+
+.planet-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.planet-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.planet-name-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.planet-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9333ea;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.planet-owner {
+  font-size: 0.6rem;
+  color: #00ff41;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.planet-stats {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+}
+
+.planet-stats .stat {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+}
+
+/* Orbital Connector */
+.orbital-connector {
+  font-size: 0.9rem;
+  color: rgba(147, 51, 234, 0.5);
+  flex-shrink: 0;
+  animation: pulse-connector 2s ease-in-out infinite;
+}
+
+@keyframes pulse-connector {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Port Section */
+.port-section {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.port-section.clickable {
+  cursor: pointer;
+}
+
+.port-section.clickable:hover {
+  background: rgba(0, 217, 255, 0.15);
+  transform: scale(1.02);
+}
+
+.port-section.inactive {
+  opacity: 0.6;
+}
+
+.port-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(0, 217, 255, 0.5));
+}
+
+.port-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.port-name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #00d9ff;
+  white-space: nowrap;
+}
+
+.port-services {
+  display: flex;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+}
+
+.port-services span {
+  filter: drop-shadow(0 0 2px rgba(0, 217, 255, 0.3));
+}
+
+.no-services {
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .planet-port-pair {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .orbital-connector {
+    transform: rotate(90deg);
+    align-self: center;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .planet-port-pair,
+  .planet-section,
+  .port-section {
+    transition: none;
+  }
+
+  .orbital-connector {
+    animation: none;
+  }
+}
