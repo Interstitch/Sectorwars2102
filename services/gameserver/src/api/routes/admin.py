@@ -13,6 +13,7 @@ from src.auth.dependencies import get_current_admin
 from src.services.nexus_generation_service import nexus_generation_service
 from src.models.user import User
 from src.models.player import Player
+from src.models.ship import Ship
 from src.models.galaxy import Galaxy, GalaxyZone
 from src.models.cluster import Cluster
 from src.models.sector import Sector
@@ -939,10 +940,15 @@ async def clear_all_galaxy_data(
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    """Clear all galaxy data for testing purposes"""
+    """Clear all galaxy data for testing purposes (complete wipe including player game state)"""
     try:
         # Delete all universe data in correct order to avoid foreign key constraints
         # Must delete children before parents to avoid FK violations
+        # NOTE: Preserves User and OAuthAccount tables (authentication identity)
+        # but deletes all game state (Players, Ships, galaxy structure)
+
+        db.query(Ship).delete()          # Ships reference Players + Sectors
+        db.query(Player).delete()        # Players reference Sectors + Regions + Ships (via current_ship_id)
         db.query(Port).delete()          # Ports reference Sectors
         db.query(Planet).delete()        # Planets reference Sectors
         db.query(WarpTunnel).delete()    # Warp tunnels reference Sectors
@@ -953,10 +959,11 @@ async def clear_all_galaxy_data(
         db.query(Galaxy).delete()        # Finally delete Galaxy
         db.commit()
 
-        return {"message": "All galaxy data cleared successfully (including Central Nexus)"}
-        
+        return {"message": "All galaxy data and player game state cleared successfully. User accounts preserved."}
+
     except Exception as e:
         db.rollback()
+        logger.error(f"Failed to clear galaxy data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to clear galaxy data: {str(e)}")
 
 @router.delete("/galaxy/{galaxy_id}", response_model=dict)
