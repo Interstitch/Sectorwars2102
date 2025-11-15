@@ -141,12 +141,12 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
 
     setLoadingDetails(true);
     try {
-      // Fetch planet details
-      const planetResponse = await api.get(`/api/v1/admin/sectors/${sector.id}/planet`);
+      // Fetch planet details using sector number (not UUID)
+      const planetResponse = await api.get(`/api/v1/admin/sectors/${sector.sector_id}/planet`);
       setPlanetDetails(planetResponse.data);
 
-      // Fetch port details
-      const portResponse = await api.get(`/api/v1/admin/sectors/${sector.id}/port`);
+      // Fetch port details using sector number (not UUID)
+      const portResponse = await api.get(`/api/v1/admin/sectors/${sector.sector_id}/port`);
       setPortDetails(portResponse.data);
     } catch (err) {
       console.error('Error fetching sector details:', err);
