@@ -381,10 +381,12 @@
   background: rgba(26, 26, 34, 0.9);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-lg);
-  padding: var(--space-lg);
+  padding: 0.5rem;
   box-shadow: var(--shadow-md);
   backdrop-filter: blur(5px);
   position: relative;
+  height: auto;
+  min-height: 0;
 }
 
 .cockpit-card::before {
@@ -402,18 +404,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-lg);
-  padding-bottom: var(--space-md);
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.25rem;
   border-bottom: 1px solid var(--color-border);
 }
 
 .cockpit-card-title {
   font-family: var(--font-heading);
-  font-size: 1.2rem;
+  font-size: 0.75rem;
   color: var(--color-primary);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   margin: 0;
+  line-height: 1.2;
 }
 
 /* Responsive design for mobile/tablet */

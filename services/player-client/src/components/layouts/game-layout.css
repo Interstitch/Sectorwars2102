@@ -141,37 +141,37 @@
 }
 
 .commander-name {
-  font-size: 1.1rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-primary);
-  margin-bottom: var(--space-md);
+  margin-bottom: 0.5rem;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
 }
 
 .player-stats {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: 0.3rem;
 }
 
 .stat-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-sm);
+  padding: 0.3rem 0.4rem;
   background: rgba(0, 0, 0, 0.3);
   border-radius: var(--border-radius);
   border: 1px solid rgba(51, 68, 85, 0.5);
 }
 
 .stat-label {
-  font-size: 0.8rem;
+  font-size: 0.65rem;
   color: var(--color-text-muted);
   font-family: var(--font-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 /* Ship info section */

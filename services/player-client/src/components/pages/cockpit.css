@@ -6,7 +6,7 @@
 .cockpit-mode {
   margin: 0;
   padding: 0;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -153,7 +153,7 @@
 .cockpit-windshield {
   position: relative;
   width: 100%;
-  height: calc(40vh - 40px);
+  height: 40%;
   overflow: hidden;
   background: #000;
 }
@@ -447,7 +447,7 @@
    ============================================ */
 
 .cockpit-console {
-  height: calc(60vh - 40px);
+  height: 60%;
   background: linear-gradient(
     180deg,
     #1a1d24 0%,
