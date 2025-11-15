@@ -65,15 +65,15 @@ const NavigationMap: React.FC<NavigationMapProps> = ({
         };
       }
 
-      // Place connected sectors in a circle around current
+      // Place connected sectors in a circle around current (zoomed in)
       const isConnected = availableMoves.includes(sector.id);
-      const radius = isConnected ? 150 : 250;
+      const radius = isConnected ? 80 : 140;
       const angle = (index / sectors.length) * Math.PI * 2;
 
       return {
         id: sector.id,
-        x: centerX + Math.cos(angle) * radius + (Math.random() - 0.5) * 50,
-        y: centerY + Math.sin(angle) * radius + (Math.random() - 0.5) * 50,
+        x: centerX + Math.cos(angle) * radius + (Math.random() - 0.5) * 30,
+        y: centerY + Math.sin(angle) * radius + (Math.random() - 0.5) * 30,
         vx: 0,
         vy: 0,
         sector

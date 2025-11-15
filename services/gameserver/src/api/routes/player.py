@@ -165,11 +165,21 @@ async def get_current_sector(
     db: Session = Depends(get_db)
 ):
     """Get details about the player's current sector"""
-    sector = db.query(Sector).filter(Sector.sector_id == player.current_sector_id).first()
+    # Filter sector by player's region to prevent cross-regional data leakage
+    player_region_id = player.current_region_id
+
+    sector_query = db.query(Sector).filter(Sector.sector_id == player.current_sector_id)
+    if player_region_id:
+        sector_query = sector_query.filter(Sector.region_id == player_region_id)
+    else:
+        # For players without region, get sectors with no region
+        sector_query = sector_query.filter(Sector.region_id == None)
+
+    sector = sector_query.first()
     if not sector:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Current sector not found"
+            detail="Current sector not found in your region"
         )
     
     return SectorResponse(

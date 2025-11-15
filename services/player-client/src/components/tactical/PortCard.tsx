@@ -23,6 +23,12 @@ interface PortCardProps {
 }
 
 const PortCard: React.FC<PortCardProps> = ({ port, onDock, isDocked }) => {
+  const handleClick = () => {
+    if (isDocked) return;
+    if (confirm(`Dock at ${port.name}?`)) {
+      onDock(port.id);
+    }
+  };
   // Determine port status color and icon
   const getPortStatusInfo = (status: string) => {
     const statusMap: { [key: string]: { color: string; icon: string; label: string } } = {
@@ -68,7 +74,10 @@ const PortCard: React.FC<PortCardProps> = ({ port, onDock, isDocked }) => {
     : [];
 
   return (
-    <div className="port-card">
+    <div
+      className={`port-card ${!isDocked && port.status.toLowerCase() === 'active' ? 'clickable' : ''}`}
+      onClick={handleClick}
+    >
       {/* Port Header */}
       <div className="port-card-header">
         <div className="port-icon">🏢</div>
@@ -113,20 +122,9 @@ const PortCard: React.FC<PortCardProps> = ({ port, onDock, isDocked }) => {
         {port.services?.trading && (
           <div className="port-market-preview">
             <div className="market-label">📊 Market Active</div>
-            <div className="market-hint">Dock to view prices</div>
+            <div className="market-hint">Click to dock</div>
           </div>
         )}
-      </div>
-
-      {/* Port Footer - Dock Button */}
-      <div className="port-card-footer">
-        <button
-          className={`port-dock-button ${isDocked ? 'disabled' : ''}`}
-          onClick={() => !isDocked && onDock(port.id)}
-          disabled={isDocked || port.status.toLowerCase() !== 'active'}
-        >
-          {isDocked ? '⚓ DOCKED' : '🎯 REQUEST DOCKING'}
-        </button>
       </div>
     </div>
   );

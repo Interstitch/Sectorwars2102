@@ -151,8 +151,8 @@ const GameDashboard: React.FC = () => {
                         radiationLevel={currentSector.radiation_level}
                         ports={portsInSector}
                         planets={planetsInSector}
-                        width={450}
-                        height={300}
+                        width={350}
+                        height={250}
                       />
 
                       {currentSector.hazard_level > 0 && (
@@ -282,8 +282,8 @@ const GameDashboard: React.FC = () => {
                         ...availableMoves.tunnels.filter(t => t.can_afford).map(t => t.sector_id)
                       ]}
                       onNavigate={handleMove}
-                      width={600}
-                      height={600}
+                      width={450}
+                      height={450}
                     />
                   )}
                 </TacticalCard>

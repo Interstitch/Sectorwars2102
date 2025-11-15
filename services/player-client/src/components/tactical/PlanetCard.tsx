@@ -22,6 +22,12 @@ interface PlanetCardProps {
 }
 
 const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onLand, isLanded = false }) => {
+  const handleClick = () => {
+    if (isLanded || !onLand) return;
+    if (confirm(`Land on ${planet.name}?`)) {
+      onLand(planet.id);
+    }
+  };
   // Planet type configurations
   const planetTypeInfo: {
     [key: string]: { icon: string; color: string; climate: string };
@@ -84,7 +90,10 @@ const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onLand, isLanded = fals
     : [];
 
   return (
-    <div className="planet-card">
+    <div
+      className={`planet-card ${onLand && !isLanded ? 'clickable' : ''}`}
+      onClick={handleClick}
+    >
       {/* Planet Header */}
       <div className="planet-card-header">
         <div className="planet-icon" style={{ filter: `drop-shadow(0 0 12px ${typeInfo.color})` }}>
@@ -112,57 +121,21 @@ const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onLand, isLanded = fals
         {/* Habitability */}
         {planet.habitability_score !== undefined && (
           <div className="planet-habitability">
-            <div className="habitability-header">
-              <span className="habitability-label">Habitability</span>
+            <span className="habitability-stat">
+              <span className="habitability-icon">🌡️</span>
               <span className="habitability-value" style={{ color: habitability.color }}>
-                {habitability.label}
+                {planet.habitability_score}%
               </span>
-            </div>
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{
-                  width: `${planet.habitability_score}%`,
-                  background: `linear-gradient(90deg, ${habitability.color} 0%, ${typeInfo.color} 100%)`
-                }}
-              ></div>
-            </div>
-            <div className="habitability-score">{planet.habitability_score}%</div>
+            </span>
           </div>
         )}
 
         {/* Population */}
         {planet.population !== undefined && planet.max_population !== undefined && (
           <div className="planet-population">
-            <div className="population-header">
+            <div className="population-stat">
               <span className="population-icon">👥</span>
-              <span className="population-label">Population</span>
-            </div>
-            <div className="population-bar-container">
-              <div className="progress-bar">
-                <div
-                  className="progress-fill population-fill"
-                  style={{ width: `${populationPercent}%` }}
-                ></div>
-              </div>
-              <div className="population-stats">
-                {formatPopulation(planet.population)} / {formatPopulation(planet.max_population)}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Resources */}
-        {availableResources.length > 0 && (
-          <div className="planet-resources">
-            <div className="resources-label">📦 Available Resources:</div>
-            <div className="resources-grid">
-              {availableResources.map(resource => (
-                <div key={resource} className="resource-item" title={resource}>
-                  <span className="resource-icon">{resourceIcons[resource] || '•'}</span>
-                  <span className="resource-name">{resource}</span>
-                </div>
-              ))}
+              <span className="population-value">{formatPopulation(planet.population)}</span>
             </div>
           </div>
         )}
@@ -175,19 +148,6 @@ const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onLand, isLanded = fals
           </div>
         )}
       </div>
-
-      {/* Planet Footer - Landing Button */}
-      {onLand && (
-        <div className="planet-card-footer">
-          <button
-            className={`planet-land-button ${isLanded ? 'disabled' : ''}`}
-            onClick={() => !isLanded && onLand(planet.id)}
-            disabled={isLanded}
-          >
-            {isLanded ? '🛸 LANDED' : '🌍 LAND ON PLANET'}
-          </button>
-        </div>
-      )}
     </div>
   );
 };
