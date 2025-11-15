@@ -32,7 +32,7 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
   };
   
   return (
-    <div className="cockpit-frame">
+    <div className="game-layout-wrapper">
       <div className="game-layout">
         <header className="game-header hud-panel">
           <div className="game-header-left">
