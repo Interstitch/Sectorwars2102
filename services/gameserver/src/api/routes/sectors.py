@@ -31,6 +31,7 @@ class PlanetResponse(BaseModel):
 class PortResponse(BaseModel):
     id: str
     name: str
+    port_class: int | None = None  # Port class 0-11 (trading classification)
     type: str
     status: str
     sector_id: int
@@ -122,6 +123,7 @@ async def get_sector_ports(
         port_responses.append(PortResponse(
             id=str(port.id),
             name=port.name,
+            port_class=port.port_class.value if hasattr(port.port_class, 'value') else port.port_class,
             type=port.type.value if hasattr(port.type, 'value') else str(port.type),
             status=port.status.value if hasattr(port.status, 'value') else str(port.status),
             sector_id=port.sector_id,

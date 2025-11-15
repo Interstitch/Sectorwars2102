@@ -17,7 +17,7 @@ interface Planet {
 interface Port {
   id: string;
   name: string;
-  class?: number;  // Port class 0-11 (from specification)
+  port_class?: number;  // Port class 0-11 (from specification)
   type: string;
   status: string;
   owner_id?: string | null;
@@ -131,8 +131,8 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
   if (port) {
     console.log('Port data check:', {
       name: port.name,
-      hasClass: port.class !== undefined,
-      class: port.class,
+      hasClass: port.port_class !== undefined,
+      port_class: port.port_class,
       type: port.type,
       fullPort: port
     });
@@ -192,8 +192,8 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
           <div className="port-details">
             <div className="port-name-line">
               <span className="port-name">{port.name}</span>
-              {port.class !== undefined && (
-                <span className="port-class">Class {port.class}: {portClassNames[port.class] || 'Unknown'}</span>
+              {port.port_class !== undefined && (
+                <span className="port-class">Class {port.port_class}: {portClassNames[port.port_class] || 'Unknown'}</span>
               )}
               <span className="port-type">{port.type.replace(/_/g, ' ')}</span>
             </div>
