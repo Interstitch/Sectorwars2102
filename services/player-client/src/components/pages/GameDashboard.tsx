@@ -32,7 +32,6 @@ const GameDashboard: React.FC = () => {
   
   const [movementResult, setMovementResult] = useState<any>(null);
   const [dockingResult, setDockingResult] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'trading' | 'quantum' | 'navigation' | 'players'>('overview');
   
   useEffect(() => {
     // Clear results when sector changes
@@ -133,55 +132,9 @@ const GameDashboard: React.FC = () => {
             <div className="alert-message">{dockingResult.message}</div>
           </div>
         )}
-        
-        {/* Tab Navigation */}
-        <div className="cockpit-tabs">
-          <button 
-            className={`cockpit-tab ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
-          >
-            <span className="cockpit-tab-icon">📊</span>
-            TACTICAL OVERVIEW
-          </button>
-          {playerState?.is_ported && (
-            <button 
-              className={`cockpit-tab ${activeTab === 'trading' ? 'active' : ''}`}
-              onClick={() => setActiveTab('trading')}
-            >
-              <span className="cockpit-tab-icon">💹</span>
-              TRADE CONSOLE
-            </button>
-          )}
-          {playerState?.is_ported && (
-            <button 
-              className={`cockpit-tab ${activeTab === 'quantum' ? 'active' : ''}`}
-              onClick={() => setActiveTab('quantum')}
-            >
-              <span className="cockpit-tab-icon">⚛️</span>
-              QUANTUM TRADING
-            </button>
-          )}
-          <button 
-            className={`cockpit-tab ${activeTab === 'navigation' ? 'active' : ''}`}
-            onClick={() => setActiveTab('navigation')}
-          >
-            <span className="cockpit-tab-icon">🚀</span>
-            NAV SYSTEM
-          </button>
-          <button 
-            className={`cockpit-tab ${activeTab === 'players' ? 'active' : ''}`}
-            onClick={() => setActiveTab('players')}
-          >
-            <span className="cockpit-tab-icon">👥</span>
-            CONTACTS ({sectorPlayers.length})
-            {isConnected && <span className="connection-dot animate-glow"></span>}
-          </button>
-        </div>
 
-        {/* Tab Content */}
-        <div className="hud-panel tab-content">
-          {activeTab === 'overview' && (
-            <div className="tactical-dashboard">
+        {/* Tactical Dashboard - Single Screen View */}
+        <div className="tactical-dashboard">
               {/* Left Column: Tactical Situation */}
               <div className="tactical-column-left">
                 {/* Current Sector */}
@@ -336,125 +289,8 @@ const GameDashboard: React.FC = () => {
                 </TacticalCard>
               </div>
             </div>
-          )}
 
-          {activeTab === 'trading' && playerState?.is_ported && (
-            <div className="trading-tab">
-              <TradingInterface />
-            </div>
-          )}
 
-          {activeTab === 'quantum' && playerState?.is_ported && (
-            <div className="quantum-tab">
-              <QuantumTradingInterface />
-            </div>
-          )}
-
-          {activeTab === 'navigation' && (
-            <div className="navigation-tab">
-              <section className="navigation">
-                <h3>Navigation</h3>
-                
-                {(!availableMoves.warps.length && !availableMoves.tunnels.length) ? (
-                  <div className="no-exits">
-                    No exits from this sector
-                  </div>
-                ) : (
-                  <div className="navigation-options">
-                    {availableMoves.warps.length > 0 && (
-                      <div className="warp-options">
-                        <h4>Standard Warps</h4>
-                        <div className="warp-grid">
-                          {availableMoves.warps.map(warp => (
-                            <button 
-                              key={warp.sector_id}
-                              className={`cockpit-btn secondary warp-movement ${!warp.can_afford ? 'disabled' : ''}`}
-                              onClick={() => handleMove(warp.sector_id)}
-                              disabled={!warp.can_afford}
-                            >
-                              <div className="warp-sector-id">Sector {warp.sector_id}</div>
-                              <div className="warp-name">{warp.name}</div>
-                              <div className="warp-type">{warp.type}</div>
-                              <div className="warp-cost">
-                                {warp.turn_cost} {warp.turn_cost === 1 ? 'turn' : 'turns'}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {availableMoves.tunnels.length > 0 && (
-                      <div className="tunnel-options">
-                        <h4>Warp Tunnels</h4>
-                        <div className="tunnel-grid">
-                          {availableMoves.tunnels.map(tunnel => (
-                            <button 
-                              key={tunnel.sector_id}
-                              className={`cockpit-btn special tunnel-movement ${!tunnel.can_afford ? 'disabled' : ''} tunnel-${(tunnel.stability ?? 0.5) < 0.5 ? 'unstable' : (tunnel.stability ?? 0.5) < 0.8 ? 'moderate' : 'stable'}`}
-                              onClick={() => handleMove(tunnel.sector_id)}
-                              disabled={!tunnel.can_afford}
-                            >
-                              <div className="tunnel-sector-id">Sector {tunnel.sector_id}</div>
-                              <div className="tunnel-name">{tunnel.name}</div>
-                              <div className="tunnel-type">{tunnel.tunnel_type}</div>
-                              <div className="tunnel-stability">
-                                <div className="stability-label">Stability:</div>
-                                <div className="stability-meter" style={{ width: `${(tunnel.stability ?? 0.5) * 100}%` }}></div>
-                              </div>
-                              <div className="tunnel-cost">
-                                {tunnel.turn_cost} {tunnel.turn_cost === 1 ? 'turn' : 'turns'}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </section>
-            </div>
-          )}
-
-          {activeTab === 'players' && (
-            <div className="players-tab">
-              <section className="sector-players">
-                <h3>Players in Sector</h3>
-                <div className="connection-status">
-                  <div className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></div>
-                  <span>{isConnected ? 'Real-time updates' : 'Offline mode'}</span>
-                </div>
-                
-                {sectorPlayers.length === 0 ? (
-                  <div className="no-players">
-                    <div className="empty-icon">🚀</div>
-                    <p>No other players detected in this sector</p>
-                    {!isConnected && <p className="offline-note">Connect to see real-time player activity</p>}
-                  </div>
-                ) : (
-                  <div className="players-list">
-                    {sectorPlayers.map(player => (
-                      <div key={player.user_id} className="player-card">
-                        <div className="player-avatar">👤</div>
-                        <div className="player-info">
-                          <div className="player-name">{player.username}</div>
-                          <div className="player-status">
-                            Online for {Math.floor((Date.now() - new Date(player.connected_at).getTime()) / 60000)} minutes
-                          </div>
-                        </div>
-                        <div className="player-actions">
-                          <button className="action-btn message" title="Send Message">💬</button>
-                          <button className="action-btn trade" title="Request Trade">🤝</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            </div>
-          )}
-        </div>
-        
         {/* Enhanced AI Assistant - ARIA */}
         {playerState?.id && (
           <EnhancedAIAssistant 
