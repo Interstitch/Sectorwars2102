@@ -77,8 +77,12 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
 
     let frameCount = 0;
     const animate = () => {
-      // Clear canvas with fade effect for trails
-      ctx.fillStyle = 'rgba(5, 8, 16, 0.15)';
+      // TEMPORARY DEBUG: Use bright background to test visibility
+      if (frameCount < 30) {
+        ctx.fillStyle = 'rgb(255, 0, 255)'; // Bright magenta for testing
+      } else {
+        ctx.fillStyle = 'rgba(5, 8, 16, 0.15)';
+      }
       ctx.fillRect(0, 0, width, height);
 
       // Debug: Log first few frames
@@ -86,6 +90,7 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
         console.log(`🎨 Frame ${frameCount}: Drawing ${particlesRef.current.length} particles`);
         frameCount++;
       }
+      frameCount++;
 
       // Draw starfield background
       drawStarfield(ctx, width, height);
@@ -166,12 +171,13 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
   }, [width, height, sectorType, sectorName, ports, planets]);
 
   return (
-    <div className="sector-viewport-container">
+    <div className="sector-viewport-container" style={{ border: '2px solid red' }}>
       <canvas
         ref={canvasRef}
         width={width}
         height={height}
         className="sector-viewport-canvas"
+        style={{ border: '3px solid lime', backgroundColor: 'blue' }}
         onMouseMove={handleMouseMove}
         onClick={handleClick}
       />
