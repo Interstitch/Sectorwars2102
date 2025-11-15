@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from src.core.database import get_async_session
+from src.core.database import get_db
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.models.sector import Sector
@@ -48,7 +48,7 @@ class SectorPortsResponse(BaseModel):
 async def get_sector_planets(
     sector_id: int,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get all planets in a specific sector"""
     # Verify sector exists
@@ -83,7 +83,7 @@ async def get_sector_planets(
 async def get_sector_ports(
     sector_id: int,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get all ports in a specific sector"""
     # Verify sector exists
