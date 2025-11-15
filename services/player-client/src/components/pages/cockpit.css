@@ -588,32 +588,38 @@
   flex-direction: column;
 }
 
-/* HUD Header - LED lines with label */
+/* HUD Header - LED lines with label on screen */
 .screen-hud-header {
   position: relative;
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 0.75rem 0.5rem 0.5rem;
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.2em;
   color: rgba(0, 217, 255, 1);
   text-shadow: 0 0 8px rgba(0, 217, 255, 0.8);
-  background: linear-gradient(180deg, rgba(0, 217, 255, 0.15) 0%, transparent 100%);
-  border-bottom: 2px solid rgba(0, 217, 255, 0.6);
-  border-left: 2px solid rgba(0, 217, 255, 0.6);
+  background: transparent;
+  border-top: 2px solid rgba(0, 217, 255, 0.7);
+  border-left: 2px solid rgba(0, 217, 255, 0.7);
+  border-bottom: 1px solid rgba(0, 217, 255, 0.4);
   box-shadow:
-    inset 0 0 10px rgba(0, 217, 255, 0.2),
-    0 0 10px rgba(0, 217, 255, 0.3);
+    0 0 8px rgba(0, 217, 255, 0.4),
+    inset 0 0 8px rgba(0, 217, 255, 0.15);
   z-index: 10;
   flex-shrink: 0;
+  margin: 0.5rem 0.5rem 0 0.5rem;
+  border-radius: 2px 0 0 0;
 }
 
 /* HUD Content - displayed area */
 .screen-hud-content {
   flex: 1;
   padding: 0.75rem;
+  margin: 0 0.5rem 0.5rem 0.5rem;
   overflow-y: auto;
   overflow-x: hidden;
-  border-left: 2px solid rgba(0, 217, 255, 0.3);
+  border-left: 2px solid rgba(0, 217, 255, 0.5);
+  border-bottom: 2px solid rgba(0, 217, 255, 0.3);
+  position: relative;
 }
 
 /* Screen glow effect */
