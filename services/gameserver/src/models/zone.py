@@ -20,13 +20,22 @@ Zone Types by Region:
 """
 
 import uuid
+import enum
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, CheckConstraint
+from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, CheckConstraint, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy import func
 
 from src.core.database import Base
+
+
+class ZoneType(str, enum.Enum):
+    """Zone type classification based on security and development"""
+    EXPANSE = "EXPANSE"          # Central Nexus mega-zone
+    FEDERATION = "FEDERATION"    # High security, highly developed
+    BORDER = "BORDER"           # Medium security, mixed development
+    FRONTIER = "FRONTIER"        # Low security, frontier regions
 
 
 class Zone(Base):
@@ -51,7 +60,7 @@ class Zone(Base):
 
     # Zone Identity
     name = Column(String(200), nullable=False)  # "The Expanse", "Federation Space", etc.
-    zone_type = Column(String(50), nullable=False)  # EXPANSE, FEDERATION, BORDER, FRONTIER, etc.
+    zone_type = Column(Enum(ZoneType, name="zone_type"), nullable=False)  # EXPANSE, FEDERATION, BORDER, FRONTIER
 
     # Sector Boundaries (arbitrary, independent of clusters)
     start_sector = Column(Integer, nullable=False)  # First sector number in this zone (inclusive)
@@ -109,22 +118,22 @@ class Zone(Base):
     @property
     def is_federation(self) -> bool:
         """Check if this is a Federation zone"""
-        return self.zone_type == "FEDERATION"
+        return self.zone_type == ZoneType.FEDERATION
 
     @property
     def is_border(self) -> bool:
         """Check if this is a Border zone"""
-        return self.zone_type == "BORDER"
+        return self.zone_type == ZoneType.BORDER
 
     @property
     def is_frontier(self) -> bool:
         """Check if this is a Frontier zone"""
-        return self.zone_type == "FRONTIER"
+        return self.zone_type == ZoneType.FRONTIER
 
     @property
     def is_expanse(self) -> bool:
         """Check if this is The Expanse (Central Nexus special zone)"""
-        return self.zone_type == "EXPANSE"
+        return self.zone_type == ZoneType.EXPANSE
 
     def contains_sector(self, sector_number: int) -> bool:
         """Check if a given sector number falls within this zone's boundaries"""

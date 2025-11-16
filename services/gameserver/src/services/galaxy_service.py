@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from src.models.galaxy import Galaxy
 from src.models.region import Region, RegionType
-from src.models.zone import Zone
+from src.models.zone import Zone, ZoneType
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
@@ -189,7 +189,7 @@ class GalaxyGenerator:
             zone = Zone(
                 region_id=region.id,
                 name="The Expanse",
-                zone_type="EXPANSE",
+                zone_type=ZoneType.EXPANSE,
                 start_sector=1,
                 end_sector=5000,
                 policing_level=3,  # Light policing (sparse region)
@@ -206,7 +206,7 @@ class GalaxyGenerator:
             zone_fed = Zone(
                 region_id=region.id,
                 name="Federation Space",
-                zone_type="FEDERATION",
+                zone_type=ZoneType.FEDERATION,
                 start_sector=1,
                 end_sector=fed_end,
                 policing_level=9,  # Heavily policed
@@ -222,7 +222,7 @@ class GalaxyGenerator:
             zone_border = Zone(
                 region_id=region.id,
                 name="Border Regions",
-                zone_type="BORDER",
+                zone_type=ZoneType.BORDER,
                 start_sector=border_start,
                 end_sector=border_end,
                 policing_level=5,  # Moderate policing
@@ -237,7 +237,7 @@ class GalaxyGenerator:
             zone_frontier = Zone(
                 region_id=region.id,
                 name="Frontier Space",
-                zone_type="FRONTIER",
+                zone_type=ZoneType.FRONTIER,
                 start_sector=frontier_start,
                 end_sector=total_sectors,
                 policing_level=2,  # Light policing
