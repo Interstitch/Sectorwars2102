@@ -22,6 +22,7 @@ TERMINOLOGY:
 * Genesis Capacity: Maximum Genesis Devices ship can transport
 * Special Ability: Unique ship capability or bonus
 * Escape Pod: Indestructible survival craft, high turn cost for movement
+* Attack Turn Cost: Turn cost to initiate combat against this ship (scales with ship size/mass - larger ships require more turns to engage)
 
 SHIP_STATS:
 LightFreighter:
@@ -32,9 +33,10 @@ LightFreighter:
   speed: 1.0 sectors/turn
   shields: 300
   hull: 400
+  attack_turn_cost: 12 turns
   special: Versatile Configuration
   category: Trading
-  description: Standard starting ship, balanced performance
+  description: Standard starting ship, balanced performance (medium-small vessel)
 
 CargoHauler:
   cost: 50,000 credits
@@ -44,9 +46,10 @@ CargoHauler:
   speed: 0.5 sectors/turn
   shields: 400
   hull: 600
+  attack_turn_cost: 20 turns
   special: Cargo Compression (+15% storage)
   category: Trading
-  description: Bulk commodity transport specialist
+  description: Bulk commodity transport specialist (medium-large freighter)
 
 FastCourier:
   cost: 30,000 credits
@@ -56,9 +59,10 @@ FastCourier:
   speed: 2.0 sectors/turn
   shields: 200
   hull: 300
+  attack_turn_cost: 8 turns
   special: Stealth Systems (25% pirate avoidance)
   category: Trading
-  description: Speed-optimized rapid transit vessel
+  description: Speed-optimized rapid transit vessel (small, fast target)
 
 Defender:
   cost: 70,000 credits
@@ -68,9 +72,10 @@ Defender:
   speed: 1.0 sectors/turn
   shields: 700
   hull: 800
+  attack_turn_cost: 18 turns
   special: Shield Projection
   category: Combat
-  description: Primary combat vessel, reinforced shields
+  description: Primary combat vessel, reinforced shields (medium warship)
 
 Carrier:
   cost: 150,000 credits
@@ -80,9 +85,10 @@ Carrier:
   speed: 0.75 sectors/turn
   shields: 800
   hull: 900
+  attack_turn_cost: 45 turns
   special: Fleet Coordination (+20% boost to nearby friendlies)
   category: Combat
-  description: Mobile headquarters, multiple drone squadrons
+  description: Mobile headquarters, multiple drone squadrons (massive capital ship)
 
 ColonyShip:
   cost: 100,000 credits
@@ -92,9 +98,10 @@ ColonyShip:
   speed: 0.4 sectors/turn
   shields: 400
   hull: 600
+  attack_turn_cost: 35 turns
   special: Terraforming Modules (-30% colonization time)
   category: Specialized
-  description: Planetary settlement specialist
+  description: Planetary settlement specialist (large, slow civilian vessel)
 
 ScoutShip:
   cost: 25,000 credits
@@ -104,9 +111,10 @@ ScoutShip:
   speed: 2.5 sectors/turn
   shields: 150
   hull: 200
+  attack_turn_cost: 5 turns
   special: Advanced Sensors (reveal sector details)
   category: Specialized
-  description: Exploration and charting specialist
+  description: Exploration and charting specialist (small, nimble target)
 
 WarpJumper:
   cost: 500,000 credits
@@ -116,6 +124,7 @@ WarpJumper:
   speed: N/A (quantum jump capability)
   shields: 500
   hull: 600
+  attack_turn_cost: 100 turns
   special: Quantum Jump (5-10 sectors, 24h cooldown)
   category: Specialized
   description: Warp gate establishment vessel
@@ -185,11 +194,134 @@ ReputationRewards:
 ESCAPE_POD:
 * Indestructible survival craft, never lost
 * Activated automatically on ship destruction
-* High turn cost for movement (penalty vs regular ships)
+* High turn cost for movement: 10 turns per sector (10x penalty vs regular ships)
 * Zero cargo capacity
-* Cannot engage in combat
+* Cannot initiate combat
 * Player retains all credits when ejecting
 * Can dock at any port to purchase new ship
+* attack_turn_cost: 10,000 turns (extreme griefing deterrent - attacking defenseless survivors is pointless)
+
+ATTACK_TURN_COST_SYSTEM:
+Philosophy:
+* Ships have varying mass, size, and combat capability
+* Larger ships require more tactical preparation and positioning to engage
+* Attack turn cost represents time/effort to maneuver into attack position
+* Creates strategic depth: picking your battles matters
+* Prevents griefing by making defenseless targets prohibitively expensive
+
+Size-Based Scaling:
+* Small Ships (5-10 turns): Scout, Fast Courier
+  - Quick, nimble targets
+  - Fast engagement, minimal positioning required
+  - Easy to intercept and attack
+
+* Medium Ships (12-20 turns): Light Freighter, Defender, Cargo Hauler
+  - Standard vessels requiring moderate tactical approach
+  - Balanced engagement cost
+  - Most common PvP targets
+
+* Large Ships (35-45 turns): Colony Ship, Carrier
+  - Massive capital vessels
+  - Significant turn investment to engage
+  - Attacking requires careful consideration
+  - High-value targets justify the turn cost
+
+* Unique/Rare (100+ turns): Warp Jumper
+  - Extremely rare quantum-capable vessels
+  - Protected by prohibitive attack cost
+  - Discourages casual attacks on irreplaceable ships
+
+* Defenseless (10,000 turns): Escape Pod
+  - Cannot fight back, zero threat
+  - Attack cost so high it's never worth it
+  - Complete griefing protection for destroyed players
+
+Gameplay Impact:
+* Tactical Decision Making:
+  - "Do I have enough turns to attack that Carrier AND escape?"
+  - "This Scout is an easy kill, but is it worth 5 turns?"
+  - "That Colony Ship has 35 turns attack cost - I need to be sure I can win"
+
+* Turn Resource Management:
+  - Attacking large ships is a significant turn commitment
+  - Players must balance attack opportunities vs other actions
+  - Creates opportunity cost: attack now or trade/explore?
+
+* Anti-Griefing:
+  - Escape Pods effectively immune (10k turns vs 1k daily regen)
+  - Rare ships (Warp Jumper) heavily protected
+  - Discourages random attacks on weak targets
+
+* Strategic Target Selection:
+  - Small ships: Quick hits, good for opportunistic PvP
+  - Medium ships: Standard engagements, fair turn cost
+  - Large ships: Major commitments, plan carefully
+  - Fleets coordinating can share turn burden
+
+* PvP Balance:
+  - Combat-focused players prioritize turn efficiency
+  - Traders can invest in larger ships for passive protection
+  - Warp Jumper owners have built-in attack deterrent
+  - New players in escape pods can rebuild without harassment
+
+Example Combat Scenarios:
+```python
+# Scenario 1: Pirate hunting small traders
+pirate.turns = 150
+target_scout = Ship(type="SCOUT", attack_turn_cost=5)
+target_courier = Ship(type="FAST_COURIER", attack_turn_cost=8)
+
+pirate.attack(target_scout)  # Costs 5 turns, 145 remaining
+pirate.attack(target_courier)  # Costs 8 turns, 137 remaining
+# Pirate can attack 30 scouts OR 18 couriers with 150 turns
+
+# Scenario 2: Fleet engagement
+attacker.turns = 500
+target_carrier = Ship(type="CARRIER", attack_turn_cost=45)
+
+attacker.attack(target_carrier)  # Costs 45 turns
+# Major commitment - carrier better be worth it!
+# Attacker has 455 turns left for combat/escape
+
+# Scenario 3: Griefing attempt (blocked)
+griefer.turns = 1000
+target_pod = Ship(type="ESCAPE_POD", attack_turn_cost=10000)
+
+griefer.attack(target_pod)  # ERROR: Insufficient turns
+# Would need 10 full days of turn regen to attack one escape pod
+# Completely prevents griefing destroyed players
+
+# Scenario 4: High-value target
+hunter.turns = 200
+target_warp_jumper = Ship(type="WARP_JUMPER", attack_turn_cost=100)
+
+hunter.attack(target_warp_jumper)  # Costs 100 turns
+# Huge investment - hunter better be confident of victory
+# Creates natural protection for rare ships
+```
+
+Database Schema Addition:
+```python
+# Ship model addition
+class Ship(Base):
+    __tablename__ = "ships"
+
+    # ... existing fields
+    attack_turn_cost = Column(Integer, nullable=False)  # Based on ship type
+
+# Ship type definitions
+SHIP_ATTACK_COSTS = {
+    "SCOUT": 5,
+    "FAST_COURIER": 8,
+    "LIGHT_FREIGHTER": 12,
+    "DEFENDER": 18,
+    "CARGO_HAULER": 20,
+    "COLONY_SHIP": 35,
+    "CARRIER": 45,
+    "WARP_JUMPER": 100,
+    "ESCAPE_POD": 10000
+}
+```
 
 CONSTRAINTS:
 * Ship loss results in cargo destruction, credits retained
