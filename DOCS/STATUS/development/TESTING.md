@@ -104,7 +104,7 @@ cd e2e_tests
 
 This script will:
 
-1. Detect the environment (local, GitHub Codespaces, or Replit)
+1. Detect the environment (local or GitHub Codespaces)
 2. Install Chromium browser if needed
 3. Run all Playwright tests
 4. Generate an HTML report with the results

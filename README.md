@@ -50,7 +50,7 @@ The project uses a flexible architecture with three main components:
 2. **Player Client**: Web interface for playing the game
 3. **Admin UI**: Comprehensive administrative interface with advanced game management tools
 
-All services can be deployed using Docker or run directly with PM2 process management in environments like Replit.
+All services can be deployed using Docker with Docker Compose.
 
 ## Technical Stack
 
@@ -66,11 +66,10 @@ All services can be deployed using Docker or run directly with PM2 process manag
 
 ## Multi-Environment Support
 
-The project is designed to work seamlessly across three development environments:
+The project is designed to work seamlessly across development environments:
 
 1. **Local Development**: Docker-based with separate or combined containers
 2. **GitHub Codespaces**: Remote development with VS Code
-3. **Replit**: iPad-compatible development environment using PM2
 
 ## Quick Start
 
@@ -78,7 +77,7 @@ The project is designed to work seamlessly across three development environments
 
 - Node.js 16+ and npm
 - Python 3.11+
-- Docker (optional, not needed for Replit)
+- Docker and Docker Compose
 - Access to a Neon PostgreSQL database
 
 ### Option 1: Using Docker Multi-Container (Local & GitHub Codespaces)
@@ -111,21 +110,6 @@ cp .env.example .env
 docker-compose -f docker-compose.combined.yml up
 ```
 
-### Option 3: Using Replit (without Docker)
-
-1. Open the project in Replit
-2. Run the setup script (first time only):
-
-   ```bash
-   ./dev-scripts/setup.sh
-   ```
-
-3. Start the services:
-
-   ```bash
-   ./dev-scripts/start-unified.sh
-   ```
-
 ### Auto-detection
 
 Our main start script automatically detects your environment and configures everything appropriately:
@@ -149,7 +133,7 @@ You can easily switch between development and production databases by using the 
 The flag can be combined with other options:
 
 ```bash
-# Start with production database and no host check (Replit)
+# Start with production database and no host check
 ./dev-scripts/start-unified.sh --production-db --no-host-check
 ```
 
@@ -188,7 +172,7 @@ This approach keeps your environment configuration simple while providing contro
 
 ## Process Management
 
-### PM2 Commands (Replit or Docker Combined Image)
+### PM2 Commands (Docker Combined Image)
 
 ```bash
 # View logs

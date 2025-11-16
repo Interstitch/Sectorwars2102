@@ -223,7 +223,7 @@ interface GalaxyGenerationConfig {
 ### Deployment
 - **Build:** `npm run build` (Vite production build)
 - **Testing:** `npx playwright test` (E2E test suite)
-- **Environment:** Supports local, Codespaces, and Replit
+- **Environment:** Supports local development and GitHub Codespaces
 - **Port:** 3001 (Admin UI), 8080 (API), 3000 (Player Client)
 
 ## Future Development Priorities
