@@ -38,6 +38,9 @@ def upgrade() -> None:
     # Rename price alert columns
     op.alter_column('price_alerts', 'port_id', new_column_name='station_id')
 
+    # Rename markets table column
+    op.alter_column('markets', 'port_id', new_column_name='station_id')
+
     # Rename indexes
     op.drop_index('ix_market_transactions_port_id', table_name='enhanced_market_transactions')
     op.create_index('ix_market_transactions_station_id', 'enhanced_market_transactions', ['station_id'])
@@ -62,6 +65,7 @@ def downgrade() -> None:
     op.create_index('ix_market_transactions_port_id', 'enhanced_market_transactions', ['port_id'])
 
     # Revert column renames
+    op.alter_column('markets', 'station_id', new_column_name='port_id')
     op.alter_column('price_alerts', 'station_id', new_column_name='port_id')
     op.alter_column('economic_metrics', 'most_valuable_station', new_column_name='most_valuable_port')
     op.alter_column('price_history', 'station_id', new_column_name='port_id')
