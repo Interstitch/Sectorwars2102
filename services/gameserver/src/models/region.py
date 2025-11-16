@@ -122,7 +122,7 @@ class Region(Base):
     clusters = relationship("Cluster", back_populates="region", cascade="all, delete-orphan")
     sectors = relationship("Sector", back_populates="region")
     planets = relationship("Planet", back_populates="region")
-    ports = relationship("Station", back_populates="region")
+    stations = relationship("Station", back_populates="region")
     elections = relationship("RegionalElection", back_populates="region", cascade="all, delete-orphan")
     policies = relationship("RegionalPolicy", back_populates="region", cascade="all, delete-orphan")
     treaties_as_a = relationship("RegionalTreaty", foreign_keys="RegionalTreaty.region_a_id", back_populates="region_a")
