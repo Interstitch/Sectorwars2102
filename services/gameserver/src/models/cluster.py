@@ -27,9 +27,9 @@ class Cluster(Base):
     name = Column(String(100), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-    
+
     # Relationships and structure
-    zone_id = Column(UUID(as_uuid=True), ForeignKey("galaxy_zones.id", ondelete="CASCADE"), nullable=False)
+    region_id = Column(UUID(as_uuid=True), ForeignKey("regions.id", ondelete="CASCADE"), nullable=False)
     type = Column(Enum(ClusterType, name="cluster_type"), nullable=False)
     sector_count = Column(Integer, nullable=False, default=0)
     
@@ -93,8 +93,8 @@ class Cluster(Base):
     warp_stability = Column(Float, nullable=False, default=1.0)  # Affects warp tunnel reliability
     
     # Relationships
-    zone = relationship("GalaxyZone", back_populates="clusters")
+    region = relationship("Region", back_populates="clusters")
     sectors = relationship("Sector", back_populates="cluster", cascade="all, delete-orphan")
-    
+
     def __repr__(self):
         return f"<Cluster {self.name} ({self.type.name}) - {self.sector_count} sectors>"

@@ -5,7 +5,8 @@ from typing import List, Dict, Any, Tuple, Set, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from src.models.galaxy import Galaxy, GalaxyZone, ZoneType
+from src.models.galaxy import Galaxy
+from src.models.region import Region, RegionType
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
@@ -25,27 +26,25 @@ class GalaxyGenerator:
         self.sectors_map: Dict[int, Sector] = {}  # Sector number to Sector object mapping
         self.sector_grid: Dict[Tuple[int, int, int], int] = {}  # Coordinates to sector number mapping
         
-    def generate_galaxy(self, name: str = "Milky Way", num_sectors: int = 500, config: dict = None) -> Galaxy:
-        """Generate a complete galaxy with regions, clusters, sectors, warps, etc."""
-        logger.info(f"Generating new galaxy '{name}' with {num_sectors} sectors")
-        
+    def generate_galaxy(self, name: str = "Milky Way", config: dict = None) -> Galaxy:
+        """
+        Generate galaxy metadata record.
+
+        NOTE: This no longer creates regions/clusters/sectors directly.
+        Use generate_region_content() to populate specific regions with clusters/sectors.
+        Regions (Central Nexus, Terran Space, player-owned) are created separately.
+        """
+        logger.info(f"Generating new galaxy '{name}' metadata")
+
         # Apply default config if none provided
         if config is None:
             config = {}
-        
-        # Set up region distribution
-        region_distribution = {
-            "federation": config.get("federation_percentage", 25),
-            "border": config.get("border_percentage", 35), 
-            "frontier": config.get("frontier_percentage", 40)
-        }
-        
-        # Create galaxy record
+
+        # Create galaxy metadata record
         galaxy = Galaxy(
             name=name,
-            region_distribution=region_distribution,
             statistics={
-                "total_sectors": num_sectors,
+                "total_sectors": 0,  # Will be updated as regions are populated
                 "discovered_sectors": 0,
                 "port_count": 0,
                 "planet_count": 0,
@@ -54,7 +53,7 @@ class GalaxyGenerator:
                 "warp_tunnel_count": 0,
                 "genesis_count": 0
             },
-            max_sectors=num_sectors,
+            max_sectors=config.get("max_sectors", 10000),  # Total capacity across all regions
             density={
                 "port_density": int(config.get("port_density", 0.15) * 100),
                 "planet_density": int(config.get("planet_density", 0.25) * 100),
@@ -63,159 +62,141 @@ class GalaxyGenerator:
             }
         )
         self.db.add(galaxy)
-        self.db.flush()  # Ensure galaxy ID is available
-        
-        # Calculate region distributions
-        region_distribution = galaxy.region_distribution
-        federation_count = int(num_sectors * region_distribution["federation"] / 100)
-        border_count = int(num_sectors * region_distribution["border"] / 100)
-        frontier_count = num_sectors - federation_count - border_count
-        
-        logger.info(f"Region distribution: Federation: {federation_count}, "
-                   f"Border: {border_count}, Frontier: {frontier_count}")
-        
-        # Create zones
-        federation_zone = self._create_zone(galaxy, "Federation Space", ZoneType.FEDERATION, federation_count)
-        border_zone = self._create_zone(galaxy, "Border Zone", ZoneType.BORDER, border_count)
-        frontier_zone = self._create_zone(galaxy, "Frontier", ZoneType.FRONTIER, frontier_count)
-        
-        # Create clusters in each zone
-        self._create_clusters(federation_zone, cluster_count=5, avg_sectors_per_cluster=federation_count//5)
-        self._create_clusters(border_zone, cluster_count=8, avg_sectors_per_cluster=border_count//8)
-        self._create_clusters(frontier_zone, cluster_count=10, avg_sectors_per_cluster=frontier_count//10)
-        
+        self.db.commit()
+
+        logger.info(f"Galaxy '{name}' metadata created")
+        return galaxy
+
+    def generate_region_content(self, region: Region, cluster_count: int = None, config: dict = None) -> None:
+        """
+        Generate clusters, sectors, warps, ports, and planets for a specific region.
+
+        Args:
+            region: The region to populate
+            cluster_count: Number of clusters to create (auto-calculated if None)
+            config: Optional configuration dict
+        """
+        logger.info(f"Generating content for region '{region.name}' ({region.total_sectors} sectors)")
+
+        if config is None:
+            config = {}
+
+        # Auto-calculate cluster count based on region size
+        if cluster_count is None:
+            if region.is_central_nexus:
+                cluster_count = 20  # 5000 sectors / 20 = 250 sectors per cluster
+            elif region.is_terran_space:
+                cluster_count = 6   # 300 sectors / 6 = 50 sectors per cluster
+            else:
+                # Player regions: 1 cluster per 50 sectors
+                cluster_count = max(2, region.total_sectors // 50)
+
+        # Create clusters for this region
+        clusters = self._create_clusters_for_region(region, cluster_count)
+
         # Create sectors in each cluster
-        for zone in [federation_zone, border_zone, frontier_zone]:
-            for cluster in zone.clusters:
-                self._create_sectors_for_cluster(cluster)
-        
+        for cluster in clusters:
+            self._create_sectors_for_cluster(cluster, region)
+
         # Connect sectors with warps
         self._create_warps_between_sectors()
-        
-        # Create warp tunnels between sectors (3-6 per sector)
-        self._create_warp_tunnels_enhanced(num_sectors)
-        
-        # Populate sectors with ports and planets
-        self._populate_sectors_with_ports(galaxy.density["port_density"] / 100)  # Convert percentage to decimal
-        self._populate_sectors_with_planets(galaxy.density["planet_density"] / 100)  # Convert percentage to decimal
 
-        # CRITICAL: Ensure Sector 1 has starter port and planet for new player onboarding
-        self._ensure_starter_sector()
+        # Create warp tunnels (fewer for Central Nexus)
+        if region.is_central_nexus:
+            # Central Nexus has lower warp tunnel density
+            self._create_warp_tunnels_enhanced(region.total_sectors, density_multiplier=0.3)
+        else:
+            self._create_warp_tunnels_enhanced(region.total_sectors, density_multiplier=1.0)
 
-        # Add special sectors
-        self._add_special_sectors()
+        # Populate with ports and planets (sparse for Central Nexus)
+        if region.is_central_nexus:
+            self._populate_sectors_with_ports(0.05, region_id=region.id)  # 5% port density
+            self._populate_sectors_with_planets(0.10, region_id=region.id)  # 10% planet density
+        else:
+            self._populate_sectors_with_ports(0.15, region_id=region.id)  # 15% port density
+            self._populate_sectors_with_planets(0.25, region_id=region.id)  # 25% planet density
 
-        # Create Terran Space region and assign sectors 1-300 to it
-        self._create_terran_space_region()
-
-        # Update galaxy statistics
-        self._update_galaxy_statistics(galaxy)
+        # Ensure Sector 1 in each region has starter facilities
+        self._ensure_region_starter_sector(region)
 
         self.db.commit()
-        logger.info(f"Galaxy '{name}' generation completed with {self.sectors_generated} sectors")
-        return galaxy
+        logger.info(f"Region '{region.name}' content generation completed")
     
-    def _create_zone(self, galaxy: Galaxy, name: str, zone_type: ZoneType, sector_count: int) -> GalaxyZone:
-        """Create a cosmological zone within the galaxy."""
-        security_levels = {
-            ZoneType.FEDERATION: 0.9,
-            ZoneType.BORDER: 0.5,
-            ZoneType.FRONTIER: 0.2
-        }
-
-        resource_richness = {
-            ZoneType.FEDERATION: 0.8,  # Developed but somewhat depleted
-            ZoneType.BORDER: 1.2,      # Good balance
-            ZoneType.FRONTIER: 1.6     # Resource rich but dangerous
-        }
-
-        zone = GalaxyZone(
-            name=name,
-            galaxy_id=galaxy.id,
-            type=zone_type,
-            sector_count=sector_count,
-            security_level=security_levels[zone_type],
-            resource_richness=resource_richness[zone_type],
-            controlling_faction=self._get_default_faction_for_zone(zone_type),
-            description=f"{name} - {zone_type.name} cosmological zone with {sector_count} sectors"
-        )
-
-        self.db.add(zone)
-        self.db.flush()
-        return zone
-    
-    def _create_clusters(self, zone: GalaxyZone, cluster_count: int, avg_sectors_per_cluster: int) -> List[Cluster]:
-        """Create clusters within a cosmological zone."""
+    def _create_clusters_for_region(self, region: Region, cluster_count: int) -> List[Cluster]:
+        """Create clusters within a region."""
         clusters = []
-        total_sectors = zone.sector_count
+        total_sectors = region.total_sectors
+        avg_sectors_per_cluster = total_sectors // cluster_count
         remaining_sectors = total_sectors
 
-        # Determine cluster types appropriate for this zone
-        cluster_types = self._get_cluster_types_for_zone(zone.type)
-        
+        # Get appropriate cluster types for this region
+        cluster_types = self._get_cluster_types_for_region(region)
+
         for i in range(cluster_count):
             # Calculate sectors for this cluster (last cluster gets remainder)
             if i == cluster_count - 1:
                 cluster_sectors = remaining_sectors
             else:
-                # Add some randomness to cluster sizes
+                # Add some randomness to cluster sizes (±33%)
                 variation = avg_sectors_per_cluster // 3
                 cluster_sectors = max(1, avg_sectors_per_cluster + random.randint(-variation, variation))
                 cluster_sectors = min(cluster_sectors, remaining_sectors - (cluster_count - i - 1))
-            
+
             remaining_sectors -= cluster_sectors
-            
+
             # Choose a cluster type
             cluster_type = random.choice(cluster_types)
 
             # Create the cluster
-            cluster_name = f"{zone.name} Cluster {chr(65 + i)}"  # A, B, C, etc.
+            cluster_name = f"{region.display_name} Cluster {chr(65 + i)}"  # A, B, C, etc.
             cluster = Cluster(
                 name=cluster_name,
-                zone_id=zone.id,
+                region_id=region.id,
                 type=cluster_type,
                 sector_count=cluster_sectors,
-                is_discovered=zone.type == ZoneType.FEDERATION,  # Federation clusters start discovered
-                warp_stability=self._get_warp_stability_for_zone(zone.type),
+                is_discovered=region.is_terran_space or region.is_central_nexus,  # Special regions start discovered
+                warp_stability=1.0,  # Default warp stability
                 description=f"{cluster_name} - {cluster_type.name} cluster with {cluster_sectors} sectors"
             )
-            
+
             self.db.add(cluster)
             self.db.flush()
             clusters.append(cluster)
-        
+
         return clusters
     
-    def _create_sectors_for_cluster(self, cluster: Cluster) -> List[Sector]:
+    def _create_sectors_for_cluster(self, cluster: Cluster, region: Region) -> List[Sector]:
         """Create sectors within a cluster."""
         sectors = []
         sector_count = cluster.sector_count
         sector_types = self._get_sector_types_for_cluster(cluster.type)
-        
+
         # Generate coordinates for sectors in this cluster
         coords_list = self._generate_cluster_coordinates(sector_count)
-        
+
         for i in range(sector_count):
-            # Assign sector number (incremental across the entire galaxy)
+            # Assign sector number (incremental within region, starting from 1)
             self.sectors_generated += 1
             sector_num = self.sectors_generated
-            
+
             # Get coordinates
             coords = coords_list[i]
             self.sector_grid[coords] = sector_num
-            
+
             # Choose sector type (mostly standard with some specials)
             if random.random() < 0.85:  # 85% standard sectors
                 sector_type = SectorType.STANDARD
             else:
                 sector_type = random.choice(sector_types)
-            
+
             # Create sector
             sector_name = f"Sector {sector_num}"
             sector = Sector(
                 sector_id=sector_num,
+                sector_number=sector_num,  # Same as sector_id for now
                 name=sector_name,
                 cluster_id=cluster.id,
+                region_id=region.id,
                 type=sector_type,
                 is_discovered=cluster.is_discovered,
                 x_coord=coords[0],
@@ -223,17 +204,17 @@ class GalaxyGenerator:
                 z_coord=coords[2],
                 radiation_level=self._get_radiation_level_for_sector_type(sector_type),
                 hazard_level=self._get_hazard_level_for_sector_type(sector_type),
-                resources=self._generate_sector_resources(cluster.zone.resource_richness),
+                resources=self._generate_sector_resources(1.0),  # Default resource richness
                 description=f"{sector_name} - {sector_type.name} sector in {cluster.name}"
             )
-            
+
             self.db.add(sector)
             self.db.flush()
-            
+
             # Store for later reference when creating warps
             self.sectors_map[sector_num] = sector
             sectors.append(sector)
-        
+
         return sectors
     
     def _create_warps_between_sectors(self) -> None:
@@ -273,8 +254,8 @@ class GalaxyGenerator:
                     )
                     self.db.execute(stmt)
     
-    def _create_warp_tunnels_enhanced(self, num_sectors: int) -> None:
-        """Create warp tunnels ensuring each sector has 3-6 connections minimum."""
+    def _create_warp_tunnels_enhanced(self, num_sectors: int, density_multiplier: float = 1.0) -> None:
+        """Create warp tunnels ensuring each sector has connections (density adjustable for different regions)."""
         all_sector_ids = list(self.sectors_map.keys())
         sector_connections = {sector_id: 0 for sector_id in all_sector_ids}
         created_tunnels = set()
@@ -290,10 +271,13 @@ class GalaxyGenerator:
                     dest_num = random.choice(available_targets)
                     self._create_single_warp_tunnel(source_num, dest_num, created_tunnels, sector_connections)
         
-        # Second pass: Add more connections to reach 3-6 per sector
+        # Second pass: Add more connections (adjusted by density_multiplier)
         for source_num in all_sector_ids:
             current_connections = sector_connections[source_num]
-            target_connections = random.randint(3, 6)
+            # Density multiplier adjusts target connections (1.0 = 3-6, 0.3 = 1-2)
+            base_min = int(3 * density_multiplier) or 1
+            base_max = int(6 * density_multiplier) or 2
+            target_connections = random.randint(base_min, base_max)
             
             # Add more connections if needed
             while current_connections < target_connections:
@@ -397,9 +381,13 @@ class GalaxyGenerator:
             self.db.add(tunnel)
             self.db.flush()
     
-    def _populate_sectors_with_ports(self, port_probability: float) -> None:
-        """Add space ports to sectors based on probability."""
+    def _populate_sectors_with_ports(self, port_probability: float, region_id: str = None) -> None:
+        """Add space ports to sectors based on probability (optionally filtered by region)."""
         for sector_num, sector in self.sectors_map.items():
+            # Filter by region if specified
+            if region_id and sector.region_id != region_id:
+                continue
+
             # Skip some sectors based on probability
             if random.random() > port_probability:
                 continue
@@ -481,9 +469,13 @@ class GalaxyGenerator:
             self.db.add(market)
             self.db.flush()
     
-    def _populate_sectors_with_planets(self, planet_probability: float) -> None:
-        """Add planets to sectors based on probability."""
+    def _populate_sectors_with_planets(self, planet_probability: float, region_id: str = None) -> None:
+        """Add planets to sectors based on probability (optionally filtered by region)."""
         for sector_num, sector in self.sectors_map.items():
+            # Filter by region if specified
+            if region_id and sector.region_id != region_id:
+                continue
+
             # Skip some sectors based on probability
             if random.random() > planet_probability:
                 continue
@@ -517,14 +509,43 @@ class GalaxyGenerator:
             self.db.add(planet)
             self.db.flush()
 
+    def _ensure_region_starter_sector(self, region: Region) -> None:
+        """
+        Guarantee that Sector 1 in this region has both a port and a planet.
+        Critical for new player onboarding in each region.
+        """
+        logger.info(f"Ensuring Sector 1 in {region.name} has required starter features (port + planet)")
+
+        # Find Sector 1 for this region (sector_number = 1)
+        sector_1 = None
+        for sector in self.sectors_map.values():
+            if sector.region_id == region.id and sector.sector_number == 1:
+                sector_1 = sector
+                break
+
+        if not sector_1:
+            logger.error(f"Sector 1 not found in region {region.name}! Cannot ensure starter sector.")
+            return
+
+        # Check if Sector 1 already has a port
+        existing_port = self.db.query(Port).filter(Port.sector_uuid == sector_1.id).first()
+        if not existing_port:
+            logger.info(f"Creating guaranteed starter port in Sector 1 of {region.name}")
+            self._create_starter_port_for_sector(sector_1)
+
+        # Check if Sector 1 already has a planet
+        existing_planet = self.db.query(Planet).filter(Planet.sector_uuid == sector_1.id).first()
+        if not existing_planet:
+            logger.info(f"Creating guaranteed starter planet in Sector 1 of {region.name}")
+            self._create_starter_planet_for_sector(sector_1)
+
+    # DEPRECATED: Old zone-based method, kept for reference
     def _ensure_starter_sector(self) -> None:
         """
-        Guarantee that Sector 1 has both a port and a planet for new player onboarding.
-        This is critical for game experience - new players spawn in Sector 1 and need:
-        - A port to learn trading mechanics
-        - A planet to learn planetary colonization
+        DEPRECATED: Use _ensure_region_starter_sector instead.
+        This method used global Sector 1 concept, which doesn't work with multi-regional architecture.
         """
-        logger.info("Ensuring Sector 1 has required starter features (port + planet)")
+        logger.warning("_ensure_starter_sector is deprecated - use _ensure_region_starter_sector instead")
 
         # Get Sector 1
         sector_1 = self.sectors_map.get(1)
@@ -777,34 +798,19 @@ class GalaxyGenerator:
         })
     
     # Helper methods for generation
-    def _get_default_faction_for_zone(self, zone_type: ZoneType) -> str:
-        """Determine the default controlling faction for a cosmological zone."""
-        faction_map = {
-            ZoneType.FEDERATION: "terran_federation",
-            ZoneType.BORDER: "mercantile_guild",
-            ZoneType.FRONTIER: "frontier_coalition"
-        }
-        return faction_map.get(zone_type, "contested")
-    
-    def _get_cluster_types_for_zone(self, zone_type: ZoneType) -> List[ClusterType]:
-        """Get appropriate cluster types for a cosmological zone."""
-        if zone_type == ZoneType.FEDERATION:
+    def _get_cluster_types_for_region(self, region: Region) -> List[ClusterType]:
+        """Get appropriate cluster types for a region."""
+        if region.is_central_nexus:
+            # Central Nexus: diverse types, more trade/population
+            return [ClusterType.TRADE_HUB, ClusterType.POPULATION_CENTER, ClusterType.STANDARD,
+                    ClusterType.RESOURCE_RICH, ClusterType.MILITARY_ZONE]
+        elif region.is_terran_space:
+            # Terran Space: developed,safe, populated
             return [ClusterType.POPULATION_CENTER, ClusterType.TRADE_HUB, ClusterType.STANDARD]
-        elif zone_type == ZoneType.BORDER:
-            return [ClusterType.TRADE_HUB, ClusterType.RESOURCE_RICH, ClusterType.MILITARY_ZONE,
-                    ClusterType.CONTESTED, ClusterType.STANDARD]
-        else:  # FRONTIER
-            return [ClusterType.FRONTIER_OUTPOST, ClusterType.RESOURCE_RICH, ClusterType.SPECIAL_INTEREST,
-                    ClusterType.CONTESTED, ClusterType.STANDARD]
-    
-    def _get_warp_stability_for_zone(self, zone_type: ZoneType) -> float:
-        """Get warp stability for a cosmological zone."""
-        stability_map = {
-            ZoneType.FEDERATION: 0.95,  # Very stable
-            ZoneType.BORDER: 0.8,       # Mostly stable
-            ZoneType.FRONTIER: 0.6      # Less stable
-        }
-        return stability_map.get(zone_type, 0.7)
+        else:
+            # Player regions: balanced mix
+            return [ClusterType.STANDARD, ClusterType.RESOURCE_RICH, ClusterType.TRADE_HUB,
+                    ClusterType.FRONTIER_OUTPOST, ClusterType.SPECIAL_INTEREST]
     
     def _get_sector_types_for_cluster(self, cluster_type: ClusterType) -> List[SectorType]:
         """Get appropriate sector types for a cluster."""

@@ -57,7 +57,6 @@ class Sector(Base):
     
     # Multi-regional fields
     region_id = Column(UUID(as_uuid=True), ForeignKey("regions.id"), nullable=True)
-    district = Column(String(50), nullable=True)  # Central Nexus district type
     security_level = Column(Integer, nullable=True, default=5)  # 1-10 scale
     development_level = Column(Integer, nullable=True, default=1)  # 1-10 scale
     traffic_level = Column(Integer, nullable=True, default=1)  # 1-10 scale

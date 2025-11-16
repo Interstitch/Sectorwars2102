@@ -15,227 +15,36 @@ from src.models.sector import Sector
 from src.models.planet import Planet
 from src.models.port import Port
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
-from src.models.region import Region
-from src.models.cluster import Cluster
-from src.models.galaxy import GalaxyZone
+from src.models.region import Region, RegionType
+from src.models.cluster import Cluster, ClusterType
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class NexusDistrictType:
-    """Central Nexus district types with unique characteristics"""
-    COMMERCE_CENTRAL = "commerce_central"
-    DIPLOMATIC_QUARTER = "diplomatic_quarter" 
-    INDUSTRIAL_ZONE = "industrial_zone"
-    RESIDENTIAL_DISTRICT = "residential_district"
-    TRANSIT_HUB = "transit_hub"
-    HIGH_SECURITY_ZONE = "high_security_zone"
-    CULTURAL_CENTER = "cultural_center"
-    RESEARCH_CAMPUS = "research_campus"
-    FREE_TRADE_ZONE = "free_trade_zone"
-    GATEWAY_PLAZA = "gateway_plaza"
-    MILITARY_COMMAND = "military_command"
-    NEUTRAL_ZONE = "neutral_zone"
-
-
 class NexusGenerationService:
-    """Service for generating the Central Nexus galaxy with specialized districts"""
-    
+    """Service for generating the Central Nexus - a sparse 5000-sector galactic hub organized by clusters"""
+
     def __init__(self):
-        self.total_sectors = 5000  # Maximum size
-        self.districts_config = self._get_districts_configuration()
+        self.total_sectors = 5000  # Central Nexus size (per spec)
+        self.cluster_count = 20  # 20 clusters × 250 sectors each
         self.generated_sectors = set()
-        self.warp_gate_sectors = []
-        self.embassy_sectors = []
-        
-    def _get_districts_configuration(self) -> Dict[str, Dict[str, Any]]:
-        """Get configuration for all Central Nexus districts"""
-        return {
-            NexusDistrictType.COMMERCE_CENTRAL: {
-                "name": "Commerce Central",
-                "sector_range": (1, 500),
-                "security_level": 8,
-                "development_level": 9,
-                "port_density": 0.8,  # 80% of sectors have ports
-                "planet_density": 0.6,
-                "special_features": {
-                    "trading_bonus": 1.5,
-                    "market_efficiency": 1.8,
-                    "premium_commodities": True,
-                    "financial_district": True,
-                    "auction_houses": True
-                },
-                "population_density": "very_high",
-                "traffic_level": "extreme"
-            },
-            
-            NexusDistrictType.DIPLOMATIC_QUARTER: {
-                "name": "Diplomatic Quarter", 
-                "sector_range": (501, 800),
-                "security_level": 10,  # Maximum security
-                "development_level": 10,
-                "port_density": 0.4,
-                "planet_density": 0.8,
-                "special_features": {
-                    "embassy_capacity": 100,
-                    "diplomatic_immunity": True,
-                    "inter_regional_meetings": True,
-                    "neutral_ground": True,
-                    "translation_services": True
-                },
-                "population_density": "high",
-                "traffic_level": "high"
-            },
-            
-            NexusDistrictType.INDUSTRIAL_ZONE: {
-                "name": "Industrial Zone",
-                "sector_range": (801, 1200), 
-                "security_level": 6,
-                "development_level": 8,
-                "port_density": 0.9,
-                "planet_density": 0.4,
-                "special_features": {
-                    "production_bonus": 1.6,
-                    "resource_processing": 1.8,
-                    "manufacturing_hubs": True,
-                    "shipyard_complexes": True,
-                    "research_facilities": True
-                },
-                "population_density": "medium",
-                "traffic_level": "very_high"
-            },
-            
-            NexusDistrictType.RESIDENTIAL_DISTRICT: {
-                "name": "Residential District",
-                "sector_range": (1201, 1600),
-                "security_level": 9,
-                "development_level": 7,
-                "port_density": 0.3,
-                "planet_density": 0.9,
-                "special_features": {
-                    "player_capacity": 5000,
-                    "services": ["banking", "medical", "recreation", "education"],
-                    "luxury_amenities": True,
-                    "cultural_venues": True,
-                    "shopping_districts": True
-                },
-                "population_density": "very_high",
-                "traffic_level": "medium"
-            },
-            
-            NexusDistrictType.TRANSIT_HUB: {
-                "name": "Transit Hub",
-                "sector_range": (1601, 2000),
-                "security_level": 8,
-                "development_level": 9,
-                "port_density": 0.7,
-                "planet_density": 0.3,
-                "special_features": {
-                    "warp_efficiency": 2.0,
-                    "travel_time_reduction": 0.5,
-                    "express_lanes": True,
-                    "cargo_processing": True,
-                    "transit_authority": True
-                },
-                "population_density": "medium",
-                "traffic_level": "extreme"
-            },
-            
-            NexusDistrictType.HIGH_SECURITY_ZONE: {
-                "name": "High Security Zone", 
-                "sector_range": (2001, 2500),
-                "security_level": 10,
-                "development_level": 10,
-                "port_density": 0.5,
-                "planet_density": 0.7,
-                "special_features": {
-                    "premium_trading": True,
-                    "vault_facilities": True,
-                    "secure_storage": True,
-                    "elite_services": True,
-                    "restricted_access": True
-                },
-                "population_density": "low",
-                "traffic_level": "low"
-            },
-            
-            NexusDistrictType.CULTURAL_CENTER: {
-                "name": "Cultural Center",
-                "sector_range": (2501, 3000),
-                "security_level": 7,
-                "development_level": 9,
-                "port_density": 0.4,
-                "planet_density": 0.8,
-                "special_features": {
-                    "cultural_events": True,
-                    "inter_regional_festivals": True,
-                    "museums": True,
-                    "art_galleries": True,
-                    "performance_venues": True
-                },
-                "population_density": "high",
-                "traffic_level": "medium"
-            },
-            
-            NexusDistrictType.RESEARCH_CAMPUS: {
-                "name": "Research Campus",
-                "sector_range": (3001, 3500),
-                "security_level": 8,
-                "development_level": 10,
-                "port_density": 0.2,
-                "planet_density": 0.6,
-                "special_features": {
-                    "research_bonus": 2.0,
-                    "technology_sharing": True,
-                    "innovation_labs": True,
-                    "prototype_testing": True,
-                    "academic_exchange": True
-                },
-                "population_density": "medium",
-                "traffic_level": "low"
-            },
-            
-            NexusDistrictType.FREE_TRADE_ZONE: {
-                "name": "Free Trade Zone",
-                "sector_range": (3501, 4000),
-                "security_level": 5,
-                "development_level": 8,
-                "port_density": 0.95,
-                "planet_density": 0.3,
-                "special_features": {
-                    "tax_free": True,
-                    "unrestricted_trading": True,
-                    "black_market": True,
-                    "smuggler_havens": True,
-                    "no_questions_asked": True
-                },
-                "population_density": "high",
-                "traffic_level": "extreme"
-            },
-            
-            NexusDistrictType.GATEWAY_PLAZA: {
-                "name": "Gateway Plaza",
-                "sector_range": (4001, 5000),
-                "security_level": 9,
-                "development_level": 10,
-                "port_density": 0.3,
-                "planet_density": 0.5,
-                "special_features": {
-                    "all_region_access": True,
-                    "express_travel": True,
-                    "welcome_centers": True,
-                    "orientation_services": True,
-                    "first_impressions": True
-                },
-                "population_density": "very_high",
-                "traffic_level": "extreme"
-            }
-        }
+
+        # Sparse generation parameters (Central Nexus is mostly empty space)
+        self.port_density = 0.05  # 5% of sectors have ports (vs 15% standard)
+        self.planet_density = 0.10  # 10% of sectors have planets (vs 25% standard)
+        self.warp_density_multiplier = 0.3  # 70% fewer warp tunnels than standard regions
     
-    async def generate_central_nexus(self, session: AsyncSession, galaxy_id: str) -> Dict[str, Any]:
-        """Generate the complete Central Nexus galaxy"""
+    async def generate_central_nexus(self, session: AsyncSession) -> Dict[str, Any]:
+        """Generate the complete Central Nexus - a sparse 5000-sector galactic hub
+
+        Architecture:
+        - 1 region (Central Nexus, type=CENTRAL_NEXUS)
+        - 20 clusters (250 sectors each)
+        - 5000 sectors total
+        - Sparse infrastructure (5% ports, 10% planets, 0.3x warp density)
+        """
         logger.info("Starting Central Nexus galaxy generation...")
 
         try:
@@ -248,49 +57,54 @@ class NexusGenerationService:
             # Create Central Nexus region entry
             nexus_region = await self._create_nexus_region(session)
 
-            # Create zone and cluster for Central Nexus
-            nexus_cluster = await self._create_nexus_zone_and_cluster(
-                session, galaxy_id, str(nexus_region.id)
-            )
+            # Create 20 clusters for organization (250 sectors each)
+            nexus_clusters = await self._create_nexus_clusters(session, str(nexus_region.id))
 
             generation_stats = {
                 "total_sectors": 0,
                 "total_ports": 0,
                 "total_planets": 0,
-                "total_warp_gates": 0,
-                "districts_created": 0,
+                "total_warp_tunnels": 0,
+                "clusters_created": len(nexus_clusters),
                 "generation_time": datetime.utcnow()
             }
 
-            # Generate each district
-            for district_type, config in self.districts_config.items():
-                logger.info(f"Generating district: {config['name']}")
+            # Generate sectors for each cluster
+            sectors_per_cluster = self.total_sectors // self.cluster_count
+            current_sector_num = 1
 
-                district_stats = await self._generate_district(
+            for idx, cluster in enumerate(nexus_clusters):
+                logger.info(f"Generating sectors for cluster {idx + 1}/{self.cluster_count}: {cluster.name}")
+
+                # Calculate sector range for this cluster
+                start_sector = current_sector_num
+                end_sector = start_sector + sectors_per_cluster - 1
+
+                # Last cluster gets any remaining sectors
+                if idx == len(nexus_clusters) - 1:
+                    end_sector = self.total_sectors
+
+                cluster_stats = await self._generate_cluster_sectors(
                     session,
                     str(nexus_region.id),
-                    str(nexus_cluster.id),
-                    district_type,
-                    config
+                    str(cluster.id),
+                    start_sector,
+                    end_sector
                 )
 
                 # Update overall stats
-                generation_stats["total_sectors"] += district_stats["sectors"]
-                generation_stats["total_ports"] += district_stats["ports"]
-                generation_stats["total_planets"] += district_stats["planets"]
-                generation_stats["total_warp_gates"] += district_stats["warp_gates"]
-                generation_stats["districts_created"] += 1
+                generation_stats["total_sectors"] += cluster_stats["sectors"]
+                generation_stats["total_ports"] += cluster_stats["ports"]
+                generation_stats["total_planets"] += cluster_stats["planets"]
 
-                logger.info(f"District {config['name']} completed: {district_stats}")
+                current_sector_num = end_sector + 1
+                logger.info(f"Cluster {cluster.name} completed: {cluster_stats}")
 
-            # Generate intra-regional warp tunnels for navigation within Central Nexus
-            logger.info("Generating warp tunnels for Central Nexus sectors...")
+            # Generate intra-regional warp tunnels with sparse density
+            logger.info("Generating warp tunnels for Central Nexus sectors (sparse density)...")
             warp_tunnel_count = await self._generate_warp_tunnels(session, str(nexus_region.id))
-            generation_stats["total_warp_gates"] = warp_tunnel_count
+            generation_stats["total_warp_tunnels"] = warp_tunnel_count
             logger.info(f"Created {warp_tunnel_count} warp tunnels")
-
-            # Create special galactic features
-            await self._create_galactic_features(session, str(nexus_region.id))
 
             await session.commit()
 
@@ -315,10 +129,11 @@ class NexusGenerationService:
         return result.scalar_one_or_none()
     
     async def _create_nexus_region(self, session: AsyncSession) -> Region:
-        """Create the Central Nexus region entry"""
+        """Create the Central Nexus region entry with region_type=CENTRAL_NEXUS"""
         nexus_region = Region(
             name="central-nexus",
             display_name="Central Nexus",
+            region_type=RegionType.CENTRAL_NEXUS,  # Special region type
             owner_id=None,  # Platform-owned
             subscription_tier="nexus",
             status="active",
@@ -345,62 +160,107 @@ class NexusGenerationService:
         await session.flush()
         return nexus_region
 
-    async def _create_nexus_zone_and_cluster(self, session: AsyncSession, galaxy_id: str, region_id: str) -> Cluster:
-        """Create a single Zone and Cluster for the entire Central Nexus"""
-        # Create the Central Nexus zone
-        nexus_zone = GalaxyZone(
-            name="Central Nexus Zone",
-            type="FEDERATION",  # Central authority like Federation
-            description="The galactic hub connecting all regional territories",
-            security_level=8.5,  # High security (average of 5-10)
-            resource_richness=8.0,  # Rich resources
-            galaxy_id=galaxy_id,
-            sector_count=self.total_sectors,
-            discover_difficulty=1,  # Easy to discover (already discovered)
-            discovery_status=100  # Fully discovered
-        )
-        session.add(nexus_zone)
+    async def _create_nexus_clusters(self, session: AsyncSession, region_id: str) -> List[Cluster]:
+        """Create 20 clusters for organizing Central Nexus sectors (250 sectors each)
+
+        Cluster Types:
+        - Trade Hub clusters (commerce-focused)
+        - Population Center clusters (residential/services)
+        - Transit Hub clusters (navigation/warp gates)
+        - Standard clusters (mixed-use)
+        """
+        clusters = []
+        cluster_types_distribution = [
+            ClusterType.TRADE_HUB,
+            ClusterType.POPULATION_CENTER,
+            ClusterType.TRANSIT_HUB,
+            ClusterType.TRADE_HUB,
+            ClusterType.STANDARD,
+            ClusterType.POPULATION_CENTER,
+            ClusterType.TRANSIT_HUB,
+            ClusterType.TRADE_HUB,
+            ClusterType.STANDARD,
+            ClusterType.STANDARD,
+            ClusterType.TRADE_HUB,
+            ClusterType.POPULATION_CENTER,
+            ClusterType.STANDARD,
+            ClusterType.TRANSIT_HUB,
+            ClusterType.STANDARD,
+            ClusterType.TRADE_HUB,
+            ClusterType.STANDARD,
+            ClusterType.POPULATION_CENTER,
+            ClusterType.STANDARD,
+            ClusterType.STANDARD
+        ]
+
+        cluster_names = [
+            "Commerce Central Hub",
+            "Diplomatic Quarter",
+            "Industrial Complex",
+            "Residential District Alpha",
+            "Transit Hub Prime",
+            "High Security Zone",
+            "Cultural Center",
+            "Research Campus",
+            "Free Trade Zone",
+            "Gateway Plaza",
+            "Financial District",
+            "Medical Center",
+            "Technology Park",
+            "Starport Complex",
+            "Civic Center",
+            "Entertainment District",
+            "Manufacturing Zone",
+            "Academic Quarter",
+            "Merchant's Row",
+            "Frontier Gateway"
+        ]
+
+        sectors_per_cluster = self.total_sectors // self.cluster_count
+
+        for i in range(self.cluster_count):
+            cluster = Cluster(
+                name=cluster_names[i],
+                region_id=region_id,  # Changed from zone_id
+                type=cluster_types_distribution[i],
+                sector_count=sectors_per_cluster,
+                is_discovered=True,  # Central Nexus is always discovered
+                discovery_requirement={},
+                description=f"Central Nexus {cluster_names[i]} - Sector cluster {i + 1}/{self.cluster_count}",
+                is_hidden=False,
+                warp_stability=0.95,  # Very stable
+                economic_value=8,  # High economic value
+                resources={},
+                faction_influence={},
+                nav_hazards=[],
+                recommended_ship_class="any",
+                x_coord=i % 5,  # 5x4 grid layout
+                y_coord=i // 5,
+                z_coord=0
+            )
+            session.add(cluster)
+            clusters.append(cluster)
+
         await session.flush()
-
-        # Create a single large cluster for all Central Nexus sectors
-        from src.models.cluster import ClusterType
-
-        nexus_cluster = Cluster(
-            name="Central Nexus Core",
-            zone_id=nexus_zone.id,
-            type=ClusterType.TRADE_HUB,  # Trade hub cluster type for Central Nexus
-            sector_count=self.total_sectors,
-            is_discovered=True,
-            discovery_requirement={},  # No special requirements - already discovered
-            description="The central hub of the galaxy, connecting all regions",
-            is_hidden=False,
-            warp_stability=0.95,  # Very stable for warp travel
-            economic_value=10,  # Highest economic value
-            resources={},  # Resources defined at sector level
-            faction_influence={},  # Neutral zone
-            nav_hazards=[],  # Safe navigation
-            recommended_ship_class="any",  # All ship classes welcome
-            x_coord=0,  # Central coordinates
-            y_coord=0,
-            z_coord=0
-        )
-        session.add(nexus_cluster)
-        await session.flush()
-
-        return nexus_cluster
+        logger.info(f"Created {len(clusters)} clusters for Central Nexus")
+        return clusters
     
-    async def _generate_district(
+    async def _generate_cluster_sectors(
         self,
         session: AsyncSession,
         region_id: str,
         cluster_id: str,
-        district_type: str,
-        config: Dict[str, Any]
+        start_sector: int,
+        end_sector: int
     ) -> Dict[str, int]:
-        """Generate sectors, ports, and planets for a district"""
+        """Generate sectors, ports, and planets for a cluster with sparse density
 
-        start_sector, end_sector = config["sector_range"]
-        stats = {"sectors": 0, "ports": 0, "planets": 0, "warp_gates": 0}
+        Central Nexus has minimal infrastructure:
+        - 5% port density (vs 15% standard)
+        - 10% planet density (vs 25% standard)
+        - Sector 1 ALWAYS has both port and planet
+        """
+        stats = {"sectors": 0, "ports": 0, "planets": 0}
 
         batch_sectors = []
         batch_ports = []
@@ -421,115 +281,86 @@ class NexusGenerationService:
                 "x_coord": x_coord,  # Required INTEGER NOT NULL
                 "y_coord": y_coord,  # Required INTEGER NOT NULL
                 "z_coord": z_coord,  # Required INTEGER NOT NULL
-                "sector_number": sector_num,  # Optional INTEGER
+                "sector_number": sector_num,  # Optional INTEGER (for Central Nexus)
                 "region_id": region_id,
-                "district": district_type,
-                "security_level": config["security_level"],
-                "development_level": config["development_level"],
-                "traffic_level": self._get_traffic_level_value(config["traffic_level"]),
-                "special_features": config["special_features"],
+                # district field REMOVED - no longer exists
+                "security_level": 5,  # Medium security (default)
+                "development_level": 3,  # Low development (sparse)
+                "traffic_level": 2,  # Low traffic (sparse)
                 "created_at": datetime.utcnow()
             }
             batch_sectors.append(sector_data)
             stats["sectors"] += 1
-            
-            # Generate port - ALWAYS create for Sector 1 (starter sector), otherwise use probability
-            if sector_num == 1 or random.random() < config["port_density"]:
-                port_data = self._generate_port_for_sector(
-                    sector_num, region_id, district_type, config
-                )
+
+            # Generate port - ALWAYS create for Sector 1 (starter sector), otherwise sparse (5%)
+            if sector_num == 1 or random.random() < self.port_density:
+                port_data = self._generate_port_for_sector(sector_num, region_id)
                 batch_ports.append(port_data)
                 stats["ports"] += 1
 
-            # Generate planet - ALWAYS create for Sector 1 (starter sector), otherwise use probability
-            if sector_num == 1 or random.random() < config["planet_density"]:
-                planet_data = self._generate_planet_for_sector(
-                    sector_num, region_id, district_type, config
-                )
+            # Generate planet - ALWAYS create for Sector 1 (starter sector), otherwise sparse (10%)
+            if sector_num == 1 or random.random() < self.planet_density:
+                planet_data = self._generate_planet_for_sector(sector_num, region_id)
                 batch_planets.append(planet_data)
                 stats["planets"] += 1
-            
-            # Add special warp gates for transit sectors
-            if district_type == NexusDistrictType.TRANSIT_HUB and sector_num % 50 == 0:
-                self.warp_gate_sectors.append(sector_num)
-                stats["warp_gates"] += 1
-            
-            # Add embassy sectors
-            if district_type == NexusDistrictType.DIPLOMATIC_QUARTER and sector_num % 10 == 0:
-                self.embassy_sectors.append(sector_num)
-        
+
         # Bulk insert sectors
         if batch_sectors:
             await session.execute(insert(Sector), batch_sectors)
-        
+
         # Bulk insert ports
         if batch_ports:
             await session.execute(insert(Port), batch_ports)
-        
+
         # Bulk insert planets
         if batch_planets:
             await session.execute(insert(Planet), batch_planets)
-        
+
         return stats
-    
-    def _get_traffic_level_value(self, traffic_level: str) -> int:
-        """Convert traffic level string to numeric value"""
-        levels = {
-            "low": 1,
-            "medium": 3,
-            "high": 6,
-            "very_high": 8,
-            "extreme": 10
-        }
-        return levels.get(traffic_level, 5)
-    
-    def _generate_port_for_sector(
-        self,
-        sector_num: int,
-        region_id: str,
-        district_type: str,
-        config: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Generate a port configuration for a sector"""
+
+    def _generate_port_for_sector(self, sector_num: int, region_id: str) -> Dict[str, Any]:
+        """Generate a port configuration for a sector in Central Nexus
+
+        Sparse generation: Ports are randomly distributed with mixed types.
+        Sector 1 always gets a high-quality trading port for starter access.
+        """
         from src.models.port import PortClass, PortType, PortStatus
 
-        # Map districts to appropriate port types
-        district_to_port_type = {
-            NexusDistrictType.COMMERCE_CENTRAL: PortType.TRADING,
-            NexusDistrictType.DIPLOMATIC_QUARTER: PortType.DIPLOMATIC,
-            NexusDistrictType.INDUSTRIAL_ZONE: PortType.INDUSTRIAL,
-            NexusDistrictType.RESIDENTIAL_DISTRICT: PortType.TRADING,
-            NexusDistrictType.TRANSIT_HUB: PortType.TRADING,
-            NexusDistrictType.HIGH_SECURITY_ZONE: PortType.MILITARY,
-            NexusDistrictType.CULTURAL_CENTER: PortType.TRADING,
-            NexusDistrictType.RESEARCH_CAMPUS: PortType.SCIENTIFIC,
-            NexusDistrictType.FREE_TRADE_ZONE: PortType.BLACK_MARKET,
-            NexusDistrictType.GATEWAY_PLAZA: PortType.TRADING
-        }
+        # Sector 1 gets a special starter port
+        if sector_num == 1:
+            return {
+                "name": "Central Nexus Starport Prime",
+                "sector_id": sector_num,
+                "region_id": region_id,
+                "port_class": PortClass.CLASS_0,  # Highest quality
+                "type": PortType.TRADING,
+                "status": PortStatus.OPERATIONAL,
+                "size": 10  # Maximum size
+            }
 
-        port_type = district_to_port_type.get(district_type, PortType.TRADING)
+        # Random port types for other sectors
+        port_type = random.choice([
+            PortType.TRADING,
+            PortType.TRADING,  # Trading is most common
+            PortType.INDUSTRIAL,
+            PortType.DIPLOMATIC,
+            PortType.SCIENTIFIC
+        ])
 
-        # Generate port class based on district importance (use numeric classes)
-        if district_type in [NexusDistrictType.COMMERCE_CENTRAL, NexusDistrictType.DIPLOMATIC_QUARTER]:
-            port_class = random.choice([PortClass.CLASS_0, PortClass.CLASS_1, PortClass.CLASS_9, PortClass.CLASS_10])
-        elif district_type == NexusDistrictType.HIGH_SECURITY_ZONE:
-            port_class = random.choice([PortClass.CLASS_0, PortClass.CLASS_1])
-        elif district_type == NexusDistrictType.INDUSTRIAL_ZONE:
-            port_class = random.choice([PortClass.CLASS_2, PortClass.CLASS_3, PortClass.CLASS_6])
-        else:
-            port_class = random.choice([PortClass.CLASS_4, PortClass.CLASS_5, PortClass.CLASS_6, PortClass.CLASS_7])
+        # Random port class (mostly mid-tier)
+        port_class = random.choice([
+            PortClass.CLASS_4,
+            PortClass.CLASS_5,
+            PortClass.CLASS_6,
+            PortClass.CLASS_7,
+            PortClass.CLASS_8
+        ])
 
-        # Determine size based on district type
-        if district_type in [NexusDistrictType.COMMERCE_CENTRAL, NexusDistrictType.TRANSIT_HUB]:
-            size = random.randint(7, 10)  # Large ports
-        elif district_type in [NexusDistrictType.DIPLOMATIC_QUARTER, NexusDistrictType.HIGH_SECURITY_ZONE]:
-            size = random.randint(6, 8)  # Medium-large ports
-        else:
-            size = random.randint(4, 7)  # Medium ports
+        # Random size (mostly medium)
+        size = random.randint(4, 7)
 
-        # Create port dict with only required fields - Column defaults will handle the rest
         return {
-            "name": f"Nexus {district_type.replace('_', ' ').title()} {sector_num}",
+            "name": f"Nexus Port {sector_num}",
             "sector_id": sector_num,
             "region_id": region_id,
             "port_class": port_class,
@@ -538,31 +369,44 @@ class NexusGenerationService:
             "size": size
         }
     
-    def _generate_planet_for_sector(
-        self,
-        sector_num: int,
-        region_id: str,
-        district_type: str,
-        config: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Generate a planet configuration for a sector"""
+    def _generate_planet_for_sector(self, sector_num: int, region_id: str) -> Dict[str, Any]:
+        """Generate a planet configuration for a sector in Central Nexus
+
+        Sparse generation: Planets are randomly distributed with varied types.
+        Sector 1 always gets a high-quality habitable planet for starter access.
+        """
         from src.models.planet import PlanetType, PlanetStatus
 
-        # Map districts to appropriate planet types
-        district_to_planet_type = {
-            NexusDistrictType.COMMERCE_CENTRAL: PlanetType.TERRAN,
-            NexusDistrictType.DIPLOMATIC_QUARTER: PlanetType.TERRAN,
-            NexusDistrictType.INDUSTRIAL_ZONE: PlanetType.BARREN,
-            NexusDistrictType.RESIDENTIAL_DISTRICT: PlanetType.TROPICAL,
-            NexusDistrictType.TRANSIT_HUB: PlanetType.TERRAN,
-            NexusDistrictType.HIGH_SECURITY_ZONE: PlanetType.MOUNTAINOUS,
-            NexusDistrictType.CULTURAL_CENTER: PlanetType.JUNGLE,
-            NexusDistrictType.RESEARCH_CAMPUS: PlanetType.OCEANIC,
-            NexusDistrictType.FREE_TRADE_ZONE: PlanetType.DESERT,
-            NexusDistrictType.GATEWAY_PLAZA: PlanetType.TERRAN
-        }
+        # Sector 1 gets a special starter planet
+        if sector_num == 1:
+            return {
+                "name": "Terra Nova Prime",
+                "sector_id": sector_num,
+                "region_id": region_id,
+                "type": PlanetType.TERRAN,
+                "status": PlanetStatus.HABITABLE,
+                "size": 9,  # Large
+                "position": 3,
+                "gravity": 1.0,
+                "temperature": 20.0,
+                "water_coverage": 70.0,
+                "habitability_score": 100,
+                "resource_richness": 2.0,
+                "resources": ["water", "minerals", "agriculture", "technology"],
+                "max_population": 10000000
+            }
 
-        planet_type = district_to_planet_type.get(district_type, PlanetType.TERRAN)
+        # Random planet type
+        planet_type = random.choice([
+            PlanetType.TERRAN,
+            PlanetType.TROPICAL,
+            PlanetType.JUNGLE,
+            PlanetType.OCEANIC,
+            PlanetType.MOUNTAINOUS,
+            PlanetType.DESERT,
+            PlanetType.BARREN,
+            PlanetType.ICE
+        ])
 
         # Determine habitability based on planet type
         habitability_map = {
@@ -584,9 +428,15 @@ class NexusGenerationService:
         size = random.randint(4, 9)
         max_population = int((size * habitability_score * 100000) / 10)
 
-        # Create planet dict with only required fields - Column defaults will handle the rest
+        # Generate resources
+        resources = ["standard_resources"]
+        if planet_type == PlanetType.BARREN:
+            resources = ["iron_ore", "rare_metals", "industrial_minerals"]
+        elif planet_type in [PlanetType.TERRAN, PlanetType.TROPICAL]:
+            resources = ["water", "agriculture", "minerals"]
+
         return {
-            "name": f"Nexus {district_type.replace('_', ' ').title()} {sector_num}",
+            "name": f"Nexus Planet {sector_num}",
             "sector_id": sector_num,
             "region_id": region_id,
             "type": planet_type,
@@ -598,143 +448,19 @@ class NexusGenerationService:
             "water_coverage": round(random.uniform(0, 80), 1) if planet_type not in [PlanetType.DESERT, PlanetType.VOLCANIC, PlanetType.BARREN] else round(random.uniform(0, 10), 1),
             "habitability_score": habitability_score,
             "resource_richness": round(random.uniform(1.0, 2.5), 1),
-            "resources": self._generate_planet_resources(district_type),
+            "resources": resources,
             "max_population": max_population
         }
     
-    # Removed unused helper methods - Port/Planet Column defaults handle most initialization
-    def _generate_planet_resources(self, district_type: str) -> List[str]:
-        """Generate planet resources based on district type"""
-        resource_map = {
-            NexusDistrictType.INDUSTRIAL_ZONE: [
-                "iron_ore", "rare_metals", "energy_crystals", "industrial_minerals"
-            ],
-            NexusDistrictType.RESEARCH_CAMPUS: [
-                "exotic_matter", "quantum_materials", "research_samples", "rare_elements"
-            ],
-            NexusDistrictType.RESIDENTIAL_DISTRICT: [
-                "agricultural_products", "clean_water", "breathable_atmosphere", "recreational_resources"
-            ]
-        }
-        
-        return resource_map.get(district_type, ["standard_resources"])
-    
-    async def _generate_inter_regional_gates(self, session: AsyncSession, region_id: str):
-        """Generate warp gates connecting to regional territories
-
-        TODO: This method is currently not functional and needs to be rewritten because:
-        1. WarpTunnel.origin_sector_id and destination_sector_id are UUIDs (sectors.id foreign keys)
-        2. This code passes integer sector_id values (4001-4099) instead of UUIDs
-        3. WarpTunnel.destination_sector_id is NOT NULL but we don't have destinations yet
-        4. Inter-regional gates need to know what regions exist to connect to
-
-        This should be reimplemented as a separate admin action that:
-        - Queries available regions and their sectors
-        - Looks up actual Sector UUID values (sectors.id) for both origin and destination
-        - Creates bidirectional gate pairs connecting Central Nexus to each region
-        """
-        logger.info("Generating inter-regional warp gates...")
-        
-        # Create major warp gates in Gateway Plaza
-        gateway_sectors = range(4001, 4100)  # First 100 sectors of Gateway Plaza
-        
-        warp_gates = []
-        for sector_num in gateway_sectors:
-            gate_data = {
-                "origin_sector_id": sector_num,
-                "destination_sector_id": None,  # Will be set when regions are created
-                "warp_type": "inter_regional",
-                "energy_cost": 500,
-                "travel_time_minutes": 15,
-                "restrictions": {
-                    "galactic_citizen_only": False,
-                    "diplomatic_immunity": True,
-                    "security_scan": True
-                },
-                "is_bidirectional": True,
-                "created_at": datetime.utcnow()
-            }
-            warp_gates.append(gate_data)
-        
-        if warp_gates:
-            await session.execute(insert(WarpTunnel), warp_gates)
-        
-        logger.info(f"Created {len(warp_gates)} inter-regional warp gates")
-    
-    async def _create_galactic_features(self, session: AsyncSession, region_id: str):
-        """Create special galactic features and landmarks"""
-        logger.info("Creating special galactic features...")
-        
-        # This would create special features like:
-        # - Galactic Senate Building
-        # - Universal Trade Exchange
-        # - Inter-Regional Court
-        # - Galactic Archives
-        # - Monument to Unity
-        
-        # For now, just log that this step is completed
-        # Implementation would involve creating special sector types
-        # and unique installations
-        
-        logger.info("Galactic features creation completed")
-    
-    async def regenerate_district(
-        self,
-        session: AsyncSession,
-        district_type: str,
-        preserve_player_data: bool = True
-    ) -> Dict[str, Any]:
-        """Regenerate a specific district (for updates/fixes)"""
-        logger.info(f"Regenerating district: {district_type}")
-        
-        config = self.districts_config.get(district_type)
-        if not config:
-            raise ValueError(f"Unknown district type: {district_type}")
-        
-        # Get Central Nexus region
-        nexus_region = await self._check_existing_nexus(session)
-        if not nexus_region:
-            raise ValueError("Central Nexus does not exist")
-
-        # Get Central Nexus cluster
-        result = await session.execute(
-            select(Cluster).where(Cluster.region_id == nexus_region.id)
-        )
-        nexus_cluster = result.scalar_one_or_none()
-        if not nexus_cluster:
-            raise ValueError("Central Nexus cluster does not exist")
-
-        start_sector, end_sector = config["sector_range"]
-
-        if preserve_player_data:
-            # More careful regeneration preserving player assets
-            # This would be implemented for live updates
-            pass
-        else:
-            # Full regeneration - remove existing data
-            await session.execute(
-                delete(Sector).where(
-                    Sector.sector_number.between(start_sector, end_sector)
-                )
-            )
-
-        # Generate the district
-        stats = await self._generate_district(
-            session, str(nexus_region.id), str(nexus_cluster.id), district_type, config
-        )
-        
-        await session.commit()
-        
-        logger.info(f"District {district_type} regenerated: {stats}")
-        return stats
 
     async def _generate_warp_tunnels(self, session: AsyncSession, region_id: str) -> int:
-        """Generate warp tunnels for Central Nexus sectors with density based on sector numbers.
+        """Generate warp tunnels for Central Nexus with SPARSE density (0.3x multiplier).
 
-        Lower sector numbers get more warp tunnels (4-7 tunnels) while higher sector numbers
-        get fewer (2-4 tunnels) to represent diminishing connectivity towards the periphery.
+        Central Nexus is mostly empty space with minimal warp tunnels.
+        Standard regions: 2-7 tunnels per sector
+        Central Nexus: 1-2 tunnels per sector (70% reduction)
         """
-        logger.info("Building sectors map for warp tunnel generation...")
+        logger.info("Building sectors map for sparse warp tunnel generation...")
 
         # Query all sectors in this region with their coordinates
         result = await session.execute(
@@ -753,7 +479,7 @@ class NexusGenerationService:
         sector_connections = {sector_id: 0 for sector_id in all_sector_ids}
         created_tunnels = set()
 
-        logger.info(f"Creating warp tunnel network for {len(all_sectors)} sectors")
+        logger.info(f"Creating SPARSE warp tunnel network for {len(all_sectors)} sectors (0.3x density)")
 
         # First pass: Ensure every sector has at least 1 connection
         for source_num in all_sector_ids:
@@ -766,24 +492,15 @@ class NexusGenerationService:
                         session, source_num, dest_num, sectors_map, created_tunnels, sector_connections
                     )
 
-        # Second pass: Add more connections based on sector number density
-        # Lower sector numbers = more tunnels (4-7), higher numbers = fewer (2-4)
+        # Second pass: Add MINIMAL additional connections (sparse generation)
+        # Central Nexus has 70% fewer warp tunnels than standard regions
+        # Most sectors: 1 tunnel (from first pass)
+        # Some sectors: 2 tunnels (30% chance)
         for source_num in all_sector_ids:
             current_connections = sector_connections[source_num]
 
-            # Calculate target connections based on sector number
-            # Sectors 1-1000: 4-7 tunnels
-            # Sectors 1001-3000: 3-5 tunnels
-            # Sectors 3001-5000: 2-4 tunnels
-            if source_num <= 1000:
-                target_connections = random.randint(4, 7)
-            elif source_num <= 3000:
-                target_connections = random.randint(3, 5)
-            else:
-                target_connections = random.randint(2, 4)
-
-            # Add more connections if needed
-            while current_connections < target_connections:
+            # 30% chance to add one more connection (resulting in 1-2 tunnels per sector)
+            if random.random() < 0.3 and current_connections < 2:
                 # Find a suitable destination
                 available_targets = [s for s in all_sector_ids
                                    if s != source_num and
@@ -791,7 +508,7 @@ class NexusGenerationService:
                                    (s, source_num) not in created_tunnels]
 
                 if not available_targets:
-                    break  # No more available targets
+                    continue  # No more available targets
 
                 # Prefer connecting to sectors with fewer connections
                 available_targets.sort(key=lambda x: sector_connections[x])
@@ -803,11 +520,10 @@ class NexusGenerationService:
                 await self._create_single_warp_tunnel(
                     session, source_num, dest_num, sectors_map, created_tunnels, sector_connections
                 )
-                current_connections += 1
 
         total_tunnels = len(created_tunnels)
         avg_connections = sum(sector_connections.values()) / len(sector_connections)
-        logger.info(f"Created {total_tunnels} warp tunnels, average {avg_connections:.1f} connections per sector")
+        logger.info(f"Created {total_tunnels} SPARSE warp tunnels, average {avg_connections:.1f} connections per sector")
 
         return total_tunnels
 

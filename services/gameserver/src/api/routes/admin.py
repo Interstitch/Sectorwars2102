@@ -14,7 +14,7 @@ from src.services.nexus_generation_service import nexus_generation_service
 from src.models.user import User
 from src.models.player import Player
 from src.models.ship import Ship
-from src.models.galaxy import Galaxy, GalaxyZone
+from src.models.galaxy import Galaxy
 from src.models.cluster import Cluster
 from src.models.sector import Sector
 from src.models.warp_tunnel import WarpTunnel
@@ -793,7 +793,7 @@ async def get_galaxy_info(
         "name": galaxy.name,
         "created_at": galaxy.created_at.isoformat(),
         "last_updated": galaxy.last_updated.isoformat(),
-        "zone_distribution": galaxy.region_distribution,  # Map region_distribution to zone_distribution for frontend
+        # zone_distribution field removed - zones concept eliminated
         "statistics": {
             "total_sectors": total_sectors,
             "discovered_sectors": discovered_sectors,
@@ -883,7 +883,7 @@ async def generate_galaxy(
             "id": str(galaxy.id),
             "name": galaxy.name,
             "created_at": galaxy.created_at.isoformat(),
-            "zone_distribution": galaxy.region_distribution,  # Map region_distribution to zone_distribution for frontend
+            # zone_distribution field removed - zones concept eliminated
             "statistics": galaxy.statistics,
             "state": galaxy.state,
             "central_nexus_created": central_nexus_created,
@@ -897,74 +897,9 @@ async def generate_galaxy(
         print(f"Galaxy generation error: {error_details}")
         raise HTTPException(status_code=500, detail=f"Failed to generate galaxy: {str(e)}")
 
-@router.get("/galaxy/{galaxy_id}/zones", response_model=dict)
-async def get_galaxy_zones(
-    galaxy_id: str,
-    current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
-):
-    """Get all cosmological zones in a galaxy"""
-    zones = db.query(GalaxyZone).filter(GalaxyZone.galaxy_id == galaxy_id).all()
-
-    zone_list = [
-        {
-            "id": str(zone.id),
-            "name": zone.name,
-            "type": zone.type.value,
-            "created_at": zone.created_at.isoformat(),
-            "galaxy_id": str(zone.galaxy_id),
-            "sector_count": zone.sector_count,
-            # Legacy support for frontend
-            "controlling_faction": zone.controlling_faction,
-            "security_level": zone.security_level,
-            "resource_richness": zone.resource_richness
-        }
-        for zone in zones
-    ]
-
-    return {"zones": zone_list}
-
-@router.get("/zones/{zone_id}/clusters", response_model=dict)
-async def get_zone_clusters(
-    zone_id: str,
-    current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
-):
-    """Get all clusters in a cosmological zone"""
-    clusters = db.query(Cluster).filter(Cluster.zone_id == zone_id).all()
-    
-    cluster_list = [
-        {
-            "id": str(cluster.id),
-            "name": cluster.name,
-            "type": cluster.type.value,
-            "created_at": cluster.created_at.isoformat(),
-            "zone_id": str(cluster.zone_id),
-            "sector_count": cluster.sector_count,
-            "is_discovered": cluster.is_discovered,
-            "discovery_requirement": cluster.discovery_requirement,
-            "stats": cluster.stats,
-            "resources": cluster.resources,
-            "economic_value": cluster.economic_value,
-            "faction_influence": cluster.faction_influence,
-            "nav_hazards": cluster.nav_hazards,
-            "recommended_ship_class": cluster.recommended_ship_class,
-            "coordinates": {
-                "x": cluster.x_coord,
-                "y": cluster.y_coord,
-                "z": cluster.z_coord
-            },
-            "is_hidden": cluster.is_hidden,
-            "special_features": cluster.special_features,
-            "description": cluster.description,
-            "warp_stability": cluster.warp_stability,
-            # Legacy support for frontend
-            "controlling_faction": cluster.controlling_faction
-        }
-        for cluster in clusters
-    ]
-    
-    return {"clusters": cluster_list}
+# Zone endpoints removed - zones concept eliminated
+# Architecture: Galaxy → Region → Cluster → Sector
+# Use /regions/{region_id}/clusters to get clusters in a region
 
 @router.get("/clusters", response_model=dict)
 async def get_all_clusters(

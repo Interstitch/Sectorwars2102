@@ -17,6 +17,13 @@ class GovernanceType(str, Enum):
     COUNCIL = "council"
 
 
+class RegionType(str, Enum):
+    """Type of region - special regions vs player-owned"""
+    CENTRAL_NEXUS = "central_nexus"      # The 5000-sector central hub
+    TERRAN_SPACE = "terran_space"        # The 300-sector starting region
+    PLAYER_OWNED = "player_owned"        # Player-owned regions (100-1000 sectors)
+
+
 class RegionStatus(str, Enum):
     ACTIVE = "active"
     SUSPENDED = "suspended"
@@ -62,10 +69,15 @@ class Region(Base):
     """Regional territories that can be owned and governed by players"""
     __tablename__ = "regions"
     __table_args__ = {'extend_existing': True}
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), unique=True, nullable=False, index=True)
     display_name = Column(String(255), nullable=False)
+
+    # Region classification
+    region_type = Column(String(50), nullable=False, default=RegionType.PLAYER_OWNED)
+
+    # Ownership (nullable for special regions like Central Nexus, Terran Space)
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     subscription_tier = Column(String(50), nullable=False, default="standard")
     paypal_subscription_id = Column(String(255), nullable=True)
@@ -106,6 +118,7 @@ class Region(Base):
     # Relationships
     owner = relationship("User", back_populates="owned_regions")
     memberships = relationship("RegionalMembership", back_populates="region", cascade="all, delete-orphan")
+    clusters = relationship("Cluster", back_populates="region", cascade="all, delete-orphan")
     sectors = relationship("Sector", back_populates="region")
     planets = relationship("Planet", back_populates="region")
     ports = relationship("Port", back_populates="region")
@@ -120,17 +133,43 @@ class Region(Base):
         CheckConstraint('tax_rate >= 0.05 AND tax_rate <= 0.25', name='valid_tax_rate'),
         CheckConstraint('election_frequency_days >= 30 AND election_frequency_days <= 365', name='valid_election_frequency'),
         CheckConstraint('starting_credits >= 100', name='valid_starting_credits'),
-        CheckConstraint('total_sectors >= 100 AND total_sectors <= 1000', name='valid_sector_count'),
+        # Sector count constraints based on region type
+        CheckConstraint(
+            "(region_type != 'central_nexus' OR total_sectors = 5000) AND "
+            "(region_type != 'terran_space' OR total_sectors = 300) AND "
+            "(region_type != 'player_owned' OR (total_sectors >= 100 AND total_sectors <= 1000))",
+            name='valid_region_type_sector_count'
+        ),
     )
     
     def __repr__(self):
         return f"<Region(id='{self.id}', name='{self.name}', owner_id='{self.owner_id}')>"
     
     @property
+    def is_central_nexus(self) -> bool:
+        """Check if this is the Central Nexus region"""
+        return self.region_type == RegionType.CENTRAL_NEXUS
+
+    @property
+    def is_terran_space(self) -> bool:
+        """Check if this is the Terran Space starting region"""
+        return self.region_type == RegionType.TERRAN_SPACE
+
+    @property
+    def is_player_owned(self) -> bool:
+        """Check if this is a player-owned region"""
+        return self.region_type == RegionType.PLAYER_OWNED
+
+    @property
+    def is_special_region(self) -> bool:
+        """Check if this is a special region (Central Nexus or Terran Space)"""
+        return self.region_type in [RegionType.CENTRAL_NEXUS, RegionType.TERRAN_SPACE]
+
+    @property
     def is_democratic(self) -> bool:
         """Check if region uses democratic governance"""
         return self.governance_type == GovernanceType.DEMOCRACY
-    
+
     @property
     def is_active(self) -> bool:
         """Check if region is currently active"""
