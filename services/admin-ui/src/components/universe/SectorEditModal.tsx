@@ -320,7 +320,7 @@ const SectorEditModal: React.FC<SectorEditModalProps> = ({
   };
 
   const handleNavigateToPort = (portId: string) => {
-    navigate(`/universe/ports?portId=${portId}`);
+    navigate(`/universe/stations?portId=${portId}`);
     onClose(); // Close the modal when navigating
   };
 

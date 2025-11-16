@@ -384,7 +384,7 @@ const TranslatedDashboard: React.FC = () => {
                 </div>
               </Link>
 
-              <Link to="/universe/ports" style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Link to="/universe/stations" style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div style={{
                   background: 'var(--card-background)',
                   padding: '1.5rem',

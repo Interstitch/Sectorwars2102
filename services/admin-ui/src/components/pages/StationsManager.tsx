@@ -20,7 +20,7 @@ interface Station {
   commodities: string[];
 }
 
-const PortsManager: React.FC = () => {
+const StationsManager: React.FC = () => {
   const [ports, setPorts] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -774,4 +774,4 @@ const AddPortModal: React.FC<AddPortModalProps> = ({ onClose, onSave }) => {
   );
 };
 
-export default PortsManager;
+export default StationsManager;

@@ -1,7 +1,7 @@
 import React from 'react';
 import './port-card.css';
 
-interface PortCardProps {
+interface StationCardProps {
   port: {
     id: string;
     name: string;
@@ -22,7 +22,7 @@ interface PortCardProps {
   isDocked: boolean;
 }
 
-const PortCard: React.FC<PortCardProps> = ({ port, onDock, isDocked }) => {
+const StationCard: React.FC<StationCardProps> = ({ port, onDock, isDocked }) => {
   const handleClick = () => {
     if (isDocked) return;
     if (confirm(`Dock at ${port.name}?`)) {
@@ -130,4 +130,4 @@ const PortCard: React.FC<PortCardProps> = ({ port, onDock, isDocked }) => {
   );
 };
 
-export default PortCard;
+export default StationCard;

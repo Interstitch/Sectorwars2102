@@ -27,7 +27,7 @@ const TeamManagement = lazy(() => import('./components/pages/TeamManagement'));
 const EventManagement = lazy(() => import('./components/pages/EventManagement'));
 const SectorsManager = lazy(() => import('./components/pages/SectorsManager'));
 const PlanetsManager = lazy(() => import('./components/pages/PlanetsManager'));
-const PortsManager = lazy(() => import('./components/pages/PortsManager'));
+const StationsManager = lazy(() => import('./components/pages/StationsManager'));
 const WarpTunnelsManager = lazy(() => import('./components/pages/WarpTunnelsManager'));
 const SecurityDashboard = lazy(() => import('./components/pages/SecurityDashboard').then(module => ({
   default: module.SecurityDashboard
@@ -89,7 +89,7 @@ function App() {
                 {/* Universe CRUD Routes */}
                 <Route path="universe/sectors" element={<ProtectedLazyRoute element={<SectorsManager />} />} />
                 <Route path="universe/planets" element={<ProtectedLazyRoute element={<PlanetsManager />} />} />
-                <Route path="universe/ports" element={<ProtectedLazyRoute element={<PortsManager />} />} />
+                <Route path="universe/stations" element={<ProtectedLazyRoute element={<StationsManager />} />} />
                 <Route path="universe/warptunnels" element={<ProtectedLazyRoute element={<WarpTunnelsManager />} />} />
                 <Route path="nexus" element={<ProtectedLazyRoute element={<CentralNexusManager />} />} />
 

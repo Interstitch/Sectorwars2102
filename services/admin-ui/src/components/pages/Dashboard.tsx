@@ -339,7 +339,7 @@ const Dashboard: React.FC = () => {
                   <div className="text-lg font-semibold text-secondary">{dashboardData.universe_stats.total_planets}</div>
                   <div className="text-xs text-tertiary">Planets →</div>
                 </Link>
-                <Link to="/universe/ports" className="text-center hover:opacity-80 transition-opacity">
+                <Link to="/universe/stations" className="text-center hover:opacity-80 transition-opacity">
                   <div className="text-lg font-semibold text-secondary">{dashboardData.universe_stats.total_ports}</div>
                   <div className="text-xs text-tertiary">Ports →</div>
                 </Link>

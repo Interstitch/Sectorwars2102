@@ -40,7 +40,7 @@ const Sidebar: React.FC = () => {
         { to: '/sectors', label: 'Sectors', icon: '🗺️' },
         { to: '/universe/planets', label: 'Planets', icon: '🏙️' },
         { to: '/colonies', label: 'Colonization', icon: '🚀' },
-        { to: '/universe/ports', label: 'Ports', icon: '🏢' },
+        { to: '/universe/stations', label: 'Stations', icon: '🏢' },
         { to: '/universe/warptunnels', label: 'Warp Tunnels', icon: '🌀' },
         { to: '/nexus', label: 'Central Nexus', icon: '🌟' }
       ]

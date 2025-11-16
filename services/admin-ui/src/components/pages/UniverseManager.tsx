@@ -358,7 +358,7 @@ const UniverseManager: React.FC = () => {
                 {galaxyState.statistics.discovered_sectors} discovered
               </div>
             </Link>
-            <Link to="/universe/ports" className="stat-card clickable-stat-card">
+            <Link to="/universe/stations" className="stat-card clickable-stat-card">
               <div className="stat-icon">🏪</div>
               <h3>Ports</h3>
               <div className="stat-value">{galaxyState.statistics.port_count}</div>
