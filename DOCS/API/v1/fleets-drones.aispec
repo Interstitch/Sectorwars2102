@@ -1,0 +1,349 @@
+# Fleets & Drones API
+
+OVERVIEW: Fleet management for team-based coordinated combat and drone operations for autonomous sector control.
+
+BASE_PATH: /api/v1
+AUTH_REQUIRED: Yes (JWT Bearer token)
+TEAM_REQUIRED: Yes for fleets (player must be in a team)
+
+## FACTS
+
+* Fleets are team-based - player must be in a team to create/manage fleets
+* Fleet formations: standard, wedge, defensive, offensive, scatter
+* Fleet roles: attacker, defender, scout, support, commander
+* Fleet status: forming, ready, deployed, in_combat, disbanded
+* Drones are autonomous units that control sectors for players
+* Drone types: combat, mining, scout, defense, research
+* Drones have health, shields, and can be upgraded/repaired
+* Drones can deploy to sectors and recall to ship
+* Fleet battles are multi-ship coordinated combat operations
+
+## ENDPOINTS
+
+### Fleet Management
+
+* POST /api/fleets/ - Create a new fleet for your team
+* GET /api/fleets/ - Get all fleets for your team
+* GET /api/fleets/my-fleets - Get fleets where you are a member
+* GET /api/fleets/{fleet_id} - Get detailed fleet information
+* GET /api/fleets/{fleet_id}/members - Get all ships in fleet
+* POST /api/fleets/{fleet_id}/add-ship - Add ship to fleet
+* DELETE /api/fleets/{fleet_id}/remove-ship/{ship_id} - Remove ship from fleet
+* PUT /api/fleets/{fleet_id}/formation - Update fleet formation
+* PUT /api/fleets/{fleet_id}/commander - Set fleet commander
+* DELETE /api/fleets/{fleet_id} - Disband fleet
+* POST /api/fleets/{fleet_id}/move - Move fleet to sector
+* POST /api/fleets/{fleet_id}/battle - Initiate fleet battle
+* GET /api/fleets/{fleet_id}/battle-status - Get ongoing battle status
+
+### Drone Operations
+
+* POST /drones/ - Create/build a new drone
+* GET /drones/ - Get all your drones
+* GET /drones/types - Get available drone types and specifications
+* GET /drones/{drone_id} - Get detailed drone information
+* POST /drones/{drone_id}/deploy - Deploy drone to current sector
+* POST /drones/{drone_id}/recall - Recall drone to ship
+* POST /drones/{drone_id}/repair - Repair damaged drone
+* POST /drones/{drone_id}/upgrade - Upgrade drone systems
+* POST /drones/{drone_id}/set-mode - Set drone operational mode
+* DELETE /drones/{drone_id} - Scrap/destroy drone
+* GET /drones/sector/{sector_id} - Get all drones in a sector
+* POST /drones/{drone_id}/transfer - Transfer drone to another player
+* POST /drones/batch-deploy - Deploy multiple drones at once
+* POST /drones/batch-recall - Recall multiple drones at once
+* GET /drones/statistics - Get player's drone statistics
+* POST /drones/{drone_id}/self-destruct - Activate drone self-destruct
+
+## SCHEMAS
+
+CreateFleetRequest:
+  name: string (1-100 chars), required
+  formation: string (standard|wedge|defensive|offensive|scatter), default "standard"
+  commander_id: UUID (optional)
+
+AddShipRequest:
+  ship_id: UUID, required
+  role: string (attacker|defender|scout|support|commander), default "attacker"
+
+FleetResponse:
+  id: UUID
+  team_id: UUID
+  name: string
+  status: string (forming|ready|deployed|in_combat|disbanded)
+  formation: string
+  total_ships: integer
+  total_firepower: integer
+  total_shields: integer
+  total_hull: integer
+  average_speed: float
+  morale: integer (0-100)
+  supply_level: integer (0-100)
+  commander_id: UUID (optional)
+  commander_name: string (optional)
+  sector_id: UUID (optional)
+  sector_name: string (optional)
+  member_count: integer
+
+FleetMemberResponse:
+  id: UUID
+  ship_id: UUID
+  ship_name: string
+  ship_type: string
+  player_id: UUID
+  player_name: string
+  role: string
+  position: integer (formation position)
+  ready_status: boolean
+
+BattleInitiateRequest:
+  defender_fleet_id: UUID, required
+
+BattleResponse:
+  battle_id: UUID
+  phase: string (positioning|engagement|resolution|completed)
+  attacker_fleet_id: UUID
+  attacker_fleet_name: string
+  defender_fleet_id: UUID
+  defender_fleet_name: string
+  round: integer (optional)
+  attacker_remaining: integer (optional, ships left)
+  defender_remaining: integer (optional, ships left)
+  battle_ongoing: boolean
+  winner: string (optional, "attacker"|"defender"|"draw")
+
+CreateDroneRequest:
+  drone_type: string (combat|mining|scout|defense|research), required
+  name: string (optional)
+
+DroneResponse:
+  id: UUID
+  owner_id: UUID
+  name: string
+  drone_type: string
+  status: string (docked|deployed|damaged|destroyed)
+  sector_id: UUID (optional, if deployed)
+  health: integer (0-100)
+  shields: integer (0-100)
+  level: integer (upgrade level)
+  operational_mode: string (passive|aggressive|defensive|mining)
+  cargo: object (resources collected)
+  deployed_at: ISO datetime (optional)
+  last_action: ISO datetime
+
+DroneTypeResponse:
+  type: string
+  name: string
+  description: string
+  base_cost: integer (credits)
+  base_health: integer
+  base_shields: integer
+  capabilities: array of strings
+  upgrade_levels: integer
+
+## ERROR RESPONSES
+
+400 BAD_REQUEST:
+  - Player must be in a team to create fleets
+  - Invalid formation type
+  - Invalid drone type
+  - Ship already in another fleet
+  - Drone already deployed
+  - Insufficient resources to build/upgrade drone
+
+403 FORBIDDEN:
+  - Not authorized to manage this fleet
+  - Not a member of this team
+  - Cannot remove fleet commander
+  - Cannot deploy drone (not in ship cargo)
+
+404 NOT_FOUND:
+  - Fleet not found
+  - Ship not found
+  - Drone not found
+  - Battle not found
+
+409 CONFLICT:
+  - Fleet already in combat
+  - Drone already exists in sector
+  - Cannot disband fleet during battle
+
+500 INTERNAL_SERVER_ERROR:
+  - Fleet creation failed
+  - Battle initiation failed
+  - Drone deployment failed
+
+## EXAMPLES
+
+### Fleet Management
+
+```bash
+# 1. Create a fleet
+curl -X POST http://localhost:8080/api/v1/api/fleets/ \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Alpha Strike Force",
+    "formation": "wedge",
+    "commander_id": "player-uuid"
+  }'
+
+# 2. Get all team fleets
+curl -X GET http://localhost:8080/api/v1/api/fleets/ \
+  -H "Authorization: Bearer {token}"
+
+# 3. Get fleets where you're a member
+curl -X GET http://localhost:8080/api/v1/api/fleets/my-fleets \
+  -H "Authorization: Bearer {token}"
+
+# 4. Add ship to fleet
+curl -X POST http://localhost:8080/api/v1/api/fleets/fleet-uuid/add-ship \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ship_id": "ship-uuid",
+    "role": "attacker"
+  }'
+
+# 5. Update fleet formation
+curl -X PUT http://localhost:8080/api/v1/api/fleets/fleet-uuid/formation \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "formation": "defensive"
+  }'
+
+# 6. Initiate fleet battle
+curl -X POST http://localhost:8080/api/v1/api/fleets/fleet-uuid/battle \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "defender_fleet_id": "enemy-fleet-uuid"
+  }'
+
+# 7. Check battle status
+curl -X GET http://localhost:8080/api/v1/api/fleets/fleet-uuid/battle-status \
+  -H "Authorization: Bearer {token}"
+```
+
+### Drone Operations
+
+```bash
+# 1. Get available drone types
+curl -X GET http://localhost:8080/api/v1/drones/types \
+  -H "Authorization: Bearer {token}"
+
+# 2. Build a new drone
+curl -X POST http://localhost:8080/api/v1/drones/ \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "drone_type": "mining",
+    "name": "Ore Collector Alpha"
+  }'
+
+# 3. Get all your drones
+curl -X GET http://localhost:8080/api/v1/drones/ \
+  -H "Authorization: Bearer {token}"
+
+# 4. Deploy drone to current sector
+curl -X POST http://localhost:8080/api/v1/drones/drone-uuid/deploy \
+  -H "Authorization: Bearer {token}"
+
+# 5. Set drone operational mode
+curl -X POST http://localhost:8080/api/v1/drones/drone-uuid/set-mode \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mode": "aggressive"
+  }'
+
+# 6. Upgrade drone
+curl -X POST http://localhost:8080/api/v1/drones/drone-uuid/upgrade \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "upgrade_type": "shields"
+  }'
+
+# 7. Recall drone to ship
+curl -X POST http://localhost:8080/api/v1/drones/drone-uuid/recall \
+  -H "Authorization: Bearer {token}"
+
+# 8. Get drones in a sector
+curl -X GET http://localhost:8080/api/v1/drones/sector/sector-uuid \
+  -H "Authorization: Bearer {token}"
+
+# 9. Batch deploy multiple drones
+curl -X POST http://localhost:8080/api/v1/drones/batch-deploy \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "drone_ids": ["uuid1", "uuid2", "uuid3"],
+    "sector_id": "sector-uuid"
+  }'
+
+# 10. Get drone statistics
+curl -X GET http://localhost:8080/api/v1/drones/statistics \
+  -H "Authorization: Bearer {token}"
+```
+
+## GAME MECHANICS
+
+**Fleet System:**
+- Fleets are team-based coordinated combat units
+- Each fleet has a commander who directs tactics
+- Formation affects combat effectiveness (wedge for offense, defensive for tanking)
+- Fleet morale affects combat performance
+- Supply level determines how long fleet can operate
+- Ships retain individual stats but fight as coordinated unit
+- Fleet battles resolve round-by-round with tactical positioning
+
+**Fleet Formations:**
+- Standard: Balanced offense/defense
+- Wedge: +20% offense, -10% defense
+- Defensive: +30% defense, -20% offense
+- Offensive: +30% offense, -30% defense
+- Scatter: +30% evasion, -40% coordination
+
+**Drone System:**
+- Autonomous units that control sectors
+- Combat drones attack enemy ships automatically
+- Mining drones collect resources from sector
+- Scout drones provide sector visibility
+- Defense drones protect ports/planets
+- Research drones gather scientific data
+
+**Drone Types:**
+- Combat: High firepower, attacks enemies
+- Mining: Collects ore and resources
+- Scout: Extended sensor range, intel gathering
+- Defense: Protects locations, high shields
+- Research: Gathers data, discovers anomalies
+
+**Drone Operational Modes:**
+- Passive: Ignore enemies unless attacked
+- Aggressive: Attack any enemy ships
+- Defensive: Protect specific location
+- Mining: Focus on resource collection
+
+**Drone Upgrades:**
+- Shields: Increase defensive capability
+- Weapons: Increase attack power
+- Sensors: Increase detection range
+- Cargo: Increase storage capacity
+- Engines: Increase speed/maneuverability
+
+## RELATED ENDPOINTS
+
+- GET /teams/{team_id} - View team information for fleet management
+- GET /player/state - View current ship and available drones
+- POST /api/combat/engage - Individual ship combat (non-fleet)
+- GET /sectors/{sector_id}/planets - View sector contents for deployment
+- POST /trading/buy - Purchase drone components
+
+---
+
+*Documentation Status: Complete (29 endpoints)*
+*Last Updated: 2025-11-16*
+*Validated Against: services/gameserver/src/api/routes/fleets.py, drones.py*

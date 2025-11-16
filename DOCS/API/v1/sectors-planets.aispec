@@ -1,0 +1,293 @@
+# Sectors & Planets API
+
+OVERVIEW: Sector navigation, planetary management, colonization, building construction, and defenses.
+
+BASE_PATH: /api/v1
+AUTH_REQUIRED: Yes (JWT Bearer token)
+MULTI_REGIONAL: Yes (sector access filtered by player's current region)
+
+## FACTS
+
+* Sectors are filtered by player's current region (multi-regional architecture)
+* Planets have types: terran, oceanic, mountainous, desert, frozen
+* Planet status tracked: uncolonized, colonized, under_siege, destroyed
+* Building types: factory, farm, mine, defense, research (levels 1-10)
+* Planet specializations: agricultural, industrial, military, research, balanced
+* Genesis devices create new planets in empty sectors
+* Colonist allocation determines resource production (fuel, organics, equipment)
+* Planetary defenses include turrets, shields, and fighters
+* Ports have classes 0-11 (trading classification system)
+
+## ENDPOINTS
+
+### Sector Discovery
+
+* GET /sectors/{sector_id}/planets - Get all planets in a sector
+* GET /sectors/{sector_id}/ports - Get all ports in a sector
+
+### Planetary Management
+
+* GET /api/planets/owned - Get all planets owned by player
+* GET /api/planets/{planetId} - Get detailed planet information
+* PUT /api/planets/{planetId}/allocate - Allocate colonists to production areas
+* POST /api/planets/{planetId}/buildings/upgrade - Upgrade a building
+* PUT /api/planets/{planetId}/defenses - Update planetary defenses
+* PUT /api/planets/{planetId}/specialize - Set planet specialization
+* GET /api/planets/{planetId}/siege-status - Get siege status
+* POST /api/planets/genesis/deploy - Deploy genesis device to create new planet
+
+## SCHEMAS
+
+PlanetResponse:
+  id: string (UUID)
+  name: string
+  type: string (terran|oceanic|mountainous|desert|frozen)
+  status: string (uncolonized|colonized|under_siege|destroyed)
+  sector_id: integer
+  owner_id: string (UUID, optional)
+  resources: object (available resources on planet)
+  population: integer (current colonist population)
+  max_population: integer (maximum capacity)
+  habitability_score: float (0.0-1.0, affects growth rate)
+
+PortResponse:
+  id: string (UUID)
+  name: string
+  port_class: integer (0-11, trading classification), optional
+  type: string
+  status: string
+  sector_id: integer
+  owner_id: string (UUID, optional)
+  services: object (available port services)
+  faction_affiliation: string (optional)
+
+SectorPlanetsResponse:
+  planets: array of PlanetResponse
+
+SectorPortsResponse:
+  ports: array of PortResponse
+
+PlanetResourceAllocation:
+  fuel: integer (>=0), colonists assigned to fuel production
+  organics: integer (>=0), colonists assigned to organics production
+  equipment: integer (>=0), colonists assigned to equipment production
+
+BuildingUpgradeRequest:
+  buildingType: string (factory|farm|mine|defense|research), required
+  targetLevel: integer (1-10), required
+
+DefenseUpdateRequest:
+  turrets: integer (>=0), optional
+  shields: integer (>=0), optional
+  fighters: integer (>=0), optional
+
+GenesisDeployRequest:
+  sectorId: string (UUID), required
+  planetName: string (3-50 chars), required
+  planetType: string (terran|oceanic|mountainous|desert|frozen), required
+
+SpecializationRequest:
+  specialization: string (agricultural|industrial|military|research|balanced), required
+
+## ERROR RESPONSES
+
+400 BAD_REQUEST:
+  - Invalid planet/sector ID format
+  - Insufficient resources for upgrade
+  - Invalid colonist allocation
+  - Planet already at maximum building level
+  - Sector already has maximum planets
+
+404 NOT_FOUND:
+  - Sector not found in your region
+  - Planet not found
+  - You don't own this planet
+
+500 INTERNAL_SERVER_ERROR:
+  - Planetary service failed
+  - Building upgrade failed
+  - Genesis deployment failed
+
+## EXAMPLES
+
+### Sector Discovery
+
+```bash
+# 1. Get all planets in a sector
+curl -X GET http://localhost:8080/api/v1/sectors/42/planets \
+  -H "Authorization: Bearer {token}"
+
+# Response:
+# {
+#   "planets": [
+#     {
+#       "id": "planet-uuid",
+#       "name": "New Earth",
+#       "type": "terran",
+#       "status": "colonized",
+#       "sector_id": 42,
+#       "owner_id": "player-uuid",
+#       "resources": {"ore": 5000, "crystals": 1000},
+#       "population": 10000,
+#       "max_population": 50000,
+#       "habitability_score": 0.85
+#     }
+#   ]
+# }
+
+# 2. Get all ports in a sector
+curl -X GET http://localhost:8080/api/v1/sectors/42/ports \
+  -H "Authorization: Bearer {token}"
+
+# Response:
+# {
+#   "ports": [
+#     {
+#       "id": "port-uuid",
+#       "name": "Trading Post Alpha",
+#       "port_class": 3,
+#       "type": "trade_station",
+#       "status": "active",
+#       "sector_id": 42,
+#       "owner_id": null,
+#       "services": {"refuel": true, "repair": true, "trade": true},
+#       "faction_affiliation": "Federation"
+#     }
+#   ]
+# }
+```
+
+### Planetary Management
+
+```bash
+# 1. Get all owned planets
+curl -X GET http://localhost:8080/api/v1/api/planets/owned \
+  -H "Authorization: Bearer {token}"
+
+# Response:
+# {
+#   "planets": [...],
+#   "totalPlanets": 5
+# }
+
+# 2. Get planet details
+curl -X GET http://localhost:8080/api/v1/api/planets/planet-uuid \
+  -H "Authorization: Bearer {token}"
+
+# 3. Allocate colonists to production
+curl -X PUT http://localhost:8080/api/v1/api/planets/planet-uuid/allocate \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fuel": 3000,
+    "organics": 4000,
+    "equipment": 3000
+  }'
+
+# 4. Upgrade a building
+curl -X POST http://localhost:8080/api/v1/api/planets/planet-uuid/buildings/upgrade \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "buildingType": "factory",
+    "targetLevel": 5
+  }'
+
+# 5. Update defenses
+curl -X PUT http://localhost:8080/api/v1/api/planets/planet-uuid/defenses \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "turrets": 50,
+    "shields": 1000,
+    "fighters": 20
+  }'
+
+# 6. Set planet specialization
+curl -X PUT http://localhost:8080/api/v1/api/planets/planet-uuid/specialize \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "specialization": "industrial"
+  }'
+
+# 7. Check siege status
+curl -X GET http://localhost:8080/api/v1/api/planets/planet-uuid/siege-status \
+  -H "Authorization: Bearer {token}"
+
+# 8. Deploy genesis device (create new planet)
+curl -X POST http://localhost:8080/api/v1/api/planets/genesis/deploy \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sectorId": "sector-uuid",
+    "planetName": "New Colony Alpha",
+    "planetType": "terran"
+  }'
+```
+
+## GAME MECHANICS
+
+**Sector System:**
+- Each sector can contain planets and ports
+- Sectors belong to regions (multi-regional architecture)
+- Players can only access sectors in their current region
+- Sector IDs are integers (e.g., Sector 42)
+
+**Planetary Colonization:**
+- Genesis devices create new planets in empty sectors
+- Planet types affect resource availability and habitability
+- Habitability score determines population growth rate
+- Colonists are allocated to different production areas
+
+**Resource Production:**
+- Colonist allocation determines production rates
+- Factory buildings boost equipment production
+- Farm buildings boost organics production
+- Mine buildings boost fuel production
+- Research buildings unlock new technologies
+
+**Building System:**
+- 5 building types: factory, farm, mine, defense, research
+- Buildings can be upgraded from level 1 to 10
+- Higher levels provide better production/defense bonuses
+- Upgrades cost credits and resources
+
+**Planetary Defenses:**
+- Turrets: Automated defense weapons
+- Shields: Energy barriers protecting the planet
+- Fighters: Defensive spacecraft stationed on planet
+- Strong defenses deter attacks and reduce siege effectiveness
+
+**Planet Specialization:**
+- Agricultural: +50% organics production
+- Industrial: +50% equipment production
+- Military: +50% fighter/turret effectiveness
+- Research: +50% research speed
+- Balanced: No bonuses but no penalties
+
+**Siege Mechanics:**
+- Planets can be placed under siege by attackers
+- Siege reduces resource production
+- Defenders can break siege by destroying attacking forces
+- Prolonged sieges can lead to planet capture
+
+## RELATED ENDPOINTS
+
+- POST /player/move/{sector_id} - Move to a sector to access its planets/ports
+- POST /trading/dock - Dock at a port in current sector
+- GET /player/state - View current sector and owned planets
+- POST /api/combat/engage - Attack a planet or port
+
+## MULTI-REGIONAL NOTES
+
+* Sector access is filtered by player's current region
+* Players in different regions see different sector sets
+* Central Nexus sectors accessible from all regions
+* Genesis devices can only be deployed in player's current region
+
+---
+
+*Documentation Status: Complete (10 endpoints)*
+*Last Updated: 2025-11-16*
+*Validated Against: services/gameserver/src/api/routes/sectors.py, planets.py*

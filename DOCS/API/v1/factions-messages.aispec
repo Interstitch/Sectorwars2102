@@ -1,0 +1,346 @@
+# Factions & Messages API
+
+OVERVIEW: Faction reputation system, faction missions, and player messaging.
+
+BASE_PATH: /api/v1
+AUTH_REQUIRED: Yes (JWT Bearer token)
+
+## FACTS
+
+* Factions control territory and offer missions
+* Player reputation with factions affects trading prices and mission availability
+* Reputation ranges from -1000 (hostile) to +1000 (allied)
+* Faction missions provide rewards and reputation gains
+* Messages support direct player-to-player and team communication
+* Message priorities: low, normal, high, urgent
+* Messages can be flagged for moderation
+
+## ENDPOINTS
+
+### Faction System
+
+* GET /factions/ - List all factions in the game
+* GET /factions/reputation - Get player's reputation with all factions
+* GET /factions/{faction_id}/reputation - Get reputation with specific faction
+* GET /factions/missions - Get available faction missions
+* GET /factions/{faction_id}/missions - Get missions from specific faction
+* POST /factions/{faction_id}/missions/accept - Accept a faction mission
+* GET /factions/{faction_id}/territory - Get faction-controlled sectors
+* GET /factions/{faction_id}/pricing-modifier - Get trading price modifier based on reputation
+
+### Messaging System
+
+* POST /messages/send - Send message to another player
+* GET /messages/inbox - Get player's inbox (paginated)
+* GET /messages/team/{team_id} - Get team messages
+* PUT /messages/{message_id}/read - Mark message as read
+* DELETE /messages/{message_id} - Delete message
+* GET /messages/conversations - Get conversation threads
+* POST /messages/{message_id}/flag - Flag message for moderation
+
+## SCHEMAS
+
+FactionResponse:
+  id: UUID
+  name: string
+  description: string
+  home_sector_id: integer
+  color: string (hex code)
+  territory_count: integer
+  player_count: integer
+  is_player_faction: boolean
+
+ReputationResponse:
+  faction_id: UUID
+  faction_name: string
+  reputation: integer (-1000 to +1000)
+  status: string (hostile|neutral|friendly|allied)
+  price_modifier: float (trading price multiplier)
+  mission_availability: string (none|basic|advanced|elite)
+
+MissionResponse:
+  id: UUID
+  faction_id: UUID
+  title: string
+  description: string
+  objectives: array of strings
+  rewards: object {credits, reputation, items}
+  difficulty: string (easy|medium|hard|extreme)
+  time_limit: integer (seconds)
+  required_reputation: integer
+  expires_at: ISO datetime
+
+SendMessageRequest:
+  recipient_id: UUID, required
+  subject: string (max 255 chars), required
+  content: string, required
+  priority: string (low|normal|high|urgent), default "normal"
+
+MessageResponse:
+  id: UUID
+  sender_id: UUID
+  sender_name: string
+  recipient_id: UUID
+  recipient_name: string
+  subject: string
+  content: string
+  sent_at: ISO datetime
+  read_at: ISO datetime (optional)
+  priority: string
+  is_read: boolean
+  is_flagged: boolean
+
+ConversationResponse:
+  conversation_id: UUID
+  other_player_id: UUID
+  other_player_name: string
+  last_message: string
+  last_message_at: ISO datetime
+  unread_count: integer
+
+## QUERY PARAMETERS
+
+GET /messages/inbox:
+  skip: integer (>=0), default 0
+  limit: integer (1-100), default 20
+  unread_only: boolean, default false
+
+GET /factions/missions:
+  difficulty: string (easy|medium|hard|extreme), optional
+  min_reward: integer, optional
+
+## ERROR RESPONSES
+
+400 BAD_REQUEST:
+  - Insufficient reputation for mission
+  - Mission already accepted
+  - Invalid message recipient
+  - Cannot send message to yourself
+
+403 FORBIDDEN:
+  - Cannot access faction territory
+  - Mission not available for your reputation level
+  - Cannot flag own messages
+
+404 NOT_FOUND:
+  - Faction not found
+  - Mission not found
+  - Message not found
+  - Conversation not found
+
+500 INTERNAL_SERVER_ERROR:
+  - Failed to send message
+  - Failed to accept mission
+  - Failed to update reputation
+
+## EXAMPLES
+
+### Faction System
+
+```bash
+# 1. List all factions
+curl -X GET http://localhost:8080/api/v1/factions/ \
+  -H "Authorization: Bearer {token}"
+
+# Response:
+# {
+#   "factions": [
+#     {
+#       "id": "faction-uuid",
+#       "name": "Federation",
+#       "description": "United federation of trading worlds",
+#       "home_sector_id": 1,
+#       "color": "#0066cc",
+#       "territory_count": 150,
+#       "player_count": 2340,
+#       "is_player_faction": false
+#     },
+#     ...
+#   ]
+# }
+
+# 2. Get your reputation with all factions
+curl -X GET http://localhost:8080/api/v1/factions/reputation \
+  -H "Authorization: Bearer {token}"
+
+# Response:
+# {
+#   "reputations": [
+#     {
+#       "faction_id": "federation-uuid",
+#       "faction_name": "Federation",
+#       "reputation": 350,
+#       "status": "friendly",
+#       "price_modifier": 0.95,
+#       "mission_availability": "advanced"
+#     },
+#     ...
+#   ]
+# }
+
+# 3. Get available faction missions
+curl -X GET "http://localhost:8080/api/v1/factions/missions?difficulty=medium" \
+  -H "Authorization: Bearer {token}"
+
+# 4. Accept a mission
+curl -X POST http://localhost:8080/api/v1/factions/faction-uuid/missions/accept \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mission_id": "mission-uuid"
+  }'
+
+# 5. Get faction territory
+curl -X GET http://localhost:8080/api/v1/factions/faction-uuid/territory \
+  -H "Authorization: Bearer {token}"
+
+# Response:
+# {
+#   "faction_id": "faction-uuid",
+#   "controlled_sectors": [1, 2, 3, 5, 8, 13, ...],
+#   "territory_count": 150,
+#   "border_sectors": [4, 7, 14, ...]
+# }
+
+# 6. Get pricing modifier
+curl -X GET http://localhost:8080/api/v1/factions/faction-uuid/pricing-modifier \
+  -H "Authorization: Bearer {token}"
+
+# Response:
+# {
+#   "reputation": 350,
+#   "price_modifier": 0.95,
+#   "status": "friendly"
+# }
+```
+
+### Messaging System
+
+```bash
+# 1. Send a message
+curl -X POST http://localhost:8080/api/v1/messages/send \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recipient_id": "player-uuid",
+    "subject": "Trading Opportunity",
+    "content": "I have ORE to sell in Sector 42. Interested?",
+    "priority": "normal"
+  }'
+
+# 2. Get inbox
+curl -X GET "http://localhost:8080/api/v1/messages/inbox?limit=50&unread_only=false" \
+  -H "Authorization: Bearer {token}"
+
+# Response:
+# {
+#   "messages": [
+#     {
+#       "id": "message-uuid",
+#       "sender_id": "player-uuid",
+#       "sender_name": "SpaceTrader42",
+#       "subject": "Trading Opportunity",
+#       "content": "I have ORE to sell...",
+#       "sent_at": "2025-11-16T12:00:00Z",
+#       "read_at": null,
+#       "priority": "normal",
+#       "is_read": false,
+#       "is_flagged": false
+#     },
+#     ...
+#   ],
+#   "total": 25,
+#   "unread": 8
+# }
+
+# 3. Mark message as read
+curl -X PUT http://localhost:8080/api/v1/messages/message-uuid/read \
+  -H "Authorization: Bearer {token}"
+
+# 4. Delete message
+curl -X DELETE http://localhost:8080/api/v1/messages/message-uuid \
+  -H "Authorization: Bearer {token}"
+
+# 5. Get conversations
+curl -X GET http://localhost:8080/api/v1/messages/conversations \
+  -H "Authorization: Bearer {token}"
+
+# Response:
+# {
+#   "conversations": [
+#     {
+#       "conversation_id": "conv-uuid",
+#       "other_player_id": "player-uuid",
+#       "other_player_name": "SpaceTrader42",
+#       "last_message": "Sounds good! Meet you there.",
+#       "last_message_at": "2025-11-16T14:30:00Z",
+#       "unread_count": 2
+#     },
+#     ...
+#   ]
+# }
+
+# 6. Flag message for moderation
+curl -X POST http://localhost:8080/api/v1/messages/message-uuid/flag \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reason": "spam"
+  }'
+
+# 7. Get team messages
+curl -X GET http://localhost:8080/api/v1/messages/team/team-uuid \
+  -H "Authorization: Bearer {token}"
+```
+
+## GAME MECHANICS
+
+**Faction Reputation:**
+- Starts at 0 (neutral) for all factions
+- Increases through missions, trading, defending faction territory
+- Decreases through attacking faction ships/ports, trading with enemies
+- Reputation affects:
+  - Trading prices (higher rep = better prices)
+  - Mission availability (unlock harder missions)
+  - Territory access (hostile factions may attack on sight)
+  - Special rewards and faction-exclusive items
+
+**Reputation Levels:**
+- -1000 to -500: Hostile (attacked on sight, no trading)
+- -499 to -100: Unfriendly (high prices, basic missions only)
+- -99 to +99: Neutral (normal prices, standard missions)
+- +100 to +499: Friendly (discount prices, advanced missions)
+- +500 to +1000: Allied (best prices, elite missions, special rewards)
+
+**Faction Missions:**
+- Easy: +10-50 reputation, basic rewards
+- Medium: +50-150 reputation, good rewards
+- Hard: +150-300 reputation, excellent rewards
+- Extreme: +300-500 reputation, legendary rewards
+
+**Mission Types:**
+- Delivery: Transport cargo to destination
+- Combat: Destroy enemy targets
+- Reconnaissance: Scout territory
+- Escort: Protect convoy
+- Defense: Defend faction outpost
+
+**Message System:**
+- Private player-to-player communication
+- Team broadcast messages
+- Message threading for conversations
+- Flagging system for abuse prevention
+- Priority levels for urgent communications
+
+## RELATED ENDPOINTS
+
+- GET /player/state - View current reputation and active missions
+- POST /trading/buy - Trading prices affected by faction reputation
+- POST /api/combat/engage - Attacking faction ships affects reputation
+- GET /teams/{team_id}/messages - Team communication (duplicated in teams API)
+
+---
+
+*Documentation Status: Complete (15 endpoints)*
+*Last Updated: 2025-11-16*
+*Validated Against: services/gameserver/src/api/routes/factions.py, messages.py*
