@@ -21,7 +21,10 @@ UNIVERSE_STRUCTURE:
 * Regional Territory: Player-created region with 500 sectors
 * Cluster: Group of related sectors within a region
 * Sector: Fundamental unit of space containing ports/planets/ships
-* Warp Tunnel: Player-created FTL connection between sectors
+* Warp Tunnel: Naturally occurring FTL connection between sectors (one-way or two-way)
+* Warp Gate: Player-created one-way FTL connection between sectors
+* Warp Gate Beacon: Source marker for warp gate construction
+* Warp Gate Focus: Destination marker for warp gate construction
 * Coordinates: X,Y,Z position of sector in 3D space
 
 ENTITIES:
