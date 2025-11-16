@@ -1,0 +1,259 @@
+OVERVIEW:
+Galactic Fleet Command military ranking system with 18 progressive ranks from Recruit to Fleet Admiral, earned through combat prowess, economic achievement, territorial control, and galactic contributions. Ranks permanent, displayed prominently, provide trading bonuses and special privileges.
+
+FACTS:
+* 18 military ranks across 5 tiers: Enlisted (3), NCO (3), Warrant (2), Officer (5), Flag (5)
+* Ranks earned through achievements, never lost
+* Trading bonuses: +2% to +50% based on rank
+* Visible to all players (profile, leaderboards, team rosters)
+* Requirements: credits earned, sectors visited, trades, combat victories, planets owned, faction missions
+* Special medals for extraordinary achievements beyond ranks
+* Fleet Admiral: <0.01% of players expected to achieve
+* Rank benefits include diplomatic immunity, governance roles, galactic policy influence
+
+TERMINOLOGY:
+* Military Rank: Achievement-based progression system reflecting player accomplishments
+* Trading Bonus: Percentage reduction in buy prices and increase in sell prices
+* Faction Reputation Gain: Bonus multiplier to faction standing increases
+* Diplomatic Immunity: Protection from attacks in allied territories
+* Fleet Coordination: Ability to lead multi-ship operations
+* Legendary Status: Recognition that affects NPC behavior and port greetings
+* Insignia: Visual rank indicator displayed with player name
+
+ENLISTED_RANKS:
+Recruit:
+  requirements: New player, first login completed
+  credits: 0
+  insignia: Single silver bar
+  trading_bonus: 0%
+  benefits: Access to basic training materials and ARIA's Educational Mode
+  rarity: 100% (all players start here)
+
+Spacer:
+  requirements: 10k credits, 50 sectors, 25 trades
+  insignia: Double silver bars
+  trading_bonus: +2%
+  benefits: Basic port trading bonus
+  rarity: 95% (common achievement)
+
+Corporal:
+  requirements: 50k credits, 100 sectors, 100 trades, 1 combat victory
+  insignia: Three silver bars
+  trading_bonus: +3%
+  benefits: Trading bonus, access to basic military outposts
+  rarity: 95% (starter ranks)
+
+NCO_RANKS:
+Sergeant:
+  requirements: 100k credits, 200 sectors, 250 trades, 10 combat victories, 1 planet OR team membership
+  insignia: Bronze chevron with one rocker
+  trading_bonus: +5%
+  benefits: Can lead small trading convoys
+  rarity: 60% (dedicated players)
+
+StaffSergeant:
+  requirements: 500k credits, 500 sectors, 500 trades, 25 combat victories, 2+ planets OR team leadership, 5 faction missions
+  insignia: Bronze chevron with two rockers
+  trading_bonus: +6%
+  benefits: +5% faction reputation gain
+  rarity: 60% (dedicated players)
+
+MasterSergeant:
+  requirements: 1M credits, 1000 sectors, 1000 trades, 50 combat victories, 5+ planets OR active team, 15 faction missions, 1 quantum trade
+  insignia: Bronze chevron with three rockers and star
+  trading_bonus: +7%
+  benefits: +10% faction reputation gain, priority docking at major ports
+  rarity: 60% (dedicated players)
+
+WARRANT_RANKS:
+WarrantOfficer:
+  requirements: 2.5M credits, 1500 sectors, 100 combat victories, 10+ planets, 1 warp tunnel, 1 fleet battle led
+  insignia: Gold bar with silver diamond
+  trading_bonus: +8%
+  benefits: Can construct advanced facilities
+  rarity: 30% (skilled specialists)
+
+ChiefWarrantOfficer:
+  requirements: 5M credits, 2000 sectors, 200 combat victories, 20+ planets, 3+ warp tunnels, 5+ fleet battles, 1 port owned
+  insignia: Gold bar with gold diamond
+  trading_bonus: +10%
+  benefits: Reduced warp tunnel construction costs
+  rarity: 30% (skilled specialists)
+
+OFFICER_RANKS:
+Ensign:
+  requirements: 10M credits, 300 combat victories, 30+ planets with advanced infrastructure, team leader with 3+ members, 1+ sector controlled, 50 faction missions (Friendly+ reputation)
+  insignia: Gold bar
+  trading_bonus: +12%
+  benefits: Can negotiate regional governance roles
+  rarity: 15% (elite players)
+
+Lieutenant:
+  requirements: 25M credits, 500 combat victories, 50+ planets, top 10 regional leaderboard, 3+ sectors controlled, 25+ quantum trades, Allied with 2+ factions
+  insignia: Two gold bars
+  trading_bonus: +15%
+  benefits: +15% faction reputation gain, diplomatic immunity in allied territories
+  rarity: 15% (elite players)
+
+Commander:
+  requirements: 50M credits, 1000 combat victories, 100+ planets across multiple regions, 5+ ports, Regional Territory OR top 5 Central Nexus, defended territory from major attack, Allied with 5+ factions
+  insignia: Three gold bars
+  trading_bonus: +18%
+  benefits: Reduced regional taxes, preferential treatment galaxy-wide
+  rarity: 15% (elite players)
+
+Captain:
+  requirements: 100M credits, 2500 combat victories, 250+ planets, 15+ ports, governs Regional Territory OR top 3 Central Nexus, led alliance of 3+ teams, Allied with 10+ factions, owns Warp Jumper
+  insignia: Gold eagle
+  trading_bonus: +20%
+  benefits: Significant diplomatic influence, can negotiate special trade agreements
+  rarity: 5% (exceptional players)
+
+FLAG_RANKS:
+Commodore:
+  requirements: 250M credits, 5000 combat victories, 500+ planets across 3+ regions, 30+ ports, governs thriving Regional Territory (100+ citizens), led coalition victory in inter-regional conflict, 10+ custom warp tunnels, top 10 all-time galactic leaderboard
+  insignia: Gold eagle with single star
+  trading_bonus: +25%
+  benefits: Can propose galactic-level policies, legendary status
+  rarity: 2% (legendary players)
+
+RearAdmiral:
+  requirements: 500M credits, 10000 combat victories, 1000+ planets, 60+ ports, governs multiple Regional Territories, single-handedly affected galactic economy, top 5 all-time galactic leaderboard
+  insignia: Gold eagle with two stars
+  trading_bonus: +30%
+  benefits: Market-moving power, monuments erected in honor
+  rarity: 0.5% (historical figures)
+
+Admiral:
+  requirements: 1B credits, 25000 combat victories, 2500+ planets, 100+ ports, governs galactic-scale trade networks, led civilization-level achievements, top 3 all-time galactic leaderboard
+  insignia: Gold eagle with three stars
+  trading_bonus: +35%
+  benefits: Godlike status, permanent place in galactic hall of fame
+  rarity: 0.1% (galactic titans)
+
+FleetAdmiral:
+  requirements: 10B credits, 50000+ combat victories, 5000+ planets, 200+ ports, dominated an entire era of gameplay, #1 all-time galactic leaderboard, achieved the impossible
+  insignia: Platinum eagle with four stars and quantum aura
+  trading_bonus: +50%
+  benefits: Ultimate prestige, eternal glory, special title color and effects, statue in every major port
+  rarity: <0.01% (pantheon of legends)
+  description: LEGENDARY - Pinnacle of human achievement in 2102
+
+SPECIAL_MEDALS:
+Combat:
+  - Bronze Star: 100 combat victories
+  - Silver Star: 1000 combat victories
+  - Quantum Cross: 10000 combat victories
+  - Medal of Valor: 50+ consecutive combats without defeat
+
+Economic:
+  - Trader's Merit: 1000 successful trades
+  - Merchant Prince: 10000 successful trades
+  - Economic Titan: Single trade profit exceeding 1M credits
+  - Market Master: Correctly predicted 100+ quantum trade outcomes
+
+Exploration:
+  - Explorer's Badge: Discovered 500 unique sectors
+  - Pathfinder Medal: Created 5 new warp tunnels
+  - Frontier Spirit: First to discover 10 rare anomalies
+  - Genesis Award: Successfully deployed 25 Genesis Devices
+
+Diplomatic:
+  - Ambassador's Star: Allied reputation with 10 factions
+  - Peacekeeper: Negotiated 25 successful team treaties
+  - Unity Medal: Led successful inter-regional cooperation
+
+Special:
+  - ARIA's Favor: Executed 1000 quantum trades
+  - Quantum Mastery: Trading DNA evolved to maximum level
+  - Regional Founder: Created and sustained Regional Territory for 1+ years
+  - Team Leader: Led team to #1 ranking in any category
+  - Orange Cat Society: Secret medal (mentioned cat in first login)
+
+RANK_BENEFITS_SUMMARY:
+Enlisted: +2-3% trading, basic facilities access
+NCO: +5-7% trading, military outposts, faction priority
+Warrant: +8-10% trading, infrastructure construction rights
+Officer: +12-20% trading, diplomatic immunity, governance roles
+Flag: +25-50% trading, galactic influence, legendary status
+
+VISUAL_INDICATORS:
+* Rank insignia displayed next to player name
+* Special color coding for Flag Officers (gold glow)
+* Animated effects for Fleet Admiral (quantum particle glow)
+* Rank badges in chat and messaging
+* Leaderboard highlighting
+* NPCs acknowledge rank in dialogue
+* Special greetings at ports based on rank
+* Rank-based emotes and titles
+* Historical records of first players to achieve each rank
+
+PROGRESSION_STRATEGY:
+* Balance multiple paths: combat, trading, exploration, diplomacy
+* Team up: Many ranks require teamwork and leadership
+* Explore widely: Sector exploration counts toward many ranks
+* Build infrastructure: Planet and port ownership provides permanent assets
+* Master quantum trading: Advanced ranks heavily reward quantum mastery
+* Maintain faction relations: Good standing opens many doors
+* Think long-term: Highest ranks are rare multi-year achievements
+
+CONSTRAINTS:
+* Ranks never lost once earned
+* Requirements cumulative (must meet all criteria)
+* Visible to all players (public achievement)
+* Some ranks require team leadership or membership
+* Fleet Admiral extremely rare by design (<0.01% expected)
+* Trading bonuses apply to all port transactions
+* Diplomatic immunity only in allied faction territories
+* Governance roles require sustained activity and reputation
+
+RELATED_SPECS:
+* GameMechanics.aispec - Turn system, trading economy, combat
+* Resources.aispec - Quantum trading progression
+* Ships.aispec - Warp Jumper requirement for Captain rank
+* See FEATURES/DEFINITIONS/RANKING_SYSTEM.md for detailed rank documentation
+
+FILES:
+- /DOCS/FEATURES/DEFINITIONS/RANKING_SYSTEM.md - Detailed ranking system and lore
+- /services/gameserver/src/game/ranking.py - Rank progression logic
+- /services/gameserver/src/models/player.py - Player rank tracking
+- /services/gameserver/src/game/achievements.py - Medal and achievement system
+
+EXAMPLES:
+```python
+# Rank progression check
+player = Player(
+    credits_earned=1000000,
+    sectors_visited=1000,
+    successful_trades=1000,
+    combat_victories=50,
+    planets_owned=5,
+    faction_missions_completed=15,
+    quantum_trades=1
+)
+
+rank_system.check_promotion(player)
+# Result: Promoted to Master Sergeant
+# New benefits: +7% trading bonus, +10% faction rep gain, priority docking
+
+# Trading bonus application
+port = Port(ore_buy_price=100)
+player_rank = "Lieutenant"  # +15% trading bonus
+
+effective_price = 100 * (1 - 0.15)  # 85 credits
+player.buy("ORE", quantity=100, price=effective_price)
+# Total cost: 8,500 credits (saved 1,500 credits)
+
+# Medal achievement
+if player.combat_victories >= 100:
+    player.award_medal("BRONZE_STAR")
+    # Medal displayed on profile, achievement notification
+
+# Fleet Admiral legendary status
+if player.rank == "FLEET_ADMIRAL":
+    # Special visual effects enabled
+    # Statue placed in all major ports
+    # NPCs use special dialogue
+    # Player name displayed with quantum particle glow
+    # Eternal glory achieved
+```

@@ -1,0 +1,253 @@
+OVERVIEW:
+SectorWars 2102 ship catalog featuring 8 vessel types (3 trading, 2 combat, 3 specialized) with distinct stats for cargo, drones, speed, defense, and special abilities. Ships upgradeable across 7 categories with insurance options.
+
+FACTS:
+* 8 ship types: Light Freighter, Cargo Hauler, Fast Courier, Defender, Carrier, Colony Ship, Scout Ship, Warp Jumper
+* Starting ship: Light Freighter (10,000 credits, received at first login)
+* Speed measured in sectors/turn (0.4 to 2.5 range)
+* Defense: shields and hull points (separate damage absorption layers)
+* Cargo capacity: 100-1000 units baseline
+* Drone capacity: 0-12 drones (1000 credits each)
+* Genesis capacity: 0-5 devices per ship
+* All ships upgradeable in 7 categories
+* Insurance available: Basic (50%), Standard (75%), Premium (90%)
+* Ship destruction: eject to escape pod, lose ship and cargo, keep credits
+* Warp Jumper: unique acquisition (500k credits, special materials, 3-5 days build time)
+
+TERMINOLOGY:
+* Sectors/Turn: Distance ship travels per turn (modified by upgrades)
+* Shield Points: First layer of defense, regenerates when docked
+* Hull Points: Second layer of defense, requires repair when damaged
+* Drone Capacity: Maximum autonomous combat units ship can carry
+* Genesis Capacity: Maximum Genesis Devices ship can transport
+* Special Ability: Unique ship capability or bonus
+* Escape Pod: Indestructible survival craft, high turn cost for movement
+
+SHIP_STATS:
+LightFreighter:
+  cost: 10,000 credits
+  cargo: 500 units
+  drones: 2
+  genesis: 0
+  speed: 1.0 sectors/turn
+  shields: 300
+  hull: 400
+  special: Versatile Configuration
+  category: Trading
+  description: Standard starting ship, balanced performance
+
+CargoHauler:
+  cost: 50,000 credits
+  cargo: 1000 units
+  drones: 2
+  genesis: 2
+  speed: 0.5 sectors/turn
+  shields: 400
+  hull: 600
+  special: Cargo Compression (+15% storage)
+  category: Trading
+  description: Bulk commodity transport specialist
+
+FastCourier:
+  cost: 30,000 credits
+  cargo: 200 units
+  drones: 0
+  genesis: 0
+  speed: 2.0 sectors/turn
+  shields: 200
+  hull: 300
+  special: Stealth Systems (25% pirate avoidance)
+  category: Trading
+  description: Speed-optimized rapid transit vessel
+
+Defender:
+  cost: 70,000 credits
+  cargo: 400 units
+  drones: 6
+  genesis: 3
+  speed: 1.0 sectors/turn
+  shields: 700
+  hull: 800
+  special: Shield Projection
+  category: Combat
+  description: Primary combat vessel, reinforced shields
+
+Carrier:
+  cost: 150,000 credits
+  cargo: 800 units
+  drones: 12
+  genesis: 5
+  speed: 0.75 sectors/turn
+  shields: 800
+  hull: 900
+  special: Fleet Coordination (+20% boost to nearby friendlies)
+  category: Combat
+  description: Mobile headquarters, multiple drone squadrons
+
+ColonyShip:
+  cost: 100,000 credits
+  cargo: 1000 units
+  drones: 2
+  genesis: 5
+  speed: 0.4 sectors/turn
+  shields: 400
+  hull: 600
+  special: Terraforming Modules (-30% colonization time)
+  category: Specialized
+  description: Planetary settlement specialist
+
+ScoutShip:
+  cost: 25,000 credits
+  cargo: 100 units
+  drones: 1
+  genesis: 0
+  speed: 2.5 sectors/turn
+  shields: 150
+  hull: 200
+  special: Advanced Sensors (reveal sector details)
+  category: Specialized
+  description: Exploration and charting specialist
+
+WarpJumper:
+  cost: 500,000 credits
+  cargo: 200 units
+  drones: 0
+  genesis: 1
+  speed: N/A (quantum jump capability)
+  shields: 500
+  hull: 600
+  special: Quantum Jump (5-10 sectors, 24h cooldown)
+  category: Specialized
+  description: Warp gate establishment vessel
+  acquisition: Specialized shipyards only, requires Quantum Shards + Photonic Crystals, 3-5 day build time, 1 per player maximum
+
+UPGRADE_CATEGORIES:
+Engines:
+  effect: +speed and fuel efficiency
+  max_bonus: +0.5 sectors/turn
+
+CargoHolds:
+  effect: +capacity
+  max_bonus: +30% total storage
+
+Shields:
+  effect: +defensive capability
+  max_bonus: +200 shield points
+
+Hull:
+  effect: +durability
+  max_bonus: +300 hull points
+
+Sensors:
+  effect: +detection and evasion
+  max_bonus: +15% encounter avoidance
+
+DroneBays:
+  effect: +drone capacity
+  max_bonus: +2 bays from base
+
+GenesisContainment:
+  effect: +Genesis Device capacity
+  max_bonus: +2 devices
+  restriction: Only ships with existing Genesis compatibility
+
+INSURANCE_TIERS:
+Basic:
+  coverage: 50% of ship value
+  deductible: 5%
+  use_case: Low-risk trading in safe sectors
+
+Standard:
+  coverage: 75% of ship value
+  deductible: 10%
+  use_case: Moderate-risk activities
+
+Premium:
+  coverage: 90% of ship value
+  deductible: 15%
+  use_case: High-risk combat or dangerous sectors
+
+ACQUISITION_METHODS:
+Purchase:
+  location: Shipyards in major sectors
+  advantage: Full customization, new condition
+
+Salvage:
+  location: Abandoned or contested sectors
+  advantage: Lower cost, potential rare finds
+  disadvantage: May require repairs
+
+ReputationRewards:
+  location: Faction headquarters
+  advantage: Free or discounted, unique configurations
+  requirement: High faction standing
+
+ESCAPE_POD:
+* Indestructible survival craft, never lost
+* Activated automatically on ship destruction
+* High turn cost for movement (penalty vs regular ships)
+* Zero cargo capacity
+* Cannot engage in combat
+* Player retains all credits when ejecting
+* Can dock at any port to purchase new ship
+
+CONSTRAINTS:
+* Ship loss results in cargo destruction, credits retained
+* Warp Jumper limited to 1 per player
+* Genesis Containment upgrades require existing Genesis compatibility
+* Insurance payouts immediate upon destruction
+* Speed upgrades cannot exceed engine category maximums
+* Drone capacity limited by physical bay space
+* Quantum Jump has 24-hour cooldown
+
+RELATED_SPECS:
+* GameMechanics.aispec - Turn costs, ship destruction mechanics
+* Resources.aispec - Genesis Devices, Quantum Shards, Photonic Crystals
+* See FEATURES/DEFINITIONS/SHIP_TYPES.md for detailed ship documentation
+
+FILES:
+- /DOCS/FEATURES/DEFINITIONS/SHIP_TYPES.md - Detailed ship specifications and lore
+- /services/gameserver/src/game/ships.py - Ship management logic
+- /services/gameserver/src/models/ship.py - Ship data models
+- /services/gameserver/src/game/combat.py - Ship combat calculations
+- /services/gameserver/src/game/upgrades.py - Ship upgrade system
+
+EXAMPLES:
+```python
+# Ship purchase example
+shipyard = Port(sector_id=42, has_shipyard=True)
+player.dock(shipyard)
+
+if player.credits >= 70000:
+    player.purchase_ship("DEFENDER")
+    player.credits -= 70000
+    player.ship = Ship(
+        type="DEFENDER",
+        cargo_capacity=400,
+        drone_capacity=6,
+        genesis_capacity=3,
+        speed=1.0,
+        shields=700,
+        hull=800
+    )
+
+# Ship upgrade example
+player.upgrade_ship("Engines", level=2)
+# Cost: varies by shipyard tech level
+# Result: speed increased from 1.0 to 1.2 sectors/turn
+
+# Ship destruction and insurance
+if player.ship.hull <= 0:
+    if player.has_insurance:
+        payout = player.ship.value * 0.75  # Standard insurance
+        player.credits += payout
+    player.ship = EscapePod()
+    player.cargo.clear()
+    # Credits retained
+
+# Warp Jumper quantum jump
+if player.ship.type == "WARP_JUMPER" and not player.ship.jump_on_cooldown:
+    player.quantum_jump(direction="northeast", distance=7)
+    # Instantly moves 7 sectors northeast
+    player.ship.jump_cooldown_until = now() + timedelta(hours=24)
+```

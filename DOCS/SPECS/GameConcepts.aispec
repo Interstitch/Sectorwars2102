@@ -1,0 +1,199 @@
+OVERVIEW:
+Core terminology and conceptual framework for SectorWars 2102 covering universe structure, entities, resources, quantum mechanics, AI systems, player progression, combat, and governance. Essential reference for understanding game systems and their interactions.
+
+FACTS:
+* Turn-based gameplay with 1000 turns per day allocation
+* Multi-regional architecture: Central Nexus (5000 sectors) + Regional Territories (500 sectors each)
+* 7 core commodities + 4 strategic resources + 2 rare materials
+* 8 ship types with distinct capabilities
+* 18 military ranks from Recruit to Fleet Admiral
+* Quantum trading with AI-powered superposition states
+* ARIA: Personal AI companion with consciousness evolution
+* Team maximum: 4 players for balance
+* Faction reputation scale: -1000 (Hostile) to +1000 (Allied)
+
+TERMINOLOGY:
+
+UNIVERSE_STRUCTURE:
+* Galaxy: Complete game universe containing all regions
+* Region: Large territorial division (Central Nexus or Regional Territory)
+* Central Nexus: Primary region with 5000 sectors, starter area
+* Regional Territory: Player-created region with 500 sectors
+* Cluster: Group of related sectors within a region
+* Sector: Fundamental unit of space containing ports/planets/ships
+* Warp Tunnel: Player-created FTL connection between sectors
+* Coordinates: X,Y,Z position of sector in 3D space
+
+ENTITIES:
+* Player: Human-controlled captain with ship, credits, inventory
+* Ship: Player's primary vessel with cargo/drone/defense capabilities
+* Escape Pod: Indestructible survival craft, high turn cost
+* Planet: Colonizable celestial body generating resources
+* Port: Trading station with class (0-11) determining inventory
+* Drone: Autonomous combat unit (1000 credits each)
+* Team: Cooperative alliance of up to 4 players
+* Faction: NPC organization with reputation system
+* NPC: Non-player character (pirates, traders, military)
+
+RESOURCES:
+* Ore: Construction material (15-45 credits)
+* Basic Food: Population survival (8-25 credits)
+* Gourmet Food: Enhanced colony development (30-70 credits)
+* Fuel: Ship propulsion (20-60 credits)
+* Technology: Ship upgrades (50-120 credits)
+* Exotic Technology: Cutting-edge modifications (150-300 credits)
+* Luxury Goods: High-end merchandise (75-200 credits)
+* Population: Colonization requirement (50 credits, Earth only)
+* Quantum Shards: Rare fragments, 5 combine to 1 crystal
+* Quantum Crystals: Required for warp tunnel creation
+* Genesis Devices: Create new colonizable planet
+* Prismatic Ore: Ultra-rare hull reinforcement material
+* Photonic Crystals: Rare sensor/weapon enhancement material
+* Credits: Universal currency, never lost on ship destruction
+
+QUANTUM_TRADING:
+* Quantum Trading: AI-powered trading with superposition states
+* Superposition State: Trade exists in multiple potential outcomes
+* Ghost Trade: Unresolved quantum trade in flux
+* Trade Cascade: Multiple linked quantum trades
+* Probability Wave: Outcome likelihood distribution
+* Quantum Collapse: Final resolution of superposition to single outcome
+* Trading DNA: Personal trading pattern evolved by ARIA
+* Market Manipulation Detection: AI analysis of price anomalies
+* Entangled Trades: Linked trades affecting each other's outcomes
+
+AI_SYSTEMS:
+* ARIA (Adaptive Reactive Intelligence Assistant): Personal AI companion
+* Consciousness Evolution: ARIA's learning and personality development
+* Trading DNA: Unique player trading pattern profile
+* Quantum Intelligence: AI analysis of quantum trading mechanics
+* Market Prediction: AI-powered price forecasting
+* Anomaly Detection: AI identification of market manipulation
+* Cross-System Intelligence: ARIA integration across game features
+* Memory Persistence: ARIA's triple-encrypted local memory storage
+* Voice Integration: Mobile voice command capability
+
+PLAYER_SYSTEMS:
+* Turn: Fundamental action currency, 1000 per day
+* Credits: Universal currency, retained on ship destruction
+* Cargo: Ship storage for commodities/population
+* Inventory: Personal storage for special items
+* Reputation: Standing with factions (-1000 to +1000)
+* Military Rank: Achievement-based progression (18 ranks)
+* Experience: Earned through trading, combat, exploration
+* Team Treasury: Shared resource storage (12 resource types)
+* First Login: AI-powered onboarding experience with ARIA
+
+COMBAT:
+* Combat Initiation: Player-initiated attack (costs turns)
+* Defense: Automatic response (zero turns)
+* Shields: First defensive layer, regenerates when docked
+* Hull: Second defensive layer, requires repair
+* Drones: Autonomous combat units (1000 credits each)
+* Firepower: Offensive capability rating
+* Fleet Battle: Coordinated multi-ship combat
+* Planetary Defense: Citadels, fighters, shields protecting planets
+* Salvage: Resources recovered from defeated enemies
+
+COLONIZATION:
+* Colonization: Claiming planet (10k population + 10k credits)
+* Infrastructure: Factories, farms, mines, defenses on planets
+* Citadel: Planetary defense structure (levels 1-10)
+* Production: Automated resource generation
+* Specialization: Planet type (Agricultural, Industrial, Military, Research, Balanced)
+* Population Growth: Natural expansion after planet establishment
+* Terraforming: Genesis Device planet creation
+
+GOVERNANCE:
+* Regional Territory: Player-created and governed region (500 sectors)
+* Governance: Management of Regional Territory
+* Regional Policies: Laws and rules set by territory owner
+* Citizenship: Membership in Regional Territory
+* Taxes: Revenue from territory economic activity
+* Infrastructure Development: Building trade networks and facilities
+
+GAME_MECHANICS:
+* Dock: Attach to port (1 turn), enables zero-turn trading
+* Undock: Detach from port (1 turn)
+* Travel: Move between sectors (1 turn, modified by ship speed)
+* Port Class: Determines commodity buy/sell inventory (0-11)
+* Market Dynamics: Supply/demand price fluctuations
+* Ship Insurance: Coverage for ship destruction (Basic/Standard/Premium)
+* Ship Upgrades: Enhancements to engines/cargo/shields/hull/sensors
+* Daily Reset: Turn allocation refresh, unused turns expire
+
+SPECIAL_LOCATIONS:
+* Earth (Sector 1): Exclusive source of population
+* Sol Station (Class 0): Buys and sells all commodities
+* Black Hole Port (Class 8): Buys all, sells nothing
+* Nova Port (Class 9): Sells all, buys nothing
+* Shipyard: Ship purchase and upgrade facility
+* Military Outpost: Drone purchase location
+* Faction Headquarters: Mission and reputation management
+
+CONSTRAINTS:
+* Turns: 1000 per day, no carryover
+* Team Size: Maximum 4 players
+* Population Source: Only from Earth (Sector 1)
+* Quantum Crystals: Require 5 Quantum Shards to create
+* Credits: Never lost on ship destruction
+* Cargo: Always lost on ship destruction
+* Colonization Minimum: 10,000 population + 10,000 credits
+* Warp Jumper: 1 per player maximum
+* Regional Territory Size: Fixed at 500 sectors
+
+RELATED_SPECS:
+* GameMechanics.aispec - Core gameplay systems and turn costs
+* Resources.aispec - Commodity details and strategic resources
+* Ships.aispec - Ship specifications and capabilities
+* Ranking.aispec - Military progression system
+* See FEATURES/DEFINITIONS/TERMINOLOGY.md for comprehensive terminology documentation
+
+FILES:
+- /DOCS/FEATURES/DEFINITIONS/TERMINOLOGY.md - Comprehensive game terminology reference
+- /DOCS/FEATURES/DEFINITIONS/GAME_RULES.md - Core game mechanics documentation
+- /services/gameserver/src/models/ - Data models for all game entities
+- /services/gameserver/src/game/ - Game logic and mechanics implementation
+
+EXAMPLES:
+```python
+# Basic turn consumption
+player.turns = 1000  # Daily allocation
+player.travel_to_sector(42)  # -1 turn
+player.dock()  # -1 turn
+player.trade("ORE", quantity=100, action="BUY")  # 0 turns (docked)
+player.undock()  # -1 turn
+# Remaining: 997 turns
+
+# Resource acquisition flow
+earth = Sector(id=1)
+player.dock(earth.port)
+player.buy("POPULATION", quantity=10000, price=50)  # 500,000 credits
+# Cargo: 10,000 units used (1 per population)
+player.travel_to(target_sector)
+player.colonize(planet, population=10000, credits=10000)
+# Planet now owned, generating income
+
+# Quantum trading
+aria = player.get_aria()
+trade_recommendation = aria.analyze_quantum_opportunity(
+    commodity="EXOTIC_TECHNOLOGY",
+    market_conditions=current_market
+)
+# Result: Superposition state with probability distribution
+# Trade enters ghost state until quantum collapse
+
+# Combat encounter
+defender.ship.shields = 700
+defender.ship.hull = 800
+attacker.initiate_combat(defender)
+# Attacker pays turns, defender pays zero
+# Combat resolves based on drones, firepower, shields, hull
+
+# Faction reputation
+player.reputation["FEDERATION"] = 500  # Friendly
+mission = faction.get_mission(player)
+player.complete_mission(mission)
+player.reputation["FEDERATION"] += 50  # Now 550
+# Better prices at Federation ports, access to advanced missions
+```

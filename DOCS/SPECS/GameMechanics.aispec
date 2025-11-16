@@ -1,0 +1,152 @@
+OVERVIEW:
+SectorWars 2102 core gameplay mechanics covering turn-based systems, combat resolution, trading economy, colonization requirements, and ship management systems.
+
+FACTS:
+* Turn-based game with 1000 turns allocated per day
+* Unused turns do not carry over to next day
+* Turn consumption: travel (1 turn), dock/undock (1 turn each), combat initiation (varies), planetary development (varies)
+* Zero turn cost: defending attacks, upgrading ships, trading while docked
+* Combat success based on: drone count, ship type, shields, hull, random elements
+* Ship destruction ejects player to indestructible escape pod with all credits retained
+* Escape pods have substantially higher turn cost for movement
+* Commodities trade through ports with 12 class types (0-11)
+* Prices fluctuate based on supply/demand and sector characteristics
+* Planet colonization requires 10,000 population units + 10,000 credits
+* Population purchased from Earth (Sector 1) at 50 credits per unit
+* Team maximum: 4 players for balance
+* Ship insurance available at friendly ports for partial value recovery
+* Credits stored virtually (never lost on ship destruction)
+* Cargo lost on ship destruction
+
+TERMINOLOGY:
+* Turn: Fundamental action currency, 1000 per day allocation
+* Sector: Fundamental unit of space, contains ports/planets/ships/drones
+* Port: Trading station with class (0-11) determining buy/sell inventory
+* Dock: Attach to port (1 turn cost), enables instant trading
+* Escape Pod: Indestructible survival craft, high turn cost for movement
+* Colonization: Claiming planet with 10k population + 10k credits
+* Team: Cooperative alliance (max 4 players) with shared resources
+* Drones: Autonomous combat units (1000 credits each)
+* Citadel: Planetary defense structure with levels 1-10
+
+TURN_COSTS:
+* Sector travel: 1 turn (modified by ship speed)
+* Dock: 1 turn
+* Undock: 1 turn
+* Trading while docked: 0 turns
+* Combat initiation: Varies by target
+* Defending: 0 turns (automatic)
+* Ship upgrades: 0 turns
+* Planetary development: Varies
+
+SHIP_ACQUISITION:
+* Starting ship: Light Freighter (received at first login)
+* Purchase locations: Major shipyards
+* Insurance: Available at friendly ports
+* Destruction result: Eject to escape pod, retain credits, lose cargo
+* Manual eject: Player can abandon ship (leaves intact for others to claim)
+
+COMBAT_SYSTEM:
+* Combat drones: 1000 credits each from military outposts
+* Ship drone capacity: 0-12 depending on ship type
+* Combat triggers: player attack, hostile NPC sectors, targeted by enemies
+* Resolution factors: drone count, ship defensive stats, random tactical elements
+* Turn cost: Attacker pays turns, defender pays zero
+
+TRADING_ECONOMY:
+* Commodities: Ore, Basic Food, Gourmet Food, Fuel, Technology, Exotic Technology, Luxury Goods
+* Port classes determine buy/sell inventory
+* Price spread: typical buy price = sell price * 0.8
+* Market dynamics: prices rise in shortages, fall in surplus
+* Player impact: high trading volume temporarily affects sector values
+* Population: Special commodity only from Earth, 50 credits/unit
+
+PORT_CLASSES:
+* Class 0 (Sol Station): Buys/sells all commodities
+* Class 1: Buys Ore, sells Basic Food/Fuel/Technology
+* Class 2: Buys Basic Food, sells Ore/Fuel/Technology
+* Class 3: Buys Fuel, sells Ore/Basic Food/Technology
+* Class 4: Buys Technology, sells Ore/Basic Food/Fuel
+* Class 5: Buys Luxury Goods, sells Ore/Basic Food/Fuel/Technology
+* Class 6: Buys Ore+Basic Food, sells Fuel+Technology
+* Class 7: Buys Fuel+Technology, sells Ore+Basic Food
+* Class 8 (Black Hole): Buys all, sells nothing
+* Class 9 (Nova): Sells all, buys nothing
+* Class 10: Buys Gourmet Food, sells Technology+Luxury Goods
+* Class 11: Buys Exotic Technology, sells advanced components
+
+COLONIZATION_SYSTEM:
+* Requirements: 10,000 population units + 10,000 credits
+* Transport: Each population unit occupies 1 cargo space
+* Development: Factory, Farm, Mine, Defense (levels 1-10), Research
+* Income: Based on population and infrastructure
+* Population growth: Natural expansion over time once established
+* Specialization types: Agricultural, Industrial, Military, Research, Balanced
+
+TEAM_MECHANICS:
+* Maximum members: 4 players
+* Shared resources: Team treasury with 12 resource types
+* Collective defense: Coordinated territory protection
+* Team planets: Shared production benefits
+* Fleet operations: Multi-ship coordinated combat
+
+PLAYER_PROGRESSION:
+* Credit accumulation: Total wealth earned
+* Planets owned: Territory control metric
+* Citadel levels: Defensive infrastructure development (1-10)
+* Ports owned: Commercial infrastructure control
+* Ships owned: Fleet size and composition
+* Military rank: Achievement-based (see Ranking.aispec)
+
+CONSTRAINTS:
+* Turns cannot exceed daily allocation (1000)
+* Unused turns expire at day rollover
+* Teams limited to 4 players maximum
+* Planet colonization minimum: 10k population + 10k credits
+* Population only available from Earth (Sector 1)
+* Credits never lost on ship destruction
+* Cargo always lost on ship destruction
+* Escape pod movement has high turn cost penalty
+* Combat initiation costs turns, defense is free
+
+RELATED_SPECS:
+* Ships.aispec - Complete ship specifications and stats
+* Resources.aispec - Commodity types, prices, strategic resources
+* Ranking.aispec - Military ranking progression system
+* GameConcepts.aispec - Core terminology and definitions
+* See FEATURES/DEFINITIONS/GAME_RULES.md for detailed design documentation
+
+FILES:
+- /DOCS/FEATURES/DEFINITIONS/GAME_RULES.md - Detailed game rules documentation
+- /services/gameserver/src/game/turn_manager.py - Turn allocation and consumption logic
+- /services/gameserver/src/game/combat.py - Combat resolution algorithms
+- /services/gameserver/src/game/trading.py - Trading and port systems
+- /services/gameserver/src/game/colonization.py - Planet claiming and development
+- /services/gameserver/src/models/player.py - Player state and progression tracking
+
+EXAMPLES:
+```python
+# Turn consumption example
+player.turns = 1000  # Daily allocation
+player.move_to_sector(sector_id=42)  # Costs 1 turn (modified by ship speed)
+player.dock()  # Costs 1 turn
+player.buy_commodity("ORE", 100)  # 0 turns while docked
+player.sell_commodity("FUEL", 50)  # 0 turns while docked
+player.undock()  # Costs 1 turn
+# Remaining turns: ~997
+
+# Combat resolution (defender pays no turns)
+attacker.initiate_combat(defender)  # Attacker pays turns
+# Combat resolved based on:
+# - attacker.drones vs defender.drones
+# - attacker.ship.firepower vs defender.ship.shields
+# - Random tactical elements
+# Defender turn count unchanged
+
+# Colonization requirements
+if player.credits >= 10000 and player.cargo.population >= 10000:
+    player.colonize_planet(planet_id)
+    player.credits -= 10000
+    player.cargo.population -= 10000
+    # Planet now owned, generates passive income
+```

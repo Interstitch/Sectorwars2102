@@ -1,0 +1,217 @@
+OVERVIEW:
+SectorWars 2102 resource economy covering 7 core trading commodities, strategic resources (quantum shards, population), and rare materials with price ranges, acquisition methods, and strategic uses.
+
+FACTS:
+* 7 core trading commodities: Ore, Basic Food, Gourmet Food, Fuel, Technology, Exotic Technology, Luxury Goods
+* 4 strategic resources: Population, Quantum Shards, Quantum Crystals, Genesis Devices
+* 2 rare materials: Prismatic Ore, Photonic Crystals
+* Port classes (0-11) determine commodity buy/sell availability
+* Prices fluctuate based on supply/demand and regional variations
+* 5 Quantum Shards combine to create 1 Quantum Crystal
+* Quantum Crystals required for player-created warp tunnels
+* Population only available from Earth (Sector 1) at 50 credits/unit
+* Each population unit occupies 1 cargo space during transport
+* Credits never stored on ship (virtual, never lost on destruction)
+* Team treasury supports 12 resource types for shared storage
+
+TERMINOLOGY:
+* Commodity: Tradeable resource bought/sold at ports
+* Strategic Resource: Special materials for advanced gameplay
+* Rare Material: Extremely uncommon resources with unique properties
+* Port Class: Determines which commodities port buys/sells
+* Market Dynamics: Supply/demand price fluctuations
+* Team Treasury: Shared resource storage for team members
+
+CORE_COMMODITIES:
+Ore:
+  price_range: 15-45 credits/unit
+  usage: Construction, manufacturing, repairs
+  value_pattern: Highest in industrial sectors, lowest near mining operations
+  description: Universal currency of construction
+
+BasicFood:
+  price_range: 8-25 credits/unit
+  usage: Population survival, colonization requirement
+  value_pattern: Highest in overcrowded sectors, lowest near agricultural worlds
+  description: Minimum requirement for colonization
+
+GourmetFood:
+  price_range: 30-70 credits/unit
+  usage: Enhanced colony development, production efficiency boost
+  value_pattern: Highest in wealthy sectors, rarely found in frontier
+  description: Luxury foodstuffs and exotic ingredients
+
+Fuel:
+  price_range: 20-60 credits/unit
+  usage: Ship propulsion, station operations
+  value_pattern: Highest in remote sectors, lowest near refining operations
+  consumption: Increases with ship size and travel distance
+
+Technology:
+  price_range: 50-120 credits/unit
+  usage: Ship upgrades, advanced infrastructure
+  value_pattern: Highest in frontier sectors, lowest near industrial hubs
+  description: Advanced components and equipment
+
+ExoticTechnology:
+  price_range: 150-300 credits/unit
+  usage: Cutting-edge modifications, specialized facilities
+  value_pattern: Highest in research sectors/military outposts
+  description: Rare prototypes and experimental devices
+
+LuxuryGoods:
+  price_range: 75-200 credits/unit
+  usage: High-end merchandise demand satisfaction
+  value_pattern: Highest in wealthy central sectors, lowest in production zones
+  profit: Highest margins but volatile markets
+
+STRATEGIC_RESOURCES:
+Population:
+  cost: 50 credits/unit
+  source: Earth (Sector 1) only
+  cargo_space: 1 unit per population
+  colonization_requirement: 10,000 units minimum
+  growth: Natural expansion after planet establishment
+  usage: Required for planet colonization and population growth
+
+QuantumShards:
+  rarity: Very rare
+  acquisition: Found in nebulae and anomalies
+  usage: 5 shards → 1 Quantum Crystal
+  locations: Dangerous unexplored regions
+  description: Crystalline fragments with exotic energy
+
+QuantumCrystals:
+  rarity: Extremely rare
+  creation: Assemble 5 Quantum Shards at specialized facilities
+  usage: Essential for player-created warp tunnels
+  strategic_value: Enables custom navigation networks
+
+GenesisDevices:
+  usage: Create new colonizable planet in empty sector
+  ship_capacity: 0-5 depending on ship type
+  strategic_use: Custom territory expansion
+
+RARE_MATERIALS:
+PrismaticOre:
+  rarity: Extremely rare (1 in 10,000 asteroids)
+  usage: Ultra-lightweight hull reinforcement, superior ship construction
+  acquisition: Extensive asteroid field exploration and mining
+
+PhotonicCrystals:
+  rarity: Very rare (specific nebula types only)
+  usage: Advanced sensors, energy weapon enhancement
+  acquisition: Navigate through dangerous nebula clouds
+
+PORT_CLASS_INVENTORY:
+Class0_SolStation: buys=ALL, sells=ALL
+Class1: buys=[Ore], sells=[BasicFood,Fuel,Technology]
+Class2: buys=[BasicFood], sells=[Ore,Fuel,Technology]
+Class3: buys=[Fuel], sells=[Ore,BasicFood,Technology]
+Class4: buys=[Technology], sells=[Ore,BasicFood,Fuel]
+Class5: buys=[LuxuryGoods], sells=[Ore,BasicFood,Fuel,Technology]
+Class6: buys=[Ore,BasicFood], sells=[Fuel,Technology]
+Class7: buys=[Fuel,Technology], sells=[Ore,BasicFood]
+Class8_BlackHole: buys=ALL, sells=NONE
+Class9_Nova: buys=NONE, sells=ALL
+Class10: buys=[GourmetFood], sells=[Technology,LuxuryGoods]
+Class11: buys=[ExoticTechnology], sells=[AdvancedComponents]
+
+TEAM_TREASURY_RESOURCES:
+* Ore
+* Basic Food
+* Gourmet Food
+* Fuel
+* Technology
+* Exotic Technology
+* Luxury Goods
+* Population
+* Quantum Shards
+* Quantum Crystals
+* Prismatic Ore
+* Photonic Crystals
+
+MARKET_DYNAMICS:
+* Supply/demand: Prices adjust based on local availability
+* Regional variations: Different sectors value resources differently
+* Distance premium: Farther transport typically = higher prices
+* Player impact: High trading volume temporarily affects sector values
+* Faction modifiers: Reputation affects pricing at faction-controlled ports
+
+ACQUISITION_METHODS:
+Trading:
+  method: Buy low at production sectors, sell high at shortage sectors
+  strategy: Efficient routes between complementary ports
+  optimization: Maximize cargo capacity, optimize travel paths
+
+Production:
+  method: Establish colonies to generate specific resources
+  investment: Infrastructure for improved efficiency
+  automation: Automated generation over time
+  specialization: Focus planets on optimal commodity output
+
+Combat:
+  method: Attack traders/pirates to seize cargo
+  risk: Combat costs turns, potential ship loss
+  salvage: Abandoned ships/stations may contain resources
+
+Exploration:
+  method: Discover uncharted sectors with valuable deposits
+  rare_materials: Locate quantum shards in dangerous regions
+  route_mapping: Find efficient trade routes between distant markets
+
+CONSTRAINTS:
+* Population only available from Earth (Sector 1)
+* Quantum Crystals require 5 Quantum Shards
+* Port classes strictly determine buy/sell inventory
+* Cargo lost on ship destruction
+* Credits never lost (virtual storage)
+* Team treasury limited to 12 resource types
+* Rare materials require specific location types (asteroids, nebulae)
+
+RELATED_SPECS:
+* GameMechanics.aispec - Trading economy and port systems
+* Ships.aispec - Cargo capacity by ship type
+* GameConcepts.aispec - Core resource terminology
+* See FEATURES/DEFINITIONS/RESOURCE_TYPES.md for detailed design documentation
+
+FILES:
+- /DOCS/FEATURES/DEFINITIONS/RESOURCE_TYPES.md - Detailed resource documentation
+- /services/gameserver/src/game/resources.py - Resource management logic
+- /services/gameserver/src/game/trading.py - Trading and pricing algorithms
+- /services/gameserver/src/game/ports.py - Port class inventory management
+- /services/gameserver/src/models/commodity.py - Commodity data models
+
+EXAMPLES:
+```python
+# Trading example - buy low, sell high
+port_a = Port(class_type=1)  # Buys Ore
+port_b = Port(class_type=2)  # Sells Ore at different price
+
+# Buy at Port A (mining operation, low price)
+player.buy("ORE", quantity=100, price=20)  # Total: 2000 credits
+
+# Travel to Port B (industrial sector, high price)
+player.sell("ORE", quantity=100, price=40)  # Total: 4000 credits
+# Profit: 2000 credits (minus travel costs)
+
+# Quantum Crystal creation
+player.quantum_shards = 5
+facility.combine_shards()
+# Result: 1 Quantum Crystal
+player.quantum_shards = 0
+player.quantum_crystals = 1
+
+# Team treasury deposit
+team.treasury.deposit("ORE", quantity=500, from_player=player)
+team.treasury.withdraw("FUEL", quantity=100, to_player=teammate)
+
+# Population transport for colonization
+earth = Sector(id=1)
+player.dock(earth.port)
+player.buy("POPULATION", quantity=10000, price=50)  # Cost: 500,000 credits
+# Cargo space used: 10,000 units
+player.travel_to(target_planet_sector)
+player.colonize(planet, population=10000, credits=10000)
+# Planet now owned and generating income
+```

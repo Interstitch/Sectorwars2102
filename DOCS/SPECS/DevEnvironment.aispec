@@ -1,40 +1,38 @@
 OVERVIEW:
-Development workflow spans three environments (local MacBook with Cursor, GitHub Codespaces, and Replit) with process management and containerization options to ensure application consistency and Neon PostgreSQL ensuring data persistence.
+Development workflow spans two environments (local MacBook with Cursor IDE and GitHub Codespaces) using Docker containerization to ensure application consistency and Neon PostgreSQL ensuring data persistence across all environments.
 
 FACTS:
-* Development occurs across three distinct environments
-* Multiple deployment options are available:
-  * Docker-based containers for consistent environment behavior
-  * PM2-based process management for environments like Replit that don't support Docker
+* Development occurs across two distinct environments
+* Docker-based containers for consistent environment behavior across all environments
 * Neon PostgreSQL provides remote database accessible from all environments
 * Environment detection configures appropriate settings automatically
 * Environment variables control connection parameters
-* Replit uses PM2 to manage multiple services without Docker
 * VSCode devcontainer config for Codespaces development
 * Docker Compose orchestrates multi-container development setup
 * Volume mounts enable hot-reloading of code changes
+* GitHub Codespaces is primary cloud development environment
+* All services run in Docker containers (player-client, admin-ui, gameserver)
 
 TERMINOLOGY:
 * Environment Detection: System to identify current development environment
 * Hot Reload: Automatic application restart when code changes
 * Volume Mount: Mechanism to share files between host and container
 * Devcontainer: VSCode container configuration for development
-* Replit: Cloud IDE with iPad compatibility
-* PM2: Process Manager for Node.js applications (used for all services in Replit)
+* GitHub Codespaces: Cloud-based development environment with VSCode interface
+* Docker Compose: Tool for defining and running multi-container Docker applications
 
 FILES:
 - /
   ├── .devcontainer/              # VSCode devcontainer configuration
-  │   └── devcontainer.json
-  ├── .replit                     # Replit configuration
-  ├── replit.nix                  # Replit Nix package configuration
+  │   └── devcontainer.json       # Codespaces container setup
   ├── docker-compose.yml          # Main Docker Compose configuration
-  ├── Dockerfile                  # Combined services Dockerfile
-  ├── pm2.replit.config.js        # PM2 configuration for Replit environment
+  ├── services/
+  │   ├── player-client/Dockerfile  # Player client container
+  │   ├── admin-ui/Dockerfile       # Admin UI container
+  │   └── gameserver/Dockerfile     # Game server container
   ├── dev-scripts/
   │   ├── start-unified.sh        # Universal entry point with environment detection
-  │   ├── setup.sh                # Unified setup script for all environments
-  │   └── start-replit-unified.sh # Replit-specific startup with PM2
+  │   └── setup.sh                # Unified setup script for all environments
   └── .env                        # Environment variables
 
 SCHEMA:
@@ -46,57 +44,60 @@ CONSTRAINTS:
 * Services must start automatically in each environment
 * Secrets must not be stored in version control
 * Development database must be isolated from production
-* Code changes must be reflected without service restarts
+* Code changes must be reflected without service restarts via hot-reload
 * Development scripts must be platform-agnostic
-* Replit must function without Docker
+* All environments must use Docker for consistency
 
 EXAMPLES:
-```javascript
-// PM2 configuration example for Replit
-module.exports = {
-  apps: [
-    {
-      name: 'game-api-server',
-      cwd: './services/gameserver',
-      script: 'python3',
-      args: '-m uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload',
-      env: {
-        PYTHONUNBUFFERED: 1,
-        DATABASE_URL: process.env.DATABASE_URL
-      },
-      watch: true,
-      autorestart: true
-    },
-    {
-      name: 'player-client',
-      cwd: './services/player-client',
-      script: 'npm',
-      args: 'run dev -- --host 0.0.0.0 --port 3000',
-      env: {
-        API_URL: 'http://localhost:8080'
-      },
-      autorestart: true
-    },
-    {
-      name: 'admin-ui',
-      cwd: './services/admin-ui',
-      script: 'npm',
-      args: 'run dev -- --host 0.0.0.0 --port 3001',
-      env: {
-        API_URL: 'http://localhost:8080'
-      },
-      autorestart: true
-    }
-  ]
-};
+```yaml
+# docker-compose.yml - Multi-service orchestration
+version: '3.8'
+services:
+  player-client:
+    build:
+      context: ./services/player-client
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./services/player-client:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - gameserver
+
+  admin-ui:
+    build:
+      context: ./services/admin-ui
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./services/admin-ui:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - gameserver
+
+  gameserver:
+    build:
+      context: ./services/gameserver
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./services/gameserver:/app
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - PYTHONUNBUFFERED=1
 ```
 
 ```bash
 # Environment detection script example
 detect_environment() {
-  if [ -n "$REPL_ID" ] || [ -n "$REPL_SLUG" ] || [ -d "/home/runner" ]; then
-    echo "replit"
-  elif [ -n "$CODESPACE_NAME" ] || [ -n "$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" ]; then
+  if [ -n "$CODESPACE_NAME" ] || [ -n "$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" ]; then
     echo "codespaces"
   else
     echo "local"
@@ -104,18 +105,26 @@ detect_environment() {
 }
 
 ENV=$(detect_environment)
-case "$ENV" in
-  "replit")
-    echo "Running in Replit environment"
-    if command -v docker &> /dev/null; then
-      docker-compose -f docker-compose.yml -f docker-compose.replit.yml up
-    else
-      ./dev-scripts/start-replit-unified.sh
-    fi
-    ;;
-  "codespaces"|"local")
-    echo "Running in $ENV environment"
-    docker-compose up
-    ;;
-esac
+echo "🚀 Starting in $ENV environment"
+docker-compose up
+
+# Start individual service
+docker-compose up player-client
+
+# Run commands inside containers
+docker-compose exec gameserver poetry run pytest
+docker-compose exec player-client npm run typecheck
+
+# View logs
+docker-compose logs -f gameserver
+```
+
+```bash
+# Codespaces-specific port forwarding
+# Ports are automatically forwarded and accessible via:
+# https://<codespace-name>-<port>.app.github.dev
+# Example:
+# Player Client: https://codespace-name-3000.app.github.dev
+# Admin UI: https://codespace-name-3001.app.github.dev
+# Game Server: https://codespace-name-8080.app.github.dev
 ```
