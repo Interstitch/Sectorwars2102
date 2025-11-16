@@ -1,6 +1,8 @@
 # Trading & Economy API
 
-OVERVIEW: Player trading operations, market intelligence, and AI-powered quantum trading recommendations.
+OVERVIEW: Player trading operations and port-based commodity exchange.
+
+NOTE: Quantum Trading system archived for post-launch (see FUTURE_FEATURES/quantum_trading/README.md)
 
 BASE_PATH: /api/v1
 AUTH_REQUIRED: Yes (JWT Bearer token)
@@ -13,18 +15,35 @@ DEPENDENCIES: Player must have active ship, some endpoints require being docked 
 * Buy price is typically 80% of sell price at ports
 * Cargo capacity determined by ship type
 * Market prices tracked in MarketPrice model, transactions in MarketTransaction model
-* Quantum trading system provides AI recommendations based on player's personal market observations
-* Ghost trades allow risk-free strategy testing
-* Trade cascades enable multi-step trading strategies across explored space
-* ARIA personal intelligence evolves trading patterns (Trade DNA) based on player behavior
+* Prices fluctuate based on supply/demand and regional variations
+* Port classes (0-11) determine which commodities are bought/sold
 
 ## COMMODITIES
 
-Standard commodities: ORE, ORGANICS, EQUIPMENT, FUEL, LUXURY, TECHNOLOGY, COLONISTS
+**Core Commodities (7):**
+- ORE - Construction, manufacturing, repairs (15-45 credits/unit)
+- BASIC_FOOD - Population survival, colonization (8-25 credits/unit)
+- GOURMET_FOOD - Enhanced colony development (30-70 credits/unit)
+- FUEL - Ship propulsion, station operations (20-60 credits/unit)
+- TECHNOLOGY - Ship upgrades, advanced infrastructure (50-120 credits/unit)
+- EXOTIC_TECHNOLOGY - Cutting-edge modifications (150-300 credits/unit)
+- LUXURY_GOODS - High-end merchandise (75-200 credits/unit)
+
+**Strategic Resources (4):**
+- POPULATION - Planet colonization (50 credits/unit fixed, Sector 1 only)
+- QUANTUM_SHARDS - Crafting ingredient for Quantum Crystals (rare)
+- QUANTUM_CRYSTALS - Player-created warp gates (extremely rare)
+- COMBAT_DRONES - Automated ship defense (1000 credits/unit fixed)
+
+**Rare Materials (2):**
+- PRISMATIC_ORE - Ultra-lightweight hull reinforcement (asteroid mining)
+- PHOTONIC_CRYSTALS - Advanced sensors, energy weapons (nebula exploration)
+
+See Resources.aispec for detailed resource information.
 
 ## ENDPOINTS
 
-### Basic Trading
+### Trading Operations
 
 * POST /trading/dock - Dock at a port (costs 1 turn)
 * POST /trading/undock - Undock from current port (costs 1 turn)
@@ -32,18 +51,6 @@ Standard commodities: ORE, ORGANICS, EQUIPMENT, FUEL, LUXURY, TECHNOLOGY, COLONI
 * POST /trading/buy - Buy resources from port (requires docked, sufficient credits & cargo space)
 * POST /trading/sell - Sell resources to port (requires docked, resource in cargo)
 * GET /trading/history - Get player's trading history (default limit 20)
-
-### Quantum Trading (AI Intelligence)
-
-* POST /quantum-trading/create-quantum-trade - Create trade in superposition (shows multiple possible futures)
-* POST /quantum-trading/collapse-quantum-trade/{trade_id} - Execute the quantum trade
-* POST /quantum-trading/ghost-trade - Run risk-free trade simulation (requires docked, 5+ port visits for data)
-* POST /quantum-trading/create-cascade - Create multi-step trading strategy through explored space
-* POST /quantum-trading/execute-cascade-step/{cascade_id} - Execute next step in trade cascade
-* GET /quantum-trading/my-patterns - Get evolved trading patterns (Trade DNA)
-* POST /quantum-trading/record-observation - Manually record market observation (auto-recorded when viewing prices)
-* GET /quantum-trading/quantum-state - Get quantum engine state and player's active trades/cascades
-* GET /quantum-trading/recommendations - Get AI trade recommendations based on personal market intelligence
 
 ### Admin Economy
 
@@ -70,29 +77,6 @@ MarketInfoResponse:
   resources: object (commodity -> {quantity, buy_price, sell_price, last_updated})
   port: object {id, name, type, faction, tax_rate}
 
-QuantumTradeRequest:
-  commodity: string (ORE|ORGANICS|EQUIPMENT|FUEL|LUXURY|TECHNOLOGY|COLONISTS), required
-  action: string (buy|sell), required
-  quantity: integer (1-10000 whole units), required
-  price: float (optional, uses market price if not specified), 0-1000000
-
-GhostTradeRequest:
-  commodity: string (commodity type), required
-  action: string (buy|sell), required
-  quantity: integer (1-10000), required
-
-TradeCascadeRequest:
-  strategy_name: string (3-50 chars), required
-  risk_tolerance: float (0.0-1.0), default 0.5
-  trades: array of trade objects (2-10 trades), required
-  target_profit: float (optional, >0)
-  max_jumps: integer (optional, 1-20), default 10
-
-MarketObservationRequest:
-  commodity: string (commodity type), required
-  observed_price: float (0-1000000), required
-  observed_quantity: integer (>0), required
-
 ## RESPONSE SCHEMAS
 
 TradeSuccessResponse:
@@ -105,49 +89,6 @@ DockResponse:
   turns_remaining: integer
   port: object {id, name, type, faction, services}
 
-QuantumTradeResponse:
-  success: boolean
-  quantum_trade_id: string
-  commodity: string
-  action: string
-  quantity: integer
-  success_probability: float (0.0-1.0)
-  superposition_states: array of possible outcome states
-  optimal_execution_time: ISO datetime (optional)
-  manipulation_warning: boolean
-  manipulation_probability: float (only if >0.5)
-
-GhostTradeResponse:
-  success: boolean
-  ghost_trade: object (prediction results) OR error/message if insufficient data
-  data_requirement: integer (number of port visits needed, default 5)
-  timestamp: ISO datetime
-
-TradeCascadeResponse:
-  success: boolean
-  cascade_id: string (if successful)
-  strategy_name: string
-  expected_profit: float
-  total_trades: integer
-  plan: object (cascade execution plan)
-  OR error/message if insufficient exploration
-
-TradingPatternsResponse:
-  success: boolean
-  patterns: array of {pattern_id, type, generation, fitness_score, success_rate, times_used, average_profit, best_profit}
-  total_patterns: integer
-
-QuantumStateResponse:
-  (quantum engine state data)
-  my_active_trades: integer (player's active quantum trades)
-  my_active_cascades: integer (player's active trade cascades)
-
-RecommendationsResponse:
-  success: boolean
-  recommendations: array (AI trade recommendations)
-  generated_at: ISO datetime
-  note: "Based on your personal market observations"
-
 ## ERROR RESPONSES
 
 400 BAD_REQUEST:
@@ -159,30 +100,17 @@ RecommendationsResponse:
   - Player landed on planet (can't dock while landed)
   - Don't have enough resources to sell
   - Port doesn't have enough quantity
-  - Ship location unknown (for cascades)
-  - Cannot plan cascade - insufficient exploration
-  - Failed to record observation
 
 404 NOT_FOUND:
   - Port not found
   - Resource not available at port
   - No active ship found
-  - Quantum trade not found
-  - Trade cascade not found
   - Port doesn't trade this resource
 
 500 INTERNAL_SERVER_ERROR:
   - Trade failed
   - Docking/undocking failed
-  - Failed to create quantum trade
-  - Failed to execute ghost trade
   - Failed to execute trade
-  - Failed to create trade cascade
-  - Failed to execute cascade step
-  - Failed to retrieve trading patterns
-  - Failed to record market observation
-  - Failed to get quantum state
-  - Failed to generate recommendations
 
 ## EXAMPLES
 
@@ -230,57 +158,6 @@ curl -X GET http://localhost:8080/api/v1/trading/history?limit=50 \
   -H "Authorization: Bearer {token}"
 ```
 
-### Quantum Trading (AI Intelligence)
-
-```bash
-# 1. Get AI recommendations based on your market observations
-curl -X GET http://localhost:8080/api/v1/quantum-trading/recommendations \
-  -H "Authorization: Bearer {token}"
-
-# 2. Run a ghost trade (risk-free simulation)
-curl -X POST http://localhost:8080/api/v1/quantum-trading/ghost-trade \
-  -H "Authorization: Bearer {token}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "commodity": "ORGANICS",
-    "action": "buy",
-    "quantity": 500
-  }'
-
-# 3. Create quantum trade in superposition
-curl -X POST http://localhost:8080/api/v1/quantum-trading/create-quantum-trade \
-  -H "Authorization: Bearer {token}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "commodity": "EQUIPMENT",
-    "action": "sell",
-    "quantity": 200
-  }'
-
-# 4. Collapse quantum trade (execute it)
-curl -X POST http://localhost:8080/api/v1/quantum-trading/collapse-quantum-trade/quantum-trade-id \
-  -H "Authorization: Bearer {token}"
-
-# 5. View your evolved trading patterns (Trade DNA)
-curl -X GET http://localhost:8080/api/v1/quantum-trading/my-patterns \
-  -H "Authorization: Bearer {token}"
-
-# 6. Create multi-step trade cascade
-curl -X POST http://localhost:8080/api/v1/quantum-trading/create-cascade \
-  -H "Authorization: Bearer {token}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "strategy_name": "Three-Jump Profit Run",
-    "risk_tolerance": 0.7,
-    "trades": [
-      {"commodity": "ORE", "action": "buy", "quantity": 100},
-      {"commodity": "ORE", "action": "sell", "quantity": 100}
-    ],
-    "target_profit": 50000,
-    "max_jumps": 5
-  }'
-```
-
 ## GAME MECHANICS
 
 **Docking Mechanics:**
@@ -295,14 +172,8 @@ curl -X POST http://localhost:8080/api/v1/quantum-trading/create-cascade \
 - Typical spread: buy_price = sell_price * 0.8
 - Profit comes from finding ports with different price spreads
 - Cargo space limits how much you can carry
-
-**Quantum Trading Intelligence:**
-- Requires 5+ port visits to build market intelligence
-- Ghost trades test strategies without risking resources
-- Quantum trades show probability distributions of outcomes
-- Trade cascades plan multi-jump profit routes through explored space
-- Trading patterns evolve based on player behavior (genetic algorithm)
-- ARIA personal intelligence learns from player's market observations only
+- Port classes (0-11) determine which commodities are bought/sold
+- Prices fluctuate based on supply/demand and regional variations
 
 **Turn Economy:**
 - Moving between sectors costs turns (based on ship type)
@@ -319,6 +190,7 @@ curl -X POST http://localhost:8080/api/v1/quantum-trading/create-cascade \
 
 ---
 
-*Documentation Status: Complete (31 endpoints)*
+*Documentation Status: Complete (14 endpoints)*
 *Last Updated: 2025-11-16*
-*Validated Against: services/gameserver/src/api/routes/trading.py, quantum_trading.py, economy.py*
+*Validated Against: services/gameserver/src/api/routes/trading.py, economy.py*
+*Note: Quantum Trading endpoints archived - see FUTURE_FEATURES/quantum_trading/README.md*

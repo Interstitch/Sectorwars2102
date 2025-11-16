@@ -274,8 +274,11 @@ class EnhancedWebSocketService:
                 await self.send_error(player_id, "Invalid commodities list")
                 return
             
-            # Validate commodities
-            valid_commodities = ["ORE", "ORGANICS", "EQUIPMENT", "FUEL", "LUXURY", "TECHNOLOGY"]
+            # Validate commodities (canonical from RESOURCE_TYPES.md)
+            valid_commodities = [
+                "ORE", "BASIC_FOOD", "GOURMET_FOOD", "FUEL",
+                "TECHNOLOGY", "EXOTIC_TECHNOLOGY", "LUXURY_GOODS"
+            ]
             commodities = [c.upper() for c in commodities if c.upper() in valid_commodities]
             
             if not commodities:
@@ -635,8 +638,12 @@ class EnhancedWebSocketService:
             except (ValueError, TypeError):
                 return False
             
-            # Validate commodity
-            if trade_data.get("commodity") not in ["ORE", "ORGANICS", "EQUIPMENT", "FUEL", "LUXURY", "TECHNOLOGY"]:
+            # Validate commodity (canonical from RESOURCE_TYPES.md)
+            valid_commodities = [
+                "ORE", "BASIC_FOOD", "GOURMET_FOOD", "FUEL",
+                "TECHNOLOGY", "EXOTIC_TECHNOLOGY", "LUXURY_GOODS"
+            ]
+            if trade_data.get("commodity") not in valid_commodities:
                 return False
                 
         elif command_type == "cancel":

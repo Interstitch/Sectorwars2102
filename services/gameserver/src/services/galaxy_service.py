@@ -1232,37 +1232,39 @@ class GalaxyGenerator:
         availability = {}
         
         # Each port has different availability based on type
+        # Resources aligned with canonical RESOURCE_TYPES.md
         base_resources = {
             "FUEL": random.randint(50, 500),
-            "ORGANICS": random.randint(50, 500),
-            "EQUIPMENT": random.randint(50, 500)
+            "BASIC_FOOD": random.randint(50, 500),
+            "TECHNOLOGY": random.randint(50, 500)
         }
-        
+
         # Add type-specific resources
         if port_type == PortType.TRADING:
             base_resources.update({
                 "LUXURY_GOODS": random.randint(100, 300),
-                "MEDICAL_SUPPLIES": random.randint(50, 200)
+                "GOURMET_FOOD": random.randint(50, 200)
             })
         elif port_type == PortType.MILITARY:
             base_resources.update({
-                "EQUIPMENT": random.randint(200, 800),
-                "TECHNOLOGY": random.randint(100, 300)
+                "TECHNOLOGY": random.randint(200, 800),
+                "EXOTIC_TECHNOLOGY": random.randint(50, 150)
             })
         elif port_type == PortType.INDUSTRIAL:
             base_resources.update({
-                "INDUSTRIAL_MATERIALS": random.randint(300, 1000),
-                "EQUIPMENT": random.randint(300, 800)
+                "ORE": random.randint(300, 1000),
+                "TECHNOLOGY": random.randint(300, 800)
             })
         elif port_type == PortType.MINING:
             base_resources.update({
                 "ORE": random.randint(500, 2000),
-                "MINERALS": random.randint(300, 1000)
+                "PRISMATIC_ORE": random.randint(10, 50)  # Rare material
             })
         elif port_type == PortType.SCIENTIFIC:
             base_resources.update({
                 "TECHNOLOGY": random.randint(200, 600),
-                "QUANTUM_COMPONENTS": random.randint(50, 150)
+                "EXOTIC_TECHNOLOGY": random.randint(100, 300),
+                "QUANTUM_SHARDS": random.randint(5, 20)  # Strategic resource
             })
         
         return base_resources
@@ -1271,33 +1273,33 @@ class GalaxyGenerator:
         """Generate resource prices for a port."""
         prices = {}
         
-        # Base prices for common resources
+        # Base prices for common resources (aligned with RESOURCE_TYPES.md ranges)
         base_prices = {
-            "FUEL": {"buy": random.randint(10, 15), "sell": random.randint(8, 12)},
-            "ORGANICS": {"buy": random.randint(12, 18), "sell": random.randint(10, 15)},
-            "EQUIPMENT": {"buy": random.randint(25, 35), "sell": random.randint(20, 30)}
+            "FUEL": {"buy": random.randint(20, 30), "sell": random.randint(40, 50)},
+            "BASIC_FOOD": {"buy": random.randint(10, 15), "sell": random.randint(15, 20)},
+            "TECHNOLOGY": {"buy": random.randint(60, 80), "sell": random.randint(90, 110)}
         }
-        
+
         # Adjust based on port type
         if port_type == PortType.TRADING:
             # Better prices at trading ports
             for resource in base_prices:
                 base_prices[resource]["buy"] = int(base_prices[resource]["buy"] * 1.1)
                 base_prices[resource]["sell"] = int(base_prices[resource]["sell"] * 0.9)
-            
+
             base_prices.update({
-                "LUXURY_GOODS": {"buy": random.randint(80, 120), "sell": random.randint(60, 90)},
-                "MEDICAL_SUPPLIES": {"buy": random.randint(40, 60), "sell": random.randint(30, 45)}
+                "LUXURY_GOODS": {"buy": random.randint(90, 130), "sell": random.randint(140, 180)},
+                "GOURMET_FOOD": {"buy": random.randint(35, 50), "sell": random.randint(50, 65)}
             })
         elif port_type == PortType.INDUSTRIAL:
             base_prices.update({
-                "INDUSTRIAL_MATERIALS": {"buy": random.randint(30, 45), "sell": random.randint(20, 35)},
-                "ORE": {"buy": random.randint(8, 12), "sell": random.randint(5, 9)}
+                "ORE": {"buy": random.randint(18, 25), "sell": random.randint(30, 40)},
+                "TECHNOLOGY": {"buy": random.randint(55, 75), "sell": random.randint(85, 105)}
             })
         elif port_type == PortType.MINING:
             base_prices.update({
-                "ORE": {"buy": random.randint(5, 8), "sell": random.randint(8, 12)},
-                "MINERALS": {"buy": random.randint(15, 25), "sell": random.randint(20, 30)}
+                "ORE": {"buy": random.randint(20, 30), "sell": random.randint(35, 45)},
+                "PRISMATIC_ORE": {"buy": random.randint(500, 700), "sell": random.randint(800, 1200)}  # Rare material
             })
         
         return base_prices

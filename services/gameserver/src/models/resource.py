@@ -10,18 +10,33 @@ from src.core.database import Base
 
 
 class ResourceType(enum.Enum):
-    FUEL = "FUEL"
-    ORGANICS = "ORGANICS"
-    EQUIPMENT = "EQUIPMENT"
-    POPULATION = "POPULATION"
+    """
+    Canonical resource types based on FEATURES/DEFINITIONS/RESOURCE_TYPES.md
+
+    Categories:
+    - Core Commodities (7): Basic trading resources
+    - Strategic Resources (4): Advanced gameplay materials
+    - Rare Materials (4): Endgame high-value materials
+    """
+
+    # Core Commodities (7)
     ORE = "ORE"
-    MINERALS = "MINERALS"
-    LUXURY_GOODS = "LUXURY_GOODS"
+    BASIC_FOOD = "BASIC_FOOD"
+    GOURMET_FOOD = "GOURMET_FOOD"
+    FUEL = "FUEL"
     TECHNOLOGY = "TECHNOLOGY"
-    MEDICAL_SUPPLIES = "MEDICAL_SUPPLIES"
-    INDUSTRIAL_MATERIALS = "INDUSTRIAL_MATERIALS"
-    QUANTUM_COMPONENTS = "QUANTUM_COMPONENTS"
-    EXOTIC_MATTER = "EXOTIC_MATTER"
+    EXOTIC_TECHNOLOGY = "EXOTIC_TECHNOLOGY"
+    LUXURY_GOODS = "LUXURY_GOODS"
+
+    # Strategic Resources (4)
+    POPULATION = "POPULATION"
+    QUANTUM_SHARDS = "QUANTUM_SHARDS"
+    QUANTUM_CRYSTALS = "QUANTUM_CRYSTALS"
+    COMBAT_DRONES = "COMBAT_DRONES"
+
+    # Rare Materials (4)
+    PRISMATIC_ORE = "PRISMATIC_ORE"
+    PHOTONIC_CRYSTALS = "PHOTONIC_CRYSTALS"
 
 
 class ResourceQuality(enum.Enum):

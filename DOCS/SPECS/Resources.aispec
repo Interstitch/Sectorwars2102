@@ -3,7 +3,7 @@ SectorWars 2102 resource economy covering 7 core trading commodities, strategic 
 
 FACTS:
 * 7 core trading commodities: Ore, Basic Food, Gourmet Food, Fuel, Technology, Exotic Technology, Luxury Goods
-* 4 strategic resources: Population, Quantum Shards, Quantum Crystals, Genesis Devices
+* 4 strategic resources: Population, Quantum Shards, Quantum Crystals, Combat Drones
 * 2 rare materials: Prismatic Ore, Photonic Crystals
 * Port classes (0-11) determine commodity buy/sell availability
 * Prices fluctuate based on supply/demand and regional variations
@@ -12,7 +12,7 @@ FACTS:
 * Population available from region's Sector 1 population hub at 50 credits/unit
 * Each population unit occupies 1 cargo space during transport
 * Credits never stored on ship (virtual, never lost on destruction)
-* Team treasury supports 12 resource types for shared storage
+* Team treasury supports 13 resource types for shared storage
 
 TERMINOLOGY:
 * Commodity: Tradeable resource bought/sold at ports
@@ -87,10 +87,12 @@ QuantumCrystals:
   usage: Essential for player-created warp gates
   strategic_value: Enables custom navigation networks
 
-GenesisDevices:
-  usage: Create new colonizable planet in empty sector
-  ship_capacity: 0-5 depending on ship type
-  strategic_use: Custom territory expansion
+CombatDrones:
+  cost: 1000 credits/unit fixed price
+  usage: Automated ship defense, offensive combat support
+  capacity: Ship-type dependent (0-50+ drones)
+  combat_effectiveness: Multiplies ship combat power
+  description: Autonomous combat units for ship-to-ship warfare
 
 RARE_MATERIALS:
 PrismaticOre:
@@ -128,6 +130,7 @@ TEAM_TREASURY_RESOURCES:
 * Population
 * Quantum Shards
 * Quantum Crystals
+* Combat Drones
 * Prismatic Ore
 * Photonic Crystals
 
@@ -166,7 +169,7 @@ CONSTRAINTS:
 * Port classes strictly determine buy/sell inventory
 * Cargo lost on ship destruction
 * Credits never lost (virtual storage)
-* Team treasury limited to 12 resource types
+* Team treasury limited to 13 resource types
 * Rare materials require specific location types (asteroids, nebulae)
 
 RELATED_SPECS:

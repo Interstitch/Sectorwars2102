@@ -100,8 +100,20 @@ class RealTimeMarketService:
         self.cache_hits = 0
         self.cache_misses = 0
         
-        # Commodity configuration
-        self.valid_commodities = ["ORE", "ORGANICS", "EQUIPMENT", "FUEL", "LUXURY", "TECHNOLOGY", "COLONISTS"]
+        # Commodity configuration (aligned with canonical RESOURCE_TYPES.md)
+        # Core Commodities (7)
+        self.valid_commodities = [
+            "ORE", "BASIC_FOOD", "GOURMET_FOOD", "FUEL",
+            "TECHNOLOGY", "EXOTIC_TECHNOLOGY", "LUXURY_GOODS"
+        ]
+        # Strategic Resources (not typically traded on open market)
+        self.strategic_resources = [
+            "POPULATION", "QUANTUM_SHARDS", "QUANTUM_CRYSTALS", "COMBAT_DRONES"
+        ]
+        # Rare Materials
+        self.rare_materials = [
+            "PRISMATIC_ORE", "PHOTONIC_CRYSTALS"
+        ]
         
         # Market analysis thresholds
         self.volatility_threshold = 0.1  # 10% price change triggers alert
@@ -480,15 +492,24 @@ class RealTimeMarketService:
             logger.error(f"Cache storage error: {e}")
     
     def _create_default_snapshot(self, commodity: str) -> MarketSnapshot:
-        """Create default snapshot when no data available"""
+        """Create default snapshot when no data available (prices from RESOURCE_TYPES.md)"""
         base_prices = {
-            "ORE": 50.0,
-            "ORGANICS": 40.0,
-            "EQUIPMENT": 150.0,
-            "FUEL": 30.0,
-            "LUXURY": 200.0,
-            "TECHNOLOGY": 250.0,
-            "COLONISTS": 100.0
+            # Core Commodities (7) - midpoint of price ranges
+            "ORE": 30.0,                    # 15-45 credits
+            "BASIC_FOOD": 16.5,             # 8-25 credits
+            "GOURMET_FOOD": 50.0,           # 30-70 credits
+            "FUEL": 40.0,                   # 20-60 credits
+            "TECHNOLOGY": 85.0,             # 50-120 credits
+            "EXOTIC_TECHNOLOGY": 225.0,     # 150-300 credits
+            "LUXURY_GOODS": 137.5,          # 75-200 credits
+            # Strategic Resources (4)
+            "POPULATION": 50.0,             # 50 credits fixed
+            "QUANTUM_SHARDS": 500.0,        # Very rare
+            "QUANTUM_CRYSTALS": 5000.0,     # Extremely rare
+            "COMBAT_DRONES": 1000.0,        # 1000 credits fixed
+            # Rare Materials (2)
+            "PRISMATIC_ORE": 2000.0,        # Extremely rare
+            "PHOTONIC_CRYSTALS": 1500.0     # Very rare
         }
         
         base_price = base_prices.get(commodity, 100.0)
