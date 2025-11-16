@@ -66,7 +66,7 @@ class Player(Base):
     
     # Many-to-many relationships
     planets = relationship("Planet", secondary="player_planets", back_populates="owner")
-    ports = relationship("Station", secondary="player_stations", back_populates="owner")
+    stations = relationship("Station", secondary="player_stations", back_populates="owner")
     
     # New relationships
     discovered_sectors = relationship("Sector", back_populates="discovered_by")
