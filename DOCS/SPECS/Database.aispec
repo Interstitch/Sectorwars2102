@@ -1,75 +1,913 @@
 OVERVIEW:
-PostgreSQL database hosted on Neon provides persistent storage across all development environments, with SQLAlchemy ORM for database operations and Alembic for migrations.
+PostgreSQL database hosted on Neon provides persistent storage across all development environments. SQLAlchemy ORM handles all database operations with Alembic managing schema migrations. The database supports a multi-regional space trading game with complex player interactions, galaxy navigation, economy, combat, and AI systems.
 
 FACTS:
-* Remote database ensures consistent data across development environments
-* PostgreSQL 17 provides advanced features and performance
-* SQLAlchemy ORM abstracts database operations
-* Alembic handles database migrations automatically
+* Remote PostgreSQL 17 database ensures consistent data across environments
+* SQLAlchemy ORM provides type-safe database operations
+* Alembic handles all schema migrations with rollback support
 * Connection pooling optimizes database performance
 * Separate test database used for automated testing
-* Environment variables control database connection parameters
-* Soft deletion implemented for data recovery capabilities
+* Soft deletion pattern implemented across critical tables (deleted boolean flag)
+* UUID primary keys used for most tables (better distributed systems support)
+* JSONB columns extensively used for flexible, schema-less data
+* Timezone-aware timestamps (DateTime(timezone=True)) throughout
+* Cascade delete rules protect data integrity (CASCADE, SET NULL patterns)
+* Multi-regional architecture with regional isolation and cross-region travel
+* PostgreSQL-specific features: UUID, JSONB, ARRAY types, gen_random_uuid()
 
 TERMINOLOGY:
-* ORM: Object-Relational Mapping (SQLAlchemy)
-* Migration: Database schema change managed by Alembic
-* Connection Pool: Reusable set of database connections
-* Soft Delete: Records marked as deleted but not physically removed
+* ORM: Object-Relational Mapping - SQLAlchemy maps Python classes to database tables
+* Migration: Database schema change managed by Alembic with version control
+* Connection Pool: Reusable set of database connections for performance
+* Soft Delete: Records marked as deleted (deleted=True) but not physically removed
+* Association Table: Many-to-many relationship table (e.g., player_planets, sector_warps)
+* Cascade Delete: Automatic deletion of related records (CASCADE, SET NULL, DELETE-ORPHAN)
+* JSONB: PostgreSQL binary JSON type with indexing and query support
+* Enum: SQLAlchemy Enum type mapped to PostgreSQL ENUM or String column
 
 FILES:
 - /services/gameserver/
   ├── src/
   │   ├── models/
-  │   │   ├── __init__.py
-  │   │   ├── user.py
-  │   ├── database.py       # Database connection configuration
-  │   └── migrations/       # Alembic migration scripts
-  └── alembic.ini          # Alembic configuration
+  │   │   ├── __init__.py                      # Central model registry
+  │   │   ├── user.py                          # Core user accounts
+  │   │   ├── admin_credentials.py             # Admin authentication
+  │   │   ├── player_credentials.py            # Player authentication
+  │   │   ├── oauth_account.py                 # OAuth provider integration
+  │   │   ├── refresh_token.py                 # JWT refresh tokens
+  │   │   ├── mfa.py                           # Multi-factor authentication
+  │   │   ├── audit_log.py                     # Security and compliance tracking
+  │   │   ├── player.py                        # Player game state
+  │   │   ├── team.py                          # Player teams/alliances
+  │   │   ├── team_member.py                   # Team membership with roles
+  │   │   ├── reputation.py                    # Faction reputation system
+  │   │   ├── message.py                       # Player-to-player messaging
+  │   │   ├── galaxy.py                        # Galaxy metadata and statistics
+  │   │   ├── region.py                        # Multi-regional architecture
+  │   │   ├── zone.py                          # Security/policing zones within regions
+  │   │   ├── cluster.py                       # Thematic sector groupings
+  │   │   ├── sector.py                        # Individual navigation spaces
+  │   │   ├── warp_tunnel.py                   # Sector-to-sector connections
+  │   │   ├── ship.py                          # Player ships and specifications
+  │   │   ├── planet.py                        # Planetary entities
+  │   │   ├── port.py                          # Trading stations (to be renamed "stations")
+  │   │   ├── drone.py                         # Combat drones
+  │   │   ├── genesis_device.py                # Planet terraforming devices
+  │   │   ├── fleet.py                         # Multi-ship fleet coordination
+  │   │   ├── resource.py                      # Resources and markets
+  │   │   ├── market_transaction.py            # Trading transaction history
+  │   │   ├── ai_trading.py                    # AI trading predictions
+  │   │   ├── combat.py                        # Combat mechanics
+  │   │   ├── combat_log.py                    # Combat history
+  │   │   ├── game_event.py                    # Dynamic game events
+  │   │   ├── first_login.py                   # New player onboarding
+  │   │   ├── faction.py                       # NPC factions
+  │   │   ├── aria_personal_intelligence.py    # AI assistant memory system
+  │   │   ├── enhanced_ai_models.py            # Comprehensive AI assistant
+  │   │   └── translation.py                   # i18n translation system
+  │   ├── core/
+  │   │   └── database.py                      # Database connection and Base
+  │   └── migrations/                          # Alembic migration scripts
+  │       └── versions/                        # Timestamped migration files
+  └── alembic.ini                              # Alembic configuration
 
-SCHEMA:
-User:
-  id: Integer, primary key
-  username: String(80), unique, nullable=False
-  email: String(120), unique, nullable=False
-  password_hash: String(256)
-  is_admin: Boolean, default=False
-  created_at: DateTime, default=utcnow
-  last_login: DateTime
-  deleted: Boolean, default=False
+DATABASE SCHEMA BY DOMAIN:
 
-CONSTRAINTS:
-* Database connection strings must be stored in environment variables
-* Passwords must be hashed before storage
-* No raw SQL queries (use SQLAlchemy)
-* Transactions must be used for operations affecting multiple records
-* Database schema changes require migrations
-* Database should be accessed only through Game API Server
+═══════════════════════════════════════════════════════════════════════════════
+DOMAIN 1: AUTHENTICATION & SECURITY
+═══════════════════════════════════════════════════════════════════════════════
+
+Table: users
+Purpose: Core user accounts for authentication and authorization
+Primary Key: id (UUID)
+Key Columns:
+  - username (String(50), unique, indexed)
+  - email (String(255), unique, nullable - email is optional)
+  - is_active (Boolean, default=True)
+  - is_admin (Boolean, default=False)
+  - deleted (Boolean, default=False) - soft delete
+  - paypal_subscription_id, subscription_tier, subscription_status - PayPal integration
+  - subscription_started_at, subscription_expires_at (TIMESTAMP)
+Relationships:
+  - 1:1 → admin_credentials (CASCADE delete)
+  - 1:1 → player_credentials (CASCADE delete)
+  - 1:1 → player (CASCADE delete)
+  - 1:1 → mfa_secret (CASCADE delete)
+  - 1:many → oauth_accounts (CASCADE delete)
+  - 1:many → refresh_tokens (CASCADE delete)
+  - 1:many → mfa_attempts (CASCADE delete)
+  - 1:many → owned_regions (SET NULL on delete)
+
+Table: admin_credentials
+Purpose: Separate credential storage for admin accounts (enhanced security)
+Primary Key: user_id (UUID, FK to users.id)
+Key Columns:
+  - password_hash (String(255))
+  - last_password_change (DateTime(timezone=True))
+Cascade: ON DELETE CASCADE (deletes with user)
+
+Table: player_credentials
+Purpose: Separate credential storage for player accounts (enhanced security)
+Primary Key: user_id (UUID, FK to users.id)
+Key Columns:
+  - password_hash (String(255))
+  - last_password_change (DateTime(timezone=True))
+Cascade: ON DELETE CASCADE (deletes with user)
+
+Table: oauth_accounts
+Purpose: OAuth provider integration (GitHub, Google, Steam)
+Primary Key: id (UUID)
+Key Columns:
+  - user_id (UUID, FK to users.id)
+  - provider (String(20)) - 'github', 'google', 'steam'
+  - provider_user_id (String(255))
+  - provider_account_email, provider_account_username (String(255))
+  - access_token, refresh_token (String)
+  - expires_at (DateTime(timezone=True))
+  - deleted (Boolean, default=False) - soft delete
+Constraints:
+  - UNIQUE(provider, provider_user_id) - one account per provider
+Cascade: ON DELETE CASCADE (deletes with user)
+
+Table: refresh_tokens
+Purpose: JWT refresh token management with revocation support
+Primary Key: id (UUID, server_default=gen_random_uuid())
+Key Columns:
+  - user_id (UUID, FK to users.id)
+  - token (String, unique, indexed)
+  - revoked (Boolean, default=False)
+  - expires_at (DateTime(timezone=True))
+Properties:
+  - is_expired, is_valid - computed properties
+Cascade: ON DELETE CASCADE (deletes with user)
+
+Table: mfa_secrets
+Purpose: TOTP (Time-based One-Time Password) secrets for MFA
+Primary Key: id (UUID)
+Key Columns:
+  - user_id (UUID, FK to users.id, unique - one secret per user)
+  - secret (String(32)) - Base32 encoded TOTP secret
+  - is_verified (Boolean, default=False)
+  - backup_codes (String(500)) - JSON array of backup codes
+  - verified_at, last_used (DateTime)
+Cascade: ON DELETE CASCADE (deletes with user)
+
+Table: mfa_attempts
+Purpose: Security monitoring for MFA authentication attempts
+Primary Key: id (UUID)
+Key Columns:
+  - user_id (UUID, FK to users.id)
+  - code_entered (String(10))
+  - success (Boolean)
+  - ip_address (String(45)) - IPv4 or IPv6
+  - user_agent (String(500))
+  - attempt_time (DateTime, default=utcnow)
+  - failure_reason (String(100)) - 'invalid_code', 'expired_code', etc.
+Cascade: ON DELETE CASCADE (deletes with user)
+
+Table: audit_logs
+Purpose: Security and compliance tracking for all API requests
+Primary Key: id (UUID)
+Key Columns:
+  - timestamp (DateTime, indexed)
+  - method (String(10)), path (String(255), indexed), status_code (Integer)
+  - duration_ms (Integer)
+  - user_id (UUID, indexed, nullable - can be anonymous)
+  - user_type (String(20)) - 'admin', 'player', 'anonymous'
+  - client_ip (String(45)), user_agent (Text)
+  - action (String(100), indexed) - 'login', 'logout', 'economy_intervention'
+  - resource_type (String(50)), resource_id (UUID)
+  - query_params, request_body, security_flags (JSON) - sanitized data
+  - violation_detected (String(100)) - type of security violation if any
+Indexes:
+  - timestamp, path, action, user_id - for audit queries
+
+═══════════════════════════════════════════════════════════════════════════════
+DOMAIN 2: PLAYER & SOCIAL
+═══════════════════════════════════════════════════════════════════════════════
+
+Table: players
+Purpose: Player game state and in-game profile
+Primary Key: id (UUID)
+Key Columns:
+  - user_id (UUID, FK to users.id, unique) - 1:1 relationship with user
+  - nickname (String(50), nullable) - optional in-game name
+  - credits (Integer, default=10000)
+  - turns (Integer, default=1000)
+  - reputation (JSONB, default={}) - faction reputation scores
+  - current_ship_id (UUID, FK to ships.id, SET NULL)
+  - home_sector_id, current_sector_id (Integer, default=1)
+  - team_id (UUID, FK to teams.id, SET NULL)
+  - attack_drones, defense_drones, mines, genesis_devices (Integer)
+  - insurance (JSONB) - ship insurance details
+  - last_game_login (DateTime(timezone=True))
+  - turn_reset_at (DateTime(timezone=True))
+  - settings, first_login (JSONB)
+  - is_active (Boolean, default=True) - player can be deactivated
+Multi-Regional Fields:
+  - home_region_id, current_region_id (UUID, FK to regions.id)
+  - is_galactic_citizen (Boolean, default=False) - unrestricted travel
+Relationships:
+  - 1:1 → user (CASCADE delete)
+  - 1:1 → current_ship (SET NULL - ship deletion doesn't delete player)
+  - many:1 → team (SET NULL - team deletion doesn't delete player)
+  - 1:many → ships (CASCADE delete-orphan)
+  - 1:many → drones (CASCADE delete-orphan)
+  - 1:many → faction_reputations (CASCADE delete-orphan)
+  - many:many → planets (via player_planets association table)
+  - many:many → ports (via player_ports association table)
+  - 1:many → regional_memberships (CASCADE delete-orphan)
+  - 1:many → inter_regional_travels (CASCADE delete-orphan)
+  - 1:many → ai_recommendations, aria_memories, aria_market_intelligence (CASCADE)
+Properties:
+  - is_team_leader, username (computed)
+  - can_travel_between_regions (based on citizenship or memberships)
+
+Table: teams
+Purpose: Player teams/alliances with shared resources
+Primary Key: id (UUID)
+Key Columns:
+  - name (String(80), unique)
+  - description (Text)
+  - leader_id (UUID, nullable) - player who leads team
+  - tag (String(10)) - short team tag like [TAG]
+  - logo (String) - URL to team logo
+  - is_public (Boolean, default=True)
+  - max_members (Integer, default=4)
+  - recruitment_status (String(20)) - OPEN, INVITE_ONLY, CLOSED
+  - sector_claims (ARRAY(Integer)) - sectors claimed by team
+  - home_sector_id (Integer)
+  - reputation_calculation_method (String(20)) - AVERAGE, LOWEST, LEADER
+Treasury Resources (all Integer, default=0):
+  - treasury_credits, treasury_fuel, treasury_organics, treasury_equipment
+  - treasury_technology, treasury_luxury_items, treasury_precious_metals
+  - treasury_raw_materials, treasury_plasma, treasury_bio_samples
+  - treasury_dark_matter, treasury_quantum_crystals
+Team Statistics:
+  - total_credits, total_planets (Integer)
+  - combat_rating, trade_rating (Float)
+Management (all JSONB):
+  - join_requirements, member_roles, resource_sharing
+  - invitation_codes (JSONB array of active codes)
+Relationships:
+  - 1:many → members (Player, SET NULL on delete)
+  - 1:many → team_members (TeamMember, CASCADE delete-orphan)
+  - 1:1 → reputation (TeamReputation, CASCADE delete-orphan)
+  - 1:many → controlled_sectors (SET NULL on delete)
+  - 1:many → drones, fleets (CASCADE delete-orphan)
+  - 1:many → messages (CASCADE delete-orphan)
+
+Table: team_members
+Purpose: Association table for team membership with roles and permissions
+Primary Key: id (UUID)
+Key Columns:
+  - team_id (UUID, FK to teams.id, CASCADE delete)
+  - player_id (UUID, FK to players.id, CASCADE delete)
+  - role (String(20)) - LEADER, OFFICER, MEMBER, RECRUIT
+  - joined_at (DateTime(timezone=True))
+  - permissions (JSONB) - custom permissions
+  - can_invite, can_kick, can_manage_treasury, can_manage_missions, can_manage_alliances (Boolean)
+  - last_active (DateTime(timezone=True))
+  - contribution_credits (JSONB) - track member contributions
+
+Table: reputations
+Purpose: Player reputation with NPC factions
+Primary Key: id (UUID)
+Key Columns:
+  - player_id (UUID, FK to players.id, CASCADE delete)
+  - faction_id (UUID, FK to factions.id, CASCADE delete)
+  - current_value (Integer, default=0) - numeric reputation score
+  - current_level (Enum: ReputationLevel) - PUBLIC_ENEMY to EXALTED (17 levels)
+  - title (String(50)) - reputation title
+  - last_updated (DateTime(timezone=True))
+  - decay_paused (Boolean, default=False)
+  - history (JSONB array) - reputation change history
+Reputation Effects:
+  - trade_modifier (Float, default=0) - price modifier
+  - mission_availability (JSONB array)
+  - port_access_level (Integer, default=0)
+  - combat_response (String(50)) - 'hostile', 'neutral', 'friendly'
+Special Flags:
+  - is_locked (Boolean) - prevent changes
+  - lock_reason (String(255)), lock_expires (DateTime)
+  - special_status (String(50))
+Properties:
+  - is_friendly, is_hostile, is_neutral, numeric_level (computed)
+
+Table: team_reputations
+Purpose: Team-wide reputation calculated from member reputations
+Primary Key: id (UUID)
+Key Columns:
+  - team_id (UUID, FK to teams.id, CASCADE delete, unique)
+  - calculation_method (String(20)) - AVERAGE, LOWEST, LEADER
+  - faction_reputation (JSONB) - faction_id → reputation_value mapping
+  - history (JSONB array) - reputation changes over time
+  - last_recalculated, next_recalculation (DateTime(timezone=True))
+  - pending_notifications (JSONB array)
+
+Table: messages
+Purpose: Player-to-player and team communication
+Primary Key: id (UUID)
+Key Columns:
+  - sender_id (UUID, FK to players.id, indexed)
+  - recipient_id (UUID, FK to players.id, indexed, nullable) - null for team messages
+  - team_id (UUID, FK to teams.id, indexed, nullable) - null for direct messages
+  - subject (String(255)), content (Text)
+  - sent_at (DateTime, indexed), read_at (DateTime)
+  - deleted_by_sender, deleted_by_recipient (Boolean) - soft delete
+Threading:
+  - thread_id (UUID, indexed) - conversation grouping
+  - reply_to_id (UUID, FK to messages.id) - direct reply linkage
+Metadata:
+  - message_type (String(20)) - 'player', 'team', 'system'
+  - priority (String(10)) - 'low', 'normal', 'high', 'urgent'
+Moderation:
+  - flagged (Boolean), flagged_reason (String(255))
+  - moderated_at (DateTime), moderated_by (UUID, FK to users.id)
+Indexes:
+  - (recipient_id, read_at), (team_id, sent_at), (thread_id, sent_at)
+
+═══════════════════════════════════════════════════════════════════════════════
+DOMAIN 3: GALAXY STRUCTURE
+═══════════════════════════════════════════════════════════════════════════════
+
+Hierarchy: Galaxy > Region > Zone (security) AND Region > Cluster (thematic) > Sector
+Note: Zones and Clusters are ORTHOGONAL - a sector belongs to ONE zone AND ONE cluster
+
+Table: galaxies
+Purpose: Galaxy-wide metadata, statistics, and configuration
+Primary Key: id (UUID)
+Key Columns:
+  - name (String(100))
+  - statistics (JSONB) - total_sectors, discovered_sectors, port_count, planet_count, player_count, etc.
+  - density (JSONB) - port_density, planet_density, one_way_warp_percentage, resource_distribution
+  - faction_influence (JSONB) - faction_name → influence_percentage mapping
+  - state (JSONB) - age_in_days, resource_depletion, economic_health, exploration_percentage
+  - events (JSONB) - active_events, scheduled_events
+Configuration:
+  - expansion_enabled (Boolean, default=True)
+  - max_sectors (Integer, default=500)
+  - resources_regenerate (Boolean, default=True)
+  - warp_shifts_enabled (Boolean, default=True)
+Game Rules:
+  - default_turns_per_day (Integer, default=1000)
+  - combat_penalties, economic_modifiers (JSONB)
+  - hidden_sectors (Integer, default=5)
+  - special_features (ARRAY(String))
+Note: Zones concept eliminated - Regions are now unified (Central Nexus, Terran Space, Player-owned)
+
+Table: regions
+Purpose: Multi-regional platform - player-owned or special regions (Central Nexus, Terran Space)
+Primary Key: id (UUID)
+Key Columns:
+  - name (String(255), unique, indexed), display_name (String(255))
+  - region_type (String(50)) - CENTRAL_NEXUS (5000 sectors), TERRAN_SPACE (300 sectors), PLAYER_OWNED (100-1000)
+  - owner_id (UUID, FK to users.id, nullable) - null for special regions
+Subscription Management:
+  - subscription_tier (String(50)), paypal_subscription_id (String(255))
+  - subscription_status, subscription_started_at, subscription_expires_at, last_payment_at, next_billing_at
+  - status (String(50)) - ACTIVE, SUSPENDED, TERMINATED, PENDING
+Governance:
+  - governance_type (String(50)) - AUTOCRACY, DEMOCRACY, COUNCIL
+  - voting_threshold (DECIMAL(3,2), default=0.51)
+  - election_frequency_days (Integer, default=90)
+  - constitutional_text (Text)
+Economy:
+  - tax_rate (DECIMAL(5,4), default=0.10)
+  - trade_bonuses (JSONB)
+  - economic_specialization (String(50))
+  - starting_credits (Integer, default=1000), starting_ship (String(50), default='scout')
+Cultural Identity (all JSONB):
+  - language_pack, aesthetic_theme, traditions, social_hierarchy
+Infrastructure:
+  - nexus_warp_gate_sector (Integer) - connection to Central Nexus
+  - total_sectors (Integer, default=500)
+  - active_players_30d (Integer), total_trade_volume (DECIMAL(20,2))
+Constraints:
+  - CHECK voting_threshold BETWEEN 0.1 AND 0.9
+  - CHECK tax_rate BETWEEN 0.05 AND 0.25
+  - CHECK election_frequency_days BETWEEN 30 AND 365
+  - CHECK starting_credits >= 100
+  - CHECK region_type sector counts (Central Nexus=5000, Terran Space=300, Player-owned=100-1000)
+Relationships:
+  - 1:many → zones, clusters, sectors, planets, ports (CASCADE delete-orphan)
+  - 1:many → memberships (RegionalMembership, CASCADE delete-orphan)
+  - 1:many → elections, policies, treaties (CASCADE delete-orphan)
+
+Table: zones
+Purpose: Security/policing regions within a Region (orthogonal to Clusters)
+Primary Key: id (UUID)
+Key Columns:
+  - region_id (UUID, FK to regions.id, CASCADE delete, indexed)
+  - name (String(200)) - "The Expanse", "Federation Space", "Border", "Frontier"
+  - zone_type (String(50)) - EXPANSE, FEDERATION, BORDER, FRONTIER
+Sector Boundaries (arbitrary, independent of clusters):
+  - start_sector (Integer, >= 1) - inclusive
+  - end_sector (Integer, >= start_sector) - inclusive
+Security Characteristics:
+  - policing_level (Integer, 0-10) - law enforcement intensity
+  - danger_rating (Integer, 0-10) - threat level
+Constraints:
+  - CHECK start_sector >= 1
+  - CHECK end_sector >= start_sector
+  - CHECK policing_level BETWEEN 0 AND 10
+  - CHECK danger_rating BETWEEN 0 AND 10
+Properties:
+  - sector_count (computed: end_sector - start_sector + 1)
+  - is_federation, is_border, is_frontier, is_expanse (computed)
+
+Table: clusters
+Purpose: Thematic sector groupings for navigation (orthogonal to Zones)
+Primary Key: id (UUID)
+Key Columns:
+  - name (String(100))
+  - region_id (UUID, FK to regions.id, CASCADE delete)
+  - type (Enum: ClusterType) - STANDARD, RESOURCE_RICH, POPULATION_CENTER, TRADE_HUB, MILITARY_ZONE, etc.
+  - sector_count (Integer, default=0)
+Discovery:
+  - is_discovered (Boolean, default=True) - some clusters start hidden
+  - discovery_requirement (JSONB) - requirements to discover
+Statistics (JSONB):
+  - total_sectors, populated_sectors, empty_sectors
+  - resource_value (0-100), danger_level (0-100), development_index (0-100), exploration_percentage (0-100)
+Economy (JSONB):
+  - resource_modifiers, economic_focus (ARRAY(String)), resources, economic_value (0-100)
+Faction Influence (JSONB):
+  - controlling_faction (String, nullable - contested if null)
+  - faction_influence (mapping of faction_name → influence_percentage)
+Navigation:
+  - x_coord, y_coord, z_coord (Integer) - 3D positioning
+  - nav_hazards (ARRAY(String))
+  - recommended_ship_class (String, default='light_freighter')
+  - warp_stability (Float, default=1.0)
+Special Features:
+  - special_features (ARRAY(String)), description (String)
+  - is_hidden (Boolean, default=False)
+
+Table: sectors
+Purpose: Individual navigation spaces - core game location
+Primary Key: id (UUID)
+Key Columns:
+  - sector_id (Integer, unique) - human-readable sector number
+  - sector_number (Integer, nullable) - new field for Central Nexus
+  - name (String(100))
+Structure:
+  - region_id (UUID, FK to regions.id, nullable)
+  - cluster_id (UUID, FK to clusters.id, CASCADE delete)
+  - zone_id (UUID, FK to zones.id, SET NULL, indexed) - security zone
+  - type (Enum: SectorType) - STANDARD, NEBULA, ASTEROID_FIELD, BLACK_HOLE, etc.
+Multi-Regional:
+  - security_level (Integer, 1-10, default=5)
+  - development_level (Integer, 1-10, default=1)
+  - traffic_level (Integer, 1-10, default=1)
+Discovery:
+  - is_discovered (Boolean, default=True)
+  - discovered_by_id (UUID, FK to players.id), discovery_date (DateTime)
+Physical Properties:
+  - x_coord, y_coord, z_coord (Integer) - 3D grid coordinates
+  - radiation_level (Float, default=0.0)
+  - hazard_level (Integer, 0-10, default=0)
+Resources (JSONB):
+  - has_asteroids, asteroid_yield (ore, precious_metals, radioactives)
+  - gas_clouds, has_scanned
+  - resource_regeneration (Float, default=1.0) - rate multiplier
+Occupancy (JSONB):
+  - players_present (array of player IDs)
+  - ships_present (array of ship details)
+Defenses (JSONB):
+  - defense_drones, owner_id, owner_name, team_id, mines, mine_owner_id, patrol_ships
+Control:
+  - controlling_faction (String, nullable)
+  - controlling_team_id (UUID, FK to teams.id)
+  - last_combat (DateTime)
+Events:
+  - active_events (JSONB array), special_features (ARRAY(String))
+  - description (String)
+Navigation:
+  - nav_hazards (JSONB), nav_beacons (JSONB)
+Relationships:
+  - many:many → sectors (via sector_warps association table for warp connections)
+  - 1:many → planets, ports, ships, deployed_drones, fleets (various cascades)
+  - 1:many → warp_tunnels_origin, warp_tunnels_destination
+
+Association Table: sector_warps
+Purpose: Sector-to-sector warp connections (many-to-many)
+Columns:
+  - source_sector_id (UUID, FK to sectors.id, CASCADE delete, PK)
+  - destination_sector_id (UUID, FK to sectors.id, CASCADE delete, PK)
+  - is_bidirectional (Boolean, default=True)
+  - turn_cost (Integer, default=1)
+  - warp_stability (Float, 0.0-1.0, default=1.0)
+  - created_at (DateTime(timezone=True))
+
+Table: warp_tunnels
+Purpose: Natural and player-created warp tunnel connections
+Primary Key: id (UUID)
+Key Columns:
+  - name (String(100))
+  - origin_sector_id (UUID, FK to sectors.id, CASCADE delete)
+  - destination_sector_id (UUID, FK to sectors.id, CASCADE delete)
+Type and Status:
+  - type (Enum: WarpTunnelType) - NATURAL, ARTIFICIAL, STANDARD, QUANTUM, ANCIENT, UNSTABLE, ONE_WAY
+  - status (Enum: WarpTunnelStatus) - ACTIVE, UNSTABLE, DEGRADING, COLLAPSED, MAINTENANCE, FORMING
+Properties:
+  - is_bidirectional (Boolean, default=True)
+  - stability (Float, 0.0-1.0, default=1.0)
+  - stability_enum (Enum: WarpTunnelStability) - UNSTABLE, STABLE
+Tunnel Properties (JSONB):
+  - length (light years), stability_rating (0-100), expected_lifetime, age (days)
+  - traversal_cost (turns), cool_down (turns before reuse)
+  - discovered, discoverer_id, discovery_date, affected_by_storms
+Status Information (JSONB):
+  - is_active, disruption, traffic_level (0-100), last_traversal, maintenance_status
+Endpoints (JSONB for source_endpoint and destination_endpoint):
+  - sector_id, cluster_id, region_id, coordinates (x/y/z)
+  - controlling_faction, is_secured, access_requirements
+Artificial Tunnels:
+  - artificial_data (JSONB, nullable) - creation and management data
+Usage Statistics:
+  - total_traversals (Integer), traversal_history (JSONB array)
+Legacy Properties (backward compatibility):
+  - turn_cost (Integer, default=5), energy_cost (Integer, default=0)
+  - is_public (Boolean, default=True), access_requirements (JSONB)
+  - created_by_player_id (UUID, FK to players.id), created_by_faction (String)
+  - max_uses (Integer, nullable), current_uses (Integer, default=0)
+  - expires_at (DateTime), special_effects (JSONB)
+
+═══════════════════════════════════════════════════════════════════════════════
+DOMAIN 4: ENTITIES (Ships, Planets, Ports, Drones, Fleets)
+═══════════════════════════════════════════════════════════════════════════════
+
+Table: ships
+Purpose: Player-owned ships with cargo, combat, and movement capabilities
+Primary Key: id (UUID)
+Key Columns:
+  - name (String(100)), type (Enum: ShipType)
+  - owner_id (UUID, FK to players.id, CASCADE delete)
+  - sector_id (Integer) - current location
+Movement:
+  - base_speed, current_speed (Float)
+  - turn_cost (Integer)
+  - warp_capable (Boolean, default=False)
+Operational Status:
+  - is_active (Boolean, default=True)
+  - status (Enum: ShipStatus) - DOCKED, IN_SPACE, IN_COMBAT, DESTROYED, MAINTENANCE
+  - maintenance (JSONB) - maintenance state and history
+Cargo & Equipment:
+  - cargo (JSONB) - commodity quantities
+  - has_cloaking (Boolean, default=False)
+  - genesis_devices (Integer), max_genesis_devices (Integer)
+  - mines (Integer), max_mines (Integer)
+  - has_automated_maintenance (Boolean, default=False)
+Combat:
+  - combat (JSONB) - weapons, shields, hull points, etc.
+Upgrades:
+  - upgrades (JSONB array) - installed upgrades
+Insurance:
+  - insurance (JSONB) - coverage details
+Flags:
+  - is_destroyed (Boolean, default=False)
+  - is_flagship (Boolean, default=False)
+  - purchase_value, current_value (Integer)
+Relationships:
+  - 1:many → genesis_device_objects
+  - 1:1 → fleet_membership
+
+Table: ship_specifications
+Purpose: Ship type templates/blueprints for ship creation
+Primary Key: id (UUID)
+Key Columns:
+  - type (Enum: ShipType, unique) - ESCAPE_POD, LIGHT_FREIGHTER, CARGO_HAULER, etc.
+  - base_cost (Integer)
+  - speed (Float), turn_cost (Integer)
+  - max_cargo, max_colonists, max_drones (Integer)
+Defense:
+  - max_shields (Integer), shield_recharge_rate (Float)
+  - hull_points (Integer), evasion (Integer)
+Capabilities:
+  - genesis_compatible (Boolean), max_genesis_devices (Integer)
+  - warp_compatible (Boolean), warp_creation_capable (Boolean)
+  - quantum_jump_capable (Boolean)
+
+Table: planets
+Purpose: Planetary entities for colonization and resource production
+Primary Key: id (UUID)
+Key Columns:
+  - name (String(100))
+  - sector_id (Integer), sector_uuid (UUID, FK to sectors.id, CASCADE delete)
+  - owner_id (UUID, nullable) - player owner
+Properties:
+  - type (Enum: PlanetType) - TERRAN, DESERT, OCEANIC, ICE, VOLCANIC, GAS_GIANT, etc.
+  - status (Enum: PlanetStatus) - UNINHABITABLE, HABITABLE, COLONIZED, DEVELOPED, TERRAFORMING, etc.
+  - size (Integer, 1-10), position (Integer) - distance from star
+  - gravity (Float, Earth g ratio), temperature (Float, Celsius)
+  - water_coverage (Float, 0-100%), habitability_score (Integer, 0-100)
+  - radiation_level (Float, 0.0-1.0)
+Resources:
+  - resource_richness (Float, 0.0-3.0 multiplier)
+  - resources (JSONB), special_resources (ARRAY(String))
+  - fuel_ore, organics, equipment, fighters (Integer) - legacy storage
+Colonization:
+  - colonized_at (DateTime), population (Integer), max_population (Integer)
+  - population_growth (Float percentage)
+  - colonists (Integer), max_colonists (Integer, default=10000)
+  - fuel_allocation, organics_allocation, equipment_allocation (Integer)
+Economy:
+  - economy (JSONB) - economic attributes and production
+Relationships:
+  - many:many → players (via player_planets association table)
+
+Association Table: player_planets
+Purpose: Player ownership of planets (many-to-many)
+Columns:
+  - player_id (UUID, FK to players.id, CASCADE delete, PK)
+  - planet_id (UUID, FK to planets.id, CASCADE delete, PK)
+  - acquired_at (DateTime(timezone=True))
+
+Table: ports
+Purpose: Trading stations (🚨 TO BE RENAMED "stations" in upcoming migration)
+Primary Key: id (UUID)
+Key Columns:
+  - name (String(100))
+  - sector_id (Integer), sector_uuid (UUID, FK to sectors.id, CASCADE delete)
+  - owner_id (UUID, nullable) - player owner
+  - region_id (UUID, FK to regions.id, nullable) - multi-regional support
+Properties:
+  - port_class (Enum: PortClass) - CLASS_0 to CLASS_11 (determines buy/sell patterns)
+  - type (Enum: PortType) - TRADING, MILITARY, INDUSTRIAL, MINING, SCIENTIFIC, SHIPYARD, etc.
+  - status (Enum: PortStatus) - OPERATIONAL, DAMAGED, UNDER_CONSTRUCTION, UNDER_ATTACK, LOCKDOWN, etc.
+  - size (Integer, 1-10)
+Economy:
+  - faction_affiliation (String) - controlling faction
+  - trade_volume (Integer, default=100) - daily trade credits
+  - market_volatility (Integer, 0-100) - price fluctuation
+  - commodities (JSONB) - comprehensive trading data for 8+ commodities (ore, organics, equipment, fuel, luxury_goods, etc.)
+    Each commodity: {quantity, capacity, base_price, current_price, production_rate, price_variance, buys, sells}
+  - price_modifiers (JSONB) - owner-set price adjustments
+AI Trader:
+  - trader_personality (JSONB) - type, haggling_difficulty, preferred_appeal_types, memory_duration, trust_level, quirks
+Services (JSONB):
+  - ship_dealer, ship_repair, ship_maintenance, ship_upgrades, insurance, drone_shop, genesis_dealer, mine_dealer, etc.
+  - service_prices (JSONB)
+Defenses (JSONB):
+  - defense_drones, max_defense_drones, auto_turrets, defense_grid, shield_strength, patrol_ships, military_contract
+Ownership:
+  - ownership (JSONB, nullable) - player ownership details
+  - acquisition_requirements (JSONB) - min_trade_volume, min_faction_standing, base_price, special_missions
+Market:
+  - last_market_update (DateTime), market_update_frequency (Integer, hours)
+  - reputation_threshold (Integer) - minimum reputation for docking
+Special:
+  - is_quest_hub, is_faction_headquarters (Boolean)
+  - is_player_ownable (Boolean, default=True)
+  - last_attacked (DateTime), is_destroyed (Boolean), recovery_time (DateTime)
+  - active_events (JSONB), special_services (ARRAY(String))
+Relationships:
+  - many:many → players (via player_ports association table)
+  - 1:1 → market (Market model, CASCADE delete-orphan)
+
+Association Table: player_ports
+Purpose: Player ownership of ports/stations (many-to-many)
+Columns:
+  - player_id (UUID, FK to players.id, CASCADE delete, PK)
+  - port_id (UUID, FK to ports.id, CASCADE delete, PK)
+  - acquired_at (DateTime(timezone=True))
+
+Tables: drones, genesis_devices, fleets
+Purpose: Combat drones, planet terraforming devices, multi-ship fleet coordination
+Note: See individual model files for detailed schema
+Key Relationships:
+  - drones → players, teams, sectors (deployment and ownership)
+  - genesis_devices → players, ships (ownership and storage)
+  - fleets → players (commander), teams, sectors (location)
+
+═══════════════════════════════════════════════════════════════════════════════
+DOMAIN 5: ECONOMY & TRADING
+═══════════════════════════════════════════════════════════════════════════════
+
+Tables: resources, markets, market_transactions, market_prices, price_histories, economic_metrics
+Purpose: Resource types, market instances per port, transaction history, price tracking, economic analytics
+Note: See resource.py and market_transaction.py for detailed schema
+
+Table: ai_trading (ai_market_predictions, player_trading_profiles, ai_recommendations, ai_model_performance, ai_training_data)
+Purpose: AI-powered trading predictions and player trading pattern analysis
+Note: See ai_trading.py for detailed schema
+
+═══════════════════════════════════════════════════════════════════════════════
+DOMAIN 6: COMBAT
+═══════════════════════════════════════════════════════════════════════════════
+
+Tables: combats, combat_logs, combat_stats, drone_combats, fleet_battles, fleet_battle_casualties
+Purpose: Combat mechanics, combat history, combat statistics, drone engagements, fleet battles
+Note: See combat.py and combat_log.py for detailed schema
+
+═══════════════════════════════════════════════════════════════════════════════
+DOMAIN 7: EVENTS & FIRST LOGIN
+═══════════════════════════════════════════════════════════════════════════════
+
+Tables: game_events, event_templates, event_effects, event_participations
+Purpose: Dynamic game events (warp storms, economic fluctuations, faction wars)
+Note: See game_event.py for detailed schema
+
+Tables: first_login_sessions, dialogue_exchanges, player_first_login_states, ship_choices
+Purpose: New player onboarding with AI-powered dialogue and ship selection
+Note: See first_login.py for detailed schema
+
+═══════════════════════════════════════════════════════════════════════════════
+DOMAIN 8: FACTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+Tables: factions, faction_missions
+Purpose: NPC factions (Terran Federation, Mercantile Guild, etc.) with missions and influence
+Note: See faction.py for detailed schema
+
+═══════════════════════════════════════════════════════════════════════════════
+DOMAIN 9: AI SYSTEMS (ARIA)
+═══════════════════════════════════════════════════════════════════════════════
+
+Tables: aria_personal_memories, aria_market_intelligence, aria_exploration_maps, aria_trading_patterns, aria_quantum_caches, aria_security_logs
+Purpose: ARIA AI assistant's personal memory system per player
+Note: See aria_personal_intelligence.py for detailed schema
+
+Table: ai_comprehensive_assistants
+Purpose: Enhanced AI assistant with comprehensive capabilities
+Note: See enhanced_ai_models.py for detailed schema
+
+═══════════════════════════════════════════════════════════════════════════════
+DOMAIN 10: INTERNATIONALIZATION
+═══════════════════════════════════════════════════════════════════════════════
+
+Tables: languages, translation_namespaces, translation_keys, user_language_preferences, translation_audit_logs, translation_progress
+Purpose: Multi-language support with translation management
+Note: See translation.py for detailed schema
+
+═══════════════════════════════════════════════════════════════════════════════
+DOMAIN 11: MULTI-REGIONAL GOVERNANCE
+═══════════════════════════════════════════════════════════════════════════════
+
+Tables: regional_memberships, regional_policies, regional_elections, regional_votes, regional_treaties, inter_regional_travels
+Purpose: Player membership in regions, democratic governance, regional politics, cross-region travel
+Note: See region.py for detailed schema
+
+═══════════════════════════════════════════════════════════════════════════════
+
+MIGRATION PATTERNS:
+
+Creating a Migration:
+```bash
+cd services/gameserver
+poetry run alembic revision -m "description of change"
+# Edit generated migration file in src/migrations/versions/
+poetry run alembic upgrade head
+```
+
+Rollback Pattern:
+```bash
+poetry run alembic downgrade -1  # Rollback one migration
+poetry run alembic current        # Check current version
+```
+
+Common Migration Examples:
+
+1. Adding a Column:
+```python
+def upgrade():
+    op.add_column('table_name',
+        sa.Column('new_column', sa.String(255), nullable=True))
+
+def downgrade():
+    op.drop_column('table_name', 'new_column')
+```
+
+2. Adding an Index:
+```python
+def upgrade():
+    op.create_index('ix_table_column', 'table_name', ['column_name'])
+
+def downgrade():
+    op.drop_index('ix_table_column', 'table_name')
+```
+
+3. Renaming a Table (like ports → stations):
+```python
+def upgrade():
+    op.rename_table('ports', 'stations')
+    # Update foreign key constraints
+    # Update association tables
+
+def downgrade():
+    op.rename_table('stations', 'ports')
+    # Rollback foreign key constraints
+    # Rollback association tables
+```
+
+CONSTRAINTS AND RULES:
+
+* Database connection strings MUST be stored in environment variables (DATABASE_URL)
+* Passwords MUST be hashed before storage (never store plaintext)
+* NO raw SQL queries - use SQLAlchemy ORM exclusively
+* Transactions MUST be used for operations affecting multiple records
+* Database schema changes REQUIRE Alembic migrations
+* Database should be accessed ONLY through Game API Server (no direct client access)
+* Foreign key constraints enforce referential integrity
+* Soft deletion (deleted=True) used instead of hard deletes for critical tables
+* Cascade rules prevent orphaned records (CASCADE, SET NULL, DELETE-ORPHAN patterns)
+* JSONB columns require validation before storage
+* Timezone-aware timestamps throughout (DateTime(timezone=True))
+* UUID primary keys for distributed system compatibility
+* Check constraints enforce business logic at database level
 
 EXAMPLES:
+
+Database Connection:
 ```python
-# Database connection example
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import os
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 Session = sessionmaker(bind=engine)
 
-# Model example (User)
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
+# Using session with context manager
+from src.core.database import get_db
 
-Base = declarative_base()
+def get_user(user_id: str):
+    db = next(get_db())
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        return user
+    finally:
+        db.close()
+```
 
-class User(Base):
-    __tablename__ = 'users'
-    
-    id = Column(Integer, primary_key=True)
-    username = Column(String(80), unique=True, nullable=False)
-    email = Column(String(120), unique=True, nullable=False)
-    password_hash = Column(String(256))
-    created_at = Column(DateTime, default=datetime.utcnow)
+Model Definition Pattern:
+```python
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+from sqlalchemy import func
+import uuid
+
+from src.core.database import Base
+
+class ExampleModel(Base):
+    __tablename__ = 'example_models'
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False, unique=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    deleted = Column(Boolean, default=False, nullable=False)
+
+    # Foreign key with CASCADE delete
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Relationship
+    owner = relationship("User", back_populates="example_models")
+```
+
+Transaction Pattern:
+```python
+from src.core.database import get_db
+
+def transfer_credits(from_player_id: str, to_player_id: str, amount: int):
+    db = next(get_db())
+    try:
+        from_player = db.query(Player).filter(Player.id == from_player_id).first()
+        to_player = db.query(Player).filter(Player.id == to_player_id).first()
+
+        if from_player.credits < amount:
+            raise ValueError("Insufficient credits")
+
+        from_player.credits -= amount
+        to_player.credits += amount
+
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
+    finally:
+        db.close()
+```
+
+JSONB Query Pattern:
+```python
+from sqlalchemy import cast
+from sqlalchemy.dialects.postgresql import JSONB
+
+# Query JSONB field
+ports = db.query(Port).filter(
+    Port.commodities['ore']['quantity'].astext.cast(Integer) > 1000
+).all()
+
+# Update JSONB field
+port.commodities = {
+    **port.commodities,
+    'ore': {
+        **port.commodities['ore'],
+        'quantity': 1500
+    }
+}
+db.commit()
 ```
