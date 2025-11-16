@@ -63,6 +63,7 @@ class Sector(Base):
     
     # Relationships and structure
     cluster_id = Column(UUID(as_uuid=True), ForeignKey("clusters.id", ondelete="CASCADE"), nullable=False)
+    zone_id = Column(UUID(as_uuid=True), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True)
     type = Column(Enum(SectorType, name="sector_type"), nullable=False, default=SectorType.STANDARD)
     
     # Discovery status
@@ -120,6 +121,7 @@ class Sector(Base):
     
     # Relationships
     cluster = relationship("Cluster", back_populates="sectors")
+    zone = relationship("Zone", back_populates="sectors")
     region = relationship("Region", back_populates="sectors")
     planets = relationship("Planet", back_populates="sector", cascade="all, delete-orphan")
     ports = relationship("Port", back_populates="sector", cascade="all, delete-orphan")

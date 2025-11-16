@@ -22,6 +22,8 @@ from src.models.port import Port, PortStatus
 from src.models.sector import Sector
 from src.models.cluster import Cluster
 from src.models.galaxy import Galaxy
+from src.models.region import Region
+from src.models.zone import Zone
 from src.models.warp_tunnel import WarpTunnel
 from src.models.team import Team
 from src.services.galaxy_service import GalaxyService
@@ -75,6 +77,9 @@ class SectorManagementResponse(BaseModel):
     type: str
     cluster_id: str
     region_name: str
+    zone_id: Optional[str]
+    zone_name: Optional[str]
+    zone_type: Optional[str]
     x_coord: int
     y_coord: int
     z_coord: int
@@ -812,6 +817,7 @@ async def get_sectors_comprehensive(
     limit: int = Query(100, ge=1, le=500),
     filter_type: Optional[str] = None,
     filter_region: Optional[str] = None,
+    filter_zone: Optional[str] = None,
     filter_discovered: Optional[bool] = None,
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -825,6 +831,8 @@ async def get_sectors_comprehensive(
             query = query.filter(Sector.type == filter_type)
         if filter_region:
             query = query.filter(Region.id == filter_region)
+        if filter_zone:
+            query = query.filter(Sector.zone_id == filter_zone)
         if filter_discovered is not None:
             query = query.filter(Sector.is_discovered == filter_discovered)
         
@@ -855,6 +863,9 @@ async def get_sectors_comprehensive(
                 type=sector.type.value,
                 cluster_id=str(sector.cluster_id),
                 region_name=sector.region.display_name if sector.region else "Unknown",
+                zone_id=str(sector.zone_id) if sector.zone_id else None,
+                zone_name=sector.zone.name if sector.zone else None,
+                zone_type=sector.zone.zone_type if sector.zone else None,
                 x_coord=sector.x_coord,
                 y_coord=sector.y_coord,
                 z_coord=sector.z_coord,

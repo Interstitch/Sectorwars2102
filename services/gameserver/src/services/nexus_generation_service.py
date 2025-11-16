@@ -16,6 +16,7 @@ from src.models.planet import Planet
 from src.models.port import Port
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
 from src.models.region import Region, RegionType
+from src.models.zone import Zone
 from src.models.cluster import Cluster, ClusterType
 
 import logging
@@ -57,6 +58,9 @@ class NexusGenerationService:
             # Create Central Nexus region entry
             nexus_region = await self._create_nexus_region(session)
 
+            # Create "The Expanse" zone for all 5000 sectors
+            nexus_zone = await self._create_nexus_zone(session, str(nexus_region.id))
+
             # Create 20 clusters for organization (250 sectors each)
             nexus_clusters = await self._create_nexus_clusters(session, str(nexus_region.id))
 
@@ -88,6 +92,7 @@ class NexusGenerationService:
                     session,
                     str(nexus_region.id),
                     str(cluster.id),
+                    str(nexus_zone.id),  # Pass zone ID for sector assignment
                     start_sector,
                     end_sector
                 )
@@ -159,6 +164,22 @@ class NexusGenerationService:
         session.add(nexus_region)
         await session.flush()
         return nexus_region
+
+    async def _create_nexus_zone(self, session: AsyncSession, region_id: str) -> Zone:
+        """Create 'The Expanse' zone for Central Nexus (covers all 5000 sectors)"""
+        nexus_zone = Zone(
+            region_id=region_id,
+            name="The Expanse",
+            zone_type="EXPANSE",
+            start_sector=1,
+            end_sector=5000,
+            policing_level=3,  # Light policing (sparse region)
+            danger_rating=6    # Moderate danger
+        )
+        session.add(nexus_zone)
+        await session.flush()
+        logger.info(f"Created 'The Expanse' zone for Central Nexus (sectors 1-5000)")
+        return nexus_zone
 
     async def _create_nexus_clusters(self, session: AsyncSession, region_id: str) -> List[Cluster]:
         """Create 20 clusters for organizing Central Nexus sectors (250 sectors each)
@@ -250,6 +271,7 @@ class NexusGenerationService:
         session: AsyncSession,
         region_id: str,
         cluster_id: str,
+        zone_id: str,
         start_sector: int,
         end_sector: int
     ) -> Dict[str, int]:
@@ -278,6 +300,7 @@ class NexusGenerationService:
                 "sector_id": sector_num,  # Required INTEGER NOT NULL
                 "name": f"Nexus Sector {sector_num}",  # Required VARCHAR NOT NULL
                 "cluster_id": cluster_id,  # Required UUID NOT NULL
+                "zone_id": zone_id,  # UUID - Assign to "The Expanse" zone
                 "x_coord": x_coord,  # Required INTEGER NOT NULL
                 "y_coord": y_coord,  # Required INTEGER NOT NULL
                 "z_coord": z_coord,  # Required INTEGER NOT NULL

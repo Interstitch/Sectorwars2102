@@ -8,38 +8,85 @@
 
 ## 🌌 Universe Structure
 
+### Hierarchy Overview
+
+```
+Galaxy
+├── Region (Central Nexus, Terran Space, Player-owned)
+    ├── Zone (Security/policing boundaries)
+    │   └── Sectors (assigned by sector_number range)
+    └── Cluster (Navigation/organizational groups)
+        └── Sectors (same sectors, different grouping)
+```
+
+**Important**: Zones and Clusters are **orthogonal dimensions** - sectors have BOTH a zone_id AND a cluster_id.
+
 ### Galaxy
-The entire game universe. In the multi-regional architecture, the galaxy consists of the Central Nexus and multiple player-owned Regional Territories.
+The entire game universe containing all regions, sectors, and players. The galaxy consists of:
+- **Central Nexus**: 5,000-sector hub region (1 zone)
+- **Terran Space**: 300-sector starting region (3 zones)
+- **Player-Owned Regions**: Variable sectors (100-1,000), customizable zones
 
-### Central Nexus
-The primary hub galaxy containing **5,000 sectors** organized into 10 specialized districts. Serves as the universal trade hub connecting all regional territories. All players start here and can always return through quantum warp tunnels.
+### Region
+A distinct area of space with its own governance and zones. Three region types exist:
 
-**Districts**:
-- **Commerce Central**: Premium trading facilities with best port selection
-- **Diplomatic Quarter**: Inter-regional negotiations and treaty signing
-- **Industrial Zone**: Manufacturing complexes and production facilities
-- **Residential District**: Citizen services and player housing
-- **Transit Hub**: Warp gate infrastructure and fast travel
-- **High Security Zone**: Restricted access, military operations
-- **Cultural Center**: Events, festivals, and social gathering
-- **Research Campus**: Technology development and upgrades
-- **Free Trade Zone**: Unrestricted commerce, no taxes
-- **Gateway Plaza**: New player welcome and orientation
+**Central Nexus** (`central_nexus`)
+- **Size**: 5,000 sectors
+- **Zones**: 1 zone ("The Expanse")
+- **Purpose**: Universal trade hub connecting all regions
+- **Characteristics**: Sparse infrastructure, light policing, moderate danger
+- **Access**: All players can always return via quantum warp tunnels
 
-### Region (Regional Territory)
-A player-owned galaxy containing **500 sectors** with customizable rules, governance, and economic policies. Requires a PayPal subscription ($25/month for ownership, $5/month for citizenship) to create or govern. Players can customize:
-- Governance type (Democracy, Autocracy, Council Republic)
-- Tax rates (5-25%)
-- PvP rules and combat restrictions
-- Trade policies and bonuses
-- Immigration controls
-- Cultural identity and themes
+**Terran Space** (`terran_space`)
+- **Size**: 300 sectors
+- **Zones**: 3 zones (Federation Space, Border Regions, Frontier Space)
+- **Purpose**: Starting region for new players
+- **Characteristics**: Standard infrastructure, progressive security (high → low)
+- **Access**: Default starting location
+
+**Player-Owned Region** (`player_owned`)
+- **Size**: 100-1,000 sectors (variable)
+- **Zones**: 3 zones by default (Federation, Border, Frontier) - customizable
+- **Purpose**: Private governance and custom rules
+- **Subscription**: $25/month for ownership, $5/month for citizenship
+- **Customization**:
+  - Governance type (Democracy, Autocracy, Council Republic)
+  - Tax rates (5-25%)
+  - PvP rules and combat restrictions
+  - Trade policies and bonuses
+  - Immigration controls
+  - Cultural identity and themes
+  - Zone configuration (add/remove/adjust zones)
 
 ### Zone
-A collection of Clusters within a Region. Zones typically contain 3-5 Clusters and serve as organizational units for galaxy management.
+**Security and policing regions within parent Regions**. Zones define law enforcement levels, danger ratings, and sector boundaries.
+
+**Key Properties**:
+- **Belongs to Region**: Each zone has a parent region
+- **Sector Boundaries**: Defined by start_sector and end_sector numbers
+- **Security Characteristics**: Policing level (0-10) and danger rating (0-10)
+- **Orthogonal to Clusters**: Zone boundaries can split across cluster boundaries
+
+**Zone Types**:
+- **EXPANSE**: Central Nexus's single massive zone
+- **FEDERATION**: High security, low danger (heavily policed space)
+- **BORDER**: Moderate security, moderate danger (transition areas)
+- **FRONTIER**: Low security, high danger (lawless space)
+
+**Examples**:
+- Central Nexus: "The Expanse" (sectors 1-5000, policing=3, danger=6)
+- Terran Space Federation: "Federation Space" (sectors 1-100, policing=9, danger=1)
+- Terran Space Border: "Border Regions" (sectors 101-200, policing=5, danger=4)
+- Terran Space Frontier: "Frontier Space" (sectors 201-300, policing=2, danger=8)
 
 ### Cluster
-A group of interconnected Sectors. Clusters typically contain 8-15 Sectors linked by warp tunnels, forming local navigation networks.
+**Navigation and organizational groups** of interconnected sectors. Clusters typically contain 8-15 sectors linked by warp tunnels, forming local navigation networks.
+
+**Key Properties**:
+- **Belongs to Region**: Each cluster has a parent region
+- **Navigation Purpose**: Helps players organize sector exploration
+- **Orthogonal to Zones**: Cluster membership independent of zone assignment
+- **Warp Networks**: Sectors in same cluster often have direct warp connections
 
 ### Sector
 The fundamental unit of space in the game. Each sector can contain:

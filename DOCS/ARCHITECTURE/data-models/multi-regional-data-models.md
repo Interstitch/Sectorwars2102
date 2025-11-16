@@ -119,6 +119,92 @@ interface Region {
 }
 ```
 
+### Zone
+
+Security and policing regions within parent Regions. Each region defines its own zones based on region type.
+
+```sql
+CREATE TABLE zones (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    region_id UUID NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+
+    -- Zone Identity
+    name VARCHAR(200) NOT NULL,
+    zone_type VARCHAR(50) NOT NULL,  -- EXPANSE, FEDERATION, BORDER, FRONTIER
+
+    -- Sector Boundaries (arbitrary, can cross clusters)
+    start_sector INTEGER NOT NULL,
+    end_sector INTEGER NOT NULL,
+    sector_count INTEGER GENERATED ALWAYS AS (end_sector - start_sector + 1) STORED,
+
+    -- Security Characteristics
+    policing_level INTEGER NOT NULL DEFAULT 5,  -- 0-10
+    danger_rating INTEGER NOT NULL DEFAULT 5,   -- 0-10
+
+    -- Timestamps
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+
+    -- Constraints
+    CONSTRAINT check_start_sector_positive CHECK (start_sector >= 1),
+    CONSTRAINT check_end_after_start CHECK (end_sector >= start_sector),
+    CONSTRAINT check_policing_range CHECK (policing_level >= 0 AND policing_level <= 10),
+    CONSTRAINT check_danger_range CHECK (danger_rating >= 0 AND danger_rating <= 10)
+);
+
+CREATE INDEX idx_zones_region_id ON zones(region_id);
+```
+
+#### TypeScript Interface
+
+```typescript
+interface Zone {
+  id: string
+  regionId: string
+
+  // Identity
+  name: string  // "The Expanse", "Federation Space", etc.
+  zoneType: 'EXPANSE' | 'FEDERATION' | 'BORDER' | 'FRONTIER'
+
+  // Sector Boundaries
+  startSector: number  // First sector in zone (inclusive)
+  endSector: number    // Last sector in zone (inclusive)
+  sectorCount: number  // Calculated: endSector - startSector + 1
+
+  // Security
+  policingLevel: number  // 0-10 (0=lawless, 10=maximum security)
+  dangerRating: number   // 0-10 (0=safe, 10=extremely dangerous)
+
+  // Timestamps
+  createdAt: Date
+  updatedAt?: Date
+
+  // Relationships
+  region?: Region
+  sectors?: Sector[]
+}
+```
+
+#### Zone Types by Region
+
+**Central Nexus (`central_nexus`):**
+- 1 zone: "The Expanse" (sectors 1-5000, policing=3, danger=6)
+- Sparse infrastructure, light policing
+
+**Terran Space (`terran_space`):**
+- 3 zones dividing 300 sectors into thirds:
+  - "Federation Space" (1-100, policing=9, danger=1)
+  - "Border Regions" (101-200, policing=5, danger=4)
+  - "Frontier Space" (201-300, policing=2, danger=8)
+
+**Player-Owned (`player_owned`):**
+- 3 zones by default (customizable during purchase):
+  - "Federation Space" (first 33%, policing=9, danger=1)
+  - "Border Regions" (middle 34%, policing=5, danger=4)
+  - "Frontier Space" (last 33%, policing=2, danger=8)
+
+**Important**: Zones and Clusters are orthogonal - sectors have BOTH zone_id (security) AND cluster_id (navigation).
+
 ### Regional Membership
 
 Represents player membership and citizenship within regions.

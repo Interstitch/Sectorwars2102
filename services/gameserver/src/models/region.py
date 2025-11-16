@@ -118,6 +118,7 @@ class Region(Base):
     # Relationships
     owner = relationship("User", back_populates="owned_regions")
     memberships = relationship("RegionalMembership", back_populates="region", cascade="all, delete-orphan")
+    zones = relationship("Zone", back_populates="region", cascade="all, delete-orphan")
     clusters = relationship("Cluster", back_populates="region", cascade="all, delete-orphan")
     sectors = relationship("Sector", back_populates="region")
     planets = relationship("Planet", back_populates="region")

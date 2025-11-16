@@ -14,10 +14,11 @@ interface ViewState {
 const UniverseManager: React.FC = () => {
   const {
     galaxyState,
+    regions,
     sectors,
     loadGalaxyInfo,
     loadSectors,
-    loadZones,
+    loadRegions,
     generateGalaxy,
     clearGalaxyData,
     isLoading,
@@ -32,32 +33,19 @@ const UniverseManager: React.FC = () => {
   // Galaxy configuration state
   const [galaxyConfig, setGalaxyConfig] = useState({
     name: 'New Galaxy',
-    total_sectors: 300,
-    zone_distribution: {  // Cosmological zones
-      federation: 25,
-      border: 35,
-      frontier: 40
-    },
     density: {
       port_density: 10,      // 10% of sectors
       planet_density: 15,    // 15% of sectors
       one_way_warp_percentage: 5
     },
     warp_tunnel_config: {
-      min_per_zone: 5,
-      max_per_zone: 15,
+      min_per_region: 5,
+      max_per_region: 15,
       stability_range: { min: 70, max: 100 }
     },
-    resource_distribution: {
-      federation: { min: 50, max: 80 },
-      border: { min: 40, max: 70 },
-      frontier: { min: 30, max: 60 }
-    },
-    hazard_levels: {
-      federation: { min: 0, max: 3 },
-      border: { min: 2, max: 6 },
-      frontier: { min: 4, max: 10 }
-    }
+    resource_distribution: 'balanced' as 'balanced' | 'clustered' | 'random',
+    hazard_levels: 'moderate' as 'low' | 'moderate' | 'high' | 'extreme',
+    connectivity: 'normal' as 'sparse' | 'normal' | 'dense'
   });
 
   // Load data on mount
@@ -67,7 +55,7 @@ const UniverseManager: React.FC = () => {
 
   useEffect(() => {
     if (galaxyState) {
-      loadZones();
+      loadRegions();
       loadSectors();
     }
   }, [galaxyState]);
@@ -100,34 +88,24 @@ const UniverseManager: React.FC = () => {
 
   // Handle galaxy generation
   const handleGenerateGalaxy = async () => {
-    const total = galaxyConfig.zone_distribution.federation +
-                 galaxyConfig.zone_distribution.border +
-                 galaxyConfig.zone_distribution.frontier;
-
-    if (total !== 100) {
-      alert('Zone distribution must total 100%');
-      return;
-    }
-
     try {
-      // Use the simpler galaxy generation instead of enhanced version
+      // Generate galaxy with Central Nexus and Terran Space regions
       await generateGalaxy(
         galaxyConfig.name,
-        galaxyConfig.total_sectors,
+        5300,  // 5000 for Central Nexus + 300 for Terran Space
         {
-          resource_distribution: 'balanced',
-          hazard_levels: 'moderate', 
-          connectivity: 'normal',
+          resource_distribution: galaxyConfig.resource_distribution,
+          hazard_levels: galaxyConfig.hazard_levels,
+          connectivity: galaxyConfig.connectivity,
           port_density: galaxyConfig.density.port_density / 100,
           planet_density: galaxyConfig.density.planet_density / 100,
-          warp_tunnel_probability: galaxyConfig.density.one_way_warp_percentage / 100,
-          faction_territory_size: galaxyConfig.zone_distribution.federation
+          warp_tunnel_probability: galaxyConfig.density.one_way_warp_percentage / 100
         }
       );
       setShowGalaxyGenerator(false);
       // Reload data after generation
       await loadGalaxyInfo();
-      await loadZones();
+      await loadRegions();
       await loadSectors();
     } catch (error: any) {
       console.error('Error generating galaxy:', error);
@@ -147,21 +125,20 @@ const UniverseManager: React.FC = () => {
             // Try generating again after clearing
             await generateGalaxy(
               galaxyConfig.name,
-              galaxyConfig.total_sectors,
+              5300,  // 5000 for Central Nexus + 300 for Terran Space
               {
-                resource_distribution: 'balanced',
-                hazard_levels: 'moderate',
-                connectivity: 'normal',
+                resource_distribution: galaxyConfig.resource_distribution,
+                hazard_levels: galaxyConfig.hazard_levels,
+                connectivity: galaxyConfig.connectivity,
                 port_density: galaxyConfig.density.port_density / 100,
                 planet_density: galaxyConfig.density.planet_density / 100,
-                warp_tunnel_probability: galaxyConfig.density.one_way_warp_percentage / 100,
-                faction_territory_size: galaxyConfig.zone_distribution.federation
+                warp_tunnel_probability: galaxyConfig.density.one_way_warp_percentage / 100
               }
             );
             setShowGalaxyGenerator(false);
             // Reload data after generation
             await loadGalaxyInfo();
-            await loadZones();
+            await loadRegions();
             await loadSectors();
             alert('Galaxy generated successfully after clearing existing data.');
           } catch (clearError) {
@@ -184,99 +161,21 @@ const UniverseManager: React.FC = () => {
         <h4>Basic Settings</h4>
         <div className="form-group">
           <label>Galaxy Name</label>
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={galaxyConfig.name}
             onChange={(e) => setGalaxyConfig({...galaxyConfig, name: e.target.value})}
             placeholder="Enter galaxy name"
           />
         </div>
-        
-        <div className="form-group">
-          <label>Total Sectors: {galaxyConfig.total_sectors}</label>
-          <input 
-            type="range" 
-            min="100" 
-            max="1000" 
-            step="50"
-            value={galaxyConfig.total_sectors}
-            onChange={(e) => setGalaxyConfig({...galaxyConfig, total_sectors: parseInt(e.target.value)})}
-          />
-          <div className="range-labels">
-            <span>100</span>
-            <span>550</span>
-            <span>1000</span>
-          </div>
-        </div>
       </div>
 
-      <div className="config-section">
-        <h4>Cosmological Zone Distribution (Must total 100%)</h4>
-        <div className={`distribution-total ${
-          (galaxyConfig.zone_distribution.federation + 
-           galaxyConfig.zone_distribution.border + 
-           galaxyConfig.zone_distribution.frontier) !== 100 ? 'invalid' : 'valid'
-        }`}>
-          Total: {galaxyConfig.zone_distribution.federation + 
-                  galaxyConfig.zone_distribution.border + 
-                  galaxyConfig.zone_distribution.frontier}%
-        </div>
-        
-        <div className="form-group">
-          <label>Federation Space: {galaxyConfig.zone_distribution.federation}%</label>
-          <input 
-            type="range" 
-            min="0" 
-            max="100" 
-            value={galaxyConfig.zone_distribution.federation}
-            onChange={(e) => setGalaxyConfig({
-              ...galaxyConfig, 
-              zone_distribution: {
-                ...galaxyConfig.zone_distribution,
-                federation: parseInt(e.target.value)
-              }
-            })}
-            className="federation-slider"
-          />
-          <div className="region-info">High security, civilized space</div>
-        </div>
-        
-        <div className="form-group">
-          <label>Border Zone: {galaxyConfig.zone_distribution.border}%</label>
-          <input 
-            type="range" 
-            min="0" 
-            max="100" 
-            value={galaxyConfig.zone_distribution.border}
-            onChange={(e) => setGalaxyConfig({
-              ...galaxyConfig, 
-              zone_distribution: {
-                ...galaxyConfig.zone_distribution,
-                border: parseInt(e.target.value)
-              }
-            })}
-            className="border-slider"
-          />
-          <div className="region-info">Moderate security, mixed control</div>
-        </div>
-        
-        <div className="form-group">
-          <label>Frontier Territory: {galaxyConfig.zone_distribution.frontier}%</label>
-          <input 
-            type="range" 
-            min="0" 
-            max="100" 
-            value={galaxyConfig.zone_distribution.frontier}
-            onChange={(e) => setGalaxyConfig({
-              ...galaxyConfig, 
-              zone_distribution: {
-                ...galaxyConfig.zone_distribution,
-                frontier: parseInt(e.target.value)
-              }
-            })}
-            className="frontier-slider"
-          />
-          <div className="region-info">Low security, lawless space</div>
+      <div className="config-section info-box">
+        <h4>🌌 Galaxy Structure</h4>
+        <div className="info-text">
+          <p><strong>Central Nexus:</strong> 5000 sectors • 1 zone ("The Expanse")</p>
+          <p><strong>Terran Space:</strong> 300 sectors • 3 zones (Federation/Border/Frontier)</p>
+          <p className="text-muted">Zones and regions are automatically configured</p>
         </div>
       </div>
 
@@ -298,25 +197,25 @@ const UniverseManager: React.FC = () => {
               }
             })}
           />
-          <div className="info-text">~{Math.floor(galaxyConfig.total_sectors * galaxyConfig.density.port_density / 100)} ports</div>
+          <div className="info-text">~{Math.floor(5300 * galaxyConfig.density.port_density / 100)} ports</div>
         </div>
-        
+
         <div className="form-group">
           <label>Planet Density: {galaxyConfig.density.planet_density}%</label>
-          <input 
-            type="range" 
-            min="2" 
-            max="25" 
+          <input
+            type="range"
+            min="2"
+            max="25"
             value={galaxyConfig.density.planet_density}
             onChange={(e) => setGalaxyConfig({
-              ...galaxyConfig, 
+              ...galaxyConfig,
               density: {
                 ...galaxyConfig.density,
                 planet_density: parseInt(e.target.value)
               }
             })}
           />
-          <div className="info-text">~{Math.floor(galaxyConfig.total_sectors * galaxyConfig.density.planet_density / 100)} planets</div>
+          <div className="info-text">~{Math.floor(5300 * galaxyConfig.density.planet_density / 100)} planets</div>
         </div>
         
         <div className="form-group">
@@ -414,12 +313,10 @@ const UniverseManager: React.FC = () => {
       </div>
 
       <div className="form-actions">
-        <button 
+        <button
           className="btn btn-primary btn-lg"
           onClick={handleGenerateGalaxy}
-          disabled={isLoading || (galaxyConfig.zone_distribution.federation + 
-                                 galaxyConfig.zone_distribution.border + 
-                                 galaxyConfig.zone_distribution.frontier) !== 100}
+          disabled={isLoading}
         >
           {isLoading ? '🌌 Creating Galaxy...' : '💥 Bang a New Galaxy!'}
         </button>
@@ -488,29 +385,28 @@ const UniverseManager: React.FC = () => {
           </div>
 
           <div className="region-distribution">
-            <h3>Cosmological Zone Distribution</h3>
-            <div className="region-bars">
-              <div className="region-bar">
-                <span className="region-label">Federation</span>
-                <div className="bar-container">
-                  <div className="bar-fill federation" style={{width: `${galaxyState.zone_distribution?.federation || 0}%`}}></div>
-                  <span className="bar-value">{galaxyState.zone_distribution?.federation || 0}%</span>
+            <h3>Galaxy Regions</h3>
+            <div className="region-list">
+              {regions.map((region: any) => (
+                <div key={region.id} className="region-item">
+                  <div className="region-header">
+                    <span className="region-name">{region.display_name}</span>
+                    <span className={`region-badge ${
+                      region.region_type === 'central_nexus' ? 'badge-primary' :
+                      region.region_type === 'terran_space' ? 'badge-info' :
+                      'badge-success'
+                    }`}>
+                      {region.region_type.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="region-stats">
+                    <span>{region.total_sectors} sectors</span>
+                    {region.statistics && (
+                      <span>• {region.statistics.discovered_sectors} discovered</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="region-bar">
-                <span className="region-label">Border</span>
-                <div className="bar-container">
-                  <div className="bar-fill border" style={{width: `${galaxyState.zone_distribution?.border || 0}%`}}></div>
-                  <span className="bar-value">{galaxyState.zone_distribution?.border || 0}%</span>
-                </div>
-              </div>
-              <div className="region-bar">
-                <span className="region-label">Frontier</span>
-                <div className="bar-container">
-                  <div className="bar-fill frontier" style={{width: `${galaxyState.zone_distribution?.frontier || 0}%`}}></div>
-                  <span className="bar-value">{galaxyState.zone_distribution?.frontier || 0}%</span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>

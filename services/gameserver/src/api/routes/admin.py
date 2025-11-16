@@ -15,13 +15,14 @@ from src.models.user import User
 from src.models.player import Player
 from src.models.ship import Ship
 from src.models.galaxy import Galaxy
+from src.models.region import Region
+from src.models.zone import Zone
 from src.models.cluster import Cluster
 from src.models.sector import Sector
 from src.models.warp_tunnel import WarpTunnel
 from src.models.port import Port
 from src.models.planet import Planet
 from src.models.team import Team
-from src.models.region import Region
 from src.schemas.user import UserAdminResponse
 
 # Request schemas for universe management
@@ -41,6 +42,22 @@ class WarpTunnelCreateRequest(BaseModel):
     source_sector_id: int
     target_sector_id: int
     stability: Optional[float] = 0.75
+
+# Zone response schemas
+class ZoneResponse(BaseModel):
+    id: str
+    region_id: str
+    name: str
+    zone_type: str
+    start_sector: int
+    end_sector: int
+    sector_count: int  # Calculated from range
+    policing_level: int
+    danger_rating: int
+    created_at: str
+    # Optional aggregated stats
+    actual_sector_count: Optional[int] = None
+    avg_security_level: Optional[float] = None
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -247,6 +264,115 @@ async def get_all_regions(
     } for region in regions]
 
     return {"regions": region_list}
+
+
+@router.get("/regions/{region_id}/zones", response_model=dict)
+async def get_region_zones(
+    region_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all zones for a specific region (admin only)
+
+    Returns zones with sector statistics:
+    - Central Nexus: 1 zone ("The Expanse")
+    - Terran Space: 3 zones (Federation/Border/Frontier)
+    - Player Regions: 3 zones (Federation/Border/Frontier)
+    """
+    # Verify region exists
+    region = db.query(Region).filter(Region.id == region_id).first()
+    if not region:
+        raise HTTPException(status_code=404, detail=f"Region {region_id} not found")
+
+    # Get all zones for this region
+    zones = db.query(Zone).filter(Zone.region_id == region_id).order_by(Zone.start_sector).all()
+
+    zone_list = []
+    for zone in zones:
+        # Count actual sectors in this zone
+        sector_count_query = db.query(Sector).filter(Sector.zone_id == zone.id).count()
+
+        # Calculate average security level
+        from sqlalchemy import func
+        avg_security = db.query(func.avg(Sector.security_level)).filter(Sector.zone_id == zone.id).scalar()
+
+        zone_data = {
+            "id": str(zone.id),
+            "region_id": str(zone.region_id),
+            "name": zone.name,
+            "zone_type": zone.zone_type,
+            "start_sector": zone.start_sector,
+            "end_sector": zone.end_sector,
+            "sector_count": zone.end_sector - zone.start_sector + 1,  # Theoretical count
+            "policing_level": zone.policing_level,
+            "danger_rating": zone.danger_rating,
+            "created_at": zone.created_at.isoformat() if zone.created_at else None,
+            "actual_sector_count": sector_count_query,  # Actual sectors with this zone_id
+            "avg_security_level": float(avg_security) if avg_security else None
+        }
+        zone_list.append(zone_data)
+
+    return {
+        "region_id": str(region_id),
+        "region_name": region.display_name,
+        "region_type": region.region_type,
+        "zones": zone_list,
+        "total_zones": len(zone_list)
+    }
+
+
+@router.get("/regions/{region_id}/zones/{zone_id}", response_model=ZoneResponse)
+async def get_zone_details(
+    region_id: str,
+    zone_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get detailed information about a specific zone (admin only)
+
+    Validates that the zone belongs to the requested region.
+    """
+    # Verify region exists
+    region = db.query(Region).filter(Region.id == region_id).first()
+    if not region:
+        raise HTTPException(status_code=404, detail=f"Region {region_id} not found")
+
+    # Get zone and verify it belongs to this region
+    zone = db.query(Zone).filter(
+        Zone.id == zone_id,
+        Zone.region_id == region_id  # Security: ensure zone belongs to region
+    ).first()
+
+    if not zone:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Zone {zone_id} not found in region {region_id}"
+        )
+
+    # Count actual sectors
+    sector_count_query = db.query(Sector).filter(Sector.zone_id == zone.id).count()
+
+    # Calculate average security level
+    from sqlalchemy import func
+    avg_security = db.query(func.avg(Sector.security_level)).filter(Sector.zone_id == zone.id).scalar()
+
+    return ZoneResponse(
+        id=str(zone.id),
+        region_id=str(zone.region_id),
+        name=zone.name,
+        zone_type=zone.zone_type,
+        start_sector=zone.start_sector,
+        end_sector=zone.end_sector,
+        sector_count=zone.end_sector - zone.start_sector + 1,
+        policing_level=zone.policing_level,
+        danger_rating=zone.danger_rating,
+        created_at=zone.created_at.isoformat() if zone.created_at else "",
+        actual_sector_count=sector_count_query,
+        avg_security_level=float(avg_security) if avg_security else None
+    )
+
 
 @router.patch("/players/{player_id}", response_model=dict)
 async def update_player(

@@ -17,6 +17,7 @@ from src.models.region import (
     Region, RegionType, RegionStatus,
     RegionalMembership, RegionalPolicy, RegionalElection, RegionalVote, RegionalTreaty, InterRegionalTravel
 )
+from src.models.zone import Zone
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus

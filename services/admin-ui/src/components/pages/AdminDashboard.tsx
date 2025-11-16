@@ -4,15 +4,15 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
-  const { 
-    adminStats, 
-    galaxyState, 
-    zones, 
+  const {
+    adminStats,
+    galaxyState,
+    regions,
     users,
     players,
     loadAdminStats,
     loadGalaxyInfo,
-    loadZones,
+    loadRegions,
     loadUsers,
     loadPlayers,
     isLoading,
@@ -32,9 +32,9 @@ const AdminDashboard: React.FC = () => {
   // Load regions when galaxy info is loaded
   useEffect(() => {
     if (galaxyState) {
-      loadZones();
+      loadRegions();
     }
-  }, [galaxyState, loadZones]);
+  }, [galaxyState, loadRegions]);
   
   return (
     <div className="page-container">
@@ -147,37 +147,27 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   
                   <div className="mb-6">
-                    <h5 className="font-semibold text-primary mb-3">Regions ({zones.length})</h5>
-                    <div className="grid grid-cols-1 gap-2 mb-4">
-                      {zones.map((region: any) => (
+                    <h5 className="font-semibold text-primary mb-3">Regions ({regions.length})</h5>
+                    <div className="grid grid-cols-1 gap-2">
+                      {regions.map((region: any) => (
                         <div key={region.id} className="flex justify-between items-center p-3 bg-secondary rounded">
                           <div>
-                            <div className="font-medium">{region.name}</div>
-                            <div className="text-sm text-tertiary">{region.sector_count} sectors</div>
+                            <div className="font-medium">{region.display_name}</div>
+                            <div className="text-sm text-tertiary">
+                              {region.total_sectors} sectors • {region.region_type}
+                            </div>
                           </div>
-                          {region.controlling_faction && (
-                            <span className="badge badge-info">{region.controlling_faction}</span>
-                          )}
+                          <span className={`badge ${
+                            region.region_type === 'central_nexus' ? 'badge-primary' :
+                            region.region_type === 'terran_space' ? 'badge-info' :
+                            'badge-success'
+                          }`}>
+                            {region.region_type === 'central_nexus' ? 'Central Nexus' :
+                             region.region_type === 'terran_space' ? 'Terran Space' :
+                             'Player Region'}
+                          </span>
                         </div>
                       ))}
-                    </div>
-                    
-                    <div className="flex h-2 rounded bg-gray-200 overflow-hidden">
-                      <div
-                        className="bg-blue-500"
-                        style={{width: `${galaxyState.zone_distribution.federation}%`}}
-                        title={`Federation: ${galaxyState.zone_distribution.federation}%`}
-                      ></div>
-                      <div
-                        className="bg-yellow-500"
-                        style={{width: `${galaxyState.zone_distribution.border}%`}}
-                        title={`Border: ${galaxyState.zone_distribution.border}%`}
-                      ></div>
-                      <div
-                        className="bg-red-500"
-                        style={{width: `${galaxyState.zone_distribution.frontier}%`}}
-                        title={`Frontier: ${galaxyState.zone_distribution.frontier}%`}
-                      ></div>
                     </div>
                   </div>
                 </div>

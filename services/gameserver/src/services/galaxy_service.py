@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from src.models.galaxy import Galaxy
 from src.models.region import Region, RegionType
+from src.models.zone import Zone
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
@@ -94,9 +95,12 @@ class GalaxyGenerator:
         # Create clusters for this region
         clusters = self._create_clusters_for_region(region, cluster_count)
 
+        # Generate zones for this region (must happen before sector creation)
+        zones = self._generate_zones_for_region(region)
+
         # Create sectors in each cluster
         for cluster in clusters:
-            self._create_sectors_for_cluster(cluster, region)
+            self._create_sectors_for_cluster(cluster, region, zones)
 
         # Connect sectors with warps
         self._create_warps_between_sectors()
@@ -164,8 +168,89 @@ class GalaxyGenerator:
             clusters.append(cluster)
 
         return clusters
-    
-    def _create_sectors_for_cluster(self, cluster: Cluster, region: Region) -> List[Sector]:
+
+    def _generate_zones_for_region(self, region: Region) -> List[Zone]:
+        """
+        Generate zones for a region based on region_type.
+
+        Zone Types:
+        - Central Nexus: One zone "The Expanse" (sectors 1-5000)
+        - Terran Space: Three zones Fed/Border/Frontier (sectors in thirds)
+        - Player Regions: Three zones Fed/Border/Frontier (sectors in thirds)
+
+        Returns:
+            List of Zone objects created for this region
+        """
+        zones = []
+        total_sectors = region.total_sectors
+
+        if region.is_central_nexus:
+            # Central Nexus: One massive "Expanse" zone
+            zone = Zone(
+                region_id=region.id,
+                name="The Expanse",
+                zone_type="EXPANSE",
+                start_sector=1,
+                end_sector=5000,
+                policing_level=3,  # Light policing (sparse region)
+                danger_rating=6    # Moderate danger
+            )
+            zones.append(zone)
+            self.db.add(zone)
+            logger.info(f"Created zone '{zone.name}' for {region.name} (sectors {zone.start_sector}-{zone.end_sector})")
+
+        else:
+            # Terran Space and Player Regions: Federation/Border/Frontier zones (thirds)
+            # Federation Space: First 33%
+            fed_end = int(total_sectors * 0.33)
+            zone_fed = Zone(
+                region_id=region.id,
+                name="Federation Space",
+                zone_type="FEDERATION",
+                start_sector=1,
+                end_sector=fed_end,
+                policing_level=9,  # Heavily policed
+                danger_rating=1    # Very safe
+            )
+            zones.append(zone_fed)
+            self.db.add(zone_fed)
+            logger.info(f"Created zone '{zone_fed.name}' for {region.name} (sectors {zone_fed.start_sector}-{zone_fed.end_sector})")
+
+            # Border Regions: Middle 33%
+            border_start = fed_end + 1
+            border_end = int(total_sectors * 0.67)
+            zone_border = Zone(
+                region_id=region.id,
+                name="Border Regions",
+                zone_type="BORDER",
+                start_sector=border_start,
+                end_sector=border_end,
+                policing_level=5,  # Moderate policing
+                danger_rating=4    # Some danger
+            )
+            zones.append(zone_border)
+            self.db.add(zone_border)
+            logger.info(f"Created zone '{zone_border.name}' for {region.name} (sectors {zone_border.start_sector}-{zone_border.end_sector})")
+
+            # Frontier Space: Last 34%
+            frontier_start = border_end + 1
+            zone_frontier = Zone(
+                region_id=region.id,
+                name="Frontier Space",
+                zone_type="FRONTIER",
+                start_sector=frontier_start,
+                end_sector=total_sectors,
+                policing_level=2,  # Light policing
+                danger_rating=8    # High danger
+            )
+            zones.append(zone_frontier)
+            self.db.add(zone_frontier)
+            logger.info(f"Created zone '{zone_frontier.name}' for {region.name} (sectors {zone_frontier.start_sector}-{zone_frontier.end_sector})")
+
+        self.db.flush()
+        return zones
+
+    def _create_sectors_for_cluster(self, cluster: Cluster, region: Region, zones: List[Zone] = None) -> List[Sector]:
         """Create sectors within a cluster."""
         sectors = []
         sector_count = cluster.sector_count
@@ -189,6 +274,14 @@ class GalaxyGenerator:
             else:
                 sector_type = random.choice(sector_types)
 
+            # Find the zone this sector belongs to (based on sector_number)
+            zone_id = None
+            if zones:
+                for zone in zones:
+                    if zone.start_sector <= sector_num <= zone.end_sector:
+                        zone_id = zone.id
+                        break
+
             # Create sector
             sector_name = f"Sector {sector_num}"
             sector = Sector(
@@ -196,6 +289,7 @@ class GalaxyGenerator:
                 sector_number=sector_num,  # Same as sector_id for now
                 name=sector_name,
                 cluster_id=cluster.id,
+                zone_id=zone_id,  # Assign to zone based on sector number
                 region_id=region.id,
                 type=sector_type,
                 is_discovered=cluster.is_discovered,

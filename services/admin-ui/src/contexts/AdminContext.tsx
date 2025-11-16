@@ -31,15 +31,10 @@ export interface GalaxyGenerationConfig {
   planet_density?: number;
   warp_tunnel_probability?: number;
   faction_territory_size?: number;
-  zone_distribution?: {  // Cosmological zones (Federation/Border/Frontier)
-    federation: number;
-    border: number;
-    frontier: number;
-  };
 }
 
 export interface SectorGenerationConfig {
-  zone_id?: string;  // Cosmological zone ID
+  region_id?: string;
   cluster_id?: string;
   sector_type?: 'normal' | 'nebula' | 'black_hole' | 'asteroid_field';
   resource_richness?: 'poor' | 'average' | 'rich' | 'abundant';
@@ -49,11 +44,6 @@ export interface GalaxyState {
   id: string;
   name: string;
   created_at: string;
-  zone_distribution: {  // Cosmological zones
-    federation: number;
-    border: number;
-    frontier: number;
-  };
   statistics: GalaxyStats;
   state: {
     age_in_days: number;
@@ -70,12 +60,33 @@ export interface GalaxyState {
   };
 }
 
-export interface Zone {  // Cosmological zone (Federation/Border/Frontier)
+export interface Region {
   id: string;
+  display_name: string;
+  region_type: 'central_nexus' | 'terran_space' | 'player_owned';
+  total_sectors: number;
+  created_at: string;
+  statistics?: {
+    total_sectors: number;
+    discovered_sectors: number;
+    port_count: number;
+    planet_count: number;
+  };
+}
+
+export interface Zone {
+  id: string;
+  region_id: string;
   name: string;
-  type: string;
+  zone_type: string;  // EXPANSE, FEDERATION, BORDER, FRONTIER
+  start_sector: number;
+  end_sector: number;
   sector_count: number;
-  controlling_faction: string | null;
+  policing_level: number;
+  danger_rating: number;
+  created_at: string;
+  actual_sector_count?: number;
+  avg_security_level?: number;
 }
 
 export interface Cluster {
@@ -83,7 +94,7 @@ export interface Cluster {
   name: string;
   type: string;
   sector_count: number;
-  zone_id: string;  // Cosmological zone
+  region_id: string;
 }
 
 export interface UserAccount {
@@ -138,6 +149,10 @@ export interface SectorData {
   name: string;
   type: string;
   cluster_id: string;
+  region_name: string;
+  zone_id: string | null;
+  zone_name: string | null;
+  zone_type: string | null;
   x_coord: number;
   y_coord: number;
   z_coord: number;
@@ -157,11 +172,13 @@ interface AdminContextType {
 
   // Galaxy management
   galaxyState: GalaxyState | null;
-  zones: Zone[];  // Cosmological zones
+  regions: Region[];
+  zones: Zone[];
   clusters: Cluster[];
   loadGalaxyInfo: () => Promise<void>;
-  loadZones: () => Promise<void>;
-  loadClusters: (zoneId?: string) => Promise<void>;
+  loadRegions: () => Promise<void>;
+  loadRegionZones: (regionId: string) => Promise<void>;
+  loadClusters: (regionId?: string) => Promise<void>;
   generateGalaxy: (name: string, numSectors: number, config?: GalaxyGenerationConfig) => Promise<void>;
   generateEnhancedGalaxy: (config: any) => Promise<void>;
   addSectors: (galaxyId: string, numSectors: number, config?: SectorGenerationConfig) => Promise<void>;
@@ -170,7 +187,7 @@ interface AdminContextType {
 
   // Sector data for visualization
   sectors: SectorData[];
-  loadSectors: (zoneId?: string, clusterId?: string, limit?: number, offset?: number) => Promise<void>;
+  loadSectors: (regionId?: string, zoneId?: string, clusterId?: string, limit?: number, offset?: number) => Promise<void>;
 
   // User management
   users: UserAccount[];
@@ -194,10 +211,11 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   
   // Stats and overview
   const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
-  
+
   // Galaxy management
   const [galaxyState, setGalaxyState] = useState<GalaxyState | null>(null);
-  const [zones, setZones] = useState<Zone[]>([]);  // Cosmological zones
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [sectors, setSectors] = useState<SectorData[]>([]);
   
@@ -273,28 +291,48 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
   
-  // Load zones
-  const loadZones = async () => {
-    if (!user || !user.is_admin || !galaxyState) return;
+  // Load regions
+  const loadRegions = async () => {
+    if (!user || !user.is_admin) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await api.get<{zones: Zone[]}>(`/admin/galaxy/${galaxyState.id}/zones`, {
+      const response = await api.get<{regions: Region[]}>('/admin/regions', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      setRegions(response.data.regions || []);
+    } catch (error) {
+      console.error('Error loading regions:', error);
+      setError('Failed to load regions');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load zones for a specific region
+  const loadRegionZones = async (regionId: string) => {
+    if (!user || !user.is_admin) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.get<{zones: Zone[]}>(`/admin/regions/${regionId}/zones`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setZones(response.data.zones || []);
     } catch (error) {
-      console.error('Error loading zones:', error);
-      setError('Failed to load galaxy zones');
+      console.error('Error loading region zones:', error);
+      setError('Failed to load region zones');
     } finally {
       setIsLoading(false);
     }
   };
   
-  // Load clusters for a cosmological zone
-  const loadClusters = async (zoneId?: string) => {
+  // Load clusters for a region
+  const loadClusters = async (regionId?: string) => {
     if (!user || !user.is_admin) return;
 
     setIsLoading(true);
@@ -302,11 +340,13 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     try {
       let url = '/admin/clusters';
-      if (zoneId) {
-        url = `/api/v1/admin/zones/${zoneId}/clusters`;
+      if (regionId) {
+        url = `/admin/regions/${regionId}/clusters`;
       }
-      
-      const response = await api.get<{clusters: Cluster[]}>(url);
+
+      const response = await api.get<{clusters: Cluster[]}>(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       setClusters(response.data.clusters || []);
     } catch (error) {
       console.error('Error loading clusters:', error);
@@ -362,15 +402,15 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Generate enhanced galaxy with detailed configuration
   const generateEnhancedGalaxy = async (config: any) => {
     if (!user || !user.is_admin) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await api.post('/admin/galaxy/generate-enhanced', config);
       console.log('generateEnhancedGalaxy: Got response:', response.data);
       await loadGalaxyInfo();
-      await loadZones();
+      await loadRegions();
       await loadSectors();
     } catch (error) {
       console.error('Error generating enhanced galaxy:', error);
@@ -384,22 +424,23 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Add sectors to an existing galaxy
   const addSectors = async (galaxyId: string, numSectors: number, config?: SectorGenerationConfig) => {
     if (!user || !user.is_admin) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       await api.post(`/admin/galaxy/${galaxyId}/sectors/add`, {
         num_sectors: numSectors,
         config
       });
-      
+
       // After adding sectors, reload galaxy info
       await loadGalaxyInfo();
-      await loadZones();
-      
-      // If a region was specified, reload its clusters
+      await loadRegions();
+
+      // If a region was specified, reload its zones and clusters
       if (config?.region_id) {
+        await loadRegionZones(config.region_id);
         await loadClusters(config.region_id);
       }
     } catch (error) {
@@ -414,19 +455,20 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Clear all galaxy data
   const clearGalaxyData = async () => {
     if (!user || !user.is_admin) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       await api.delete('/admin/galaxy/clear');
-      
+
       // After clearing, reset all state
       setGalaxyState(null);
+      setRegions([]);
       setZones([]);
       setClusters([]);
       setSectors([]);
-      
+
       console.log('Galaxy data cleared successfully');
     } catch (error) {
       console.error('Error clearing galaxy data:', error);
@@ -581,11 +623,11 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       loadPlayers();
     }
   }, [user]);
-  
-  // Load zones when galaxy is loaded
+
+  // Load regions when galaxy is loaded
   useEffect(() => {
     if (galaxyState) {
-      loadZones();
+      loadRegions();
     }
   }, [galaxyState]);
   
@@ -596,10 +638,12 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // Galaxy management
     galaxyState,
-    zones,  // Cosmological zones
+    regions,
+    zones,
     clusters,
     loadGalaxyInfo,
-    loadZones,
+    loadRegions,
+    loadRegionZones,
     loadClusters,
     generateGalaxy,
     generateEnhancedGalaxy,
