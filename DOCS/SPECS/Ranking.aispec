@@ -59,7 +59,7 @@ StaffSergeant:
   rarity: 60% (dedicated players)
 
 MasterSergeant:
-  requirements: 1M credits, 1000 sectors, 1000 trades, 50 combat victories, 5+ planets OR active team, 15 faction missions, 1 quantum trade
+  requirements: 1M credits, 1000 sectors, 1000 trades, 50 combat victories, 3+ planets OR active team, 15 faction missions, 1 quantum trade
   insignia: Bronze chevron with three rockers and star
   trading_bonus: +7%
   benefits: +10% faction reputation gain, priority docking at major ports
@@ -67,14 +67,14 @@ MasterSergeant:
 
 WARRANT_RANKS:
 WarrantOfficer:
-  requirements: 2.5M credits, 1500 sectors, 100 combat victories, 10+ planets, 1 warp tunnel, 1 fleet battle led
+  requirements: 2.5M credits, 1500 sectors, 100 combat victories, 5+ planets, 1 warp tunnel, 1 fleet battle led
   insignia: Gold bar with silver diamond
   trading_bonus: +8%
   benefits: Can construct advanced facilities
   rarity: 30% (skilled specialists)
 
 ChiefWarrantOfficer:
-  requirements: 5M credits, 2000 sectors, 200 combat victories, 20+ planets, 3+ warp tunnels, 5+ fleet battles, 1 port owned
+  requirements: 5M credits, 2000 sectors, 200 combat victories, 8+ planets, 3+ warp tunnels, 5+ fleet battles, 1 port owned
   insignia: Gold bar with gold diamond
   trading_bonus: +10%
   benefits: Reduced warp tunnel construction costs
@@ -82,28 +82,28 @@ ChiefWarrantOfficer:
 
 OFFICER_RANKS:
 Ensign:
-  requirements: 10M credits, 300 combat victories, 30+ planets with advanced infrastructure, team leader with 3+ members, 1+ sector controlled, 50 faction missions (Friendly+ reputation)
+  requirements: 10M credits, 300 combat victories, 10+ planets with advanced infrastructure, team leader with 3+ members, 1+ sector controlled, 50 faction missions (Friendly+ reputation)
   insignia: Gold bar
   trading_bonus: +12%
   benefits: Can negotiate regional governance roles
   rarity: 15% (elite players)
 
 Lieutenant:
-  requirements: 25M credits, 500 combat victories, 50+ planets, top 10 regional leaderboard, 3+ sectors controlled, 25+ quantum trades, Allied with 2+ factions
+  requirements: 25M credits, 500 combat victories, 12+ planets, top 10 regional leaderboard, 3+ sectors controlled, 25+ quantum trades, Allied with 2+ factions
   insignia: Two gold bars
   trading_bonus: +15%
   benefits: +15% faction reputation gain, diplomatic immunity in allied territories
   rarity: 15% (elite players)
 
 Commander:
-  requirements: 50M credits, 1000 combat victories, 100+ planets across multiple regions, 5+ ports, Regional Territory OR top 5 Central Nexus, defended territory from major attack, Allied with 5+ factions
+  requirements: 50M credits, 1000 combat victories, 15+ planets across multiple regions, 2+ ports, Regional Territory OR top 5 Central Nexus, defended territory from major attack, Allied with 5+ factions
   insignia: Three gold bars
   trading_bonus: +18%
   benefits: Reduced regional taxes, preferential treatment galaxy-wide
   rarity: 15% (elite players)
 
 Captain:
-  requirements: 100M credits, 2500 combat victories, 250+ planets, 15+ ports, governs Regional Territory OR top 3 Central Nexus, led alliance of 3+ teams, Allied with 10+ factions, owns Warp Jumper
+  requirements: 100M credits, 2500 combat victories, 20+ planets, 5+ ports, governs Regional Territory OR top 3 Central Nexus, led alliance of 3+ teams, Allied with 10+ factions, owns Warp Jumper
   insignia: Gold eagle
   trading_bonus: +20%
   benefits: Significant diplomatic influence, can negotiate special trade agreements
@@ -111,28 +111,28 @@ Captain:
 
 FLAG_RANKS:
 Commodore:
-  requirements: 250M credits, 5000 combat victories, 500+ planets across 3+ regions, 30+ ports, governs thriving Regional Territory (100+ citizens), led coalition victory in inter-regional conflict, 10+ custom warp tunnels, top 10 all-time galactic leaderboard
+  requirements: 250M credits, 5000 combat victories, 25+ planets across 3+ regions, 8+ ports, governs thriving Regional Territory (100+ citizens), led coalition victory in inter-regional conflict, 10+ custom warp tunnels, top 10 all-time galactic leaderboard
   insignia: Gold eagle with single star
   trading_bonus: +25%
   benefits: Can propose galactic-level policies, legendary status
   rarity: 2% (legendary players)
 
 RearAdmiral:
-  requirements: 500M credits, 10000 combat victories, 1000+ planets, 60+ ports, governs multiple Regional Territories, single-handedly affected galactic economy, top 5 all-time galactic leaderboard
+  requirements: 500M credits, 10000 combat victories, 28+ planets, 12+ ports, governs multiple Regional Territories, single-handedly affected galactic economy, top 5 all-time galactic leaderboard
   insignia: Gold eagle with two stars
   trading_bonus: +30%
   benefits: Market-moving power, monuments erected in honor
   rarity: 0.5% (historical figures)
 
 Admiral:
-  requirements: 1B credits, 25000 combat victories, 2500+ planets, 100+ ports, governs galactic-scale trade networks, led civilization-level achievements, top 3 all-time galactic leaderboard
+  requirements: 1B credits, 25000 combat victories, 30+ planets, 15+ ports, governs galactic-scale trade networks, led civilization-level achievements, top 3 all-time galactic leaderboard
   insignia: Gold eagle with three stars
   trading_bonus: +35%
   benefits: Godlike status, permanent place in galactic hall of fame
   rarity: 0.1% (galactic titans)
 
 FleetAdmiral:
-  requirements: 10B credits, 50000+ combat victories, 5000+ planets, 200+ ports, dominated an entire era of gameplay, #1 all-time galactic leaderboard, achieved the impossible
+  requirements: 10B credits, 50000+ combat victories, 30+ planets, 20+ ports, dominated an entire era of gameplay, #1 all-time galactic leaderboard, achieved the impossible
   insignia: Platinum eagle with four stars and quantum aura
   trading_bonus: +50%
   benefits: Ultimate prestige, eternal glory, special title color and effects, statue in every major port

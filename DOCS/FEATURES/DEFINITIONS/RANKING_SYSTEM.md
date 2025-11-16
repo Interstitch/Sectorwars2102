@@ -79,7 +79,7 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
   - 1,000 sectors visited
   - 1,000 successful trades
   - 50 combat victories
-  - Owns 5+ planets or manages an active team
+  - Owns 3+ planets or manages an active team
   - Completed 15 faction missions
   - 1 quantum trade executed
 - **Insignia**: Bronze chevron with three rockers and star
@@ -95,7 +95,7 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
   - 2,500,000 credits earned
   - 1,500 sectors visited
   - 100 combat victories
-  - Owns 10+ planets
+  - Owns 5+ planets
   - Created 1 warp tunnel
   - Successfully led a team fleet battle
 - **Insignia**: Gold bar with silver diamond
@@ -107,7 +107,7 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
   - 5,000,000 credits earned
   - 2,000 sectors visited
   - 200 combat victories
-  - Owns 20+ planets
+  - Owns 8+ planets
   - Created 3+ warp tunnels
   - Led 5+ fleet battles
   - Owns 1 port
@@ -123,7 +123,7 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
 - **Requirements**:
   - 10,000,000 credits earned
   - 300 combat victories
-  - Owns 30+ planets with advanced infrastructure
+  - Owns 10+ planets with advanced infrastructure
   - Team leader with 3+ active members
   - Controls 1+ sector completely
   - Completed 50 faction missions (Friendly+ reputation)
@@ -135,7 +135,7 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
 - **Requirements**:
   - 25,000,000 credits earned
   - 500 combat victories
-  - Owns 50+ planets
+  - Owns 12+ planets
   - Led team to top 10 in any regional leaderboard
   - Controls 3+ sectors
   - Executed 25+ quantum trades
@@ -148,8 +148,8 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
 - **Requirements**:
   - 50,000,000 credits earned
   - 1,000 combat victories
-  - Owns 100+ planets across multiple regions
-  - Owns 5+ ports
+  - Owns 15+ planets across multiple regions
+  - Owns 2+ ports
   - Created own Regional Territory OR top 5 in Central Nexus
   - Successfully defended territory from major attack
   - Allied status with 5+ factions
@@ -161,8 +161,8 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
 - **Requirements**:
   - 100,000,000 credits earned
   - 2,500 combat victories
-  - Owns 250+ planets
-  - Owns 15+ ports
+  - Owns 20+ planets
+  - Owns 5+ ports
   - Successfully governs a Regional Territory OR top 3 in Central Nexus
   - Led alliance of 3+ teams
   - Reputation maxed (Allied) with 10+ factions
@@ -179,8 +179,8 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
 - **Requirements**:
   - 250,000,000 credits earned
   - 5,000 combat victories
-  - Owns 500+ planets across 3+ regions
-  - Owns 30+ ports (complete trade networks)
+  - Owns 25+ planets across 3+ regions
+  - Owns 8+ ports (complete trade networks)
   - Governs a thriving Regional Territory (100+ active citizens)
   - Led coalition victory in major inter-regional conflict
   - Created 10+ custom warp tunnels
@@ -193,8 +193,8 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
 - **Requirements**:
   - 500,000,000 credits earned
   - 10,000 combat victories
-  - Owns 1,000+ planets
-  - Owns 60+ ports
+  - Owns 28+ planets
+  - Owns 12+ ports
   - Governs multiple Regional Territories
   - Single-handedly affected galactic economy through trading
   - Top 5 all-time galactic leaderboard
@@ -206,8 +206,8 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
 - **Requirements**:
   - 1,000,000,000 credits earned
   - 25,000 combat victories
-  - Owns 2,500+ planets
-  - Owns 100+ ports
+  - Owns 30+ planets
+  - Owns 15+ ports
   - Governs galactic-scale trade networks
   - Led civilization-level achievements
   - Top 3 all-time galactic leaderboard
@@ -219,8 +219,8 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
 - **Requirements**:
   - 10,000,000,000+ credits earned (yes, 10 billion)
   - 50,000+ combat victories
-  - Owns 5,000+ planets
-  - Owns 200+ ports
+  - Owns 30+ planets
+  - Owns 20+ ports
   - Dominated an entire era of gameplay
   - #1 all-time galactic leaderboard
   - Achieved the impossible
