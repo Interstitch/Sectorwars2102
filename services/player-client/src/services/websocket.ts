@@ -71,67 +71,6 @@ export interface ARIAResponseMessage {
   signature?: string;
 }
 
-// Quantum Trading Message Types
-export interface QuantumTradingMessage {
-  type: 'quantum_trading';
-  action: 'create_quantum_trade' | 'collapse_trade' | 'execute_ghost_trade' | 'cancel_quantum_trade';
-  params: {
-    trade_type: 'buy' | 'sell';
-    commodity: string;
-    quantity: number;
-    sector_id?: number;
-    port_id?: number;
-    max_price?: number;
-    min_price?: number;
-    trade_id?: string;
-    superposition_states?: number;
-  };
-  timestamp: string;
-  session_id: string;
-  signature?: string;
-}
-
-export interface QuantumTradingResponse {
-  type: 'quantum_trading_response';
-  action: string;
-  success: boolean;
-  data?: {
-    trade_id: string;
-    superposition_states: Array<{
-      price: number;
-      profit: number;
-      probability: number;
-      outcome: string;
-    }>;
-    manipulation_warning: boolean;
-    risk_score: number;
-    confidence_interval: [number, number];
-    dna_sequence?: string;
-    ghost_results?: {
-      expected_profit: number;
-      success_probability: number;
-      risk_assessment: string;
-    };
-  };
-  error?: string;
-  timestamp: string;
-  signature?: string;
-}
-
-export interface QuantumMarketDataMessage {
-  type: 'quantum_market_data';
-  sector_id: number;
-  commodity_prices: Array<{
-    commodity: string;
-    current_price: number;
-    quantum_volatility: number;
-    manipulation_probability: number;
-    ai_recommendation: 'buy' | 'sell' | 'hold';
-    aria_insights: string[];
-  }>;
-  timestamp: string;
-}
-
 type MessageHandler = (message: WebSocketMessage) => void;
 
 class WebSocketService {

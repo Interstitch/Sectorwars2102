@@ -1,13 +1,11 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import websocketService, { 
-  WebSocketMessage, 
-  ChatMessage, 
-  PlayerMovementMessage, 
+import websocketService, {
+  WebSocketMessage,
+  ChatMessage,
+  PlayerMovementMessage,
   SectorPlayersMessage,
   NotificationMessage,
-  ARIAResponseMessage,
-  QuantumTradingResponse,
-  QuantumMarketDataMessage
+  ARIAResponseMessage
 } from '../services/websocket';
 import { useAuth } from './AuthContext';
 
@@ -55,75 +53,7 @@ interface WebSocketContextType {
   
   // Player movement tracking
   recentMovements: PlayerMovementMessage[];
-  
-  // Quantum Trading functionality
-  quantumTrades: Array<{
-    trade_id: string;
-    trade_type: 'buy' | 'sell';
-    commodity: string;
-    quantity: number;
-    superposition_states: Array<{
-      price: number;
-      profit: number;
-      probability: number;
-      outcome: string;
-    }>;
-    manipulation_warning: boolean;
-    risk_score: number;
-    confidence_interval: [number, number];
-    dna_sequence?: string;
-    timestamp: string;
-  }>;
-  
-  ghostTrades: Array<{
-    trade_id: string;
-    trade_type: 'buy' | 'sell';
-    commodity: string;
-    quantity: number;
-    expected_profit: number;
-    success_probability: number;
-    risk_assessment: string;
-    timestamp: string;
-  }>;
-  
-  quantumMarketData: Array<{
-    sector_id: number;
-    commodity_prices: Array<{
-      commodity: string;
-      current_price: number;
-      quantum_volatility: number;
-      manipulation_probability: number;
-      ai_recommendation: 'buy' | 'sell' | 'hold';
-      aria_insights: string[];
-    }>;
-    timestamp: string;
-  }>;
-  
-  // Quantum Trading methods
-  createQuantumTrade: (
-    tradeType: 'buy' | 'sell',
-    commodity: string,
-    quantity: number,
-    sectorId?: number,
-    portId?: number,
-    maxPrice?: number,
-    minPrice?: number,
-    superpositionStates?: number
-  ) => boolean;
-  
-  collapseQuantumTrade: (tradeId: string) => boolean;
-  executeGhostTrade: (
-    tradeType: 'buy' | 'sell',
-    commodity: string,
-    quantity: number,
-    sectorId?: number,
-    portId?: number
-  ) => boolean;
-  
-  cancelQuantumTrade: (tradeId: string) => boolean;
-  clearQuantumTrades: () => void;
-  clearGhostTrades: () => void;
-  
+
   // Connection management
   connect: () => void;
   disconnect: () => void;
@@ -171,50 +101,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   }>>([]);
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const [recentMovements, setRecentMovements] = useState<PlayerMovementMessage[]>([]);
-  
-  // Quantum Trading state
-  const [quantumTrades, setQuantumTrades] = useState<Array<{
-    trade_id: string;
-    trade_type: 'buy' | 'sell';
-    commodity: string;
-    quantity: number;
-    superposition_states: Array<{
-      price: number;
-      profit: number;
-      probability: number;
-      outcome: string;
-    }>;
-    manipulation_warning: boolean;
-    risk_score: number;
-    confidence_interval: [number, number];
-    dna_sequence?: string;
-    timestamp: string;
-  }>>([]);
 
-  const [ghostTrades, setGhostTrades] = useState<Array<{
-    trade_id: string;
-    trade_type: 'buy' | 'sell';
-    commodity: string;
-    quantity: number;
-    expected_profit: number;
-    success_probability: number;
-    risk_assessment: string;
-    timestamp: string;
-  }>>([]);
-
-  const [quantumMarketData, setQuantumMarketData] = useState<Array<{
-    sector_id: number;
-    commodity_prices: Array<{
-      commodity: string;
-      current_price: number;
-      quantum_volatility: number;
-      manipulation_probability: number;
-      ai_recommendation: 'buy' | 'sell' | 'hold';
-      aria_insights: string[];
-    }>;
-    timestamp: string;
-  }>>([]);
-  
   // Keep track of cleanup functions
   const cleanupFunctions = useRef<Array<() => void>>([]);
 
@@ -269,95 +156,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
   const clearARIAMessages = useCallback(() => {
     setAriaMessages([]);
-  }, []);
-
-  // Quantum Trading functionality
-  const createQuantumTrade = useCallback((
-    tradeType: 'buy' | 'sell',
-    commodity: string,
-    quantity: number,
-    sectorId?: number,
-    portId?: number,
-    maxPrice?: number,
-    minPrice?: number,
-    superpositionStates?: number
-  ) => {
-    const success = websocketService.createQuantumTrade(
-      tradeType, commodity, quantity, sectorId, portId, maxPrice, minPrice, superpositionStates
-    );
-    
-    if (success) {
-      // Notify ARIA about the quantum trade creation
-      websocketService.sendARIAMessage(
-        `Creating quantum ${tradeType} trade: ${quantity} ${commodity} with ${superpositionStates || 3} superposition states`,
-        undefined,
-        'quantum_trading'
-      );
-    }
-    
-    return success;
-  }, []);
-
-  const collapseQuantumTrade = useCallback((tradeId: string) => {
-    const success = websocketService.collapseQuantumTrade(tradeId);
-    
-    if (success) {
-      // Notify ARIA about the quantum trade collapse
-      websocketService.sendARIAMessage(
-        `Collapsing quantum trade ${tradeId} to reality`,
-        undefined,
-        'quantum_trading'
-      );
-    }
-    
-    return success;
-  }, []);
-
-  const executeGhostTrade = useCallback((
-    tradeType: 'buy' | 'sell',
-    commodity: string,
-    quantity: number,
-    sectorId?: number,
-    portId?: number
-  ) => {
-    const success = websocketService.executeGhostTrade(tradeType, commodity, quantity, sectorId, portId);
-    
-    if (success) {
-      // Notify ARIA about the ghost trade
-      websocketService.sendARIAMessage(
-        `Running ghost ${tradeType} simulation: ${quantity} ${commodity}`,
-        undefined,
-        'quantum_trading'
-      );
-    }
-    
-    return success;
-  }, []);
-
-  const cancelQuantumTrade = useCallback((tradeId: string) => {
-    const success = websocketService.cancelQuantumTrade(tradeId);
-    
-    if (success) {
-      // Remove from local state
-      setQuantumTrades(prev => prev.filter(trade => trade.trade_id !== tradeId));
-      
-      // Notify ARIA about the cancellation
-      websocketService.sendARIAMessage(
-        `Cancelled quantum trade ${tradeId}`,
-        undefined,
-        'quantum_trading'
-      );
-    }
-    
-    return success;
-  }, []);
-
-  const clearQuantumTrades = useCallback(() => {
-    setQuantumTrades([]);
-  }, []);
-
-  const clearGhostTrades = useCallback(() => {
-    setGhostTrades([]);
   }, []);
 
   // Player presence
@@ -753,21 +551,10 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     addNotification,
     removeNotification,
     clearNotifications,
-    
+
     // Player movement tracking
     recentMovements,
-    
-    // Quantum Trading functionality
-    quantumTrades,
-    ghostTrades,
-    quantumMarketData,
-    createQuantumTrade,
-    collapseQuantumTrade,
-    executeGhostTrade,
-    cancelQuantumTrade,
-    clearQuantumTrades,
-    clearGhostTrades,
-    
+
     // Connection management
     connect,
     disconnect,

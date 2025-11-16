@@ -247,10 +247,7 @@ class EnhancedWebSocketService:
             
             elif message_type == "automation_rule":
                 await self._handle_automation_rule(player_id, message, db, session)
-            
-            elif message_type == "quantum_trading":
-                await self._handle_quantum_trading(player_id, message, db, session)
-            
+
             elif message_type == "heartbeat":
                 await self._handle_heartbeat(player_id)
             

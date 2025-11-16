@@ -5,7 +5,6 @@ import { useWebSocket } from '../../contexts/WebSocketContext';
 // import { useTheme } from '../../themes/ThemeProvider'; // Available for future use
 import GameLayout from '../layouts/GameLayout';
 import TradingInterface from '../trading/TradingInterface';
-import QuantumTradingInterface from '../trading/QuantumTradingInterface';
 import EnhancedAIAssistant from '../ai/EnhancedAIAssistant';
 import TacticalCard from '../tactical/TacticalCard';
 import SectorViewport from '../tactical/SectorViewport';
