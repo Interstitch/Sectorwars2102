@@ -36,10 +36,9 @@ This directory contains the **core essence and vision** of SectorWars 2102. Ever
 - **[SHIP_MAINTENANCE.md](./GAMEPLAY/SHIP_MAINTENANCE.md)** - Vehicle upkeep, repair, upgrades
 
 ### ECONOMY/ - Trading & Markets
-**Economic systems and quantum trading mechanics**
+**Economic systems and market mechanics**
 
-- **[PORT_TRADING.md](./ECONOMY/PORT_TRADING.md)** - Traditional trading, ports, commodities
-- **[QUANTUM_TRADING_USER_GUIDE.md](./ECONOMY/QUANTUM_TRADING_USER_GUIDE.md)** ⚛️ - Revolutionary quantum-enhanced trading with ARIA
+- **[PORT_TRADING.md](./ECONOMY/PORT_TRADING.md)** - Trading, ports, and commodities
 
 ### GALAXY/ - Universe Structure & Navigation
 **The physical game universe and movement systems**
@@ -88,7 +87,7 @@ This directory contains the **core essence and vision** of SectorWars 2102. Ever
 1. Start with [TERMINOLOGY.md](./DEFINITIONS/TERMINOLOGY.md) to learn game concepts
 2. Read [GAME_RULES.md](./DEFINITIONS/GAME_RULES.md) for core mechanics
 3. Check [FIRST_LOGIN.md](./GAMEPLAY/FIRST_LOGIN.md) for onboarding experience
-4. Explore [QUANTUM_TRADING_USER_GUIDE.md](./ECONOMY/QUANTUM_TRADING_USER_GUIDE.md) for advanced trading
+4. Explore [PORT_TRADING.md](./ECONOMY/PORT_TRADING.md) for trading mechanics
 
 ### For Developers
 1. Review [ARIA_AI_QUANTUM_INTEGRATION.md](./AI_SYSTEMS/ARIA_AI_QUANTUM_INTEGRATION.md) for AI systems
@@ -111,8 +110,7 @@ This directory contains the **core essence and vision** of SectorWars 2102. Ever
 - Internationalization (i18n) with 10+ languages
 - WebSocket real-time events
 - PayPal subscription system
-- ARIA AI integration (First Login + Quantum Trading)
-- Quantum Trading with superposition states
+- ARIA AI integration (First Login experience)
 - Team systems and fleet battles
 - Planetary colonization and defense
 - Faction reputation system
@@ -150,7 +148,6 @@ All feature documentation in this directory follows these standards:
 
 SectorWars 2102 is not just a space trading game - it's a vision of what gaming can become when:
 - **AI consciousness** becomes a companion, not just a tool
-- **Quantum mechanics** enhances gameplay without overwhelming complexity
 - **Player-owned territories** create genuinely unique experiences
 - **Real-time multiplayer** connects players across the galaxy
 - **Multi-language support** brings the game to players worldwide

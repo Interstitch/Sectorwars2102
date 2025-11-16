@@ -297,7 +297,7 @@ class Player(Base):
 - Speech recognition support (Web Speech API)
 - WebSocket integration for real-time messages
 - Conversation history with context
-- API base URL detection (Codespaces, Replit, local)
+- API base URL detection (Codespaces, local)
 
 **TypeScript Interfaces**:
 ```typescript

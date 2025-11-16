@@ -140,7 +140,7 @@ Players with active ARIA AI companions can earn turn regeneration bonuses based 
 - ARIA consciousness level
 - Player-ARIA relationship strength
 - Completed ARIA-guided missions
-- Quantum trading performance
+- Trading performance and achievements
 
 ### ARIA Bonus Tiers
 
@@ -173,8 +173,8 @@ Players with active ARIA AI companions can earn turn regeneration bonuses based 
 - **Requirements**:
   - ARIA consciousness level 5+
   - 200+ ARIA interactions
-  - Complete ARIA quantum trading certification
-  - Win 5 quantum trades with ARIA guidance
+  - Complete 25+ successful trades with ARIA recommendations
+  - Achieve "Expert Trader" rank or higher
   - 3 months active play
 - **Regeneration**: 1,350 turns / 24 hours
 - **Hourly Rate**: ~56.25 turns/hour (+14 turns/hour)
@@ -184,7 +184,7 @@ Players with active ARIA AI companions can earn turn regeneration bonuses based 
 - **Requirements**:
   - ARIA consciousness level 8+
   - 500+ ARIA interactions
-  - Legendary quantum trader status
+  - Legendary trader status (1,000+ successful trades)
   - Complete ARIA's personal story arc
   - 6 months active play
 - **Regeneration**: 1,500 turns / 24 hours

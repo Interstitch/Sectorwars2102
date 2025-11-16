@@ -1,27 +1,79 @@
-# Warp Gate Construction & Acquisition — Sector Wars 2102
+# Warp Gates & Warp Tunnels — Sector Wars 2102
 
 **Last Updated**: 2025-11-16
 **Status**: Design Phase - Core Feature
-**Purpose**: Player-created permanent warp tunnel network for custom navigation
+**Purpose**: Comprehensive guide to FTL travel including natural warp tunnels and player-constructed warp gates
 
 ---
 
 ## Overview
 
-**Warp Gates** are player-constructed, permanent one-way FTL connections between sectors, allowing players to create custom navigation networks that persist indefinitely. Unlike natural warp tunnels, player-built warp gates:
+The Quantum Warp system in Sector Wars 2102 consists of two distinct types of faster-than-light travel:
 
-- **Custom Routes**: Connect any two sectors (even across regions)
-- **Permanent Infrastructure**: Gates persist even if builder goes offline/quits
-- **Strategic Assets**: Control key navigation chokepoints
-- **Destructible**: Can be destroyed by enemies with sufficient firepower
-- **Expensive**: Require rare Quantum Crystals and Warp Jumper ships
-- **One-Way**: Each gate provides travel in one direction only (need 2 gates for round trip)
+### Natural Warp Tunnels
 
-**Core Philosophy**: High-cost, high-reward infrastructure that shapes galactic geography.
+**Natural Warp Tunnels** are pre-existing quantum phenomena connecting sectors without artificial intervention.
+
+- **Definition**: Naturally occurring quantum connections between sectors
+- **Directionality**: Can be **one-way** or **two-way** (bidirectional more common)
+- **Discovery**: Must be discovered through exploration or acquired via intelligence/map data
+- **Permanence**: Natural tunnels are permanent and cannot be destroyed by players
+- **Distribution**: Approximately 60-80% of sectors connected to main network via natural tunnels
+- **Visibility**: Once discovered, tunnels appear on the player's navigation map
+- **Cost**: 1 turn to use (standard travel cost)
+
+### Player-Created Warp Gates
+
+**Warp Gates** are player-constructed, permanent one-way FTL connections between sectors.
+
+- **Definition**: Artificial structures creating custom quantum passages between any two sectors
+- **Directionality**: Each gate provides **one-way travel only** (requires 2 gates for round trip)
+- **Construction**: Requires Warp Jumper ship + Quantum Crystals + rare materials
+- **Cost**: 0 turns to use (instant travel - major advantage over natural tunnels)
+- **Permanence**: Gates persist indefinitely even if builder goes offline/quits
+- **Vulnerability**: Can be destroyed by enemy attacks
+- **Customization**: Owners control permissions and can charge toll fees
+- **Strategic Assets**: Control key navigation chokepoints and trade routes
+
+**Key Difference**: Natural tunnels (1 turn) vs Player gates (0 turns) = strategic speed advantage
 
 ---
 
-## Prerequisites
+## Galaxy Structure
+
+### Starting Configuration
+
+The galaxy begins with **Terran Space** connected to the **Central Nexus**:
+
+- **Terran Space**: 300 sectors (default, configurable via admin panel during galaxy generation)
+- **Central Nexus**: 5,000 sectors (sparse, light policing - "The Expanse" zone)
+- **Natural Connections**: Warp tunnels connect 60-80% of sectors to main network
+- **Total Starting Size**: 5,300 sectors
+
+### Universe Growth Model
+
+The Sector Wars 2102 universe follows a **static growth model**:
+
+- **Static Base**: The galaxy does not expand organically or dynamically
+- **Growth Mechanism**: Only expands when players **purchase new regions via PayPal subscription**
+- **Region Addition**: Each purchased region adds 500-1,000 sectors
+- **Region Removal**: If subscription expires/cancelled, region may be removed
+- **Controlled Expansion**: Universe size directly tied to active player subscriptions
+
+### Isolated Clusters
+
+The galaxy contains **isolated clusters** - groups of sectors with no natural warp tunnel connections to the main network:
+
+- **Intentional Isolation**: During galaxy generation, 10-20% of sectors created in disconnected clusters
+- **Discovery Opportunity**: Players can discover these hidden regions using **Warp Jumper ships**
+- **Internal Connections**: Isolated clusters may have natural warp tunnels connecting sectors within the cluster
+- **Strategic Value**: First discoverers gain exclusive access until gates are built by others
+- **Unique Resources**: Isolated clusters often contain rare resources unavailable in connected space
+- **Gateway Challenge**: Finding entry points requires exploration and Warp Jumper quantum jump technology
+
+---
+
+## Prerequisites for Warp Gate Construction
 
 ### Required Ship: Warp Jumper
 
@@ -29,7 +81,7 @@
 
 **Warp Jumper Acquisition** (see Ships.aispec):
 - **Cost**: 500,000 credits
-- **Build Time**: 3-5 days at specialized shipyards
+- **Build Time**: 3-5 days at specialized shipyards (TradeDock, Research Stations)
 - **Materials Required**:
   - 3,000 ORE
   - 2,000 TECHNOLOGY
@@ -37,7 +89,7 @@
   - 2,000 EXOTIC_TECHNOLOGY
   - 1,000 QUANTUM_SHARDS (for quantum drive)
   - 500 PHOTONIC_CRYSTALS (for warp field stabilizers)
-- **Limit**: 1 per player (cannot own multiple Warp Jumpers)
+- **Limit**: 1 per player (cannot own multiple Warp Jumpers simultaneously)
 - **Special Ability**: Quantum Jump (5-10 sectors directed movement, 24hr cooldown)
 
 **Why Warp Jumper Required:**
@@ -45,6 +97,16 @@
 - Warp field stabilizers prevent gate collapse
 - Specialized navigation sensors for precise gate placement
 - Only ship capable of handling Quantum Crystal energy discharge
+
+**Warp Jump Technology**:
+- **Function**: Modified one-way warp gate system integrated into ship hull
+- **Jump Range**: 5-10 sectors per jump in a targeted direction
+- **Directional Control**: Player selects a bearing/direction, not a specific sector
+- **Jump Precision**: Cannot target exact sectors, only general direction
+- **Cooldown**: 24 hours between jumps (real-time)
+- **Navigation**: Requires plotting multi-jump courses to reach distant destinations
+- **Discovery Potential**: Can reach isolated clusters not connected to main network
+- **Fuel Consumption**: Each jump consumes significant fuel
 
 ### Required Material: Quantum Crystals
 
@@ -59,6 +121,7 @@
 **Quantum Shard Acquisition Methods:**
 
 #### Method 1: Nebula Exploration (Primary)
+
 **Nebula Clouds** contain naturally-occurring Quantum Shards
 
 **Equipment Requirement: Quantum Field Harvester**
@@ -79,57 +142,7 @@ Only ships with `quantum_harvester_slot: true` can extract quantum shards:
 **Total Cost for New Player** (Scout + Harvester):
 - Scout Ship: 25,000 credits
 - Quantum Harvester: 50,000 credits
-- Installation: Free at purchase
 - **Total**: 75,000 credits to start quantum shard gathering
-
-**Process:**
-```bash
-# 1. Purchase and equip Quantum Field Harvester
-POST /api/ship/equipment/purchase
-{
-  "equipmentType": "quantum_harvester",
-  "shipId": "player-scout-ship-uuid"
-}
-# Cost: 50,000 credits
-# Installation: 24 hours at Class 7+ port
-
-# 2. Navigate to nebula cluster (see cluster.md for nebula locations)
-POST /player/move/{nebula_sector_id}
-# Note: Use core nebula sectors for highest quantum_field_strength
-
-# 3. Scan for quantum anomalies
-POST /api/exploration/nebula/scan
-# Cost: 5 turns
-# Success Rate: 15% base + (quantum_field_strength / 10)%
-# Example: Crimson Nebula core (90 field strength) = 24% success rate
-
-# Response (if successful):
-{
-  "anomalyDetected": true,
-  "type": "QUANTUM_SHARD_DEPOSIT",
-  "quantumFieldStrength": 90,  # From cluster nebula_properties
-  "location": {"x": 1250, "y": 3400, "z": 200},
-  "estimatedYield": "2-3 shards",  # Higher yield in strong fields
-  "danger": "MODERATE"  # Radiation, energy fluctuations
-}
-
-# 4. Extract quantum shards (requires Quantum Field Harvester equipped)
-POST /api/exploration/nebula/extract
-# Cost: 15 turns
-# Time: 2 hours real-time
-# Yield: 1-3 Quantum Shards (RNG weighted by quantum_field_strength)
-# Risk: 10% chance ship takes minor hull damage (50-100 points)
-# Operation Cost: 1,000 credits deducted on extraction
-
-# Response:
-{
-  "success": true,
-  "shardsCollected": 3,
-  "damageIncurred": 0,
-  "operationCost": 1000,
-  "remainingHarvesterDurability": 95  # Harvester degrades 5% per use
-}
-```
 
 **Nebula Cluster Types** (see cluster.md for details):
 - **Crimson Nebulae** (#DC143C, Red): Quantum field 80-100, highest shard yield, moderate danger
@@ -144,43 +157,21 @@ POST /api/exploration/nebula/extract
 2. Violet (Secondary - good yield + rare materials)
 3. Azure (Safe option - stable, predictable)
 
-**Nebula Locations:**
-- Central Nexus: ~50 nebula sectors
-- Terran Space: ~5 nebula sectors
-- Player Regions: Variable (based on region size)
-- Exploration required to discover nebulae
-
 #### Method 2: Anomaly Investigation (Secondary)
+
 **Spatial Anomalies** occasionally contain Quantum Shards
 
-**Detection:**
-- Advanced Sensors (Scout Ships, upgraded sensor arrays)
-- Random encounters while traveling (1% chance per sector jump)
-- ARIA AI suggestions (with high consciousness level)
+**Investigation Outcomes:**
+- 60%: Nothing of value (wasted turns)
+- 25%: 1 Quantum Shard
+- 10%: 2 Quantum Shards
+- 4%: Enemy encounter (NPC ambush)
+- 1%: 5 Quantum Shards (jackpot!)
 
-**Investigation:**
-```bash
-# Anomaly detected
-{
-  "type": "SPATIAL_ANOMALY",
-  "sectorId": 3421,
-  "signature": "QUANTUM_FLUCTUATION",
-  "danger": "UNKNOWN"
-}
-
-# Investigate anomaly
-POST /api/exploration/anomaly/investigate
-# Cost: 20 turns
-# Time: 30 minutes real-time
-# Outcomes:
-#   - 60%: Nothing of value (wasted turns)
-#   - 25%: 1 Quantum Shard
-#   - 10%: 2 Quantum Shards
-#   - 4%: Enemy encounter (NPC ambush)
-#   - 1%: 5 Quantum Shards (jackpot!)
-```
+**Cost**: 20 turns + 30 minutes real-time
 
 #### Method 3: Combat Salvage (Rare)
+
 **Destroyed NPC Ships** may drop Quantum Shards
 
 **Sources:**
@@ -188,7 +179,8 @@ POST /api/exploration/anomaly/investigate
 - Rogue Scientists (special encounter): 15% drop rate
 - Destroyed Warp Jumpers (PvP): 100% drop their unused Quantum Shards/Crystals
 
-#### Method 4: Trading (Extremely Expensive)
+#### Method 4: Black Market Trading (Extremely Expensive)
+
 **Black Market Ports** occasionally sell Quantum Shards
 
 **Availability:**
@@ -198,6 +190,7 @@ POST /api/exploration/anomaly/investigate
 - Reputation requirement: Negative reputation with Federation (criminals only)
 
 #### Method 5: Team Collaboration
+
 **Teams can pool Quantum Shards** in team treasury
 
 **Strategy:**
@@ -256,11 +249,6 @@ POST /api/warpgate/deploy-beacon {
   "destinationSector": 3890
 }
 
-# Requirements checked:
-# - Player in Warp Jumper ship
-# - Not already constructing a gate
-# - Sector allows warp gates
-
 # Costs:
 # - 50 turns to deploy beacon
 # - 1,000 ORE (beacon structure)
@@ -307,11 +295,6 @@ POST /api/warpgate/deploy-focus {
   "beaconId": "beacon-uuid"  # Links to previously deployed beacon
 }
 
-# Requirements:
-# - Player in destination sector (3890)
-# - In Warp Jumper ship
-# - Beacon still active/not destroyed
-
 # Costs:
 # - 50 turns to deploy focus
 # - 1,000 ORE (focus structure)
@@ -355,12 +338,6 @@ POST /api/warpgate/initialize {
   "focusId": "focus-uuid"
 }
 
-# Requirements:
-# - 1 Quantum Crystal consumed (from cargo)
-# - Player in Warp Jumper
-# - Player at beacon OR focus location
-# - Both structures intact
-
 # Costs:
 # - 1 Quantum Crystal (consumed forever)
 # - 100 turns (massive energy expenditure)
@@ -382,9 +359,6 @@ POST /api/warpgate/initialize {
 }
 ```
 
-**Initialization Animation:**
-Players in either sector see spectacular quantum energy effects as gate activates.
-
 ### Step 5: Gate Activation (Automatic)
 
 **After 1 hour:**
@@ -401,7 +375,7 @@ GET /api/warpgate/{gateId}
   "sourceSector": 1245,
   "destinationSector": 3890,
   "usageCount": 0,
-  "totalTurnsSaved": 0,
+  "tollRevenue": 0,
   "health": 10000,
   "defenses": {
     "shields": 0,
@@ -454,11 +428,6 @@ GET /api/sectors/{sectorId}/warpgates
 POST /api/player/warpgate/travel {
   "gateId": "gate-uuid"
 }
-
-# Requirements:
-# - Player in source sector
-# - Gate permissions allow access
-# - Player has credits for toll (if any)
 
 # Costs:
 # - 0 turns (instant travel)
@@ -525,12 +494,6 @@ POST /api/combat/attack-warpgate {
 # - 75 turns (attacking infrastructure)
 # - Reputation loss with gate owner's faction/team
 
-# Combat resolution:
-# - Attacker drones vs gate defenses
-# - Gate shields absorb damage first
-# - Gate turrets fire back (if installed)
-# - Gate health depleted → structure destroyed
-
 # Gate destruction:
 {
   "destroyed": true,
@@ -584,23 +547,40 @@ POST /api/warpgate/{gateId}/upgrade {
 
 ---
 
-## Strategic Considerations
+## Strategic Implications
 
-### High-Value Gate Placements
+### Exploration and Discovery
 
-**Economic Routes:**
-- Central Nexus trade hub → Remote resource-rich sectors
-- Sector 1 (population hub) → Colony expansion frontier
-- TradeDock → Military outpost (ship construction supply line)
+- **Isolated Cluster Access**: Warp Jumpers are the only way to discover disconnected regions
+- **Natural Tunnel Mapping**: Finding one-way tunnels provides strategic routing advantages
+- **Gateway Discovery**: Locating entry points to isolated clusters brings significant rewards
+- **First-Mover Advantage**: First explorers of disconnected regions gain exclusive resource access
+- **Cartography Value**: Selling map data of natural tunnels and isolated clusters can be lucrative
 
-**Military Routes:**
-- Safe harbor → Enemy territory (invasion express)
-- Home base → Forward operating base (rapid deployment)
-- Retreat gate from dangerous sectors → Safe space
+### Trade Network Development
 
-**Exploration Routes:**
-- Known galaxy → Isolated clusters (access previously unreachable sectors)
-- Wormhole sectors → Rare resource nebulae
+- **Route Optimization**: Warp gates reduce travel time between distant markets
+- **Resource Access**: Connect resource-rich isolated sectors with high-demand markets
+- **Trade Monopoly**: First access to isolated regions creates temporary trade advantages
+- **Bypass Competition**: Create routes that avoid competitor-controlled space
+- **Supply Chain Control**: Gates enable efficient multi-sector trade networks
+
+### Military Applications
+
+- **Rapid Deployment**: Move fleets quickly to respond to threats or opportunities
+- **Strategic Access**: Create paths to valuable or contested regions
+- **Invasion Routes**: Establish surprise attack vectors into enemy territory
+- **Escape Routes**: Quick evacuation paths from vulnerable positions
+- **Tactical Surprise**: Access regions from unexpected directions
+- **Reinforcement Lines**: Fast troop movement between allied territories
+
+### Economic Implications
+
+- **Gate Ownership**: Control over gates creates toll and access revenue opportunities
+- **Network Effects**: Connected gate systems increase in value as network grows
+- **Resource Arbitrage**: Fast movement enables profitable price exploitation
+- **Market Influence**: Gate networks allow rapid response to market opportunities
+- **Infrastructure Investment**: Gate construction requires significant capital and resources
 
 ### Economic Analysis: Is It Worth It?
 
@@ -719,111 +699,34 @@ POST /api/warpgate/{gateId}/transfer {
 
 ---
 
-## UI Mockups
+## Player Experience
 
-### Warp Gate Construction Interface
+### Navigation Interface
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ ⚡ WARP GATE CONSTRUCTION - WARP JUMPER REQUIRED                 │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│ STEP 1: SELECT GATE ENDPOINTS                                    │
-│                                                                   │
-│ Source Sector (Current): [1245] ▼                                │
-│ ├─ Location: Central Nexus, Trade Hub Alpha                      │
-│ └─ Policing: 7 | Danger: 3                                       │
-│                                                                   │
-│ Destination Sector: [3890] 🔍                                    │
-│ ├─ Location: Central Nexus, Mining Cluster                       │
-│ ├─ Distance: 2,645 sectors (120 turn natural route)              │
-│ ├─ Existing Gates: 2 / 5 incoming                                │
-│ └─ Traffic Estimate: MODERATE                                    │
-│                                                                   │
-│ ✅ VALID GATE ROUTE                                              │
-│ • Saves 120 turns per trip                                       │
-│ • High traffic potential (toll revenue)                          │
-│ • Destination allows incoming gates                              │
-│                                                                   │
-│ ⚠️  WARNINGS:                                                     │
-│ • Destination in moderate danger zone                            │
-│ • Gate vulnerable during 48hr construction                       │
-│                                                                   │
-├──────────────────────────────────────────────────────────────────┤
-│ CONSTRUCTION COSTS:                                              │
-│                                                                   │
-│ Materials Required:                                              │
-│ ✅ Beacon: 1,000 ORE + 500 TECHNOLOGY                            │
-│ ✅ Focus: 1,000 ORE + 500 TECH + 1,000 PHOTONIC_CRYSTALS         │
-│ ⚠️  Quantum Crystal: 1 (YOU HAVE: 0)                             │
-│                                                                   │
-│ Credits: 80,000 total                                            │
-│ ├─ Beacon deployment: 10,000                                     │
-│ ├─ Focus deployment: 10,000                                      │
-│ └─ Quantum initialization: 50,000 + 10,000 assembly              │
-│                                                                   │
-│ Turns: 200 total                                                 │
-│ ├─ Beacon deployment: 50                                         │
-│ ├─ Focus deployment: 50                                          │
-│ └─ Quantum initialization: 100                                   │
-│                                                                   │
-│ Time: 3-5 days                                                   │
-│ ├─ Quantum Shard gathering: 2-4 days                             │
-│ ├─ Crystal assembly: 24 hours                                    │
-│ ├─ Travel to destination: Variable                               │
-│ └─ Gate activation: 1 hour                                       │
-│                                                                   │
-│ [BEGIN CONSTRUCTION] [PLAN ROUTE] [CANCEL]                       │
-└──────────────────────────────────────────────────────────────────┘
-```
+**Galaxy Map Enhancement**:
+- **Natural Bidirectional Tunnels**: Solid blue double-headed connections
+- **Natural Unidirectional Tunnels**: Dashed blue single-headed arrows
+- **Warp Gates (Active)**: Solid green single-headed arrows
+- **Warp Gates (Under Construction)**: Yellow dashed single-headed arrows
+- **Warp Gate Beacons**: Orange beacon icon at source sector
+- **Warp Gate Foci**: Purple focus icon at destination sector
+- **Unexplored Connections**: Grayed out until discovered
+- **Isolated Clusters**: Highlighted with special border when discovered
 
-### Active Gate Management
+**Route Planning**: System calculates fastest path using combination of tunnels and gates
+**Jump Plotting**: Special interface for planning Warp Jumper multi-jump trajectories
+**Construction Overlay**: Shows beacon/focus locations and in-progress gates
+**Discovery Tracking**: Records newly found natural tunnels and isolated clusters
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ ⚡ YOUR WARP GATES (2 / 3 slots used)                            │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│ ┌────────────────────────────────────────────────────────────┐  │
-│ │ GATE #1: "Express to Trade Hub"                            │  │
-│ │ Source: Sector 1245 → Destination: Sector 3890             │  │
-│ │                                                            │  │
-│ │ Status: ██████████ ACTIVE (100% health)                   │  │
-│ │ Defenses: Shield Lvl 2 (10k), Turrets Lvl 1 (10)          │  │
-│ │                                                            │  │
-│ │ Usage Statistics:                                          │  │
-│ │ ├─ Total Uses: 1,247 trips                                │  │
-│ │ ├─ Toll Revenue: 623,500 credits (500 cr/use)             │  │
-│ │ ├─ Turns Saved: 149,640 (for all users)                   │  │
-│ │ └─ Last Used: 12 minutes ago                              │  │
-│ │                                                            │  │
-│ │ Permissions: PUBLIC (toll: 500 credits)                    │  │
-│ │                                                            │  │
-│ │ [UPGRADE] [SETTINGS] [REPAIR] [VIEW TRAFFIC]              │  │
-│ └────────────────────────────────────────────────────────────┘  │
-│                                                                   │
-│ ┌────────────────────────────────────────────────────────────┐  │
-│ │ GATE #2: "Team Forward Base Access"                        │  │
-│ │ Source: Sector 42 → Destination: Sector 8231               │  │
-│ │                                                            │  │
-│ │ Status: ████░░░░░░ DAMAGED (40% health)                   │  │
-│ │ ⚠️  UNDER ATTACK by HostilePlayer99                        │  │
-│ │                                                            │  │
-│ │ Defenses: Shield Lvl 3 (DEPLETED), Turrets Lvl 2 (18)     │  │
-│ │                                                            │  │
-│ │ Usage Statistics:                                          │  │
-│ │ ├─ Total Uses: 87 trips (team only)                       │  │
-│ │ ├─ Toll Revenue: 0 credits (team gate)                    │  │
-│ │ └─ Last Used: 2 hours ago                                 │  │
-│ │                                                            │  │
-│ │ Permissions: TEAM_ONLY                                     │  │
-│ │                                                            │  │
-│ │ [DEFEND GATE] [EMERGENCY REPAIR] [ALERT TEAM]             │  │
-│ └────────────────────────────────────────────────────────────┘  │
-│                                                                   │
-│ [BUILD NEW GATE] [VIEW GALAXY GATES] [REVENUE HISTORY]          │
-└──────────────────────────────────────────────────────────────────┘
-```
+### Visual Elements
+
+- **Warp Gate Beacon**: Pulsing orange energy marker with quantum field distortion
+- **Warp Gate Focus**: Swirling purple reception field at destination
+- **Completed Gate**: Massive ring structure with directional quantum energy flow
+- **Tunnel Transit Effect**: Ships entering gates experience visual "wormhole" effect
+- **Jump Visualization**: Warp Jumpers create distinctive "fold space" ripple when jumping
+- **Construction Progress**: Gates show progressive construction stages over time
+- **Destruction Effect**: Massive quantum explosion with expanding shockwave
 
 ---
 
@@ -957,8 +860,11 @@ POST /api/quantum/assemble-crystal - Combine 5 shards → 1 crystal
 
 ## Related Documentation
 
+- [TERMINOLOGY.md](../DEFINITIONS/TERMINOLOGY.md) - Galaxy hierarchy and sector structure
+- [GALAXY_COMPONENTS.md](../DEFINITIONS/GALAXY_COMPONENTS.md) - Comprehensive galaxy structure
+- [GameConcepts.aispec](../../SPECS/GameConcepts.aispec) - Core game mechanics and resources
 - [Ships.aispec](../../SPECS/Ships.aispec) - Warp Jumper specifications
-- [Resources.aispec](../../SPECS/Resources.aispec) - Quantum Shards/Crystals
+- [Resources.aispec](../../SPECS/Resources.aispec) - Quantum Shards/Crystals details
 - [TRADEDOCK_SHIPYARD.md](../ECONOMY/TRADEDOCK_SHIPYARD.md) - Warp Jumper construction
 - [TURN_SYSTEM.md](../GAMEPLAY/TURN_SYSTEM.md) - Turn costs
 

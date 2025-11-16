@@ -4,6 +4,8 @@
 **Status**: Partial Implementation - Core Infrastructure Complete
 **Audit Scope**: Review ARIA Personal Intelligence system implementation vs design specifications
 
+**⚠️ UPDATE**: Quantum Trading features have been archived to `/future_features/` for post-launch implementation. This audit reflects the original design scope including quantum features.
+
 ---
 
 ## Executive Summary
@@ -160,7 +162,7 @@ All 6 ARIA database models are fully implemented:
 - WebSocket integration for real-time messages
 - Message history with conversation context
 - Security constants and validation
-- API base URL detection (Codespaces, Replit, local)
+- API base URL detection (Codespaces, local)
 
 ✅ TypeScript Interfaces:
 - `AIRecommendation` - Trading/combat/colony recommendations
