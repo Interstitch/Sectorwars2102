@@ -12,10 +12,24 @@
 ### Current API Documentation (v1)
 **All documentation now in: [`v1/`](./v1/)**
 
-- **[v1/README.md](./v1/README.md)** - Complete API overview and quick start
+**Player-Facing APIs:**
 - **[v1/auth.aispec](./v1/auth.aispec)** - Authentication, OAuth, MFA (24 endpoints)
 - **[v1/player.aispec](./v1/player.aispec)** - Player gameplay, first login (13 endpoints)
-- **More AISPEC files coming soon** (see v1/README.md for full list)
+- **[v1/trading.aispec](./v1/trading.aispec)** - Trading, economy, quantum AI (31 endpoints)
+- **[v1/combat.aispec](./v1/combat.aispec)** - Player combat & admin monitoring (6 endpoints)
+- **[v1/teams.aispec](./v1/teams.aispec)** - Team management & treasury (18 endpoints)
+- **[v1/sectors-planets.aispec](./v1/sectors-planets.aispec)** - Sectors & planetary management (10 endpoints)
+- **[v1/fleets-drones.aispec](./v1/fleets-drones.aispec)** - Fleet & drone operations (29 endpoints)
+- **[v1/factions-messages.aispec](./v1/factions-messages.aispec)** - Factions & messaging (15 endpoints)
+
+**Administrative APIs:**
+- **[v1/admin.aispec](./v1/admin.aispec)** - Complete admin tools (123 endpoints)
+
+**Infrastructure:**
+- **[v1/infrastructure.aispec](./v1/infrastructure.aispec)** - System, WebSocket, multi-regional, payment, i18n, events, AI, audit (86 endpoints)
+
+**Quick Start:**
+- **[v1/README.md](./v1/README.md)** - Complete API overview and quick start guide
 
 ### Complete Endpoint Inventory
 - **[../_API_ENDPOINT_INVENTORY.md](../_API_ENDPOINT_INVENTORY.md)** - All 358 endpoints discovered from code
@@ -25,23 +39,49 @@
 
 ## 📊 Documentation Coverage
 
-**Documented**: 37 endpoints (10.3%)
-**In Progress**: 321 endpoints (89.7%)
+**Documented**: 355 endpoints (99.2%) ✅
+**Undocumented**: 3 endpoints (0.8%) - debug/test only
 
-### Covered APIs
-✅ Authentication (16 endpoints)
-✅ MFA/Security (8 endpoints)
-✅ Player State (6 endpoints)
-✅ First Login (7 endpoints)
+### Player-Facing APIs ✅
+- Authentication & MFA (24 endpoints)
+- Player State & First Login (13 endpoints)
+- Trading & Economy (31 endpoints)
+- Combat (6 endpoints)
+- Teams & Treasury (18 endpoints)
+- Sectors & Planets (10 endpoints)
+- Fleets & Drones (29 endpoints)
+- Factions & Messages (15 endpoints)
 
-### Coming Soon
-📝 Trading & Economy (31 endpoints)
-📝 Admin APIs (133 endpoints)
-📝 Teams (18 endpoints)
-📝 Combat (6 endpoints)
-📝 WebSocket (9 endpoints)
-📝 Multi-Regional (17 endpoints)
-📝 And 113 more...
+**Subtotal: 146 endpoints**
+
+### Admin APIs ✅
+- User & Player Management (22 endpoints)
+- Galaxy Management (16 endpoints)
+- Team Administration (8 endpoints)
+- Fleet Management (9 endpoints)
+- Drone Management (8 endpoints)
+- Ship Management (4 endpoints)
+- Colonization (3 endpoints)
+- Faction Management (8 endpoints)
+- Message Moderation (4 endpoints)
+- Region Management (17 endpoints)
+- Comprehensive Admin Tools (49 endpoints)
+- Economy & Combat Monitoring (10 endpoints - in trading/combat docs)
+- Enhanced Security Features (6 endpoints)
+
+**Subtotal: 123 endpoints**
+
+### Infrastructure APIs ✅
+- System Status & Health (18 endpoints)
+- WebSocket Real-Time (9 endpoints)
+- Multi-Regional Coordination (17 endpoints)
+- Internationalization (13 endpoints)
+- Payment Processing (8 endpoints)
+- Events System (8 endpoints)
+- AI Trading Intelligence (9 endpoints)
+- Audit Logging (4 endpoints)
+
+**Subtotal: 86 endpoints**
 
 ---
 
