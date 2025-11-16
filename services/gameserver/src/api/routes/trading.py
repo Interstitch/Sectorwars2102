@@ -23,13 +23,13 @@ class TradeRequest(BaseModel):
     quantity: int
 
 
-class PortDockRequest(BaseModel):
+class StationDockRequest(BaseModel):
     station_id: str
 
 
 class MarketInfoResponse(BaseModel):
     resources: Dict[str, Dict[str, Any]]
-    port: Dict[str, Any]
+    station: Dict[str, Any]
 
 
 @router.post("/buy")
@@ -39,20 +39,20 @@ async def buy_resource(
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
-    """Buy a resource from a port"""
+    """Buy a resource from a station"""
     
     # Verify player is docked at this port
     if not current_player.is_docked:
-        raise HTTPException(status_code=400, detail="You must be docked at a port to trade")
+        raise HTTPException(status_code=400, detail="You must be docked at a station to trade")
     
-    # Get the port
-    port = db.query(Station).filter(Station.id == trade_request.station_id).first()
-    if not port:
+    # Get the station
+    station = db.query(Station).filter(Station.id == trade_request.station_id).first()
+    if not station:
         raise HTTPException(status_code=404, detail="Station not found")
     
-    # Verify player is in the same sector as the port
-    if current_player.current_sector_id != port.sector_id:
-        raise HTTPException(status_code=400, detail="You must be in the same sector as the port")
+    # Verify player is in the same sector as the station
+    if current_player.current_sector_id != station.sector_id:
+        raise HTTPException(status_code=400, detail="You must be in the same sector as the station")
     
     # Get current ship
     current_ship = db.query(Ship).filter(
@@ -150,20 +150,20 @@ async def sell_resource(
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
-    """Sell a resource to a port"""
+    """Sell a resource to a station"""
     
     # Verify player is docked at this port
     if not current_player.is_docked:
-        raise HTTPException(status_code=400, detail="You must be docked at a port to trade")
+        raise HTTPException(status_code=400, detail="You must be docked at a station to trade")
     
-    # Get the port
-    port = db.query(Station).filter(Station.id == trade_request.station_id).first()
-    if not port:
+    # Get the station
+    station = db.query(Station).filter(Station.id == trade_request.station_id).first()
+    if not station:
         raise HTTPException(status_code=404, detail="Station not found")
     
-    # Verify player is in the same sector as the port
-    if current_player.current_sector_id != port.sector_id:
-        raise HTTPException(status_code=400, detail="You must be in the same sector as the port")
+    # Verify player is in the same sector as the station
+    if current_player.current_sector_id != station.sector_id:
+        raise HTTPException(status_code=400, detail="You must be in the same sector as the station")
     
     # Get current ship
     current_ship = db.query(Ship).filter(
@@ -246,9 +246,9 @@ async def get_market_info(
 ):
     """Get market information for a specific port"""
     
-    # Get the port
-    port = db.query(Station).filter(Station.id == station_id).first()
-    if not port:
+    # Get the station
+    station = db.query(Station).filter(Station.id == station_id).first()
+    if not station:
         raise HTTPException(status_code=404, detail="Station not found")
     
     # Get all market prices for this port
@@ -277,33 +277,33 @@ async def get_market_info(
 
 
 @router.post("/dock")
-async def dock_at_port(
-    dock_request: PortDockRequest,
+async def dock_at_station(
+    dock_request: StationDockRequest,
     db: Session = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
-    """Dock at a port"""
+    """Dock at a station"""
     
     # Define docking turn cost
     DOCKING_TURN_COST = 1
     
-    # Get the port
-    port = db.query(Station).filter(Station.id == dock_request.station_id).first()
-    if not port:
+    # Get the station
+    station = db.query(Station).filter(Station.id == dock_request.station_id).first()
+    if not station:
         raise HTTPException(status_code=404, detail="Station not found")
     
-    # Verify player is in the same sector as the port
-    if current_player.current_sector_id != port.sector_id:
-        raise HTTPException(status_code=400, detail="You must be in the same sector as the port")
+    # Verify player is in the same sector as the station
+    if current_player.current_sector_id != station.sector_id:
+        raise HTTPException(status_code=400, detail="You must be in the same sector as the station")
     
     # Check if already docked
     if current_player.is_docked:
-        raise HTTPException(status_code=400, detail="You are already docked at a port")
+        raise HTTPException(status_code=400, detail="You are already docked at a station")
     
     # Check if landed on a planet (can't dock while landed)
     if current_player.is_landed:
-        raise HTTPException(status_code=400, detail="You must leave the planet before docking at a port")
+        raise HTTPException(status_code=400, detail="You must leave the planet before docking at a station")
     
     # Check if player has enough turns
     if current_player.turns < DOCKING_TURN_COST:
@@ -352,7 +352,7 @@ async def undock_from_port(
     UNDOCKING_TURN_COST = 1
     
     if not current_player.is_docked:
-        raise HTTPException(status_code=400, detail="You are not currently docked at a port")
+        raise HTTPException(status_code=400, detail="You are not currently docked at a station")
     
     # Check if player has enough turns
     if current_player.turns < UNDOCKING_TURN_COST:
@@ -399,7 +399,7 @@ async def get_trading_history(
     
     history = []
     for tx in transactions:
-        port = db.query(Station).filter(Station.id == tx.station_id).first()
+        station = db.query(Station).filter(Station.id == tx.station_id).first()
         history.append({
             "id": str(tx.id),
             "type": tx.transaction_type.value,
