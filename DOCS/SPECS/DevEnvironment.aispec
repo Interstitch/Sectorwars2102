@@ -2,16 +2,19 @@ OVERVIEW:
 Development workflow spans two environments (local MacBook with Cursor IDE and GitHub Codespaces) using Docker containerization to ensure application consistency and Neon PostgreSQL ensuring data persistence across all environments.
 
 FACTS:
-* Development occurs across two distinct environments
+* Development occurs across two distinct environments (local MacBook, GitHub Codespaces)
 * Docker-based containers for consistent environment behavior across all environments
 * Neon PostgreSQL provides remote database accessible from all environments
+* Single unified docker-compose.yml with multiple profiles for different deployment scenarios
+* Docker Compose profiles: development (default), multi-regional, production, monitoring, regional-template
 * Environment detection configures appropriate settings automatically
-* Environment variables control connection parameters
+* All configuration via .env file (not checked into version control)
 * VSCode devcontainer config for Codespaces development
-* Docker Compose orchestrates multi-container development setup
 * Volume mounts enable hot-reloading of code changes
 * GitHub Codespaces is primary cloud development environment
 * All services run in Docker containers (player-client, admin-ui, gameserver)
+* Port mappings configurable via environment variables
+* Profile combinations supported (e.g., production + monitoring)
 
 TERMINOLOGY:
 * Environment Detection: System to identify current development environment
@@ -20,12 +23,14 @@ TERMINOLOGY:
 * Devcontainer: VSCode container configuration for development
 * GitHub Codespaces: Cloud-based development environment with VSCode interface
 * Docker Compose: Tool for defining and running multi-container Docker applications
+* Profile: Named configuration subset in docker-compose.yml for specific deployment scenarios
+* Build Target: Docker multi-stage build target (development or production)
 
 FILES:
 - /
   ├── .devcontainer/              # VSCode devcontainer configuration
   │   └── devcontainer.json       # Codespaces container setup
-  ├── docker-compose.yml          # Main Docker Compose configuration
+  ├── docker-compose.yml          # Unified Docker Compose with profiles
   ├── services/
   │   ├── player-client/Dockerfile  # Player client container
   │   ├── admin-ui/Dockerfile       # Admin UI container
@@ -33,7 +38,68 @@ FILES:
   ├── dev-scripts/
   │   ├── start-unified.sh        # Universal entry point with environment detection
   │   └── setup.sh                # Unified setup script for all environments
-  └── .env                        # Environment variables
+  └── .env                        # Environment variables (not in git)
+
+DOCKER_COMPOSE_PROFILES:
+development (default):
+  services: database, gameserver, player-client, admin-ui
+  features: Local PostgreSQL, hot reload, basic networking
+  usage: docker-compose up
+  use_case: Local development, feature work
+
+multi-regional:
+  services: central-nexus-db, redis-nexus, central-nexus-server, player-client, admin-ui, nginx-gateway, region-manager
+  features: Multi-regional architecture, Redis coordination, Nginx reverse proxy
+  usage: docker-compose --profile multi-regional up
+  use_case: Testing regional systems, production-like environment
+
+production:
+  services: central-nexus-db, redis-nexus, central-nexus-server, player-client, admin-ui, nginx-gateway
+  features: Production builds, security hardening, resource limits, health checks
+  usage: docker-compose --profile production up
+  use_case: Production deployment
+
+monitoring:
+  services: prometheus, grafana
+  features: Metrics collection, dashboards
+  usage: docker-compose --profile monitoring up (combine with other profiles)
+  use_case: Performance monitoring, debugging
+
+regional-template:
+  services: regional-db-template, regional-server-template
+  features: Templates for dynamic regional scaling
+  usage: Used by region-manager for creating new regions
+  use_case: Automated regional territory creation
+
+ENVIRONMENT_VARIABLES:
+Profile Selection:
+  COMPOSE_PROFILES: development, multi-regional, production, monitoring
+
+Build Configuration:
+  BUILD_TARGET: development, production
+  ENVIRONMENT: development, production
+
+Service Ports:
+  GAMESERVER_PORT: 8080 (default)
+  PLAYER_CLIENT_PORT: 3000 (default)
+  ADMIN_UI_PORT: 3001 (default)
+
+Environment Detection:
+  DEV_ENVIRONMENT: codespaces, local
+
+GitHub Codespaces URLs:
+  API_BASE_URL: https://<codespace-name>-8080.app.github.dev
+  FRONTEND_URL: https://<codespace-name>-3000.app.github.dev
+
+Local Development URLs:
+  API_BASE_URL: http://localhost:8080
+  FRONTEND_URL: http://localhost:3000
+
+Production Secrets (required):
+  JWT_SECRET: Secure JWT signing key
+  PAYPAL_CLIENT_ID: PayPal integration
+  PAYPAL_CLIENT_SECRET: PayPal integration
+  DATABASE_URL: Neon PostgreSQL connection string
 
 SCHEMA:
 No database schema specifically for development environment.
@@ -42,60 +108,109 @@ CONSTRAINTS:
 * Development environment must not alter production data
 * Environment variables must be used for configuration
 * Services must start automatically in each environment
-* Secrets must not be stored in version control
+* Secrets must not be stored in version control (.env excluded from git)
 * Development database must be isolated from production
 * Code changes must be reflected without service restarts via hot-reload
 * Development scripts must be platform-agnostic
 * All environments must use Docker for consistency
+* Production profile requires all sensitive variables to be set
+* Port conflicts resolved via environment variable configuration
+* Profile combinations must be explicitly specified on command line
 
 EXAMPLES:
-```yaml
-# docker-compose.yml - Multi-service orchestration
-version: '3.8'
-services:
-  player-client:
-    build:
-      context: ./services/player-client
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./services/player-client:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:8080
-    depends_on:
-      - gameserver
+```bash
+# Quick Start - Development (default profile)
+docker-compose up
+# Starts: database, gameserver, player-client, admin-ui with hot reload
 
-  admin-ui:
-    build:
-      context: ./services/admin-ui
-      dockerfile: Dockerfile
-    ports:
-      - "3001:3001"
-    volumes:
-      - ./services/admin-ui:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:8080
-    depends_on:
-      - gameserver
+# Multi-Regional Testing
+docker-compose --profile multi-regional up
+# Starts: central-nexus-db, redis, nginx, region-manager, etc.
 
-  gameserver:
-    build:
-      context: ./services/gameserver
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./services/gameserver:/app
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - PYTHONUNBUFFERED=1
+# Production with Monitoring
+docker-compose --profile production --profile monitoring up
+# Starts: production services + prometheus + grafana
+
+# Start Individual Service
+docker-compose up player-client
+
+# Run Commands in Containers
+docker-compose exec gameserver poetry run pytest
+docker-compose exec player-client npm run typecheck
+docker-compose exec admin-ui npm run build
+
+# View Logs
+docker-compose logs -f gameserver
+docker-compose logs -f --tail=100 player-client
+
+# Validate Profile Configuration
+docker-compose config --profile development
+docker-compose config --profile multi-regional
+
+# Show Resolved Configuration
+docker-compose config
+```
+
+```env
+# .env Configuration Examples
+
+# GitHub Codespaces Setup
+DEV_ENVIRONMENT=codespaces
+COMPOSE_PROFILES=development
+API_BASE_URL=https://super-duper-carnival-qppjvq94q9vcxwqp-8080.app.github.dev
+FRONTEND_URL=https://super-duper-carnival-qppjvq94q9vcxwqp-3000.app.github.dev
+GAMESERVER_PORT=8080
+PLAYER_CLIENT_PORT=3000
+ADMIN_UI_PORT=3001
+
+# Local Development Setup
+DEV_ENVIRONMENT=local
+COMPOSE_PROFILES=development
+API_BASE_URL=http://localhost:8080
+FRONTEND_URL=http://localhost:3000
+GAMESERVER_PORT=8080
+PLAYER_CLIENT_PORT=3000
+ADMIN_UI_PORT=3001
+
+# Production Setup (requires all secrets)
+ENVIRONMENT=production
+COMPOSE_PROFILES=production,monitoring
+BUILD_TARGET=production
+JWT_SECRET=<secure-random-string>
+PAYPAL_CLIENT_ID=<paypal-client-id>
+PAYPAL_CLIENT_SECRET=<paypal-client-secret>
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
 ```
 
 ```bash
-# Environment detection script example
+# Troubleshooting
+
+# Port Conflict Resolution
+# Edit .env to change ports:
+GAMESERVER_PORT=8081  # If 8080 is in use
+PLAYER_CLIENT_PORT=3001  # If 3000 is in use
+
+# Then restart:
+docker-compose down
+docker-compose up
+
+# Environment Variable Check
+docker-compose config  # Shows resolved configuration with all variables
+
+# Profile Not Found Error
+docker-compose config --profile development  # Validate specific profile
+
+# Clear and Rebuild
+docker-compose down -v  # Remove containers and volumes
+docker-compose build --no-cache  # Rebuild images
+docker-compose up
+
+# Check Service Health
+docker-compose ps  # Show running services
+docker ps  # Show all Docker containers
+docker-compose logs <service-name>  # Debug specific service
+
+# Environment Detection Script
 detect_environment() {
   if [ -n "$CODESPACE_NAME" ] || [ -n "$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" ]; then
     echo "codespaces"
@@ -107,24 +222,16 @@ detect_environment() {
 ENV=$(detect_environment)
 echo "🚀 Starting in $ENV environment"
 docker-compose up
-
-# Start individual service
-docker-compose up player-client
-
-# Run commands inside containers
-docker-compose exec gameserver poetry run pytest
-docker-compose exec player-client npm run typecheck
-
-# View logs
-docker-compose logs -f gameserver
 ```
 
 ```bash
-# Codespaces-specific port forwarding
-# Ports are automatically forwarded and accessible via:
+# GitHub Codespaces URLs
+# Ports automatically forwarded and accessible via:
 # https://<codespace-name>-<port>.app.github.dev
-# Example:
+
+# Examples:
 # Player Client: https://codespace-name-3000.app.github.dev
 # Admin UI: https://codespace-name-3001.app.github.dev
-# Game Server: https://codespace-name-8080.app.github.dev
+# Game Server API: https://codespace-name-8080.app.github.dev
+# Grafana (if monitoring enabled): https://codespace-name-3003.app.github.dev
 ```
