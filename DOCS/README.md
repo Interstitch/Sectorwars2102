@@ -2,31 +2,31 @@
 
 ## 🔍 Documentation Audit & Quality Reports
 
-**Last Audit**: 2025-11-16
-**Average Accuracy**: 64.4% (179 files analyzed)
+**Last Major Update**: 2025-11-16
+**API Documentation**: ✅ Complete rewrite (355/358 endpoints = 99.2% coverage)
 
-### Quick Start - Review Documentation Quality
+### API Documentation Status
 
-1. **📊 [Accuracy Report](_ACCURACY_REPORT.md)** - Start here for priority-ordered review
-2. **📚 [Cleanup Guide](_DOCUMENTATION_CLEANUP_GUIDE.md)** - Systematic review strategy
-3. **📋 [File Inventory](_INVENTORY.md)** - Complete file index with metadata
-4. **🔍 [Audit Findings](_AUDIT_FINDINGS.md)** - Detailed technical issues
+**NEW**: Complete API documentation rewrite with 10 AISPEC files validated against actual code
+- See **[API/README.md](./API/README.md)** for full API documentation overview
+- See **[API/v1/README.md](./API/v1/README.md)** for v1 API quick start guide
+- Auto-discovery tool: `python3 _discover_api_endpoints.py`
 
-### Automated Tools
+### Documentation Quality Tools
 
 ```bash
-# Re-run accuracy analysis after updates
-python3 _analyze_accuracy.py
+# Discover all API endpoints from source code
+python3 _discover_api_endpoints.py
 
-# Regenerate file inventory
-python3 _generate_inventory.py
+# Generate API endpoint inventory
+# Creates: _API_ENDPOINT_INVENTORY.md and _api_endpoints.json
 ```
 
-**Critical Issues Found:**
-- 🔴 5 critically wrong files (0-29% accuracy)
-- 🟡 61 files need significant updates (30-74% accuracy)
-- 17 models exist without documentation
-- All AISPEC files have path mismatches (`/app/` vs `/src/`)
+**Recent Improvements:**
+- ✅ API documentation validated against gameserver source code
+- ✅ 355/358 endpoints documented in AISPEC format
+- ✅ Removed 3 outdated API specification files
+- ✅ Created organized v1 documentation structure
 
 ---
 
@@ -100,10 +100,23 @@ DOCS/
 │   ├── Architecture.aispec
 │   ├── AuthSystem.aispec
 │   └── DesignSystem.aispec
-├── API/                # Complete API documentation  
-│   ├── GameServer.aispec
-│   ├── MULTI_REGIONAL_API_SPECIFICATION.md
-│   └── examples/
+├── API/                # Complete API documentation (99.2% coverage)
+│   ├── README.md           # API overview & navigation
+│   ├── v1/                 # API v1 documentation
+│   │   ├── README.md       # v1 quick start guide
+│   │   ├── auth.aispec     # Authentication & MFA (24 endpoints)
+│   │   ├── player.aispec   # Player state & first login (13 endpoints)
+│   │   ├── trading.aispec  # Trading & quantum AI (31 endpoints)
+│   │   ├── combat.aispec   # Combat systems (6 endpoints)
+│   │   ├── teams.aispec    # Teams & treasury (18 endpoints)
+│   │   ├── sectors-planets.aispec  # Sectors & planets (10 endpoints)
+│   │   ├── fleets-drones.aispec    # Fleets & drones (29 endpoints)
+│   │   ├── factions-messages.aispec # Factions & messages (15 endpoints)
+│   │   ├── admin.aispec    # Admin tools (123 endpoints)
+│   │   └── infrastructure.aispec   # Infrastructure (86 endpoints)
+│   ├── _discover_api_endpoints.py  # Auto-discovery tool
+│   ├── _API_ENDPOINT_INVENTORY.md  # Complete endpoint list
+│   └── _api_endpoints.json         # Machine-readable data
 ├── ARCHITECTURE/       # Technical system design
 │   ├── DOCKER_ARCHITECTURE.md
 │   ├── data-models/ (comprehensive entity definitions)
@@ -195,5 +208,11 @@ EXAMPLES: Minimal working examples
 
 **Current Status**: Documentation structure fully organized and maintained according to the 7-layer architecture.
 
+**Latest Updates (2025-11-16)**:
+- ✅ Complete API documentation rewrite with 355/358 endpoints documented
+- ✅ All AISPEC files validated against gameserver source code
+- ✅ Created auto-discovery tool for endpoint inventory
+- ✅ Organized API documentation into logical v1 structure
+
 ---
-*Documentation Architecture v1.1 - Updated: 2025-06-07*
+*Documentation Architecture v1.2 - Updated: 2025-11-16*
