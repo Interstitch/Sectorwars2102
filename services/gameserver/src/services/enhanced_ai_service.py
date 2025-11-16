@@ -675,7 +675,7 @@ class EnhancedAIService:
                     title=f"Investment Opportunity: {port.name}",
                     summary=f"Station {port.name} offers {roi_months:.1f} month ROI with current trade volume",
                     detailed_analysis={
-                        "port_id": str(port.id),
+                        "station_id": str(port.id),
                         "port_name": port.name,
                         "sector_id": port.sector_id,
                         "acquisition_cost": acquisition_cost,

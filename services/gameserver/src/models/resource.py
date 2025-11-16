@@ -93,7 +93,7 @@ class Market(Base):
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     
     # Market location
-    port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="CASCADE"), nullable=False)
+    station_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="CASCADE"), nullable=False)
     
     # Market attributes
     specialization = Column(String, nullable=True)  # What this market specializes in

@@ -467,13 +467,13 @@ class EnhancedWebSocketService:
                 return {"success": False, "error": "Player not found"}
             
             # Verify player is docked
-            if not player.is_ported:
+            if not player.is_docked:
                 return {"success": False, "error": "You must be docked at a port to trade"}
             
             # Get port
-            port_id = trade_data.get("port_id")
-            if not port_id:
-                # If port_id not provided, get from player's current location
+            station_id = trade_data.get("station_id")
+            if not station_id:
+                # If station_id not provided, get from player's current location
                 ship = await db.execute(
                     select(Ship).where(
                         Ship.id == player.current_ship_id,
@@ -482,11 +482,11 @@ class EnhancedWebSocketService:
                 )
                 ship = ship.scalar_one_or_none()
                 if ship and ship.current_port_id:
-                    port_id = str(ship.current_port_id)
+                    station_id = str(ship.current_port_id)
                 else:
                     return {"success": False, "error": "Station ID required or ship must be docked"}
             
-            port = await db.get(Station, port_id)
+            port = await db.get(Station, station_id)
             if not port:
                 return {"success": False, "error": "Station not found"}
             
@@ -511,7 +511,7 @@ class EnhancedWebSocketService:
             # Get market price for this commodity
             market_price_query = await db.execute(
                 select(MarketPrice).where(
-                    MarketPrice.port_id == port_id,
+                    MarketPrice.station_id == station_id,
                     MarketPrice.commodity == commodity
                 )
             )
@@ -581,7 +581,7 @@ class EnhancedWebSocketService:
             # Create transaction record
             transaction = MarketTransaction(
                 player_id=player.id,
-                port_id=port_id,
+                station_id=station_id,
                 transaction_type=TransactionType.BUY if action == "buy" else TransactionType.SELL,
                 commodity=commodity,
                 quantity=quantity,
@@ -1077,7 +1077,7 @@ class EnhancedWebSocketService:
         if player:
             context["player_state"] = {
                 "credits": float(player.credits),
-                "is_ported": player.is_ported,
+                "is_docked": player.is_docked,
                 "current_sector": player.current_sector_id,
                 "team_id": str(player.team_id) if player.team_id else None
             }

@@ -54,7 +54,7 @@ class CombatService:
             return {"success": False, "message": "Not enough turns to initiate combat"}
         
         # Check if players are docked or landed (optionally could prevent combat)
-        if attacker.is_ported:
+        if attacker.is_docked:
             return {"success": False, "message": "Cannot attack while docked at a port"}
         
         # Get current sector for location and rules
@@ -157,7 +157,7 @@ class CombatService:
             return {"success": False, "message": "Not enough turns to attack sector drones"}
         
         # Check if player is docked or landed
-        if attacker.is_ported or attacker.is_landed:
+        if attacker.is_docked or attacker.is_landed:
             return {"success": False, "message": "Cannot attack while docked at a port or landed on a planet"}
         
         # Get drone deployments in this sector
@@ -274,7 +274,7 @@ class CombatService:
             return {"success": False, "message": "Not enough turns to attack planet"}
         
         # Check if player is docked or landed
-        if attacker.is_ported or attacker.is_landed:
+        if attacker.is_docked or attacker.is_landed:
             return {"success": False, "message": "Cannot attack while docked at a port or landed on a planet"}
         
         # Get sector for location context
@@ -343,7 +343,7 @@ class CombatService:
             "combat_log_id": str(combat_log.id)
         }
     
-    def attack_port(self, attacker_id: uuid.UUID, port_id: uuid.UUID) -> Dict[str, Any]:
+    def attack_port(self, attacker_id: uuid.UUID, station_id: uuid.UUID) -> Dict[str, Any]:
         """Attack a space port."""
         # Get attacker
         attacker = self.db.query(Player).filter(Player.id == attacker_id).first()
@@ -355,7 +355,7 @@ class CombatService:
             return {"success": False, "message": "No active ship selected"}
         
         # Get port
-        port = self.db.query(Station).filter(Station.id == port_id).first()
+        port = self.db.query(Station).filter(Station.id == station_id).first()
         if not port:
             return {"success": False, "message": "Station not found"}
         
@@ -378,7 +378,7 @@ class CombatService:
             return {"success": False, "message": "Not enough turns to attack port"}
         
         # Check if player is docked or landed
-        if attacker.is_ported or attacker.is_landed:
+        if attacker.is_docked or attacker.is_landed:
             return {"success": False, "message": "Cannot attack while docked at a port or landed on a planet"}
         
         # Get sector for location context
@@ -399,7 +399,7 @@ class CombatService:
             attacker_id=attacker.id,
             attacker_ship_id=attacker.current_ship_id,
             defender_id=port_owner.id if port_owner else None,
-            port_id=port.id,
+            station_id=port.id,
             attacker_team_id=attacker.team_id,
             defender_team_id=port_owner.team_id if port_owner else None,
             turns_consumed=turn_cost,
@@ -679,10 +679,10 @@ class CombatService:
                 "owner_name": defender.username if defender else "Unowned"
             }
         elif log.combat_type == CombatType.SHIP_VS_PORT:
-            port = self.db.query(Station).filter(Station.id == log.port_id).first()
+            port = self.db.query(Station).filter(Station.id == log.station_id).first()
             report["target"] = {
                 "type": "port",
-                "id": str(log.port_id) if log.port_id else None,
+                "id": str(log.station_id) if log.station_id else None,
                 "name": port.name if port else "Unknown",
                 "owner_id": str(log.defender_id) if log.defender_id else None,
                 "owner_name": defender.username if defender else "Unowned"
@@ -747,10 +747,10 @@ class CombatService:
                     "name": planet.name if planet else "Unknown"
                 }
             elif log.combat_type == CombatType.SHIP_VS_PORT:
-                port = self.db.query(Station).filter(Station.id == log.port_id).first()
+                port = self.db.query(Station).filter(Station.id == log.station_id).first()
                 entry["target"] = {
                     "type": "port",
-                    "id": str(log.port_id) if log.port_id else None,
+                    "id": str(log.station_id) if log.station_id else None,
                     "name": port.name if port else "Unknown"
                 }
             elif log.combat_type == CombatType.SHIP_VS_DRONES:

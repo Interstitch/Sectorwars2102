@@ -332,7 +332,7 @@ class MovementService:
         
         # Update player position
         player.current_sector_id = destination_sector_id
-        player.is_ported = False  # Player is no longer docked at a port
+        player.is_docked = False  # Player is no longer docked at a port
         player.is_landed = False  # Player is no longer landed on a planet
         
         # Update ship position

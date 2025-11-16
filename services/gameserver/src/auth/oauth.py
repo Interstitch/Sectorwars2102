@@ -148,7 +148,7 @@ async def create_player_for_user(db: Session, user: User) -> Player:
         current_sector_id=1,  # Sector 1 (sector_id, not UUID)
         home_region_id=terran_space.id,     # Terran Space region UUID
         current_region_id=terran_space.id,  # Terran Space region UUID
-        is_ported=False,
+        is_docked=False,
         is_landed=False,
         team_id=None,
         attack_drones=0,

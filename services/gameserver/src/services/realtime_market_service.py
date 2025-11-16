@@ -270,7 +270,7 @@ class RealTimeMarketService:
                 AVG(mt.price) as avg_price,
                 COUNT(*) as transaction_count
             FROM market_transactions mt
-            JOIN ports p ON mt.port_id = p.id
+            JOIN ports p ON mt.station_id = p.id
             JOIN sectors s ON p.sector_id = s.id
             WHERE 
                 mt.commodity = :commodity

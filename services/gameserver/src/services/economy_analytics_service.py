@@ -128,11 +128,11 @@ class EconomyAnalyticsService:
         # Query for significant price changes
         recent_prices = (
             self.db.query(
-                MarketPrice.port_id,
+                MarketPrice.station_id,
                 MarketPrice.resource_type,
                 MarketPrice.current_price,
                 func.lag(MarketPrice.current_price).over(
-                    partition_by=[MarketPrice.port_id, MarketPrice.resource_type],
+                    partition_by=[MarketPrice.station_id, MarketPrice.resource_type],
                     order_by=MarketPrice.last_updated
                 ).label('previous_price')
             )
@@ -143,14 +143,14 @@ class EconomyAnalyticsService:
         # Find anomalies
         anomalies = (
             self.db.query(
-                recent_prices.c.port_id,
+                recent_prices.c.station_id,
                 recent_prices.c.resource_type,
                 recent_prices.c.current_price,
                 recent_prices.c.previous_price,
                 Station.name.label('port_name'),
                 Station.sector_id
             )
-            .join(Station, Station.id == recent_prices.c.port_id)
+            .join(Station, Station.id == recent_prices.c.station_id)
             .filter(recent_prices.c.previous_price != None)
             .all()
         )
@@ -165,7 +165,7 @@ class EconomyAnalyticsService:
                         "timestamp": datetime.utcnow().isoformat(),
                         "alert_type": "price_spike" if price_change > 0 else "price_crash",
                         "severity": self._calculate_alert_severity(price_change),
-                        "port_id": str(anomaly.port_id),
+                        "station_id": str(anomaly.station_id),
                         "port_name": anomaly.port_name,
                         "sector_id": str(anomaly.sector_id),
                         "resource_type": anomaly.resource_type,
@@ -305,7 +305,7 @@ class EconomyAnalyticsService:
                 func.sum(MarketTransaction.quantity).label('total_volume'),
                 func.sum(MarketTransaction.total_price).label('total_value')
             )
-            .join(MarketTransaction, MarketTransaction.port_id == Station.id)
+            .join(MarketTransaction, MarketTransaction.station_id == Station.id)
             .filter(MarketTransaction.timestamp >= start_time)
             .group_by(Station.id, Station.name, Station.sector_id)
             .order_by(desc('total_value'))
@@ -314,7 +314,7 @@ class EconomyAnalyticsService:
         )
         
         return [{
-            "port_id": str(result.id),
+            "station_id": str(result.id),
             "port_name": result.name,
             "sector_id": str(result.sector_id),
             "transaction_count": result.transaction_count,
@@ -382,7 +382,7 @@ class EconomyAnalyticsService:
         """Calculate market liquidity metrics"""
         # Get active ports count
         active_ports = (
-            self.db.query(func.count(func.distinct(MarketTransaction.port_id)))
+            self.db.query(func.count(func.distinct(MarketTransaction.station_id)))
             .filter(MarketTransaction.timestamp >= datetime.utcnow() - timedelta(hours=24))
             .scalar()
         )
@@ -579,14 +579,14 @@ class EconomyAnalyticsService:
         wash_trades = (
             self.db.query(
                 MarketTransaction.player_id,
-                MarketTransaction.port_id,
+                MarketTransaction.station_id,
                 MarketTransaction.resource_type,
                 func.count(MarketTransaction.id).label('trade_count')
             )
             .filter(MarketTransaction.timestamp >= one_hour_ago)
             .group_by(
                 MarketTransaction.player_id,
-                MarketTransaction.port_id,
+                MarketTransaction.station_id,
                 MarketTransaction.resource_type
             )
             .having(func.count(MarketTransaction.id) > 10)
@@ -595,7 +595,7 @@ class EconomyAnalyticsService:
         
         for trade in wash_trades:
             player = self.db.query(Player).filter(Player.id == trade.player_id).first()
-            port = self.db.query(Station).filter(Station.id == trade.port_id).first()
+            port = self.db.query(Station).filter(Station.id == trade.station_id).first()
             
             alerts.append({
                 "id": str(uuid.uuid4()),
@@ -604,7 +604,7 @@ class EconomyAnalyticsService:
                 "severity": "high",
                 "player_id": str(trade.player_id),
                 "player_name": player.nickname if player else "Unknown",
-                "port_id": str(trade.port_id),
+                "station_id": str(trade.station_id),
                 "port_name": port.name if port else "Unknown",
                 "resource_type": trade.resource_type,
                 "trade_count": trade.trade_count,
@@ -626,7 +626,7 @@ class EconomyAnalyticsService:
         )
         
         if port_ids:
-            query = query.filter(MarketPrice.port_id.in_(port_ids))
+            query = query.filter(MarketPrice.station_id.in_(port_ids))
         
         affected_count = 0
         for price in query.all():
@@ -645,10 +645,10 @@ class EconomyAnalyticsService:
     
     def _inject_liquidity(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Inject resources into the market"""
-        port_id = parameters.get('port_id')
+        station_id = parameters.get('station_id')
         resources = parameters.get('resources', {})
         
-        port = self.db.query(Station).filter(Station.id == port_id).first()
+        port = self.db.query(Station).filter(Station.id == station_id).first()
         if not port:
             raise ValueError("Station not found")
         
@@ -658,7 +658,7 @@ class EconomyAnalyticsService:
             setattr(port, f"{resource_type}_quantity", current + amount)
         
         return {
-            "port_id": str(port_id),
+            "station_id": str(station_id),
             "port_name": port.name,
             "resources_injected": resources
         }

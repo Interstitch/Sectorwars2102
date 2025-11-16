@@ -50,7 +50,7 @@ class PriceAlertResponse(BaseModel):
     timestamp: str
     alert_type: str
     severity: str
-    port_id: Optional[str]
+    station_id: Optional[str]
     port_name: Optional[str]
     sector_id: Optional[str]
     resource_type: Optional[str]
@@ -180,7 +180,7 @@ async def perform_market_intervention(
        - Parameters: resource_type, adjustment_percent, port_ids (optional)
     
     2. **inject_liquidity**: Add resources to specific ports
-       - Parameters: port_id, resources (dict of resource_type: amount)
+       - Parameters: station_id, resources (dict of resource_type: amount)
     
     3. **freeze_trading**: Temporarily halt trading
        - Parameters: duration_minutes, resources (list), port_ids (list)

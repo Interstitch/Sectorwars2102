@@ -14,7 +14,7 @@ class TradingService:
         """Check if a player can trade at a specific port"""
         
         # Check if player is docked
-        if not player.is_ported:
+        if not player.is_docked:
             return False, "You must be docked at a port to trade"
         
         # Check if player is in the same sector as the port

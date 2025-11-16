@@ -23,7 +23,7 @@ class PlayerStateResponse(BaseModel):
     credits: int
     turns: int
     current_sector_id: int
-    is_ported: bool
+    is_docked: bool
     is_landed: bool
     defense_drones: int
     attack_drones: int
@@ -95,7 +95,7 @@ async def get_player_state(
         credits=player.credits,
         turns=player.turns,
         current_sector_id=player.current_sector_id,
-        is_ported=player.is_ported,
+        is_docked=player.is_docked,
         is_landed=player.is_landed,
         defense_drones=player.defense_drones,
         attack_drones=player.attack_drones,

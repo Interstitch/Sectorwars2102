@@ -551,7 +551,7 @@ class GalaxyGenerator:
             
             # Create market for port
             market = Market(
-                port_id=port.id,
+                station_id=port.id,
                 specialization=self._get_specialization_for_port_type(port_type),
                 size=port.size,
                 tax_rate=0.05,
@@ -706,7 +706,7 @@ class GalaxyGenerator:
 
             # Create market for starter port
             starter_market = Market(
-                port_id=starter_port.id,
+                station_id=starter_port.id,
                 specialization="GENERAL",  # General trading for beginners
                 size=5,
                 tax_rate=0.02,  # Lower tax for new players

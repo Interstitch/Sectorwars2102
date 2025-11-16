@@ -67,7 +67,7 @@ class ARIAMarketIntelligence(Base):
     player_id = Column(UUID(as_uuid=True), ForeignKey("players.id"), nullable=False)
     
     # Location data
-    port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id"), nullable=True)
+    station_id = Column(UUID(as_uuid=True), ForeignKey("stations.id"), nullable=True)
     sector_id = Column(UUID(as_uuid=True), ForeignKey("sectors.id"), nullable=False)
     
     # Commodity intelligence
@@ -106,7 +106,7 @@ class ARIAMarketIntelligence(Base):
     __table_args__ = (
         Index("idx_aria_intel_player_location", "player_id", "sector_id", "commodity"),
         Index("idx_aria_intel_quality", "intelligence_quality"),
-        UniqueConstraint("player_id", "port_id", "commodity", name="uq_player_port_commodity"),
+        UniqueConstraint("player_id", "station_id", "commodity", name="uq_player_port_commodity"),
     )
 
 
@@ -209,7 +209,7 @@ class ARIAQuantumCache(Base):
     # Cache key components
     cache_key = Column(String(255), nullable=False)  # Hash of trade parameters
     commodity = Column(String(50), nullable=False)
-    port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id"), nullable=True)
+    station_id = Column(UUID(as_uuid=True), ForeignKey("stations.id"), nullable=True)
     sector_id = Column(UUID(as_uuid=True), ForeignKey("sectors.id"), nullable=False)
     
     # Cached results

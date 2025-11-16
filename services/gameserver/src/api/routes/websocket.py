@@ -236,14 +236,14 @@ async def notify_player_moved(user_id: str, new_sector_id: int):
 
 
 # Helper function to broadcast trading activities
-async def notify_trade_completed(port_id: str, trade_data: dict):
+async def notify_trade_completed(station_id: str, trade_data: dict):
     """Helper function to notify about completed trades"""
     # Get the sector for this port
     # You would need to implement this based on your data model
     # For now, we'll broadcast globally
     message = {
         "type": "trade_completed",
-        "port_id": port_id,
+        "station_id": station_id,
         "trade_data": trade_data,
         "timestamp": trade_data.get("timestamp", "")
     }

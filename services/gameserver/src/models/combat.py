@@ -52,7 +52,7 @@ class CombatResult(enum.Enum):
 #     
 #     # For planetary or port combat
 #     planet_id = Column(UUID(as_uuid=True), ForeignKey("planets.id"), nullable=True)
-#     port_id = Column(UUID(as_uuid=True), ForeignKey("ports.id"), nullable=True)
+#     station_id = Column(UUID(as_uuid=True), ForeignKey("ports.id"), nullable=True)
 #     
 #     # Team involvement
 #     attacker_team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=True)
@@ -83,7 +83,7 @@ class CombatResult(enum.Enum):
 #     defender_ship = relationship("Ship", foreign_keys=[defender_ship_id])
 #     sector = relationship("Sector", foreign_keys=[sector_uuid])
 #     planet = relationship("Planet", foreign_keys=[planet_id])
-#     port = relationship("Station", foreign_keys=[port_id])
+#     port = relationship("Station", foreign_keys=[station_id])
 #     attacker_team = relationship("Team", foreign_keys=[attacker_team_id])
 #     defender_team = relationship("Team", foreign_keys=[defender_team_id])
 #     
@@ -103,7 +103,7 @@ class CombatResult(enum.Enum):
 #     # Current location (only one of these should be non-null)
 #     ship_id = Column(UUID(as_uuid=True), ForeignKey("ships.id"), nullable=True)  # If on a ship
 #     planet_id = Column(UUID(as_uuid=True), ForeignKey("planets.id"), nullable=True)  # If on a planet
-#     port_id = Column(UUID(as_uuid=True), ForeignKey("ports.id"), nullable=True)  # If on a port
+#     station_id = Column(UUID(as_uuid=True), ForeignKey("ports.id"), nullable=True)  # If on a port
 #     sector_id = Column(Integer, nullable=True)  # If deployed for sector defense
 #     
 #     # Drone attributes
@@ -128,7 +128,7 @@ class CombatResult(enum.Enum):
 #     port = relationship("Station", back_populates="drones")
 #     
 #     def __repr__(self):
-#         location = "ship" if self.ship_id else "planet" if self.planet_id else "port" if self.port_id else f"sector {self.sector_id}"
+#         location = "ship" if self.ship_id else "planet" if self.planet_id else "port" if self.station_id else f"sector {self.sector_id}"
 #         return f"<Drone {self.id}: owned by {self.owner_id}, located on {location}>"
 # 
 # 

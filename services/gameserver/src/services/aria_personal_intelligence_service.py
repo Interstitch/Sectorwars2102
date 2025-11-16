@@ -138,7 +138,7 @@ class ARIAPersonalIntelligenceService:
         logger.info(f"Player {player_id} visited sector {sector_id} (visit #{exploration.visit_count})")
         return exploration
     
-    async def record_market_observation(self, player_id: str, port_id: str,
+    async def record_market_observation(self, player_id: str, station_id: str,
                                       commodity: str, price: float, quantity: int,
                                       db: AsyncSession) -> ARIAMarketIntelligence:
         """
@@ -146,15 +146,15 @@ class ARIAPersonalIntelligenceService:
         This builds the player's personal price history
         """
         # Validate the player is at this port (OWASP A04)
-        if not await self._validate_player_at_port(player_id, port_id, db):
+        if not await self._validate_player_at_port(player_id, station_id, db):
             await self._log_security_event(
                 player_id, "invalid_market_observation", "warning",
-                {"port_id": port_id, "commodity": commodity}, db
+                {"station_id": station_id, "commodity": commodity}, db
             )
             return None
         
         # Get port's sector
-        port = await db.get(Station, port_id)
+        port = await db.get(Station, station_id)
         if not port:
             return None
         
@@ -162,7 +162,7 @@ class ARIAPersonalIntelligenceService:
         stmt = select(ARIAMarketIntelligence).where(
             and_(
                 ARIAMarketIntelligence.player_id == player_id,
-                ARIAMarketIntelligence.port_id == port_id,
+                ARIAMarketIntelligence.station_id == station_id,
                 ARIAMarketIntelligence.commodity == commodity
             )
         )
@@ -199,7 +199,7 @@ class ARIAPersonalIntelligenceService:
             # First observation of this commodity at this port
             intelligence = ARIAMarketIntelligence(
                 player_id=player_id,
-                port_id=port_id,
+                station_id=station_id,
                 sector_id=port.sector_id,
                 commodity=commodity,
                 price_observations=[observation],
@@ -230,7 +230,7 @@ class ARIAPersonalIntelligenceService:
                     {
                         "event": "significant_price_change",
                         "commodity": commodity,
-                        "port_id": port_id,
+                        "station_id": station_id,
                         "old_price": intelligence.average_price,
                         "new_price": price,
                         "change_percent": price_change * 100
@@ -245,7 +245,7 @@ class ARIAPersonalIntelligenceService:
     # QUANTUM PREDICTIONS (Personal Data Only)
     # =============================================================================
     
-    async def generate_quantum_states(self, player_id: str, port_id: str,
+    async def generate_quantum_states(self, player_id: str, station_id: str,
                                     commodity: str, quantity: int,
                                     db: AsyncSession) -> Optional[List[Dict[str, Any]]]:
         """
@@ -253,7 +253,7 @@ class ARIAPersonalIntelligenceService:
         Returns None if player has insufficient data
         """
         # Check if player has visited this port
-        port = await db.get(Station, port_id)
+        port = await db.get(Station, station_id)
         if not port:
             return None
         
@@ -264,11 +264,11 @@ class ARIAPersonalIntelligenceService:
         
         # Get player's market intelligence for this commodity/port
         intelligence = await self._get_market_intelligence(
-            player_id, port_id, commodity, db
+            player_id, station_id, commodity, db
         )
         
         if not intelligence or intelligence.data_points < self.MIN_DATA_POINTS_FOR_PREDICTION:
-            logger.info(f"Insufficient data for {commodity} at port {port_id} (need {self.MIN_DATA_POINTS_FOR_PREDICTION} observations)")
+            logger.info(f"Insufficient data for {commodity} at port {station_id} (need {self.MIN_DATA_POINTS_FOR_PREDICTION} observations)")
             return None
         
         # Generate states based on personal observations
@@ -337,7 +337,7 @@ class ARIAPersonalIntelligenceService:
         await self._log_security_event(
             player_id, "quantum_generation", "info",
             {
-                "port_id": port_id,
+                "station_id": station_id,
                 "commodity": commodity,
                 "states_generated": len(states),
                 "data_points": intelligence.data_points
@@ -346,21 +346,21 @@ class ARIAPersonalIntelligenceService:
         
         return states
     
-    async def get_ghost_trade_prediction(self, player_id: str, port_id: str,
+    async def get_ghost_trade_prediction(self, player_id: str, station_id: str,
                                        commodity: str, action: str, quantity: int,
                                        db: AsyncSession) -> Optional[Dict[str, Any]]:
         """
         Generate ghost trade prediction based on personal experience only
         """
         # Check cache first
-        cache_key = self._generate_cache_key(player_id, port_id, commodity, action, quantity)
+        cache_key = self._generate_cache_key(player_id, station_id, commodity, action, quantity)
         cached = await self._get_quantum_cache(player_id, cache_key, db)
         if cached:
             return cached
         
         # Generate quantum states from personal data
         states = await self.generate_quantum_states(
-            player_id, port_id, commodity, quantity, db
+            player_id, station_id, commodity, quantity, db
         )
         
         if not states:
@@ -554,7 +554,7 @@ class ARIAPersonalIntelligenceService:
             cascade_plan["steps"].append({
                 "step": i + 1,
                 "sector": step["sector_id"],
-                "port": step["port_id"],
+                "port": step["station_id"],
                 "action": step["action"],
                 "commodity": step["commodity"],
                 "expected_price": step["expected_price"],
@@ -582,7 +582,7 @@ class ARIAPersonalIntelligenceService:
         result = await db.execute(stmt)
         return result.scalar_one_or_none() is not None
     
-    async def _validate_player_at_port(self, player_id: str, port_id: str,
+    async def _validate_player_at_port(self, player_id: str, station_id: str,
                                      db: AsyncSession) -> bool:
         """Validate player has a ship at the port"""
         from src.models.ship import Ship
@@ -590,7 +590,7 @@ class ARIAPersonalIntelligenceService:
         stmt = select(Ship).where(
             and_(
                 Ship.player_id == player_id,
-                Ship.current_port_id == port_id
+                Ship.current_port_id == station_id
             )
         )
         result = await db.execute(stmt)
@@ -803,10 +803,10 @@ class ARIAPersonalIntelligenceService:
         
         return final_price
     
-    def _generate_cache_key(self, player_id: str, port_id: str, 
+    def _generate_cache_key(self, player_id: str, station_id: str, 
                           commodity: str, action: str, quantity: int) -> str:
         """Generate cache key for quantum calculations"""
-        components = f"{player_id}:{port_id}:{commodity}:{action}:{quantity}"
+        components = f"{player_id}:{station_id}:{commodity}:{action}:{quantity}"
         return hashlib.sha256(components.encode()).hexdigest()
     
     def _generate_cascade_id(self) -> str:
@@ -911,14 +911,14 @@ class ARIAPersonalIntelligenceService:
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
     
-    async def _get_market_intelligence(self, player_id: str, port_id: str,
+    async def _get_market_intelligence(self, player_id: str, station_id: str,
                                      commodity: str, 
                                      db: AsyncSession) -> Optional[ARIAMarketIntelligence]:
         """Get player's market intelligence for a commodity at a port"""
         stmt = select(ARIAMarketIntelligence).where(
             and_(
                 ARIAMarketIntelligence.player_id == player_id,
-                ARIAMarketIntelligence.port_id == port_id,
+                ARIAMarketIntelligence.station_id == station_id,
                 ARIAMarketIntelligence.commodity == commodity
             )
         )
@@ -962,8 +962,8 @@ class ARIAPersonalIntelligenceService:
                 }
                 
                 for intel in intelligences:
-                    if intel.port_id:
-                        graph[sector_id]["ports"][intel.port_id][intel.commodity] = {
+                    if intel.station_id:
+                        graph[sector_id]["ports"][intel.station_id][intel.commodity] = {
                             "avg_price": intel.average_price,
                             "volatility": intel.price_volatility,
                             "confidence": intel.prediction_confidence,

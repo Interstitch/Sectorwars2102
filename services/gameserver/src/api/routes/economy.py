@@ -16,7 +16,7 @@ router = APIRouter(prefix="/admin/economy", tags=["economy"])
 
 
 class MarketDataResponse(BaseModel):
-    port_id: str
+    station_id: str
     port_name: str
     sector_name: str
     commodity: str
@@ -36,7 +36,7 @@ class EconomicMetricsResponse(BaseModel):
 
 class PriceAlertResponse(BaseModel):
     id: str
-    port_id: str
+    station_id: str
     port_name: str
     commodity: str
     alert_type: str
@@ -46,7 +46,7 @@ class PriceAlertResponse(BaseModel):
 
 
 class PriceInterventionRequest(BaseModel):
-    port_id: str
+    station_id: str
     commodity: str
     new_price: int
 
@@ -78,7 +78,7 @@ async def get_market_data(
         sector = port.sector if port else None
         
         market_data.append(MarketDataResponse(
-            port_id=str(price.port_id),
+            station_id=str(price.station_id),
             port_name=port.name if port else "Unknown",
             sector_name=f"Sector {sector.sector_id}" if sector else "Unknown",
             commodity=price.commodity,
@@ -185,7 +185,7 @@ async def get_price_alerts(
         if alert.alert_type == "price_spike":
             current_price = db.query(MarketPrice).filter(
                 and_(
-                    MarketPrice.port_id == alert.port_id,
+                    MarketPrice.station_id == alert.station_id,
                     MarketPrice.commodity == alert.commodity
                 )
             ).first()
@@ -193,7 +193,7 @@ async def get_price_alerts(
         
         alert_responses.append(PriceAlertResponse(
             id=str(alert.id),
-            port_id=str(alert.port_id),
+            station_id=str(alert.station_id),
             port_name=port.name if port else "Unknown",
             commodity=alert.commodity,
             alert_type=alert.alert_type,
@@ -208,7 +208,7 @@ async def get_price_alerts(
 @router.get("/price-history/{commodity}")
 async def get_price_history(
     commodity: str,
-    port_id: Optional[str] = Query(None, description="Specific port ID"),
+    station_id: Optional[str] = Query(None, description="Specific port ID"),
     days: int = Query(7, le=90, description="Number of days of history"),
     db: Session = Depends(get_async_session),
     current_admin = Depends(get_current_admin_user)
@@ -224,18 +224,18 @@ async def get_price_history(
         )
     )
     
-    if port_id:
-        query = query.filter(PriceHistory.port_id == port_id)
+    if station_id:
+        query = query.filter(PriceHistory.station_id == station_id)
     
     history = query.order_by(PriceHistory.timestamp).all()
     
     # Format for charting
     price_data = []
     for record in history:
-        port = db.query(Station).filter(Station.id == record.port_id).first()
+        port = db.query(Station).filter(Station.id == record.station_id).first()
         price_data.append({
             "timestamp": record.timestamp.isoformat(),
-            "port_id": str(record.port_id),
+            "station_id": str(record.station_id),
             "port_name": port.name if port else "Unknown",
             "buy_price": record.buy_price,
             "sell_price": record.sell_price,
@@ -257,7 +257,7 @@ async def price_intervention(
     # Find the current market price
     market_price = db.query(MarketPrice).filter(
         and_(
-            MarketPrice.port_id == intervention.port_id,
+            MarketPrice.station_id == intervention.station_id,
             MarketPrice.commodity == intervention.commodity
         )
     ).first()
@@ -276,7 +276,7 @@ async def price_intervention(
     
     # Create a price history record
     price_history = PriceHistory(
-        port_id=market_price.port_id,
+        station_id=market_price.station_id,
         commodity=market_price.commodity,
         buy_price=market_price.buy_price,
         sell_price=market_price.sell_price,
@@ -290,7 +290,7 @@ async def price_intervention(
     admin_player = db.query(Player).filter(Player.user_id == current_admin.id).first()
     admin_transaction = MarketTransaction(
         player_id=admin_player.id if admin_player else None,
-        port_id=market_price.port_id,
+        station_id=market_price.station_id,
         transaction_type=TransactionType.ADMIN_ADJUSTMENT,
         commodity=intervention.commodity,
         quantity=0,  # No actual commodity transfer
@@ -305,7 +305,7 @@ async def price_intervention(
     
     return {
         "message": "Price intervention applied successfully",
-        "port_id": intervention.port_id,
+        "station_id": intervention.station_id,
         "commodity": intervention.commodity,
         "old_price": old_price,
         "new_price": intervention.new_price
@@ -323,7 +323,7 @@ async def get_recent_transactions(
 ):
     """Get recent market transactions for admin monitoring"""
     
-    query = db.query(MarketTransaction).join(Player, MarketTransaction.player_id == Player.id, isouter=True).join(Station, MarketTransaction.port_id == Station.id, isouter=True)
+    query = db.query(MarketTransaction).join(Player, MarketTransaction.player_id == Player.id, isouter=True).join(Station, MarketTransaction.station_id == Station.id, isouter=True)
     
     if transaction_type:
         query = query.filter(MarketTransaction.transaction_type == transaction_type)
@@ -339,7 +339,7 @@ async def get_recent_transactions(
     transaction_data = []
     for tx in transactions:
         player = db.query(Player).filter(Player.id == tx.player_id).first()
-        port = db.query(Station).filter(Station.id == tx.port_id).first()
+        port = db.query(Station).filter(Station.id == tx.station_id).first()
         
         transaction_data.append({
             "id": str(tx.id),
@@ -367,7 +367,7 @@ async def create_price_alert(
     """Create a new price monitoring alert"""
     
     alert = PriceAlert(
-        port_id=alert_data["port_id"],
+        station_id=alert_data["station_id"],
         commodity=alert_data["commodity"],
         alert_type=alert_data["alert_type"],
         threshold_value=alert_data["threshold_value"],

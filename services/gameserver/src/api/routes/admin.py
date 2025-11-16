@@ -1407,16 +1407,16 @@ async def get_all_alliances(
         logger.error(f"Error getting alliances: {e}")
         return {"alliances": []}
 
-@router.patch("/ports/{port_id}", response_model=dict)
+@router.patch("/ports/{station_id}", response_model=dict)
 async def update_port(
-    port_id: str,
+    station_id: str,
     port_updates: dict,
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Update port details including commodity quantities"""
     try:
-        port = db.query(Station).filter(Station.id == port_id).first()
+        port = db.query(Station).filter(Station.id == station_id).first()
         
         if not port:
             raise HTTPException(status_code=404, detail="Station not found")
@@ -1449,7 +1449,7 @@ async def update_port(
         return {
             "success": True,
             "message": "Station updated successfully",
-            "port_id": str(port.id)
+            "station_id": str(port.id)
         }
         
     except Exception as e:
