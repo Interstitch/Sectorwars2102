@@ -396,7 +396,7 @@ const UniverseManager: React.FC = () => {
                       region.region_type === 'terran_space' ? 'badge-info' :
                       'badge-success'
                     }`}>
-                      {region.region_type.replace('_', ' ')}
+                      {region.region_type?.replace('_', ' ') || 'Unknown'}
                     </span>
                   </div>
                   <div className="region-stats">
