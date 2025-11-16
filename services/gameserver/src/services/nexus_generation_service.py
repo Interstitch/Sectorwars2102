@@ -355,7 +355,7 @@ class NexusGenerationService:
                 "name": "Central Nexus Starport Prime",
                 "sector_id": sector_num,
                 "region_id": region_id,
-                "port_class": StationClass.CLASS_0,  # Highest quality
+                "station_class": StationClass.CLASS_0,  # Highest quality
                 "type": StationType.TRADING,
                 "status": StationStatus.OPERATIONAL,
                 "size": 10  # Maximum size
@@ -386,7 +386,7 @@ class NexusGenerationService:
             "name": f"Nexus Station {sector_num}",
             "sector_id": sector_num,
             "region_id": region_id,
-            "port_class": port_class,
+            "station_class": port_class,
             "type": port_type,
             "status": StationStatus.OPERATIONAL,
             "size": size
