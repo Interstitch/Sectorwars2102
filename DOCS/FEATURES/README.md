@@ -53,7 +53,7 @@ This directory contains the **core essence and vision** of SectorWars 2102. Ever
 **Colonization, production, and planetary management**
 
 - **[PLANETARY_COLONIZATION.md](./PLANETS/PLANETARY_COLONIZATION.md)** - Planet settlement mechanics
-- **[PLANETARY_DEFENSE.md](./PLANETS/PLANETARY_DEFENSE.md)** - Citadels, turrets, shields, fighters
+- **[PLANETARY_DEFENSE.md](./PLANETS/PLANETARY_DEFENSE.md)** - Citadels, turrets, shields, drones
 - **[PLANETARY_PRODUCTION.md](./PLANETS/PLANETARY_PRODUCTION.md)** - Resource generation, infrastructure
 - **[PLANET_MANAGEMENT_UI.md](./PLANETS/PLANET_MANAGEMENT_UI.md)** - UI for planetary operations
 - **[COLONIES_UI_ENHANCEMENT.md](./PLANETS/COLONIES_UI_ENHANCEMENT.md)** - Enhanced colony management interface

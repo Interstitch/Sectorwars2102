@@ -148,7 +148,7 @@ A colonizable world found in sectors. Planets provide:
 - **Factory**: Equipment production
 - **Farm**: Organics/food production
 - **Mine**: Ore extraction
-- **Defense**: Turrets, shields, fighters (levels 1-10)
+- **Defense**: Turrets, shields, drones (levels 1-10)
 - **Research**: Technology development
 
 ### Port (Trading Station)
@@ -505,7 +505,7 @@ Structural integrity of ship. Hull:
 Planetary defense structure. Can be upgraded in levels (1-10):
 - **Turrets**: Automated defensive weapons
 - **Shields**: Planetary energy barriers
-- **Fighters**: Automated defense craft
+- **Drones**: Automated defense craft
 
 ---
 

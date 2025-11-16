@@ -218,12 +218,51 @@ POST /api/planets/colonize {
 # - Planet status → COLONIZED
 # - Planet.colonists = 10,000 (available for allocation)
 # - Planet.population = 10,000 (total inhabitants)
+# - Planet.max_population = habitability_score * 1000 (capacity ceiling)
 ```
 
 **Key Transformation:**
 - **POPULATION (commodity)** → **colonists (planet workforce)**
 - Colonists can be allocated to production roles
 - Population represents total inhabitants (grows over time via natural growth)
+- **Maximum population determined by habitability score**
+
+### Habitability & Population Capacity
+
+**Habitability Score Impact:**
+Every planet has a habitability score (0-100) that determines:
+
+1. **Maximum Population Capacity**
+   - Formula: `max_population = habitability_score × 1,000`
+   - Example: Habitability 75 → Max 75,000 colonists
+   - Example: Habitability 25 → Max 25,000 colonists
+
+2. **Natural Growth Rate**
+   - Formula: `growth_rate = base_growth × (habitability_score / 100)`
+   - High habitability (80-100): Full growth rate
+   - Medium habitability (40-79): Reduced growth rate
+   - Low habitability (0-39): Severely limited growth, possible decline
+
+3. **Resource Efficiency**
+   - High habitability: Standard resource consumption
+   - Low habitability: +20% resource costs (life support, environmental control)
+
+**Habitability by Planet Type:**
+| Planet Type | Base Habitability | Max Population (base) |
+|-------------|-------------------|----------------------|
+| M_CLASS     | 95-100            | 95,000-100,000       |
+| L_CLASS     | 60-75             | 60,000-75,000        |
+| O_CLASS     | 60-75             | 60,000-75,000        |
+| K_CLASS     | 30-45             | 30,000-45,000        |
+| H_CLASS     | 10-25             | 10,000-25,000        |
+| D_CLASS     | 5-15 (orbital)    | 5,000-15,000         |
+| C_CLASS     | 35-50             | 35,000-50,000        |
+
+**Terraforming to Increase Habitability:**
+- See **Terraform Engineers** in Future Profession System below
+- Habitability can be increased +1 to +5 points per terraforming cycle
+- Maximum achievable habitability: 100 (Earth-like conditions)
+- Terraforming unlocks higher population caps and faster growth
 
 #### Step 4: Colonist Allocation to Production Roles
 
@@ -326,10 +365,18 @@ The current colonist system uses generic workers assigned to three production ro
   - Unlock: Advanced medical facilities
   - Training Time: 35 days
 
+- **Terraform Engineers** - Planetary habitability improvement specialists
+  - Bonus: +0.5% habitability per 1,000 terraform engineers per month
+  - Unlock: Atmospheric processors, ecosystem seeding, climate control
+  - Resource Cost: Consumes organics (biomass) + technology (equipment) during terraforming
+  - Training Time: 35 days
+  - Maximum Impact: Can raise habitability from any starting value to 100 (Earth-like)
+  - **Critical Role**: Unlocks higher population caps by increasing max_population ceiling
+
 #### Military Professions
-- **Combat Pilots** - Man defensive fighters and combat drones
+- **Combat Pilots** - Man defensive drones and combat drones
   - Bonus: +50% planetary defense drone effectiveness
-  - Unlock: Elite fighter squadrons
+  - Unlock: Elite drone squadrons
   - Training Time: 25 days
 
 - **Defense Coordinators** - Manage planetary defenses
@@ -403,6 +450,90 @@ Some advanced professions can fill multiple roles simultaneously:
 - **Agri-Scientists**: Produce organics while also researching agricultural tech
 - **Combat-Engineers**: Maintain defenses while also contributing to equipment production
 
+### Terraforming Mechanics (Terraform Engineers)
+
+**Purpose:** Increase planetary habitability to raise population capacity ceiling
+
+**Requirements:**
+- Trained Terraform Engineers (minimum 500 for meaningful impact)
+- Terraforming Lab facility (Level 3+)
+- Resource consumption: Organics (biomass for ecosystems) + Technology (atmospheric processors)
+
+**Terraforming Process:**
+```bash
+# Assign terraform engineers to active terraforming
+POST /api/planets/{planetId}/professions/assign {
+  "profession": "TERRAFORM_ENGINEER",
+  "quantity": 2000,  # 2,000 engineers assigned
+  "task": "ACTIVE_TERRAFORMING"
+}
+
+# Configure terraforming parameters
+POST /api/planets/{planetId}/terraform/configure {
+  "target_habitability": 85,  # Goal: raise from 60 to 85
+  "resource_allocation": {
+    "organics_per_month": 5000,    # Biomass for ecosystem seeding
+    "technology_per_month": 3000   # Equipment for atmospheric processors
+  }
+}
+
+# Monitor progress
+GET /api/planets/{planetId}/terraform/status
+
+# Response:
+{
+  "current_habitability": 62,
+  "target_habitability": 85,
+  "progress_per_month": 1.0,  # +1.0 habitability/month with 2k engineers
+  "estimated_completion": "3 months",
+  "resource_consumption": {
+    "organics": 5000,
+    "technology": 3000
+  },
+  "population_cap_increase": "+1,000 per habitability point"
+}
+```
+
+**Terraforming Formula:**
+- Base progress: `habitability_increase = (terraform_engineers / 1000) * 0.5 per month`
+- Example: 2,000 engineers → +1.0 habitability/month
+- Example: 5,000 engineers → +2.5 habitability/month
+- Maximum rate: +5 habitability/month (10,000 engineers)
+
+**Resource Costs (per month):**
+- Base: 2,500 organics + 1,500 technology per +1 habitability
+- Scales with: Current habitability (harder to improve already-high habitability)
+  - 0-40 habitability: Standard cost
+  - 41-70 habitability: +25% cost
+  - 71-90 habitability: +50% cost
+  - 91-100 habitability: +100% cost (very expensive to achieve Earth-like)
+
+**Strategic Benefits:**
+1. **Population Expansion**: Each +1 habitability = +1,000 max population
+2. **Growth Acceleration**: Higher habitability = faster natural population growth
+3. **Resource Efficiency**: Reduced life support costs at high habitability
+4. **Long-term Investment**: Terraforming takes months but yields permanent benefits
+
+**Example Terraforming Project:**
+```
+Planet: Volcanic world (H_CLASS)
+Starting Habitability: 15
+Target Habitability: 75
+Population Cap Change: 15,000 → 75,000 (+60,000)
+
+Resources Required:
+- Terraform Engineers: 3,000 (train from generic colonists)
+- Duration: 40 months at +1.5 habitability/month
+- Total Organics: ~200,000 units
+- Total Technology: ~120,000 units
+- Total Credits (training + operations): ~500,000
+
+Result:
+- 4x increase in population capacity
+- Faster population growth (base_growth × 0.75 instead of × 0.15)
+- Planet becomes viable for major colony development
+```
+
 ### Gameplay Impact
 
 #### Strategic Depth
@@ -410,6 +541,7 @@ Some advanced professions can fill multiple roles simultaneously:
 - **Planet Roles**: Planets develop distinct identities (military base, research hub, industrial center)
 - **Long-term Planning**: Training times encourage strategic foresight
 - **Trade-offs**: Specialized colonists are more effective but less flexible
+- **Terraforming Investment**: High-cost, high-reward projects for expanding harsh worlds
 
 #### Economic Impact
 - **Credit Sinks**: Training costs provide meaningful expenditure for wealthy players
@@ -466,13 +598,19 @@ Some advanced professions can fill multiple roles simultaneously:
 - Space Engineers (ship repair bonus)
 - Mining Engineers (fuel production bonus)
 - Trade Specialists (credit generation)
+- **Terraform Engineers (population cap expansion)** - High priority due to habitability system
 
 **Phase 2: Military & Research (Q2 Post-Launch)**
 - Combat Pilots (defense bonus)
 - Research Scientists (research speed)
 - Defense Coordinators (defense systems)
+- Agricultural Scientists (organics + growth)
 
 **Phase 3: Advanced Professions (Q3 Post-Launch)**
+- Medical Professionals (health + growth)
+- Structural Engineers (building cost reduction)
+- Strategic Analysts (intelligence gathering)
+- Industrial Managers (equipment efficiency)
 - Multi-role professions
 - Unique profession abilities
 - Profession-specific events and missions
@@ -486,12 +624,13 @@ class ColonistProfession(Base):
 
     id = Column(UUID, primary_key=True)
     planet_id = Column(UUID, ForeignKey("planets.id"))
-    profession_type = Column(Enum(ProfessionType))  # SPACE_ENGINEER, etc.
+    profession_type = Column(Enum(ProfessionType))  # SPACE_ENGINEER, TERRAFORM_ENGINEER, etc.
     quantity = Column(Integer)  # Number of colonists with this profession
     training_started = Column(DateTime, nullable=True)
     training_complete = Column(DateTime, nullable=True)
     level = Column(Integer, default=1)  # Profession expertise level (1-10)
     bonus_multiplier = Column(Float, default=1.0)
+    active_assignment = Column(String, nullable=True)  # PRODUCTION, TERRAFORMING, etc.
 
 # New model: ProfessionTrainingQueue
 class ProfessionTrainingQueue(Base):
@@ -505,6 +644,28 @@ class ProfessionTrainingQueue(Base):
     completes_at = Column(DateTime)
     cost_paid = Column(JSONB)  # {credits: X, equipment: Y, ...}
     status = Column(String)  # TRAINING, COMPLETE, CANCELLED
+
+# New model: TerraformingProject
+class TerraformingProject(Base):
+    __tablename__ = "terraforming_projects"
+
+    id = Column(UUID, primary_key=True)
+    planet_id = Column(UUID, ForeignKey("planets.id"))
+    started_at = Column(DateTime)
+    target_habitability = Column(Integer)  # Goal habitability (0-100)
+    engineers_assigned = Column(Integer)  # Number of terraform engineers working
+    monthly_progress = Column(Float)  # Calculated progress per month
+    monthly_organics_cost = Column(Integer)  # Resource consumption
+    monthly_technology_cost = Column(Integer)
+    total_organics_consumed = Column(Integer, default=0)
+    total_technology_consumed = Column(Integer, default=0)
+    status = Column(String)  # ACTIVE, PAUSED, COMPLETED, CANCELLED
+    completion_estimate = Column(DateTime, nullable=True)
+
+# Updates to existing Planet model:
+# Planet.habitability_score - already exists (0-100)
+# Planet.max_population - formula: habitability_score * 1000
+# Planet.population_growth - formula: base_growth * (habitability_score / 100)
 ```
 
 ### Related Documentation

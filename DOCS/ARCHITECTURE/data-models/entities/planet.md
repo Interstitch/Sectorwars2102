@@ -64,7 +64,7 @@ export interface PlanetModel {
   productionRates: PlanetProductionRates; // Base production rates
   citadelLevel: number;          // 0-5, determines defenses and storage capacity
   shieldLevel: number;           // 0-3, defense multiplier against attacks
-  fighters: number;              // Number of defense drones stationed on planet
+  drones: number;                // Number of defense drones stationed on planet
   productionUpgrades: {          // Installed production upgrades (0-5 levels)
     ore: number;
     organics: number;
