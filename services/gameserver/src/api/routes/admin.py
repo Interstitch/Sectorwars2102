@@ -1187,13 +1187,12 @@ async def clear_all_galaxy_data(
 
         db.query(Ship).delete()          # Ships reference Players + Sectors
         db.query(Player).delete()        # Players reference Sectors + Regions + Ships (via current_ship_id)
-        db.query(Station).delete()          # Ports reference Sectors
+        db.query(Station).delete()       # Stations reference Sectors
         db.query(Planet).delete()        # Planets reference Sectors
         db.query(WarpTunnel).delete()    # Warp tunnels reference Sectors
         db.query(Sector).delete()        # Sectors reference Clusters AND Regions
-        db.query(Cluster).delete()       # Clusters reference GalaxyZones
+        db.query(Cluster).delete()       # Clusters reference Regions
         db.query(Region).delete()        # Regions (includes Central Nexus), referenced by Sectors
-        db.query(GalaxyZone).delete()    # GalaxyZones reference Galaxy (cosmological zones, NOT business territories)
         db.query(Galaxy).delete()        # Finally delete Galaxy
         db.commit()
 
