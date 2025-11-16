@@ -9,7 +9,7 @@ from src.core.database import get_async_session
 from src.auth.dependencies import get_current_admin_user
 from src.models.market_transaction import MarketTransaction, MarketPrice, PriceHistory, EconomicMetrics, PriceAlert, TransactionType
 from src.models.player import Player
-from src.models.port import Port
+from src.models.station import Station
 from src.models.sector import Sector
 
 router = APIRouter(prefix="/admin/economy", tags=["economy"])
@@ -62,7 +62,7 @@ async def get_market_data(
     """Get current market data across all ports"""
     
     # Get current market prices
-    query = db.query(MarketPrice).join(Port).join(Sector)
+    query = db.query(MarketPrice).join(Station).join(Sector)
     
     if commodity_filter and commodity_filter != "all":
         query = query.filter(MarketPrice.commodity == commodity_filter)
@@ -74,7 +74,7 @@ async def get_market_data(
     
     market_data = []
     for price in market_prices:
-        port = price.port
+        port = price.station
         sector = port.sector if port else None
         
         market_data.append(MarketDataResponse(
@@ -169,7 +169,7 @@ async def get_price_alerts(
 ):
     """Get price alerts for admin monitoring"""
     
-    query = db.query(PriceAlert).join(Port)
+    query = db.query(PriceAlert).join(Station)
     
     if active_only:
         query = query.filter(PriceAlert.is_active == True)
@@ -178,7 +178,7 @@ async def get_price_alerts(
     
     alert_responses = []
     for alert in alerts:
-        port = alert.port
+        port = alert.station
         
         # Get current value based on alert type
         current_value = 0.0
@@ -232,7 +232,7 @@ async def get_price_history(
     # Format for charting
     price_data = []
     for record in history:
-        port = db.query(Port).filter(Port.id == record.port_id).first()
+        port = db.query(Station).filter(Station.id == record.port_id).first()
         price_data.append({
             "timestamp": record.timestamp.isoformat(),
             "port_id": str(record.port_id),
@@ -323,7 +323,7 @@ async def get_recent_transactions(
 ):
     """Get recent market transactions for admin monitoring"""
     
-    query = db.query(MarketTransaction).join(Player, MarketTransaction.player_id == Player.id, isouter=True).join(Port, MarketTransaction.port_id == Port.id, isouter=True)
+    query = db.query(MarketTransaction).join(Player, MarketTransaction.player_id == Player.id, isouter=True).join(Station, MarketTransaction.port_id == Station.id, isouter=True)
     
     if transaction_type:
         query = query.filter(MarketTransaction.transaction_type == transaction_type)
@@ -339,7 +339,7 @@ async def get_recent_transactions(
     transaction_data = []
     for tx in transactions:
         player = db.query(Player).filter(Player.id == tx.player_id).first()
-        port = db.query(Port).filter(Port.id == tx.port_id).first()
+        port = db.query(Station).filter(Station.id == tx.port_id).first()
         
         transaction_data.append({
             "id": str(tx.id),

@@ -48,7 +48,7 @@ export interface Planet {
   habitability_score: number;
 }
 
-export interface Port {
+export interface Station {
   id: string;
   name: string;
   type: string;
@@ -93,7 +93,7 @@ export interface PlayerState {
   credits: number;
   turns: number;
   current_sector_id: number;
-  is_ported: boolean;
+  is_docked: boolean;
   is_landed: boolean;
   defense_drones: number;
   attack_drones: number;
@@ -124,18 +124,18 @@ interface GameContextType {
     tunnels: MoveOption[];
   };
   planetsInSector: Planet[];
-  portsInSector: Port[];
+  stationsInSector: Station[];
   
   // Movement
   moveToSector: (sectorId: number) => Promise<any>;
   getAvailableMoves: () => Promise<void>;
   
   // Port interactions
-  dockAtPort: (portId: string) => Promise<any>;
+  dockAtStation: (stationId: string) => Promise<any>;
   marketInfo: MarketInfo | null;
-  getMarketInfo: (portId: string) => Promise<void>;
-  buyResource: (portId: string, resourceType: string, quantity: number) => Promise<any>;
-  sellResource: (portId: string, resourceType: string, quantity: number) => Promise<any>;
+  getMarketInfo: (stationId: string) => Promise<void>;
+  buyResource: (stationId: string, resourceType: string, quantity: number) => Promise<any>;
+  sellResource: (stationId: string, resourceType: string, quantity: number) => Promise<any>;
   
   // Planet interactions
   landOnPlanet: (planetId: string) => Promise<any>;
@@ -174,7 +174,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     tunnels: []
   });
   const [planetsInSector, setPlanetsInSector] = useState<Planet[]>([]);
-  const [portsInSector, setPortsInSector] = useState<Port[]>([]);
+  const [stationsInSector, setPortsInSector] = useState<Station[]>([]);
   
   // Market
   const [marketInfo, setMarketInfo] = useState<MarketInfo | null>(null);
@@ -448,7 +448,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // Get ports in sector
       try {
-        const portsResponse = await api.get(`/api/v1/sectors/${playerState.current_sector_id}/ports`);
+        const portsResponse = await api.get(`/api/v1/sectors/${playerState.current_sector_id}/stations`);
         console.log('GameContext: Ports response:', portsResponse.data);
         setPortsInSector(portsResponse.data.ports || []);
       } catch (portsError) {
@@ -464,14 +464,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
   
   // Dock at a port
-  const dockAtPort = async (portId: string) => {
+  const dockAtStation = async (stationId: string) => {
     if (!user || !playerState) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await api.post('/api/v1/trading/dock', { port_id: portId });
+      const response = await api.post('/api/v1/trading/dock', { port_id: stationId });
       
       // Update player state after docking
       await refreshPlayerState();
@@ -487,14 +487,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
   
   // Get market info for a port
-  const getMarketInfo = async (portId: string) => {
+  const getMarketInfo = async (stationId: string) => {
     if (!user) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await api.get(`/api/v1/trading/market/${portId}`);
+      const response = await api.get(`/api/v1/trading/market/${stationId}`);
       setMarketInfo(response.data);
     } catch (error) {
       console.error('Error getting market info:', error);
@@ -505,7 +505,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
   
   // Buy resource from a port
-  const buyResource = async (portId: string, resourceType: string, quantity: number) => {
+  const buyResource = async (stationId: string, resourceType: string, quantity: number) => {
     if (!user || !playerState) return;
     
     setIsLoading(true);
@@ -513,14 +513,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       const response = await api.post('/api/v1/trading/buy', {
-        port_id: portId,
+        port_id: stationId,
         resource_type: resourceType,
         quantity: quantity
       });
       
       // Update player state and market info after purchase
       await refreshPlayerState();
-      await getMarketInfo(portId);
+      await getMarketInfo(stationId);
       
       return response.data;
     } catch (error: any) {
@@ -533,7 +533,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
   
   // Sell resource to a port
-  const sellResource = async (portId: string, resourceType: string, quantity: number) => {
+  const sellResource = async (stationId: string, resourceType: string, quantity: number) => {
     if (!user || !playerState) return;
     
     setIsLoading(true);
@@ -541,14 +541,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       const response = await api.post('/api/v1/trading/sell', {
-        port_id: portId,
+        port_id: stationId,
         resource_type: resourceType,
         quantity: quantity
       });
       
       // Update player state and market info after sale
       await refreshPlayerState();
-      await getMarketInfo(portId);
+      await getMarketInfo(stationId);
       
       return response.data;
     } catch (error: any) {
@@ -661,14 +661,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     currentSector,
     availableMoves,
     planetsInSector,
-    portsInSector,
+    stationsInSector,
     
     // Movement
     moveToSector,
     getAvailableMoves,
     
     // Port interactions
-    dockAtPort,
+    dockAtStation,
     marketInfo,
     getMarketInfo,
     buyResource,

@@ -18,7 +18,7 @@ from src.models.region import (
 )
 from src.models.sector import Sector
 from src.models.planet import Planet
-from src.models.port import Port
+from src.models.station import Station
 from src.core.config import settings
 
 

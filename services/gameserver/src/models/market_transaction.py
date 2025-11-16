@@ -54,7 +54,7 @@ class MarketTransaction(Base):
     
     # Relationships
     player = relationship("Player", back_populates="enhanced_market_transactions")
-    port = relationship("Port")
+    port = relationship("Station")
     sector = relationship("Sector", foreign_keys=[sector_uuid])
     reviewer = relationship("User", foreign_keys=[reviewed_by])
 
@@ -103,7 +103,7 @@ class MarketPrice(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     # Relationships
-    port = relationship("Port")
+    port = relationship("Station")
 
     # Unique constraint and indexes
     __table_args__ = (
@@ -141,7 +141,7 @@ class PriceHistory(Base):
     snapshot_type = Column(String(20), nullable=False, default="daily")  # hourly, daily, weekly
     
     # Relationships
-    port = relationship("Port")
+    port = relationship("Station")
 
     # Indexes for analytics queries
     __table_args__ = (
@@ -196,7 +196,7 @@ class EconomicMetrics(Base):
     calculated_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     # Relationships
-    most_valuable_port_ref = relationship("Port", foreign_keys=[most_valuable_port])
+    most_valuable_port_ref = relationship("Station", foreign_keys=[most_valuable_port])
 
     # Indexes
     __table_args__ = (
@@ -236,7 +236,7 @@ class PriceAlert(Base):
     resolve_threshold = Column(Float, nullable=True)
     
     # Relationships
-    port = relationship("Port")
+    port = relationship("Station")
     acknowledger = relationship("User", foreign_keys=[acknowledged_by])
 
     # Indexes
@@ -250,7 +250,7 @@ class PriceAlert(Base):
 # This would be added to the Player model:
 # market_transactions = relationship("MarketTransaction", back_populates="player")
 
-# This would be added to the Port model:
+# This would be added to the Station model:
 # market_prices = relationship("MarketPrice", back_populates="port")
 # price_history = relationship("PriceHistory", back_populates="port")
 # price_alerts = relationship("PriceAlert", back_populates="port")

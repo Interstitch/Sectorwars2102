@@ -12,7 +12,7 @@ from src.services.nexus_generation_service import NexusGenerationService
 from src.models.region import Region
 from src.models.sector import Sector
 from src.models.planet import Planet
-from src.models.port import Port
+from src.models.station import Station
 
 
 class TestNexusGenerationService:

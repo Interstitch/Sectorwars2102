@@ -8,7 +8,7 @@ from src.core.database import get_async_session
 from src.auth.dependencies import get_current_user, get_current_player
 from src.models.user import User
 from src.models.player import Player
-from src.models.port import Port
+from src.models.station import Station
 from src.models.sector import Sector
 from src.models.ship import Ship
 from src.models.market_transaction import MarketTransaction, MarketPrice, TransactionType
@@ -46,9 +46,9 @@ async def buy_resource(
         raise HTTPException(status_code=400, detail="You must be docked at a port to trade")
     
     # Get the port
-    port = db.query(Port).filter(Port.id == trade_request.port_id).first()
+    port = db.query(Station).filter(Station.id == trade_request.port_id).first()
     if not port:
-        raise HTTPException(status_code=404, detail="Port not found")
+        raise HTTPException(status_code=404, detail="Station not found")
     
     # Verify player is in the same sector as the port
     if current_player.current_sector_id != port.sector_id:
@@ -74,7 +74,7 @@ async def buy_resource(
     if market_price.quantity_available < trade_request.quantity:
         raise HTTPException(
             status_code=400, 
-            detail=f"Port only has {market_price.quantity_available} units available"
+            detail=f"Station only has {market_price.quantity_available} units available"
         )
     
     # Calculate total cost
@@ -157,9 +157,9 @@ async def sell_resource(
         raise HTTPException(status_code=400, detail="You must be docked at a port to trade")
     
     # Get the port
-    port = db.query(Port).filter(Port.id == trade_request.port_id).first()
+    port = db.query(Station).filter(Station.id == trade_request.port_id).first()
     if not port:
-        raise HTTPException(status_code=404, detail="Port not found")
+        raise HTTPException(status_code=404, detail="Station not found")
     
     # Verify player is in the same sector as the port
     if current_player.current_sector_id != port.sector_id:
@@ -186,7 +186,7 @@ async def sell_resource(
         MarketPrice.commodity == trade_request.resource_type
     ).first()
     if not market_price:
-        raise HTTPException(status_code=404, detail="Port doesn't trade this resource")
+        raise HTTPException(status_code=404, detail="Station doesn't trade this resource")
     
     # Calculate total earnings
     total_earnings = market_price.sell_price * trade_request.quantity
@@ -247,9 +247,9 @@ async def get_market_info(
     """Get market information for a specific port"""
     
     # Get the port
-    port = db.query(Port).filter(Port.id == port_id).first()
+    port = db.query(Station).filter(Station.id == port_id).first()
     if not port:
-        raise HTTPException(status_code=404, detail="Port not found")
+        raise HTTPException(status_code=404, detail="Station not found")
     
     # Get all market prices for this port
     market_prices = db.query(MarketPrice).filter(MarketPrice.port_id == port_id).all()
@@ -289,9 +289,9 @@ async def dock_at_port(
     DOCKING_TURN_COST = 1
     
     # Get the port
-    port = db.query(Port).filter(Port.id == dock_request.port_id).first()
+    port = db.query(Station).filter(Station.id == dock_request.port_id).first()
     if not port:
-        raise HTTPException(status_code=404, detail="Port not found")
+        raise HTTPException(status_code=404, detail="Station not found")
     
     # Verify player is in the same sector as the port
     if current_player.current_sector_id != port.sector_id:
@@ -326,7 +326,7 @@ async def dock_at_port(
             "message": f"Successfully docked at {port.name}",
             "turn_cost": DOCKING_TURN_COST,
             "turns_remaining": current_player.turns,
-            "port": {
+            "station": {
                 "id": str(port.id),
                 "name": port.name,
                 "type": port.type,
@@ -399,7 +399,7 @@ async def get_trading_history(
     
     history = []
     for tx in transactions:
-        port = db.query(Port).filter(Port.id == tx.port_id).first()
+        port = db.query(Station).filter(Station.id == tx.port_id).first()
         history.append({
             "id": str(tx.id),
             "type": tx.transaction_type.value,
@@ -409,7 +409,7 @@ async def get_trading_history(
             "total_value": tx.total_value,
             "profit_margin": tx.profit_margin,
             "timestamp": tx.timestamp.isoformat(),
-            "port_name": port.name if port else "Unknown Port"
+            "port_name": port.name if port else "Unknown Station"
         })
     
     return {

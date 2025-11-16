@@ -116,11 +116,11 @@ class Market(Base):
     trade_restrictions = Column(JSONB, nullable=False, default=[])
     
     # Relationships
-    port = relationship("Port", back_populates="market")
+    port = relationship("Station", back_populates="market")
     transactions = relationship("src.models.resource.MarketTransaction", back_populates="market", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<Market at {self.port.name} - Size: {self.size}>"
+        return f"<Market at {self.station.name} - Size: {self.size}>"
 
 
 # Market transaction record

@@ -9,7 +9,7 @@ from src.models.reputation import Reputation, TeamReputation, ReputationLevel
 from src.models.team import Team, TeamReputationHandling, TeamRecruitmentStatus
 from src.models.team_member import TeamMember, TeamRole
 from src.models.planet import Planet, player_planets
-from src.models.port import Port, player_ports
+from src.models.station import Station, StationClass, StationType, StationStatus, player_stations
 
 # New models
 from src.models.galaxy import Galaxy

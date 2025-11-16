@@ -93,7 +93,7 @@ class CombatLog(Base):
     attacker_ship = relationship("Ship", foreign_keys=[attacker_ship_id])
     defender_ship = relationship("Ship", foreign_keys=[defender_ship_id])
     sector = relationship("Sector")
-    port = relationship("Port")
+    port = relationship("Station")
     planet = relationship("Planet")
 
 

@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 
 # Association table for player-port relationship
-player_ports = Table(
-    "player_ports",
+player_stations = Table(
+    "player_stations",
     Base.metadata,
     Column("player_id", UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), primary_key=True),
     Column("port_id", UUID(as_uuid=True), ForeignKey("ports.id", ondelete="CASCADE"), primary_key=True),
@@ -24,7 +24,7 @@ player_ports = Table(
 )
 
 
-class PortClass(enum.Enum):
+class StationClass(enum.Enum):
     CLASS_0 = 0   # Sol System - Special mechanics
     CLASS_1 = 1   # Mining Operation
     CLASS_2 = 2   # Agricultural Center
@@ -38,7 +38,7 @@ class PortClass(enum.Enum):
     CLASS_10 = 10 # Luxury Market
     CLASS_11 = 11 # Advanced Tech Hub
 
-class PortType(enum.Enum):
+class StationType(enum.Enum):
     TRADING = "TRADING"          # Commercial hub, good prices
     MILITARY = "MILITARY"        # Security forces, weapons
     INDUSTRIAL = "INDUSTRIAL"    # Manufacturing focus
@@ -51,7 +51,7 @@ class PortType(enum.Enum):
     CORPORATE = "CORPORATE"      # Corporation headquarters
 
 
-class PortStatus(enum.Enum):
+class StationStatus(enum.Enum):
     OPERATIONAL = "OPERATIONAL"
     DAMAGED = "DAMAGED"
     UNDER_CONSTRUCTION = "UNDER_CONSTRUCTION"
@@ -68,8 +68,8 @@ class TraderPersonalityType(enum.Enum):
     BLACK_MARKET = "BLACK_MARKET"  # Suspicious, opportunistic
 
 
-class Port(Base):
-    __tablename__ = "ports"
+class Station(Base):
+    __tablename__ = "stations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
@@ -80,13 +80,13 @@ class Port(Base):
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     
     # Port properties
-    port_class = Column(Enum(PortClass, name="port_class"), nullable=False)
-    type = Column(Enum(PortType, name="port_type"), nullable=False)
-    status = Column(Enum(PortStatus, name="port_status"), nullable=False, default=PortStatus.OPERATIONAL)
+    station_class = Column(Enum(StationClass, name="station_class"), nullable=False)
+    type = Column(Enum(StationType, name="station_type"), nullable=False)
+    status = Column(Enum(StationStatus, name="station_status"), nullable=False, default=StationStatus.OPERATIONAL)
     size = Column(Integer, nullable=False, default=5)  # 1-10 scale
     
     # Economy and Trading
-    faction_affiliation = Column(String, nullable=True)  # Which faction controls this port
+    faction_affiliation = Column(String, nullable=True)  # Which faction controls this station
     trade_volume = Column(Integer, nullable=False, default=100)  # Daily trade credits
     market_volatility = Column(Integer, nullable=False, default=50)  # 0-100, price fluctuation factor
     
@@ -200,31 +200,31 @@ class Port(Base):
     region_id = Column(UUID(as_uuid=True), ForeignKey("regions.id"), nullable=True)
     
     # Relationships
-    owner = relationship("Player", secondary=player_ports, back_populates="ports")
-    sector = relationship("Sector", foreign_keys=[sector_uuid], back_populates="ports")
-    market = relationship("Market", back_populates="port", uselist=False, cascade="all, delete-orphan")
-    region = relationship("Region", back_populates="ports")
+    owner = relationship("Player", secondary=player_stations, back_populates="stations")
+    sector = relationship("Sector", foreign_keys=[sector_uuid], back_populates="stations")
+    market = relationship("Market", back_populates="station", uselist=False, cascade="all, delete-orphan")
+    region = relationship("Region", back_populates="stations")
     
     def __repr__(self):
-        return f"<Port {self.name} (Class {self.port_class.value}, {self.type.name}) - Sector: {self.sector_id}, Status: {self.status.name}>"
+        return f"<Station {self.name} (Class {self.station_class.value}, {self.type.name}) - Sector: {self.sector_id}, Status: {self.status.name}>"
     
     def get_trading_pattern(self):
-        """Get what this port buys/sells based on its class."""
+        """Get what this station buys/sells based on its class."""
         patterns = {
-            PortClass.CLASS_0: {"buys": ["special_goods"], "sells": ["special_goods", "colonists"]},
-            PortClass.CLASS_1: {"buys": ["ore"], "sells": ["organics", "equipment"]},
-            PortClass.CLASS_2: {"buys": ["organics"], "sells": ["ore", "equipment"]},
-            PortClass.CLASS_3: {"buys": ["equipment"], "sells": ["ore", "organics"]},
-            PortClass.CLASS_4: {"buys": [], "sells": ["ore", "organics", "equipment", "fuel"]},
-            PortClass.CLASS_5: {"buys": ["ore", "organics", "equipment", "fuel"], "sells": []},
-            PortClass.CLASS_6: {"buys": ["ore", "organics"], "sells": ["equipment", "fuel"]},
-            PortClass.CLASS_7: {"buys": ["equipment", "fuel"], "sells": ["ore", "organics"]},
-            PortClass.CLASS_8: {"buys": ["ore", "organics", "equipment", "fuel"], "sells": []},
-            PortClass.CLASS_9: {"buys": [], "sells": ["ore", "organics", "equipment", "fuel"]},
-            PortClass.CLASS_10: {"buys": ["gourmet_food"], "sells": ["luxury_goods", "exotic_technology"]},
-            PortClass.CLASS_11: {"buys": ["exotic_technology"], "sells": ["advanced_components"]}
+            StationClass.CLASS_0: {"buys": ["special_goods"], "sells": ["special_goods", "colonists"]},
+            StationClass.CLASS_1: {"buys": ["ore"], "sells": ["organics", "equipment"]},
+            StationClass.CLASS_2: {"buys": ["organics"], "sells": ["ore", "equipment"]},
+            StationClass.CLASS_3: {"buys": ["equipment"], "sells": ["ore", "organics"]},
+            StationClass.CLASS_4: {"buys": [], "sells": ["ore", "organics", "equipment", "fuel"]},
+            StationClass.CLASS_5: {"buys": ["ore", "organics", "equipment", "fuel"], "sells": []},
+            StationClass.CLASS_6: {"buys": ["ore", "organics"], "sells": ["equipment", "fuel"]},
+            StationClass.CLASS_7: {"buys": ["equipment", "fuel"], "sells": ["ore", "organics"]},
+            StationClass.CLASS_8: {"buys": ["ore", "organics", "equipment", "fuel"], "sells": []},
+            StationClass.CLASS_9: {"buys": [], "sells": ["ore", "organics", "equipment", "fuel"]},
+            StationClass.CLASS_10: {"buys": ["gourmet_food"], "sells": ["luxury_goods", "exotic_technology"]},
+            StationClass.CLASS_11: {"buys": ["exotic_technology"], "sells": ["advanced_components"]}
         }
-        return patterns.get(self.port_class, {"buys": [], "sells": []})
+        return patterns.get(self.station_class, {"buys": [], "sells": []})
     
     def update_commodity_trading_flags(self):
         """Update commodity buy/sell flags based on port class."""
@@ -249,10 +249,10 @@ class Port(Base):
         import random
         
         pattern = self.get_trading_pattern()
-        is_premium_seller = self.port_class == PortClass.CLASS_9  # Nova
-        is_premium_buyer = self.port_class == PortClass.CLASS_8   # Black Hole
-        is_distribution = self.port_class == PortClass.CLASS_4    # Distribution Center
-        is_collection = self.port_class == PortClass.CLASS_5     # Collection Hub
+        is_premium_seller = self.station_class == StationClass.CLASS_9  # Nova
+        is_premium_buyer = self.station_class == StationClass.CLASS_8   # Black Hole
+        is_distribution = self.station_class == StationClass.CLASS_4    # Distribution Center
+        is_collection = self.station_class == StationClass.CLASS_5     # Collection Hub
         
         for commodity_name, commodity_data in self.commodities.items():
             base_capacity = commodity_data.get("capacity", 1000)

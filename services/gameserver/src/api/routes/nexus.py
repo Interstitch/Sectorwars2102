@@ -11,7 +11,7 @@ from src.core.database import get_async_session
 from src.models.user import User
 from src.models.player import Player
 from src.models.sector import Sector
-from src.models.port import Port
+from src.models.station import Station
 from src.models.planet import Planet
 from src.models.region import Region
 from src.models.cluster import Cluster
@@ -135,7 +135,7 @@ async def get_nexus_status(
         total_sectors = sectors_count.scalar() or 0
         
         ports_count = await session.execute(
-            select(func.count(Port.id)).where(Port.region_id == nexus_region.id)
+            select(func.count(Station.id)).where(Station.region_id == nexus_region.id)
         )
         total_ports = ports_count.scalar() or 0
         
@@ -183,7 +183,7 @@ async def get_nexus_statistics(
         total_sectors = sectors_result.scalar() or 0
         
         ports_result = await session.execute(
-            select(func.count(Port.id)).where(Port.region_id == nexus_region.id)
+            select(func.count(Station.id)).where(Station.region_id == nexus_region.id)
         )
         total_ports = ports_result.scalar() or 0
         
@@ -275,8 +275,8 @@ async def get_clusters_info(
 
             # Get ports count for this cluster
             ports_result = await session.execute(
-                select(func.count(Port.id)).join(
-                    Sector, Port.sector_id == Sector.sector_id
+                select(func.count(Station.id)).join(
+                    Sector, Station.sector_id == Sector.sector_id
                 ).where(Sector.cluster_id == cluster.id)
             )
             ports_count = ports_result.scalar() or 0
@@ -348,7 +348,7 @@ async def get_cluster_details(
         sector_numbers = [s.sector_number for s in sectors[:20]]  # Sample first 20
 
         ports_result = await session.execute(
-            select(Port).where(Port.sector_id.in_(sector_numbers)).limit(10)
+            select(Station).where(Station.sector_id.in_(sector_numbers)).limit(10)
         )
         sample_ports = ports_result.scalars().all()
 

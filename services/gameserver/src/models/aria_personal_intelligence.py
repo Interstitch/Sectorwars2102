@@ -100,7 +100,7 @@ class ARIAMarketIntelligence(Base):
     
     # Relationships
     player = relationship("Player", back_populates="aria_market_intelligence")
-    port = relationship("Port")
+    port = relationship("Station")
     sector = relationship("Sector")
     
     __table_args__ = (
@@ -225,7 +225,7 @@ class ARIAQuantumCache(Base):
     
     # Relationships
     player = relationship("Player")
-    port = relationship("Port")
+    port = relationship("Station")
     sector = relationship("Sector")
     
     __table_args__ = (

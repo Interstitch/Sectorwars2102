@@ -6,7 +6,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from src.models.player import Player
-from src.models.port import Port
+from src.models.station import Station
 from src.models.sector import Sector
 from src.models.user import User
 from src.api.routes.trading import dock_at_port, undock_from_port, PortDockRequest
@@ -47,9 +47,9 @@ def test_port(db: Session):
     )
     db.add(sector)
     
-    port = Port(
+    port = Station(
         id=uuid4(),
-        name="Test Port",
+        name="Test Station",
         sector_id=1,
         type="trading"
     )
@@ -60,7 +60,7 @@ def test_port(db: Session):
 
 
 @pytest.mark.asyncio
-async def test_dock_deducts_turn(db: Session, test_player: Player, test_port: Port):
+async def test_dock_deducts_turn(db: Session, test_player: Player, test_port: Station):
     """Test that docking at a port deducts 1 turn"""
     initial_turns = test_player.turns
     
@@ -93,7 +93,7 @@ async def test_dock_deducts_turn(db: Session, test_player: Player, test_port: Po
 
 
 @pytest.mark.asyncio
-async def test_dock_insufficient_turns(db: Session, test_player: Player, test_port: Port):
+async def test_dock_insufficient_turns(db: Session, test_player: Player, test_port: Station):
     """Test that docking fails when player has insufficient turns"""
     # Set player turns to 0
     test_player.turns = 0
@@ -118,7 +118,7 @@ async def test_dock_insufficient_turns(db: Session, test_player: Player, test_po
 
 
 @pytest.mark.asyncio
-async def test_undock_deducts_turn(db: Session, test_player: Player, test_port: Port):
+async def test_undock_deducts_turn(db: Session, test_player: Player, test_port: Station):
     """Test that undocking from a port deducts 1 turn"""
     # First dock the player
     test_player.is_ported = True
@@ -143,7 +143,7 @@ async def test_undock_deducts_turn(db: Session, test_player: Player, test_port: 
 
 
 @pytest.mark.asyncio
-async def test_undock_insufficient_turns(db: Session, test_player: Player, test_port: Port):
+async def test_undock_insufficient_turns(db: Session, test_player: Player, test_port: Station):
     """Test that undocking fails when player has insufficient turns"""
     # Dock the player first
     test_player.is_ported = True
@@ -166,7 +166,7 @@ async def test_undock_insufficient_turns(db: Session, test_player: Player, test_
 
 
 @pytest.mark.asyncio
-async def test_dock_already_docked(db: Session, test_player: Player, test_port: Port):
+async def test_dock_already_docked(db: Session, test_player: Player, test_port: Station):
     """Test that docking fails when already docked"""
     # Set player as already docked
     test_player.is_ported = True

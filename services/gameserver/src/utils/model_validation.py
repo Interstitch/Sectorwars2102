@@ -105,8 +105,8 @@ def validate_sector_query_fields():
 
 
 def validate_port_query_fields():
-    """Validate Port model fields for admin queries."""
-    from src.models.port import Port
+    """Validate Station model fields for admin queries."""
+    from src.models.station import Station
     
     expected_fields = [
         'id', 'name', 'sector_id', 'sector_uuid', 'owner_id',
@@ -115,11 +115,11 @@ def validate_port_query_fields():
     
     missing_fields = []
     for field in expected_fields:
-        if not ModelFieldValidator.validate_field_exists(Port, field):
+        if not ModelFieldValidator.validate_field_exists(Station, field):
             missing_fields.append(field)
     
     if missing_fields:
-        raise ValueError(f"Port model missing expected fields: {missing_fields}")
+        raise ValueError(f"Station model missing expected fields: {missing_fields}")
     
     return {"status": "valid", "expected_fields": expected_fields}
 
@@ -170,7 +170,7 @@ def run_all_model_validations() -> Dict[str, Any]:
     
     validations = [
         ("Sector", validate_sector_query_fields),
-        ("Port", validate_port_query_fields), 
+        ("Station", validate_port_query_fields), 
         ("Planet", validate_planet_query_fields),
         ("WarpTunnel", validate_warp_tunnel_query_fields)
     ]

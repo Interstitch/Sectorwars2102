@@ -105,7 +105,7 @@ class Galaxy(Base):
         from src.models.region import Region as PlayerRegion
         from src.models.cluster import Cluster
         from src.models.sector import Sector
-        from src.models.port import Port
+        from src.models.station import Station
         from src.models.planet import Planet
         from src.models.player import Player
         from src.models.team import Team

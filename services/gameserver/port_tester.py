@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Port testing utility for Replit environment
+Station testing utility for Replit environment
 Tests various ports to identify which ones can be bound to successfully
 """
 import socket
@@ -26,7 +26,7 @@ def test_port(port, host="0.0.0.0", duration=1):
         print(f"❌ Could not bind to port {port}: {e}")
         return False
 
-def serve_http_response(port, host="0.0.0.0", text="Port test successful"):
+def serve_http_response(port, host="0.0.0.0", text="Station test successful"):
     """Try to serve a simple HTTP response on the port"""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -85,7 +85,7 @@ def test_common_ports():
     print("\nResults summary:")
     for port, success in results.items():
         status = "✅ Available" if success else "❌ Not available"
-        print(f"Port {port}: {status}")
+        print(f"Station {port}: {status}")
 
     # Return the list of successful ports
     return [port for port, success in results.items() if success]
@@ -111,7 +111,7 @@ def run_http_server(port):
     serve_http_response(port)
 
 if __name__ == "__main__":
-    print("Replit Port Tester")
+    print("Replit Station Tester")
     print("=================")
     print(f"Python version: {sys.version}")
     print(f"Current directory: {os.getcwd()}")
