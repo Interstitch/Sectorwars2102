@@ -53,7 +53,7 @@ FILES:
   │   │   ├── warp_tunnel.py                   # Sector-to-sector connections
   │   │   ├── ship.py                          # Player ships and specifications
   │   │   ├── planet.py                        # Planetary entities
-  │   │   ├── port.py                          # Trading stations (to be renamed "stations")
+  │   │   ├── station.py                       # Trading stations
   │   │   ├── drone.py                         # Combat drones
   │   │   ├── genesis_device.py                # Planet terraforming devices
   │   │   ├── fleet.py                         # Multi-ship fleet coordination
@@ -591,6 +591,25 @@ Capabilities:
   - genesis_compatible (Boolean), max_genesis_devices (Integer)
   - warp_compatible (Boolean), warp_creation_capable (Boolean)
   - quantum_jump_capable (Boolean)
+Used In:
+  Services:
+    - ship_service.py (ship creation from specifications)
+
+Table: ship_rarity_configs
+Purpose: Ship rarity system configuration for special ship variants
+Primary Key: id (UUID)
+Note: Defines drop rates, special attributes, and rarity tiers for ships
+Used In:
+  Services:
+    - ship_service.py (special ship generation)
+
+Table: ship_presentation_options
+Purpose: Visual presentation and customization options for ships
+Primary Key: id (UUID)
+Note: Ship visual customization, paint schemes, decals, and presentation data
+Used In:
+  Routes:
+    - admin.py (ship customization management)
 
 Table: planets
 Purpose: Planetary entities for colonization and resource production
@@ -627,8 +646,8 @@ Columns:
   - planet_id (UUID, FK to planets.id, CASCADE delete, PK)
   - acquired_at (DateTime(timezone=True))
 
-Table: ports
-Purpose: Trading stations (🚨 TO BE RENAMED "stations" in upcoming migration)
+Table: stations
+Purpose: Trading stations for commerce, ship services, and player ownership
 Primary Key: id (UUID)
 Key Columns:
   - name (String(100))
@@ -636,9 +655,9 @@ Key Columns:
   - owner_id (UUID, nullable) - player owner
   - region_id (UUID, FK to regions.id, nullable) - multi-regional support
 Properties:
-  - port_class (Enum: PortClass) - CLASS_0 to CLASS_11 (determines buy/sell patterns)
-  - type (Enum: PortType) - TRADING, MILITARY, INDUSTRIAL, MINING, SCIENTIFIC, SHIPYARD, etc.
-  - status (Enum: PortStatus) - OPERATIONAL, DAMAGED, UNDER_CONSTRUCTION, UNDER_ATTACK, LOCKDOWN, etc.
+  - station_class (Enum: StationClass) - CLASS_0 to CLASS_11 (determines buy/sell patterns)
+  - type (Enum: StationType) - TRADING, MILITARY, INDUSTRIAL, MINING, SCIENTIFIC, SHIPYARD, etc.
+  - status (Enum: StationStatus) - OPERATIONAL, DAMAGED, UNDER_CONSTRUCTION, UNDER_ATTACK, LOCKDOWN, etc.
   - size (Integer, 1-10)
 Economy:
   - faction_affiliation (String) - controlling faction
@@ -666,31 +685,364 @@ Special:
   - last_attacked (DateTime), is_destroyed (Boolean), recovery_time (DateTime)
   - active_events (JSONB), special_services (ARRAY(String))
 Relationships:
-  - many:many → players (via player_ports association table)
+  - many:many → players (via player_stations association table)
   - 1:1 → market (Market model, CASCADE delete-orphan)
+Used In:
+  Routes:
+    - economy.py (get_price_history, get_recent_transactions)
+    - trading.py (buy_resource, dock_at_port, get_market_info, sell_resource)
+  Services:
+    - economy_analytics_service.py (_adjust_prices, _inject_liquidity)
+    - galaxy_service.py (_ensure_region_starter_sector, _update_galaxy_statistics)
 
-Association Table: player_ports
-Purpose: Player ownership of ports/stations (many-to-many)
+Association Table: player_stations
+Purpose: Player ownership of stations (many-to-many)
 Columns:
   - player_id (UUID, FK to players.id, CASCADE delete, PK)
-  - port_id (UUID, FK to ports.id, CASCADE delete, PK)
+  - station_id (UUID, FK to stations.id, CASCADE delete, PK)
   - acquired_at (DateTime(timezone=True))
+Used In:
+  Routes:
+    - admin.py (admin ownership management)
+  Services:
+    - migration_service.py (data migration between regions)
 
-Tables: drones, genesis_devices, fleets
-Purpose: Combat drones, planet terraforming devices, multi-ship fleet coordination
-Note: See individual model files for detailed schema
-Key Relationships:
-  - drones → players, teams, sectors (deployment and ownership)
-  - genesis_devices → players, ships (ownership and storage)
-  - fleets → players (commander), teams, sectors (location)
+Table: drones
+Purpose: Combat drones deployable by players for area control and combat
+Primary Key: id (UUID)
+Key Columns:
+  - player_id (UUID, FK to players.id, CASCADE delete, indexed)
+  - team_id (UUID, FK to teams.id, SET NULL, indexed, nullable)
+  - drone_type (String(50)) - attack, defense, scout, mining, repair
+  - name (String(100), nullable) - optional custom name
+  - level, health, max_health (Integer)
+  - attack_power, defense_power (Integer)
+  - speed (Float)
+Status:
+  - status (String(50)) - deployed, combat, returning, destroyed, damaged
+  - sector_id (UUID, FK to sectors.id, SET NULL, indexed, nullable)
+  - deployed_at, last_action (DateTime, nullable)
+Combat Stats:
+  - kills, damage_dealt, damage_taken, battles_fought (Integer, default=0)
+Special:
+  - abilities (String(255)) - comma-separated ability IDs
+Timestamps:
+  - created_at, destroyed_at (DateTime)
+Relationships:
+  - 1:many → drone_deployments (CASCADE delete-orphan)
+Used In:
+  Routes:
+    - combat.py (attack_sector_drones, deploy_drones, recall_drones)
+  Services:
+    - drone_service.py (create_drone, deploy_drone, recall_drone, get_sector_drones)
+    - combat_service.py (attack_sector_drones, deploy_drones, recall_drones)
+
+Table: drone_deployments
+Purpose: Record of drone deployments for tracking history and sector control
+Primary Key: id (UUID)
+Key Columns:
+  - drone_id (UUID, FK to drones.id, CASCADE delete, indexed)
+  - player_id (UUID, FK to players.id, CASCADE delete, indexed)
+  - sector_id (UUID, FK to sectors.id, CASCADE delete, indexed)
+Deployment:
+  - deployed_at (DateTime, default=utcnow)
+  - recalled_at (DateTime, nullable)
+  - is_active (Boolean, default=True)
+Mission:
+  - deployment_type (String(50), default="defense") - defense, patrol, mining
+  - target_id (UUID, nullable) - optional target (port/planet)
+Stats:
+  - enemies_destroyed, resources_collected, damage_prevented (Integer, default=0)
+Used In:
+  Services:
+    - drone_service.py (deploy_drone, recall_drone, get_sector_drones)
+    - combat_service.py (attack_sector_drones, deploy_drones, recall_drones)
+
+Table: drone_combats
+Purpose: Record of drone vs drone combat encounters
+Primary Key: id (UUID)
+Note: Detailed schema tracked in combat system for drone-specific battles
+Used In:
+  Services:
+    - drone_service.py (initiate_combat)
+
+Table: genesis_devices
+Purpose: Planet terraforming devices for creating new planetary bodies
+Primary Key: id (UUID)
+Key Columns:
+  - name (String(100)), serial_number (String(50), unique)
+  - type (Enum: GenesisType) - STANDARD, ENHANCED, SPECIALIZED, ADVANCED, EXPERIMENTAL, QUANTUM
+  - status (Enum: GenesisStatus) - INACTIVE, DEPLOYING, ACTIVE, COMPLETED, FAILED, UNSTABLE, ABORTED
+Ownership:
+  - owner_id (UUID, FK to players.id)
+  - creator_faction (String, nullable)
+Location:
+  - ship_id (UUID, FK to ships.id, nullable) - if stored on ship
+  - sector_id (Integer, nullable) - if deployed
+  - planet_id (UUID, FK to planets.id, nullable) - target planet
+  - deployed_at (DateTime, nullable)
+Capabilities:
+  - terraforming_power (Integer, 1-100)
+  - terraforming_types (ARRAY(String)) - planet types it can create
+  - resource_generation (JSONB) - resources it can generate
+  - special_features (ARRAY(String)) - special abilities
+Process:
+  - phase, total_phases (Integer)
+  - progress (Float, 0.0-1.0)
+  - estimated_completion (DateTime, nullable)
+Operational:
+  - resource_consumption (JSONB)
+  - stability, failure_chance (Float, 0.0-1.0)
+  - security_level (Integer, 1-10)
+  - access_code (String, nullable)
+Results:
+  - result_planet_type, result_planet_quality, result_resources, result_special_features (nullable)
+Timestamps:
+  - created_at, last_updated (DateTime(timezone=True))
+Relationships:
+  - 1:many → planet_formations (CASCADE delete-orphan)
+Used In:
+  Services:
+    - planetary_service.py (Genesis device mechanics and planet creation)
+
+Table: planet_formations
+Purpose: Track Genesis device planet formation processes
+Primary Key: id (UUID)
+Key Columns:
+  - genesis_device_id (UUID, FK to genesis_devices.id)
+  - sector_id (Integer)
+  - original_conditions (JSONB) - sector conditions before formation
+Process:
+  - started_at, completed_at (DateTime)
+  - estimated_duration (Integer) - hours
+  - current_phase, total_phases (Integer)
+Status:
+  - is_completed, is_failed (Boolean, default=False)
+  - failure_reason (String, nullable)
+  - resulting_planet_id (UUID, FK to planets.id, nullable)
+Logs:
+  - formation_log (JSONB, default=[]) - event log
+  - anomalies (JSONB, default=[]) - unexpected events
+Timestamps:
+  - created_at (DateTime(timezone=True))
+Used In:
+  Services:
+    - planetary_service.py (planet creation tracking)
+
+Table: fleets
+Purpose: Multi-ship formations for coordinated battle operations
+Primary Key: id (UUID)
+Key Columns:
+  - team_id (UUID, FK to teams.id, CASCADE delete, indexed)
+  - commander_id (UUID, FK to players.id, SET NULL, nullable)
+  - name (String(100))
+  - status (String(50)) - forming, ready, in_battle, retreating, disbanded
+  - formation (String(50)) - standard, defensive, aggressive
+Location:
+  - sector_id (UUID, FK to sectors.id, SET NULL, indexed, nullable)
+Stats (aggregated from members):
+  - total_ships, total_firepower, total_shields, total_hull (Integer)
+  - average_speed (Float)
+Readiness:
+  - morale, supply_level (Integer, 0-100)
+Timestamps:
+  - created_at, disbanded_at, last_battle (DateTime)
+Relationships:
+  - 1:many → fleet_members (CASCADE delete-orphan)
+Used In:
+  Services:
+    - fleet_service.py (fleet creation, management, combat coordination)
+
+Table: fleet_members
+Purpose: Individual ship membership in a fleet
+Primary Key: id (UUID)
+Key Columns:
+  - fleet_id (UUID, FK to fleets.id, CASCADE delete, indexed)
+  - ship_id (UUID, FK to ships.id, CASCADE delete, indexed)
+  - player_id (UUID, FK to players.id, CASCADE delete, indexed)
+Role:
+  - role (String(50)) - flagship, attacker, defender, support, scout
+  - position (Integer) - position in formation
+Status:
+  - joined_at (DateTime)
+  - ready_status (Boolean, default=False)
+Used In:
+  Services:
+    - fleet_service.py (fleet composition management)
+
+Table: fleet_battles
+Purpose: Record of fleet vs fleet combat encounters
+Primary Key: id (UUID)
+Key Columns:
+  - attacker_fleet_id, defender_fleet_id (UUID, FK to fleets.id, SET NULL)
+Note: Detailed schema for large-scale fleet combat tracking
+Used In:
+  Services:
+    - fleet_service.py (fleet combat coordination)
+    - combat_analytics_service.py (fleet combat analysis)
+
+Table: fleet_battle_casualties
+Purpose: Track individual ship casualties during fleet battles
+Primary Key: id (UUID)
+Note: Detailed casualty tracking for fleet battles
+Used In:
+  Services:
+    - fleet_service.py (casualty reporting)
 
 ═══════════════════════════════════════════════════════════════════════════════
 DOMAIN 5: ECONOMY & TRADING
 ═══════════════════════════════════════════════════════════════════════════════
 
-Tables: resources, markets, market_transactions, market_prices, price_histories, economic_metrics
-Purpose: Resource types, market instances per port, transaction history, price tracking, economic analytics
-Note: See resource.py and market_transaction.py for detailed schema
+Tables: resources, markets, market_transactions
+Purpose: Resource types, market instances per station, basic transaction history
+Note: See resource.py for detailed schema
+Used In:
+  Routes:
+    - trading.py (resource trading operations)
+  Services:
+    - economy_analytics_service.py (market data analysis)
+    - realtime_market_service.py (market updates)
+
+Table: enhanced_market_transactions
+Purpose: Enhanced transaction tracking with market conditions and analytics
+Primary Key: id (UUID)
+Key Columns:
+  - player_id (UUID, FK to players.id, SET NULL)
+  - port_id (UUID, FK to stations.id, SET NULL)
+  - transaction_type (Enum) - BUY, SELL, TRANSFER, ADMIN_ADJUSTMENT
+  - commodity (String(50)) - Food, Tech, Ore, Fuel
+  - quantity, unit_price, total_value (Integer)
+Market Conditions:
+  - port_buy_price, port_sell_price, port_quantity (Integer, nullable)
+Location:
+  - sector_id (Integer), sector_uuid (UUID, FK to sectors.id, SET NULL)
+  - timestamp (DateTime(timezone=True), server_default=now)
+Analytics:
+  - profit_margin, market_impact (Float, nullable)
+Admin:
+  - admin_notes (String(500), nullable)
+  - flagged_suspicious (Boolean, default=False)
+  - reviewed_by (UUID, FK to users.id, SET NULL)
+Indexes:
+  - timestamp, commodity, player_id, port_id
+Used In:
+  Routes:
+    - economy.py (get_price_history, get_recent_transactions)
+  Services:
+    - economy_analytics_service.py (market manipulation detection)
+
+Table: market_prices
+Purpose: Current and historical price tracking per station/commodity
+Primary Key: id (UUID)
+Key Columns:
+  - port_id (UUID, FK to stations.id, CASCADE delete)
+  - commodity (String(50))
+  - buy_price, sell_price, quantity (Integer)
+Price History:
+  - previous_buy_price, previous_sell_price (Integer, nullable)
+  - price_trend (Float, default=0.0) - positive = rising
+  - volatility (Float, default=0.0) - price volatility index
+Market Dynamics:
+  - demand_level, supply_level (Float, default=1.0)
+  - last_transaction_at (DateTime, nullable)
+  - daily_volume (Integer, default=0)
+Price Controls:
+  - price_floor, price_ceiling (Integer, nullable)
+  - alert_threshold (Float, nullable) - alert if price changes by this %
+Timestamps:
+  - updated_at, created_at (DateTime(timezone=True))
+Unique Index:
+  - (port_id, commodity)
+Used In:
+  Routes:
+    - economy.py (get_price_history, price monitoring)
+  Services:
+    - economy_analytics_service.py (price trend analysis)
+
+Table: price_history
+Purpose: Historical price snapshots for analytics
+Primary Key: id (UUID)
+Key Columns:
+  - port_id (UUID, FK to stations.id, CASCADE delete)
+  - commodity (String(50))
+  - buy_price, sell_price, quantity (Integer)
+Market Data:
+  - daily_volume, transactions_count (Integer, default=0)
+  - average_transaction_size (Float, default=0.0)
+Economic Indicators:
+  - demand_level, supply_level (Float)
+  - market_efficiency (Float, default=1.0)
+Snapshot Metadata:
+  - snapshot_date (DateTime(timezone=True))
+  - snapshot_type (String(20), default="daily") - hourly, daily, weekly
+Indexes:
+  - (snapshot_date, commodity), (port_id, snapshot_date)
+Used In:
+  Routes:
+    - economy.py (get_price_history, historical trends)
+  Services:
+    - economy_analytics_service.py (_get_price_trends)
+
+Table: price_alerts
+Purpose: Price monitoring and alert system
+Primary Key: id (UUID)
+Key Columns:
+  - port_id (UUID, FK to stations.id, CASCADE delete)
+  - commodity (String(50))
+  - alert_type (String(30)) - price_spike, price_drop, high_volume, low_supply
+  - threshold_value, current_value (Float)
+Alert Details:
+  - severity (String(20), default="medium") - low, medium, high, critical
+  - message (String(500))
+  - suggested_action (String(200), nullable)
+Status:
+  - is_active (Boolean, default=True)
+  - triggered_at (DateTime(timezone=True), server_default=now)
+  - acknowledged_by (UUID, FK to users.id, SET NULL)
+  - acknowledged_at, resolved_at (DateTime, nullable)
+Auto-resolve:
+  - auto_resolve (Boolean, default=True)
+  - resolve_threshold (Float, nullable)
+Indexes:
+  - is_active, triggered_at
+Used In:
+  Routes:
+    - economy.py (get_price_alerts, market monitoring)
+  Services:
+    - economy_analytics_service.py (get_price_alerts, automated alerting)
+
+Table: economic_metrics
+Purpose: Daily/weekly/monthly economic statistics
+Primary Key: id (UUID)
+Key Columns:
+  - date (DateTime(timezone=True), unique)
+  - metric_type (String(20), default="daily") - daily, weekly, monthly
+Trade Volume:
+  - total_trade_volume, total_transactions (Integer, default=0)
+  - average_transaction_value (Float, default=0.0)
+Credit Circulation:
+  - total_credits_in_circulation, credits_in_player_accounts, credits_in_npc_accounts (Integer, default=0)
+  - credit_velocity (Float, default=0.0)
+Market Health:
+  - economic_health_score, inflation_rate, average_profit_margin, market_volatility (Float)
+Commodity Stats:
+  - most_traded_commodity, least_traded_commodity (String(50), nullable)
+  - commodity_price_index (Float, default=100.0)
+Regional Data:
+  - most_active_sector (Integer, nullable)
+  - most_valuable_port (UUID, FK to stations.id, SET NULL)
+  - economic_disparity_index (Float, default=0.0)
+Player Economics:
+  - richest_player_credits, median_player_credits, total_players_trading, new_traders (Integer, default=0)
+Timestamps:
+  - calculated_at (DateTime(timezone=True), server_default=now)
+Indexes:
+  - date, (metric_type, date)
+Used In:
+  Routes:
+    - economy.py (get_economic_metrics, dashboard stats)
+  Services:
+    - economy_analytics_service.py (get_economic_metrics, comprehensive economic analysis)
 
 Table: ai_trading (ai_market_predictions, player_trading_profiles, ai_recommendations, ai_model_performance, ai_training_data)
 Purpose: AI-powered trading predictions and player trading pattern analysis
@@ -700,9 +1052,27 @@ Note: See ai_trading.py for detailed schema
 DOMAIN 6: COMBAT
 ═══════════════════════════════════════════════════════════════════════════════
 
-Tables: combats, combat_logs, combat_stats, drone_combats, fleet_battles, fleet_battle_casualties
-Purpose: Combat mechanics, combat history, combat statistics, drone engagements, fleet battles
-Note: See combat.py and combat_log.py for detailed schema
+Table: combats
+Purpose: Active combat instances and combat mechanics
+Note: Core combat engine states and active combat tracking
+Used In:
+  Services:
+    - combat_service.py (combat mechanics engine)
+    - player_combat_service.py (player vs player combat)
+
+Tables: combat_logs, combat_stats
+Purpose: Combat history and combat statistics
+Note: See combat_log.py for detailed schema
+Used In:
+  Routes:
+    - combat.py (get_combat_log, get_player_combat_history)
+  Services:
+    - combat_service.py (combat logging)
+    - combat_analytics_service.py (combat statistics analysis)
+
+Tables: drone_combats, fleet_battles, fleet_battle_casualties
+Purpose: Drone engagements and fleet battle tracking
+Note: See drone.py and fleet.py for detailed schema (documented in DOMAIN 4)
 
 ═══════════════════════════════════════════════════════════════════════════════
 DOMAIN 7: EVENTS & FIRST LOGIN
@@ -711,6 +1081,21 @@ DOMAIN 7: EVENTS & FIRST LOGIN
 Tables: game_events, event_templates, event_effects, event_participations
 Purpose: Dynamic game events (warp storms, economic fluctuations, faction wars)
 Note: See game_event.py for detailed schema
+Used In:
+  Routes:
+    - events.py (event management and participation)
+  Services:
+    - event processing and automation
+
+Table: event_logs
+Purpose: Event execution logging and audit trail
+Primary Key: id (UUID)
+Note: Tracks event activations, completions, and system events
+Used In:
+  Routes:
+    - events.py (event history tracking)
+  Services:
+    - event processing services (event execution logging)
 
 Tables: first_login_sessions, dialogue_exchanges, player_first_login_states, ship_choices
 Purpose: New player onboarding with AI-powered dialogue and ship selection
@@ -728,13 +1113,167 @@ Note: See faction.py for detailed schema
 DOMAIN 9: AI SYSTEMS (ARIA)
 ═══════════════════════════════════════════════════════════════════════════════
 
-Tables: aria_personal_memories, aria_market_intelligence, aria_exploration_maps, aria_trading_patterns, aria_quantum_caches, aria_security_logs
+Tables: aria_personal_memories, aria_market_intelligence, aria_exploration_maps, aria_trading_patterns, aria_security_logs
 Purpose: ARIA AI assistant's personal memory system per player
 Note: See aria_personal_intelligence.py for detailed schema
+Used In:
+  Services:
+    - aria_personal_intelligence_service.py (ARIA conversation management, context gathering)
+    - enhanced_ai_service.py (comprehensive AI with personality tracking)
+
+Table: aria_quantum_cache
+Purpose: Quantum-level caching for ARIA's advanced predictions and insights
+Primary Key: id (UUID)
+Key Columns:
+  - player_id (UUID, FK to players.id)
+  - cache_type (String) - prediction, recommendation, analysis
+  - cache_key (String) - unique identifier for cached data
+  - cached_data (JSONB) - the cached quantum prediction/analysis
+  - confidence_score (Float, 0.0-1.0)
+Timestamps:
+  - created_at, expires_at (DateTime(timezone=True))
+Used In:
+  Services:
+    - aria_personal_intelligence_service.py (quantum prediction caching)
+    - enhanced_ai_service.py (advanced AI caching layer)
 
 Table: ai_comprehensive_assistants
-Purpose: Enhanced AI assistant with comprehensive capabilities
-Note: See enhanced_ai_models.py for detailed schema
+Purpose: Enhanced AI assistant with cross-system intelligence and security controls
+Primary Key: id (UUID)
+Key Columns:
+  - player_id (UUID, FK to players.id, CASCADE delete, unique)
+  - assistant_name (String(50), default="ARIA")
+  - personality_type (String(20), default="analytical") - analytical, friendly, tactical, cautious, adaptive
+  - learning_mode (String(20), default="balanced") - conservative, balanced, aggressive, custom
+Security:
+  - security_level (String(20), default="standard") - basic, standard, premium, enterprise
+  - encryption_key_id (UUID, nullable)
+  - access_permissions (JSONB) - {trading: bool, combat: bool, colony: bool, port: bool}
+Rate Limiting:
+  - api_request_quota (Integer, default=1000)
+  - api_requests_used (Integer, default=0)
+  - quota_reset_date (Date)
+Metadata:
+  - created_at, last_active (DateTime(timezone=True))
+  - total_interactions (BigInteger, default=0)
+  - learning_sessions (Integer, default=0)
+Relationships:
+  - 1:many → ai_cross_system_knowledge (CASCADE delete-orphan)
+  - 1:many → ai_strategic_recommendations (CASCADE delete-orphan)
+  - 1:many → ai_learning_patterns (CASCADE delete-orphan)
+  - 1:many → ai_conversation_logs (CASCADE delete-orphan)
+Used In:
+  Routes:
+    - nexus.py (AI assistant interaction endpoints)
+  Services:
+    - enhanced_ai_service.py (AI personality management, conversation tracking, context awareness)
+
+Table: ai_conversation_logs
+Purpose: Conversation history between player and AI assistant
+Primary Key: id (UUID)
+Key Columns:
+  - assistant_id (UUID, FK to ai_comprehensive_assistants.id, CASCADE delete)
+  - player_id (UUID, FK to players.id, CASCADE delete)
+  - conversation_turn (Integer) - turn number in conversation
+  - player_message (Text) - player's input
+  - ai_response (Text) - AI's response
+  - context_used (JSONB) - context data used for response
+  - confidence_score (Float, 0.0-1.0)
+Metadata:
+  - timestamp (DateTime(timezone=True))
+  - response_time_ms (Integer) - response generation time
+  - tokens_used (Integer) - API token usage
+Security:
+  - sanitized (Boolean, default=False) - PII removed
+  - retention_category (String(20)) - how long to retain
+Used In:
+  Routes:
+    - nexus.py (AI conversation interface)
+  Services:
+    - enhanced_ai_service.py (conversation tracking and context awareness)
+
+Table: ai_cross_system_knowledge
+Purpose: AI knowledge base spanning multiple game systems
+Primary Key: id (UUID)
+Key Columns:
+  - assistant_id (UUID, FK to ai_comprehensive_assistants.id, CASCADE delete)
+  - knowledge_domain (String(50)) - trading, combat, exploration, diplomacy, etc.
+  - knowledge_key (String(200)) - specific knowledge identifier
+  - knowledge_value (JSONB) - the actual knowledge data
+Metadata:
+  - confidence (Float, 0.0-1.0)
+  - source (String(100)) - where knowledge came from
+  - validated (Boolean, default=False)
+  - last_accessed, last_updated (DateTime(timezone=True))
+  - access_count (Integer, default=0)
+Used In:
+  Services:
+    - enhanced_ai_service.py (cross-system intelligence and knowledge management)
+
+Table: ai_learning_patterns
+Purpose: AI learning from player behavior and outcomes
+Primary Key: id (UUID)
+Key Columns:
+  - assistant_id (UUID, FK to ai_comprehensive_assistants.id, CASCADE delete)
+  - pattern_type (String(50)) - trading_pattern, combat_pattern, exploration_pattern
+  - pattern_data (JSONB) - the learned pattern
+  - success_rate (Float, 0.0-1.0)
+  - sample_size (Integer) - observations used to learn pattern
+Metadata:
+  - first_observed, last_observed (DateTime(timezone=True))
+  - is_active (Boolean, default=True)
+  - confidence_level (Float, 0.0-1.0)
+Used In:
+  Services:
+    - enhanced_ai_service.py (pattern learning and prediction)
+    - player_behavior_analyzer.py (behavior analysis for AI training)
+
+Table: ai_strategic_recommendations
+Purpose: AI-generated strategic recommendations for players
+Primary Key: id (UUID)
+Key Columns:
+  - assistant_id (UUID, FK to ai_comprehensive_assistants.id, CASCADE delete)
+  - player_id (UUID, FK to players.id, CASCADE delete)
+  - recommendation_type (String(50)) - trade_route, combat_target, exploration_path
+  - recommendation_data (JSONB) - detailed recommendation
+  - priority (Integer, 1-10) - recommendation priority
+  - confidence (Float, 0.0-1.0)
+Status:
+  - is_active (Boolean, default=True)
+  - accepted (Boolean, nullable) - player accepted/rejected
+  - outcome (String(100), nullable) - result if followed
+  - outcome_value (Float, nullable) - quantified success/failure
+Metadata:
+  - created_at, expires_at (DateTime(timezone=True))
+  - viewed_at, acted_on_at (DateTime, nullable)
+Used In:
+  Routes:
+    - nexus.py (AI recommendations display)
+  Services:
+    - enhanced_ai_service.py (strategic recommendation generation)
+
+Table: ai_security_audit_log
+Purpose: Security audit trail for AI system operations
+Primary Key: id (UUID)
+Key Columns:
+  - assistant_id (UUID, FK to ai_comprehensive_assistants.id, SET NULL, nullable)
+  - player_id (UUID, FK to players.id, SET NULL, nullable)
+  - action_type (String(100)) - quota_exceeded, permission_denied, suspicious_query
+  - action_details (JSONB) - detailed action information
+  - severity (String(20)) - low, medium, high, critical
+Security:
+  - ip_address (String(45))
+  - user_agent (String(500))
+  - threat_indicators (JSONB) - detected security threats
+  - blocked (Boolean, default=False)
+Metadata:
+  - timestamp (DateTime(timezone=True))
+  - reviewed_by (UUID, FK to users.id, SET NULL)
+  - reviewed_at (DateTime, nullable)
+Used In:
+  Services:
+    - enhanced_ai_service.py (security monitoring and audit logging)
+    - ai_security_service.py (AI security enforcement)
 
 ═══════════════════════════════════════════════════════════════════════════════
 DOMAIN 10: INTERNATIONALIZATION
