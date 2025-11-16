@@ -321,13 +321,13 @@ The universal currency. Used for:
 ## 🧠 AI Systems
 
 ### ARIA (Adaptive Reactive Intelligence Assistant)
-Your personal AI companion that grows and evolves with you throughout the game. ARIA is the world's first personal AI designed specifically for quantum-enhanced space trading.
+Your personal AI companion that grows and evolves with you throughout the game. ARIA is designed to enhance your trading experience through personalized intelligence.
 
 **Core Capabilities**:
-- **Quantum Trading Intelligence**: Real-time market analysis, superposition state evaluation, quantum field strength assessment
+- **Trading Intelligence**: Real-time market analysis and pattern recognition
 - **Market Manipulation Detection**: Identifies suspicious trading patterns with confidence levels
-- **Probability Optimization**: Recommendations for optimal trade timing based on quantum mechanics
-- **Personal Trading DNA Evolution**: Learns YOUR specific preferences, risk tolerance, and successful patterns
+- **Strategic Optimization**: Recommendations for optimal trade timing and route planning
+- **Personal Trading Pattern Evolution**: Learns YOUR specific preferences, risk tolerance, and successful strategies
 - **Natural Language Chat Interface**: Conversational trading assistance with context awareness
 - **Exploration-Based Learning**: Only knows sectors YOU have visited (personal, not generic AI)
 - **Encrypted Memory**: Triple-encrypted personal data (π, e, φ, γ constants) stored locally
@@ -684,8 +684,8 @@ Administrative interface providing:
 Player-facing interface featuring:
 - **Dashboard**: Overview of player status, ship, credits, turns
 - **Galaxy Map**: Navigate sectors, view routes
-- **Trading Interface**: Buy/sell commodities, quantum trading
-- **Quantum Trading Tab**: ⚛️ 3D visualization, ARIA chat, ghost trading
+- **Trading Interface**: Buy/sell commodities with ARIA AI assistance
+- **ARIA Chat**: AI companion interface with market recommendations
 - **Fleet Management**: Create and manage team fleets
 - **Planetary Management**: Colonization, building, production
 - **Team Interface**: Messaging, treasury, member management

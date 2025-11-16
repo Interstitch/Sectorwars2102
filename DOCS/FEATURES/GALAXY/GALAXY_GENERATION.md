@@ -100,7 +100,7 @@ The galaxy features unique locations that serve specific gameplay purposes:
 - **Other Types**: Specialized resources based on nebula characteristics
 
 **Gameplay Impact:**
-- Enhanced quantum trading opportunities in high-field nebulae
+- Enhanced strategic opportunities in high-field nebulae
 - Sensor interference creates stealth combat scenarios
 - Gateway ports on nebula edges become strategic trading hubs
 - First-discovery bonuses for mapping nebula clusters

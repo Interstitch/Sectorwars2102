@@ -251,7 +251,7 @@ Approximately **20% of clusters** contain nebula regions with unique gameplay me
 
 | Type | Color | Quantum Field | Primary Resource | Special Effect |
 |------|-------|---------------|------------------|----------------|
-| **Crimson** | Red (#DC143C) | Very High (80-100) | Quantum Shards | Enhanced quantum trading |
+| **Crimson** | Red (#DC143C) | Very High (80-100) | Quantum Shards | Enhanced strategic opportunities |
 | **Azure** | Blue (#1E90FF) | High (60-80) | Photonic Crystals | Stable warp tunnel formation |
 | **Emerald** | Green (#00FF7F) | Medium (40-60) | Organics | Accelerated organic production |
 | **Violet** | Purple (#9370DB) | High (70-90) | Exotic Materials | Rare resource spawns |

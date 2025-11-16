@@ -72,7 +72,7 @@ curl -X POST http://localhost:8080/api/v1/auth/refresh \
 ### Player-Facing APIs (146 endpoints)
 - **Authentication & MFA** (24): Login (form/JSON), OAuth (GitHub/Google/Steam), TOTP MFA setup/verification, token refresh, logout
 - **Player State** (13): Current state, statistics, ship details, sector movement, first login AI dialogue
-- **Trading & Economy** (31): Basic trading (buy/sell/dock), quantum trading (superposition/ghost trades), trade cascades, AI recommendations, market analytics
+- **Trading & Economy** (31): Port trading (buy/sell/dock), AI trade recommendations, route optimization, market analytics
 - **Combat** (6): Engage ship/planet/port targets, combat status, flee mechanics
 - **Teams & Treasury** (18): Create/join/leave teams, member management, treasury operations (12 resource types), team messaging
 - **Sectors & Planets** (10): Sector discovery, planetary colonization, building upgrades, genesis device deployment, planetary defenses

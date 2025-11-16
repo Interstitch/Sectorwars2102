@@ -9,7 +9,7 @@ FACTS:
 * 7 core commodities + 4 strategic resources + 2 rare materials
 * 8 ship types with distinct capabilities
 * 18 military ranks from Recruit to Fleet Admiral
-* Quantum trading with AI-powered superposition states
+* AI-enhanced trading with personalized market intelligence
 * ARIA: Personal AI companion with consciousness evolution
 * Team maximum: 4 players for balance
 * Faction reputation scale: -1000 (Hostile) to +1000 (Allied)
@@ -70,22 +70,11 @@ RESOURCES:
 * Photonic Crystals: Rare sensor/weapon enhancement material
 * Credits: Universal currency, never lost on ship destruction
 
-QUANTUM_TRADING:
-* Quantum Trading: AI-powered trading with superposition states
-* Superposition State: Trade exists in multiple potential outcomes
-* Ghost Trade: Unresolved quantum trade in flux
-* Trade Cascade: Multiple linked quantum trades
-* Probability Wave: Outcome likelihood distribution
-* Quantum Collapse: Final resolution of superposition to single outcome
-* Trading DNA: Personal trading pattern evolved by ARIA
-* Market Manipulation Detection: AI analysis of price anomalies
-* Entangled Trades: Linked trades affecting each other's outcomes
-
 AI_SYSTEMS:
 * ARIA (Adaptive Reactive Intelligence Assistant): Personal AI companion
 * Consciousness Evolution: ARIA's learning and personality development
 * Trading DNA: Unique player trading pattern profile
-* Quantum Intelligence: AI analysis of quantum trading mechanics
+* Trading Intelligence: AI analysis of market patterns and opportunities
 * Market Prediction: AI-powered price forecasting
 * Anomaly Detection: AI identification of market manipulation
 * Cross-System Intelligence: ARIA integration across game features
@@ -197,14 +186,13 @@ player.travel_to(target_sector)
 player.colonize(planet, population=10000, credits=10000)
 # Planet now owned, generating income
 
-# Quantum trading
+# AI-enhanced trading
 aria = player.get_aria()
-trade_recommendation = aria.analyze_quantum_opportunity(
+trade_recommendation = aria.analyze_trading_opportunity(
     commodity="EXOTIC_TECHNOLOGY",
     market_conditions=current_market
 )
-# Result: Superposition state with probability distribution
-# Trade enters ghost state until quantum collapse
+# Result: Market analysis with confidence ratings and price predictions
 
 # Combat encounter
 defender.ship.shields = 700

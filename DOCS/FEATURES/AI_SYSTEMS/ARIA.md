@@ -277,11 +277,6 @@ class Player(Base):
 - `GET /assistant/status` - ARIA status and quota
 - `POST /learning/record-action` - Learning feedback
 
-**Quantum Trading Routes** (`/api/v1/quantum-trading/`):
-- `POST /ghost-trade` - Ghost trade simulation
-- `POST /create-quantum-trade` - Create predictive trade
-- `POST /collapse-quantum-trade/{id}` - Execute trade
-
 **First Login Routes** (`/api/v1/first-login/`):
 - `GET /status` - Check if player needs first login
 - `POST /session` - Start first login session

@@ -81,9 +81,9 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
   - 50 combat victories
   - Owns 3+ planets or manages an active team
   - Completed 15 faction missions
-  - 1 quantum trade executed
+  - Executed 100+ trades with ARIA AI assistance
 - **Insignia**: Bronze chevron with three rockers and star
-- **Description**: Elite non-commissioned operator with mastery of advanced trading techniques including quantum mechanics. Commands respect throughout the galaxy.
+- **Description**: Elite non-commissioned operator with mastery of advanced trading techniques and AI-enhanced decision making. Commands respect throughout the galaxy.
 - **Benefits**: +7% trading bonus, +10% faction reputation gain, priority docking at major ports
 
 ---
@@ -138,10 +138,10 @@ The Galactic Fleet Command maintains a standardized ranking system for all space
   - Owns 12+ planets
   - Led team to top 10 in any regional leaderboard
   - Controls 3+ sectors
-  - Executed 25+ quantum trades
+  - Executed 500+ successful trades
   - Allied status with 2+ factions
 - **Insignia**: Two gold bars
-- **Description**: Accomplished fleet commander with significant regional influence. Proven mastery of quantum trading and diplomatic relations.
+- **Description**: Accomplished fleet commander with significant regional influence. Proven mastery of advanced trading and diplomatic relations.
 - **Benefits**: +15% trading bonus, +15% faction reputation gain, diplomatic immunity in allied territories
 
 #### **Commander**
@@ -302,7 +302,7 @@ Beyond ranks, players can earn special medals for extraordinary achievements:
 2. **Team Up**: Many ranks require teamwork and leadership
 3. **Explore Widely**: Sector exploration counts toward many ranks
 4. **Build Infrastructure**: Planet and port ownership provides permanent assets
-5. **Master Quantum Trading**: Advanced ranks heavily reward quantum mastery
+5. **Utilize ARIA AI**: Advanced ranks reward AI-enhanced trading and strategic decision making
 6. **Faction Relations**: Maintaining good faction standing opens many doors
 7. **Think Long-Term**: The highest ranks are meant to be rare achievements
 

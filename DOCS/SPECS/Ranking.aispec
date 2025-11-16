@@ -193,7 +193,7 @@ PROGRESSION_STRATEGY:
 * Team up: Many ranks require teamwork and leadership
 * Explore widely: Sector exploration counts toward many ranks
 * Build infrastructure: Planet and port ownership provides permanent assets
-* Master quantum trading: Advanced ranks heavily reward quantum mastery
+* Utilize ARIA AI: Advanced ranks reward AI-enhanced trading and strategy
 * Maintain faction relations: Good standing opens many doors
 * Think long-term: Highest ranks are rare multi-year achievements
 
@@ -209,7 +209,7 @@ CONSTRAINTS:
 
 RELATED_SPECS:
 * GameMechanics.aispec - Turn system, trading economy, combat
-* Resources.aispec - Quantum trading progression
+* Resources.aispec - Resource types and strategic materials
 * Ships.aispec - Warp Jumper requirement for Captain rank
 * See FEATURES/DEFINITIONS/RANKING_SYSTEM.md for detailed rank documentation
 
