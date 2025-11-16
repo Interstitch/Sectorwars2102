@@ -347,7 +347,7 @@ class NexusGenerationService:
         Sparse generation: Ports are randomly distributed with mixed types.
         Sector 1 always gets a high-quality trading port for starter access.
         """
-        from src.models.station import StationClass, PortType, PortStatus
+        from src.models.station import StationClass, StationType, StationStatus
 
         # Sector 1 gets a special starter port
         if sector_num == 1:
@@ -355,28 +355,28 @@ class NexusGenerationService:
                 "name": "Central Nexus Starport Prime",
                 "sector_id": sector_num,
                 "region_id": region_id,
-                "port_class": PortClass.CLASS_0,  # Highest quality
-                "type": PortType.TRADING,
-                "status": PortStatus.OPERATIONAL,
+                "port_class": StationClass.CLASS_0,  # Highest quality
+                "type": StationType.TRADING,
+                "status": StationStatus.OPERATIONAL,
                 "size": 10  # Maximum size
             }
 
         # Random port types for other sectors
         port_type = random.choice([
-            PortType.TRADING,
-            PortType.TRADING,  # Trading is most common
-            PortType.INDUSTRIAL,
-            PortType.DIPLOMATIC,
-            PortType.SCIENTIFIC
+            StationType.TRADING,
+            StationType.TRADING,  # Trading is most common
+            StationType.INDUSTRIAL,
+            StationType.DIPLOMATIC,
+            StationType.SCIENTIFIC
         ])
 
         # Random port class (mostly mid-tier)
         port_class = random.choice([
-            PortClass.CLASS_4,
-            PortClass.CLASS_5,
-            PortClass.CLASS_6,
-            PortClass.CLASS_7,
-            PortClass.CLASS_8
+            StationClass.CLASS_4,
+            StationClass.CLASS_5,
+            StationClass.CLASS_6,
+            StationClass.CLASS_7,
+            StationClass.CLASS_8
         ])
 
         # Random size (mostly medium)
@@ -388,7 +388,7 @@ class NexusGenerationService:
             "region_id": region_id,
             "port_class": port_class,
             "type": port_type,
-            "status": PortStatus.OPERATIONAL,
+            "status": StationStatus.OPERATIONAL,
             "size": size
         }
     

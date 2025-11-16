@@ -11,7 +11,7 @@ from src.models.zone import Zone
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
-from src.models.station import Station, PortType, PortClass, PortStatus
+from src.models.station import Station, StationType, StationClass, StationStatus
 from src.models.planet import Planet, PlanetType, PlanetStatus
 from src.models.resource import Resource, ResourceType, ResourceQuality, Market
 
@@ -488,7 +488,7 @@ class GalaxyGenerator:
             
             # Create port
             port_name = f"Station {sector_num}"
-            port_type = self._choose_port_type_for_sector(sector)
+            port_type = self._choose_station_type_for_sector(sector)
             port_class = self._choose_port_class_for_sector(sector)
             
             port = Station(
@@ -497,7 +497,7 @@ class GalaxyGenerator:
                 sector_uuid=sector.id,
                 port_class=port_class,
                 type=port_type,
-                status=PortStatus.OPERATIONAL,
+                status=StationStatus.OPERATIONAL,
                 size=random.randint(3, 8),
                 faction_affiliation=self._choose_faction_for_sector(sector),
                 description=f"Class {port_class.value} {port_type.name} port in Sector {sector_num}"
@@ -657,9 +657,9 @@ class GalaxyGenerator:
                 name="Terra Station",  # Friendly name for starter port
                 sector_id=sector_1.sector_id,
                 sector_uuid=sector_1.id,
-                port_class=PortClass.CLASS_1,
-                type=PortType.TRADING,
-                status=PortStatus.OPERATIONAL,
+                port_class=StationClass.CLASS_1,
+                type=StationType.TRADING,
+                status=StationStatus.OPERATIONAL,
                 size=5,  # Medium size
                 faction_affiliation="Terran Federation",  # Safe faction
                 description="A welcoming trading station for new spacers"
@@ -1115,80 +1115,80 @@ class GalaxyGenerator:
         adjusted_cost = int(base_cost * multiplier_map.get(tunnel_type, 1.0))
         return max(1, adjusted_cost)  # Ensure at least 1 turn
     
-    def _choose_port_type_for_sector(self, sector: Sector) -> PortType:
+    def _choose_station_type_for_sector(self, sector: Sector) -> StationType:
         """Choose appropriate port type for a sector."""
         cluster_type = sector.cluster.type
         
         # Map cluster types to likely port types
         port_type_map = {
-            ClusterType.POPULATION_CENTER: [PortType.TRADING, PortType.CORPORATE, PortType.DIPLOMATIC],
-            ClusterType.TRADE_HUB: [PortType.TRADING, PortType.CORPORATE],
-            ClusterType.RESOURCE_RICH: [PortType.MINING, PortType.INDUSTRIAL, PortType.OUTPOST],
-            ClusterType.SPECIAL_INTEREST: [PortType.SCIENTIFIC, PortType.OUTPOST],
-            ClusterType.MILITARY_ZONE: [PortType.MILITARY, PortType.SHIPYARD],
-            ClusterType.FRONTIER_OUTPOST: [PortType.OUTPOST, PortType.BLACK_MARKET],
-            ClusterType.CONTESTED: [PortType.TRADING, PortType.OUTPOST, PortType.BLACK_MARKET],
-            ClusterType.STANDARD: [PortType.TRADING, PortType.OUTPOST]
+            ClusterType.POPULATION_CENTER: [StationType.TRADING, StationType.CORPORATE, StationType.DIPLOMATIC],
+            ClusterType.TRADE_HUB: [StationType.TRADING, StationType.CORPORATE],
+            ClusterType.RESOURCE_RICH: [StationType.MINING, StationType.INDUSTRIAL, StationType.OUTPOST],
+            ClusterType.SPECIAL_INTEREST: [StationType.SCIENTIFIC, StationType.OUTPOST],
+            ClusterType.MILITARY_ZONE: [StationType.MILITARY, StationType.SHIPYARD],
+            ClusterType.FRONTIER_OUTPOST: [StationType.OUTPOST, StationType.BLACK_MARKET],
+            ClusterType.CONTESTED: [StationType.TRADING, StationType.OUTPOST, StationType.BLACK_MARKET],
+            ClusterType.STANDARD: [StationType.TRADING, StationType.OUTPOST]
         }
         
         # Get appropriate port types for this cluster
-        appropriate_types = port_type_map.get(cluster_type, [PortType.TRADING, PortType.OUTPOST])
+        appropriate_types = port_type_map.get(cluster_type, [StationType.TRADING, StationType.OUTPOST])
         
         # In frontier zones, chance of black market
         if sector.cluster.zone.type == ZoneType.FRONTIER and random.random() < 0.3:
-            appropriate_types.append(PortType.BLACK_MARKET)
+            appropriate_types.append(StationType.BLACK_MARKET)
         
         return random.choice(appropriate_types)
     
-    def _choose_port_class_for_sector(self, sector: Sector) -> PortClass:
+    def _choose_port_class_for_sector(self, sector: Sector) -> StationClass:
         """Choose appropriate port class for a sector based on cluster and zone type."""
         cluster_type = sector.cluster.type
         zone_type = sector.cluster.zone.type
 
         # Special case for Sector 1 (Sol System)
         if sector.sector_id == 1:
-            return PortClass.CLASS_0
+            return StationClass.CLASS_0
 
         # Different probabilities based on zone
         if zone_type == ZoneType.FEDERATION:
             # Federation space has more advanced ports
             weights = {
-                PortClass.CLASS_1: 5, PortClass.CLASS_2: 5, PortClass.CLASS_3: 15,
-                PortClass.CLASS_4: 20, PortClass.CLASS_5: 10, PortClass.CLASS_6: 15,
-                PortClass.CLASS_7: 15, PortClass.CLASS_10: 10, PortClass.CLASS_11: 5
+                StationClass.CLASS_1: 5, StationClass.CLASS_2: 5, StationClass.CLASS_3: 15,
+                StationClass.CLASS_4: 20, StationClass.CLASS_5: 10, StationClass.CLASS_6: 15,
+                StationClass.CLASS_7: 15, StationClass.CLASS_10: 10, StationClass.CLASS_11: 5
             }
         elif zone_type == ZoneType.BORDER:
             # Border zones have mixed classes
             weights = {
-                PortClass.CLASS_1: 15, PortClass.CLASS_2: 15, PortClass.CLASS_3: 20,
-                PortClass.CLASS_4: 10, PortClass.CLASS_5: 15, PortClass.CLASS_6: 15,
-                PortClass.CLASS_7: 10
+                StationClass.CLASS_1: 15, StationClass.CLASS_2: 15, StationClass.CLASS_3: 20,
+                StationClass.CLASS_4: 10, StationClass.CLASS_5: 15, StationClass.CLASS_6: 15,
+                StationClass.CLASS_7: 10
             }
         else:  # FRONTIER
             # Frontier has more basic ports and some dangerous premium ones
             weights = {
-                PortClass.CLASS_1: 20, PortClass.CLASS_2: 20, PortClass.CLASS_3: 15,
-                PortClass.CLASS_5: 20, PortClass.CLASS_6: 15, PortClass.CLASS_8: 5,
-                PortClass.CLASS_9: 5
+                StationClass.CLASS_1: 20, StationClass.CLASS_2: 20, StationClass.CLASS_3: 15,
+                StationClass.CLASS_5: 20, StationClass.CLASS_6: 15, StationClass.CLASS_8: 5,
+                StationClass.CLASS_9: 5
             }
         
         # Adjust weights based on cluster type
         if cluster_type == ClusterType.RESOURCE_RICH:
-            weights[PortClass.CLASS_1] = weights.get(PortClass.CLASS_1, 0) + 10
-            weights[PortClass.CLASS_5] = weights.get(PortClass.CLASS_5, 0) + 5
+            weights[StationClass.CLASS_1] = weights.get(StationClass.CLASS_1, 0) + 10
+            weights[StationClass.CLASS_5] = weights.get(StationClass.CLASS_5, 0) + 5
         elif cluster_type == ClusterType.TRADE_HUB:
-            weights[PortClass.CLASS_4] = weights.get(PortClass.CLASS_4, 0) + 15
-            weights[PortClass.CLASS_6] = weights.get(PortClass.CLASS_6, 0) + 10
+            weights[StationClass.CLASS_4] = weights.get(StationClass.CLASS_4, 0) + 15
+            weights[StationClass.CLASS_6] = weights.get(StationClass.CLASS_6, 0) + 10
         elif cluster_type == ClusterType.SPECIAL_INTEREST:
-            weights[PortClass.CLASS_10] = weights.get(PortClass.CLASS_10, 0) + 10
-            weights[PortClass.CLASS_11] = weights.get(PortClass.CLASS_11, 0) + 10
+            weights[StationClass.CLASS_10] = weights.get(StationClass.CLASS_10, 0) + 10
+            weights[StationClass.CLASS_11] = weights.get(StationClass.CLASS_11, 0) + 10
         
         # Convert weights to choices
         choices = []
         for port_class, weight in weights.items():
             choices.extend([port_class] * weight)
         
-        return random.choice(choices) if choices else PortClass.CLASS_6
+        return random.choice(choices) if choices else StationClass.CLASS_6
     
     def _choose_faction_for_sector(self, sector: Sector) -> Optional[str]:
         """Choose controlling faction for a sector based on cosmological zone."""
@@ -1210,24 +1210,24 @@ class GalaxyGenerator:
 
         return random.choice(factions)
     
-    def _get_specialization_for_port_type(self, port_type: PortType) -> str:
+    def _get_specialization_for_port_type(self, port_type: StationType) -> str:
         """Get economic specialization for a port type."""
         specialization_map = {
-            PortType.TRADING: random.choice(["general_trade", "luxury_goods", "commodity_exchange"]),
-            PortType.MILITARY: random.choice(["defense_systems", "combat_training", "fleet_coordination"]),
-            PortType.INDUSTRIAL: random.choice(["manufacturing", "production", "assembly"]),
-            PortType.MINING: random.choice(["ore_extraction", "mineral_processing", "gem_cutting"]),
-            PortType.SCIENTIFIC: random.choice(["research", "development", "experimentation"]),
-            PortType.SHIPYARD: random.choice(["ship_construction", "ship_repair", "outfitting"]),
-            PortType.OUTPOST: random.choice(["monitoring", "supply_distribution", "refueling"]),
-            PortType.BLACK_MARKET: random.choice(["contraband", "information_trading", "smuggling"]),
-            PortType.DIPLOMATIC: random.choice(["negotiation", "embassy_services", "neutral_ground"]),
-            PortType.CORPORATE: random.choice(["business", "investment", "management"])
+            StationType.TRADING: random.choice(["general_trade", "luxury_goods", "commodity_exchange"]),
+            StationType.MILITARY: random.choice(["defense_systems", "combat_training", "fleet_coordination"]),
+            StationType.INDUSTRIAL: random.choice(["manufacturing", "production", "assembly"]),
+            StationType.MINING: random.choice(["ore_extraction", "mineral_processing", "gem_cutting"]),
+            StationType.SCIENTIFIC: random.choice(["research", "development", "experimentation"]),
+            StationType.SHIPYARD: random.choice(["ship_construction", "ship_repair", "outfitting"]),
+            StationType.OUTPOST: random.choice(["monitoring", "supply_distribution", "refueling"]),
+            StationType.BLACK_MARKET: random.choice(["contraband", "information_trading", "smuggling"]),
+            StationType.DIPLOMATIC: random.choice(["negotiation", "embassy_services", "neutral_ground"]),
+            StationType.CORPORATE: random.choice(["business", "investment", "management"])
         }
         
         return specialization_map.get(port_type, "general_trade")
     
-    def _generate_resource_availability(self, port_type: PortType) -> Dict[str, int]:
+    def _generate_resource_availability(self, port_type: StationType) -> Dict[str, int]:
         """Generate resource availability for a port."""
         availability = {}
         
@@ -1240,27 +1240,27 @@ class GalaxyGenerator:
         }
 
         # Add type-specific resources
-        if port_type == PortType.TRADING:
+        if port_type == StationType.TRADING:
             base_resources.update({
                 "LUXURY_GOODS": random.randint(100, 300),
                 "GOURMET_FOOD": random.randint(50, 200)
             })
-        elif port_type == PortType.MILITARY:
+        elif port_type == StationType.MILITARY:
             base_resources.update({
                 "TECHNOLOGY": random.randint(200, 800),
                 "EXOTIC_TECHNOLOGY": random.randint(50, 150)
             })
-        elif port_type == PortType.INDUSTRIAL:
+        elif port_type == StationType.INDUSTRIAL:
             base_resources.update({
                 "ORE": random.randint(300, 1000),
                 "TECHNOLOGY": random.randint(300, 800)
             })
-        elif port_type == PortType.MINING:
+        elif port_type == StationType.MINING:
             base_resources.update({
                 "ORE": random.randint(500, 2000),
                 "PRISMATIC_ORE": random.randint(10, 50)  # Rare material
             })
-        elif port_type == PortType.SCIENTIFIC:
+        elif port_type == StationType.SCIENTIFIC:
             base_resources.update({
                 "TECHNOLOGY": random.randint(200, 600),
                 "EXOTIC_TECHNOLOGY": random.randint(100, 300),
@@ -1269,7 +1269,7 @@ class GalaxyGenerator:
         
         return base_resources
     
-    def _generate_resource_prices(self, port_type: PortType) -> Dict[str, Dict[str, int]]:
+    def _generate_resource_prices(self, port_type: StationType) -> Dict[str, Dict[str, int]]:
         """Generate resource prices for a port."""
         prices = {}
         
@@ -1281,7 +1281,7 @@ class GalaxyGenerator:
         }
 
         # Adjust based on port type
-        if port_type == PortType.TRADING:
+        if port_type == StationType.TRADING:
             # Better prices at trading ports
             for resource in base_prices:
                 base_prices[resource]["buy"] = int(base_prices[resource]["buy"] * 1.1)
@@ -1291,12 +1291,12 @@ class GalaxyGenerator:
                 "LUXURY_GOODS": {"buy": random.randint(90, 130), "sell": random.randint(140, 180)},
                 "GOURMET_FOOD": {"buy": random.randint(35, 50), "sell": random.randint(50, 65)}
             })
-        elif port_type == PortType.INDUSTRIAL:
+        elif port_type == StationType.INDUSTRIAL:
             base_prices.update({
                 "ORE": {"buy": random.randint(18, 25), "sell": random.randint(30, 40)},
                 "TECHNOLOGY": {"buy": random.randint(55, 75), "sell": random.randint(85, 105)}
             })
-        elif port_type == PortType.MINING:
+        elif port_type == StationType.MINING:
             base_prices.update({
                 "ORE": {"buy": random.randint(20, 30), "sell": random.randint(35, 45)},
                 "PRISMATIC_ORE": {"buy": random.randint(500, 700), "sell": random.randint(800, 1200)}  # Rare material

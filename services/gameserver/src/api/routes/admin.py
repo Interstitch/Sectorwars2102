@@ -20,7 +20,7 @@ from src.models.zone import Zone
 from src.models.cluster import Cluster
 from src.models.sector import Sector
 from src.models.warp_tunnel import WarpTunnel
-from src.models.port import Port
+from src.models.station import Station
 from src.models.planet import Planet
 from src.models.team import Team
 from src.schemas.user import UserAdminResponse
@@ -148,8 +148,8 @@ async def get_all_players(
                 # Get ports count
                 ports_count = 0
                 try:
-                    from src.models.port import Port
-                    ports_count = db.query(Port).filter(Port.owner_id == player.id).count()
+                    from src.models.station import Station
+                    ports_count = db.query(Station).filter(Station.owner_id == player.id).count()
                 except Exception:
                     pass
 
@@ -494,7 +494,7 @@ async def update_player(
         from src.models.ship import Ship
         ships_count = db.query(Ship).filter(Ship.owner_id == player.id).count()
         planets_count = db.query(Planet).filter(Planet.owner_id == player.id).count()
-        ports_count = db.query(Port).filter(Port.owner_id == player.id).count()
+        ports_count = db.query(Station).filter(Station.owner_id == player.id).count()
 
         return {
             "id": str(player.id),
@@ -749,7 +749,7 @@ async def get_admin_stats(
         total_warp_tunnels = db.query(WarpTunnel).count()
         
         # Get port count
-        total_ports = db.query(Port).count()
+        total_ports = db.query(Station).count()
         
         # For active sessions, we'll count players with recent activity (last 24 hours)
         from datetime import datetime, timedelta, timezone
@@ -836,7 +836,7 @@ async def get_admin_stats(
             total_warp_tunnels = 0
             
         try:
-            total_ports = db.query(Port).count()
+            total_ports = db.query(Station).count()
         except:
             total_ports = 0
         
@@ -880,7 +880,7 @@ async def get_galaxy_info(
         discovered_sectors = 0
         
     try:
-        port_count = db.query(Port).count()
+        port_count = db.query(Station).count()
     except Exception:
         port_count = 0
         
@@ -1090,7 +1090,7 @@ async def get_all_sectors(
     sector_list = []
     for sector in sectors:
         # Check for port in this sector
-        has_port = db.query(Port).filter(Port.sector_id == sector.sector_id).first() is not None
+        has_port = db.query(Station).filter(Station.sector_id == sector.sector_id).first() is not None
         
         # Check for planet in this sector
         has_planet = db.query(Planet).filter(Planet.sector_id == sector.sector_id).first() is not None
@@ -1186,7 +1186,7 @@ async def clear_all_galaxy_data(
 
         db.query(Ship).delete()          # Ships reference Players + Sectors
         db.query(Player).delete()        # Players reference Sectors + Regions + Ships (via current_ship_id)
-        db.query(Port).delete()          # Ports reference Sectors
+        db.query(Station).delete()          # Ports reference Sectors
         db.query(Planet).delete()        # Planets reference Sectors
         db.query(WarpTunnel).delete()    # Warp tunnels reference Sectors
         db.query(Sector).delete()        # Sectors reference Clusters AND Regions
@@ -1232,7 +1232,7 @@ async def get_sector_port(
     db: Session = Depends(get_db)
 ):
     """Get port details for a specific sector"""
-    port = db.query(Port).filter(Port.sector_id == sector_id).first()
+    port = db.query(Station).filter(Station.sector_id == sector_id).first()
 
     if not port:
         return {
@@ -1257,7 +1257,7 @@ async def get_sector_port(
             "faction_affiliation": port.faction_affiliation,
             "trade_volume": port.trade_volume,
             "market_volatility": port.market_volatility,
-            "tax_rate": 5.0,  # Default tax rate - TODO: Add to Port model
+            "tax_rate": 5.0,  # Default tax rate - TODO: Add to Station model
 
             # Defense information from JSONB
             "defense_level": defenses.get("defense_drones", 0),
@@ -1416,10 +1416,10 @@ async def update_port(
 ):
     """Update port details including commodity quantities"""
     try:
-        port = db.query(Port).filter(Port.id == port_id).first()
+        port = db.query(Station).filter(Station.id == port_id).first()
         
         if not port:
-            raise HTTPException(status_code=404, detail="Port not found")
+            raise HTTPException(status_code=404, detail="Station not found")
         
         # Handle commodity updates
         if 'commodities' in port_updates:
@@ -1448,7 +1448,7 @@ async def update_port(
         
         return {
             "success": True,
-            "message": "Port updated successfully",
+            "message": "Station updated successfully",
             "port_id": str(port.id)
         }
         

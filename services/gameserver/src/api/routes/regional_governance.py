@@ -20,7 +20,7 @@ from src.models.region import (
 from src.models.player import Player
 from src.models.sector import Sector
 from src.models.planet import Planet
-from src.models.port import Port
+from src.models.station import Station
 from src.models.ship import Ship
 from pydantic import BaseModel, Field
 
@@ -147,7 +147,7 @@ async def get_regional_stats(
         select(func.count(Planet.id)).where(Planet.region_id == region.id)
     )
     ports_count = await db.scalar(
-        select(func.count(Port.id)).where(Port.region_id == region.id)
+        select(func.count(Station.id)).where(Station.region_id == region.id)
     )
     ships_count = await db.scalar(
         select(func.count(Ship.id))

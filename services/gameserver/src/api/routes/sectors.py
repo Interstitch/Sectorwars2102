@@ -8,7 +8,7 @@ from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.models.sector import Sector
 from src.models.planet import Planet
-from src.models.port import Port
+from src.models.station import Station
 
 router = APIRouter(
     prefix="/sectors",
@@ -31,7 +31,7 @@ class PlanetResponse(BaseModel):
 class PortResponse(BaseModel):
     id: str
     name: str
-    port_class: int | None = None  # Port class 0-11 (trading classification)
+    port_class: int | None = None  # Station class 0-11 (trading classification)
     type: str
     status: str
     sector_id: int
@@ -116,7 +116,7 @@ async def get_sector_ports(
         )
 
     # Get all ports in this specific sector (by UUID)
-    ports = db.query(Port).filter(Port.sector_uuid == sector.id).all()
+    ports = db.query(Station).filter(Station.sector_uuid == sector.id).all()
     
     port_responses = []
     for port in ports:

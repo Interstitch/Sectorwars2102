@@ -18,7 +18,7 @@ from src.models.user import User
 from src.models.player import Player
 from src.models.ship import Ship
 from src.models.planet import Planet
-from src.models.station import Station, PortStatus
+from src.models.station import Station, StationStatus
 from src.models.sector import Sector
 from src.models.cluster import Cluster
 from src.models.galaxy import Galaxy
@@ -980,7 +980,7 @@ async def get_ports_comprehensive(
                 owner_id=str(port.owner_id) if port.owner_id else None,
                 owner_name=owner_name,
                 created_at=port.created_at.isoformat() if port.created_at else "",
-                is_operational=port.status == PortStatus.OPERATIONAL,
+                is_operational=port.status == StationStatus.OPERATIONAL,
                 commodities=commodities
             ))
         
@@ -1938,7 +1938,7 @@ async def create_port_in_sector(
             raise HTTPException(status_code=400, detail="Sector already has a port")
         
         # Import and validate enums
-        from src.models.station import Station, PortClass, PortType, PortStatus
+        from src.models.station import Station, PortClass, PortType, StationStatus
         
         try:
             port_class = PortClass(station_data.port_class)
@@ -1953,7 +1953,7 @@ async def create_port_in_sector(
             sector_uuid=sector.id,
             port_class=port_class,
             type=port_type,
-            status=PortStatus.OPERATIONAL,
+            status=StationStatus.OPERATIONAL,
             size=station_data.size,
             faction_affiliation=station_data.faction_affiliation,
             trade_volume=station_data.trade_volume,
@@ -2568,7 +2568,7 @@ async def create_port(
     """Create a new port"""
     try:
         # Import and validate enums
-        from src.models.station import Station, PortClass, PortType, PortStatus
+        from src.models.station import Station, PortClass, PortType, StationStatus
         
         # Validate required fields
         if not station_data.get("name"):
@@ -2622,7 +2622,7 @@ async def create_port(
             sector_uuid=sector.id,
             port_class=port_class,
             type=PortType.TRADING,  # Default to trading
-            status=PortStatus.OPERATIONAL,
+            status=StationStatus.OPERATIONAL,
             trade_volume=station_data.get("trade_volume", 1000),
             size=station_data.get("size", 5),
             owner_id=owner_id,
