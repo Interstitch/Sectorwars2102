@@ -103,7 +103,7 @@ class PlayerCombatService:
             combat_log = self._create_planet_combat(attacker, attacker_ship, planet)
             
         elif target_type == "station":
-            port = self.db.query(Station).filter(Station.id == target_id).first()
+            station = self.db.query(Station).filter(Station.id == target_id).first()
             if not port:
                 return {
                     "combatId": None,
@@ -112,7 +112,7 @@ class PlayerCombatService:
                 }
                 
             # Check if port is in same sector
-            if attacker_ship.current_sector_id != port.sector_id:
+            if attacker_ship.current_sector_id != station.sector_id:
                 return {
                     "combatId": None,
                     "status": "error",
@@ -267,7 +267,7 @@ class PlayerCombatService:
             attacker_ship_id=attacker_ship.id,
             attacker_ship_name=attacker_ship.name,
             attacker_ship_type=attacker_ship.type,
-            defender_ship_name=port.name,
+            defender_ship_name=station.name,
             defender_ship_type="port",
             sector_id=attacker_ship.current_sector_id,
             combat_type="port_raid",
@@ -325,7 +325,7 @@ class PlayerCombatService:
             "class_9": 450
         }
         
-        return port_defenses.get(port.station_class, 100)
+        return port_defenses.get(station.station_class, 100)
         
     def _simulate_combat_round(self, combat_log: CombatLog):
         """Simulate one round of combat."""
@@ -498,7 +498,7 @@ class PlayerCombatService:
                 
         elif combat_log.combat_type == "port_raid":
             # Fixed loot based on port class
-            port = self.db.query(Station).filter(
+            station = self.db.query(Station).filter(
                 Station.sector_id == combat_log.sector_id
             ).first()
             
@@ -516,7 +516,7 @@ class PlayerCombatService:
                     "special": 15000
                 }
                 
-                loot_credits = loot_table.get(port.station_class, 1000)
+                loot_credits = loot_table.get(station.station_class, 1000)
                 attacker = self.db.query(Player).filter(Player.id == combat_log.attacker_id).first()
                 if attacker:
                     attacker.credits += loot_credits

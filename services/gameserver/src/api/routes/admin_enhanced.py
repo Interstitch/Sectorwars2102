@@ -141,7 +141,7 @@ async def create_port(
         raise HTTPException(status_code=400, detail="Sector already has a port")
     
     # Create port
-    port = Station(
+    station = Station(
         name=request.name,
         sector_id=request.sector_id,
         port_class=request.station_class,
@@ -162,10 +162,10 @@ async def create_port(
     db.commit()
     
     return {
-        "id": str(port.id),
-        "name": port.name,
-        "sector_id": port.sector_id,
-        "station_class": port.station_class,
+        "id": str(station.id),
+        "name": station.name,
+        "sector_id": station.sector_id,
+        "station_class": station.station_class,
         "created": True
     }
 
@@ -325,13 +325,13 @@ async def get_enhanced_sectors(
             
             # Add port info if exists
             if has_port:
-                port = db.query(Station).filter(Station.sector_id == sector.sector_id).first()
+                station = db.query(Station).filter(Station.sector_id == sector.sector_id).first()
                 if port:
                     sector_data["port"] = {
-                        "id": str(port.id),
-                        "name": port.name,
-                        "class": port.station_class.value,
-                        "owner": "NPC" if not port.owner_id else str(port.owner_id)
+                        "id": str(station.id),
+                        "name": station.name,
+                        "class": station.station_class.value,
+                        "owner": "NPC" if not station.owner_id else str(station.owner_id)
                     }
             
             # Add planet info if exists

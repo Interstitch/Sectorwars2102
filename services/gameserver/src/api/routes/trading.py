@@ -267,10 +267,10 @@ async def get_market_info(
     return MarketInfoResponse(
         resources=resources,
         port={
-            "id": str(port.id),
-            "name": port.name,
-            "type": port.type,
-            "faction": port.faction_affiliation,
+            "id": str(station.id),
+            "name": station.name,
+            "type": station.type,
+            "faction": station.faction_affiliation,
             "tax_rate": getattr(port, 'tax_rate', 0.1)  # Default 10% tax if not set
         }
     )
@@ -323,15 +323,15 @@ async def dock_at_station(
         db.commit()
         
         return {
-            "message": f"Successfully docked at {port.name}",
+            "message": f"Successfully docked at {station.name}",
             "turn_cost": DOCKING_TURN_COST,
             "turns_remaining": current_player.turns,
             "station": {
-                "id": str(port.id),
-                "name": port.name,
-                "type": port.type,
-                "faction": port.faction_affiliation,
-                "services": port.services or {}
+                "id": str(station.id),
+                "name": station.name,
+                "type": station.type,
+                "faction": station.faction_affiliation,
+                "services": station.services or {}
             }
         }
         
@@ -409,7 +409,7 @@ async def get_trading_history(
             "total_value": tx.total_value,
             "profit_margin": tx.profit_margin,
             "timestamp": tx.timestamp.isoformat(),
-            "station_name": port.name if port else "Unknown Station"
+            "station_name": station.name if port else "Unknown Station"
         })
     
     return {

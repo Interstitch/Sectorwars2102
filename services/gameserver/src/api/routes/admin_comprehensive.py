@@ -942,23 +942,23 @@ async def get_ports_comprehensive(
         ports_data = []
         for port in ports:
             owner_name = None
-            if port.owner_id:
-                owner = db.query(Player).join(User).filter(Player.id == port.owner_id).first()
+            if station.owner_id:
+                owner = db.query(Player).join(User).filter(Player.id == station.owner_id).first()
                 if owner:
                     owner_name = owner.user.username
             
             # Get sector name
             sector_name = None
-            if port.sector:
-                sector_name = port.sector.name
+            if station.sector:
+                sector_name = station.sector.name
             
             # Extract information from JSONB fields with defaults
-            defenses = port.defenses or {}
-            service_prices = port.service_prices or {}
-            commodities_data = port.commodities or {}
+            defenses = station.defenses or {}
+            service_prices = station.service_prices or {}
+            commodities_data = station.commodities or {}
             
             # Calculate values for frontend display
-            trade_volume = port.trade_volume or 0
+            trade_volume = station.trade_volume or 0
             # Calculate max capacity from commodities
             max_capacity = sum(commodity.get("capacity", 1000) for commodity in commodities_data.values()) if commodities_data else 10000
             security_level = defenses.get("defense_drones", 0) + defenses.get("patrol_ships", 0)
@@ -968,19 +968,19 @@ async def get_ports_comprehensive(
             commodities = list(commodities_data.keys()) if commodities_data else []
             
             ports_data.append(StationManagementResponse(
-                id=str(port.id),
-                name=port.name,
-                sector_id=str(port.sector_id),
+                id=str(station.id),
+                name=station.name,
+                sector_id=str(station.sector_id),
                 sector_name=sector_name,
-                port_class=port.station_class.name,
+                port_class=station.station_class.name,
                 trade_volume=trade_volume,
                 max_capacity=max_capacity,
                 security_level=security_level,
                 docking_fee=docking_fee,
-                owner_id=str(port.owner_id) if port.owner_id else None,
+                owner_id=str(station.owner_id) if station.owner_id else None,
                 owner_name=owner_name,
-                created_at=port.created_at.isoformat() if port.created_at else "",
-                is_operational=port.status == StationStatus.OPERATIONAL,
+                created_at=station.created_at.isoformat() if station.created_at else "",
+                is_operational=station.status == StationStatus.OPERATIONAL,
                 commodities=commodities
             ))
         
@@ -1450,15 +1450,15 @@ async def update_all_port_stock_levels(
         
         for port in ports:
             # Store original stock levels for reporting
-            original_commodities = dict(port.commodities)
+            original_commodities = dict(station.commodities)
             
             # Update trading flags and stock levels
-            port.update_commodity_trading_flags()
-            port.update_commodity_stock_levels()
+            station.update_commodity_trading_flags()
+            station.update_commodity_stock_levels()
             
             # Track changes
             changes = {}
-            for commodity_name, commodity_data in port.commodities.items():
+            for commodity_name, commodity_data in station.commodities.items():
                 old_quantity = original_commodities.get(commodity_name, {}).get("quantity", 0)
                 new_quantity = commodity_data.get("quantity", 0)
                 if old_quantity != new_quantity:
@@ -1469,11 +1469,11 @@ async def update_all_port_stock_levels(
             
             if changes:
                 updated_ports.append({
-                    "station_id": str(port.id),
-                    "station_name": port.name,
-                    "station_class": port.station_class.value,
-                    "station_type": port.type.value,
-                    "sector_id": port.sector_id,
+                    "station_id": str(station.id),
+                    "station_name": station.name,
+                    "station_class": station.station_class.value,
+                    "station_type": station.type.value,
+                    "sector_id": station.sector_id,
                     "changes": changes
                 })
         
@@ -1930,11 +1930,11 @@ async def create_port_in_sector(
             raise HTTPException(status_code=404, detail="Sector not found")
         
         # Check if sector already has a port
-        existing_port = db.query(Station).filter(
+        existing_station = db.query(Station).filter(
             Station.sector_uuid == sector.id
         ).first()
         
-        if existing_port:
+        if existing_station:
             raise HTTPException(status_code=400, detail="Sector already has a port")
         
         # Import and validate enums
@@ -2082,33 +2082,33 @@ async def get_sector_port(
             raise HTTPException(status_code=404, detail="Sector not found")
         
         # Find the port in this sector
-        port = db.query(Station).filter(Station.sector_uuid == sector.id).first()
+        station = db.query(Station).filter(Station.sector_uuid == sector.id).first()
         
         if not port:
             return {"has_station": False, "station": None}
         
         # Get owner information if port is owned
         owner_name = None
-        if port.owner_id:
-            owner = db.query(Player).join(User).filter(Player.id == port.owner_id).first()
+        if station.owner_id:
+            owner = db.query(Player).join(User).filter(Player.id == station.owner_id).first()
             if owner:
                 owner_name = owner.user.username
         
         return {
             "has_port": True,
             "station": {
-                "id": str(port.id),
-                "name": port.name,
-                "station_class": port.station_class.value,
-                "type": port.type.value,
-                "status": port.status.value,
-                "size": port.size,
-                "faction_affiliation": port.faction_affiliation,
-                "trade_volume": port.trade_volume,
-                "market_volatility": port.market_volatility,
-                "owner_id": str(port.owner_id) if port.owner_id else None,
+                "id": str(station.id),
+                "name": station.name,
+                "station_class": station.station_class.value,
+                "type": station.type.value,
+                "status": station.status.value,
+                "size": station.size,
+                "faction_affiliation": station.faction_affiliation,
+                "trade_volume": station.trade_volume,
+                "market_volatility": station.market_volatility,
+                "owner_id": str(station.owner_id) if station.owner_id else None,
                 "owner_name": owner_name,
-                "created_at": port.created_at.isoformat()
+                "created_at": station.created_at.isoformat()
             }
         }
         
@@ -2485,7 +2485,7 @@ async def update_port(
     """Update a port's properties"""
     try:
         # Find the port by ID
-        port = db.query(Station).filter(Station.id == station_id).first()
+        station = db.query(Station).filter(Station.id == station_id).first()
         if not port:
             raise HTTPException(status_code=404, detail="Station not found")
         
@@ -2507,12 +2507,12 @@ async def update_port(
                     # Find player by username
                     player = db.query(Player).join(User).filter(User.username == value).first()
                     if player:
-                        port.owner_id = player.id
+                        station.owner_id = player.id
                     else:
                         raise HTTPException(status_code=404, detail=f"Player '{value}' not found")
                 else:
                     # Clear owner
-                    port.owner_id = None
+                    station.owner_id = None
             else:
                 # Direct field update
                 setattr(port, field, value)
@@ -2521,7 +2521,7 @@ async def update_port(
         
         return {
             "message": "Station updated successfully",
-            "station_id": str(port.id),
+            "station_id": str(station.id),
             "updated_fields": list(update_data.keys())
         }
         
@@ -2539,11 +2539,11 @@ async def delete_port(
     """Delete a port"""
     try:
         # Find the port by ID
-        port = db.query(Station).filter(Station.id == station_id).first()
+        station = db.query(Station).filter(Station.id == station_id).first()
         if not port:
             raise HTTPException(status_code=404, detail="Station not found")
         
-        station_name = port.name
+        station_name = station.name
         
         # Delete the port
         db.delete(port)
@@ -2595,8 +2595,8 @@ async def create_port(
             raise HTTPException(status_code=404, detail="Sector not found")
         
         # Check if sector already has a port
-        existing_port = db.query(Station).filter(Station.sector_uuid == sector.id).first()
-        if existing_port:
+        existing_station = db.query(Station).filter(Station.sector_uuid == sector.id).first()
+        if existing_station:
             raise HTTPException(status_code=400, detail="Sector already has a port")
         
         # Parse port class

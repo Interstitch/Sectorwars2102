@@ -595,7 +595,7 @@ class EconomyAnalyticsService:
         
         for trade in wash_trades:
             player = self.db.query(Player).filter(Player.id == trade.player_id).first()
-            port = self.db.query(Station).filter(Station.id == trade.station_id).first()
+            station = self.db.query(Station).filter(Station.id == trade.station_id).first()
             
             alerts.append({
                 "id": str(uuid.uuid4()),
@@ -605,7 +605,7 @@ class EconomyAnalyticsService:
                 "player_id": str(trade.player_id),
                 "player_name": player.nickname if player else "Unknown",
                 "station_id": str(trade.station_id),
-                "station_name": port.name if port else "Unknown",
+                "station_name": station.name if port else "Unknown",
                 "resource_type": trade.resource_type,
                 "trade_count": trade.trade_count,
                 "description": f"Potential wash trading detected: {trade.trade_count} trades in 1 hour",
@@ -648,7 +648,7 @@ class EconomyAnalyticsService:
         station_id = parameters.get('station_id')
         resources = parameters.get('resources', {})
         
-        port = self.db.query(Station).filter(Station.id == station_id).first()
+        station = self.db.query(Station).filter(Station.id == station_id).first()
         if not port:
             raise ValueError("Station not found")
         
@@ -659,7 +659,7 @@ class EconomyAnalyticsService:
         
         return {
             "station_id": str(station_id),
-            "station_name": port.name,
+            "station_name": station.name,
             "resources_injected": resources
         }
     

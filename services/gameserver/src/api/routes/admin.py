@@ -1232,7 +1232,7 @@ async def get_sector_port(
     db: Session = Depends(get_db)
 ):
     """Get port details for a specific sector"""
-    port = db.query(Station).filter(Station.sector_id == sector_id).first()
+    station = db.query(Station).filter(Station.sector_id == sector_id).first()
 
     if not port:
         return {
@@ -1241,22 +1241,22 @@ async def get_sector_port(
         }
 
     # Extract defense data from JSONB field
-    defenses = port.defenses or {}
+    defenses = station.defenses or {}
 
     return {
         "has_port": True,
         "station": {
-            "id": str(port.id),
-            "name": port.name,
-            "sector_id": port.sector_id,
-            "station_class": port.station_class.value if port.station_class else None,
-            "type": port.type.value if port.type else None,
-            "status": port.status.value if port.status else None,
-            "size": port.size,
-            "owner_id": str(port.owner_id) if port.owner_id else None,
-            "faction_affiliation": port.faction_affiliation,
-            "trade_volume": port.trade_volume,
-            "market_volatility": port.market_volatility,
+            "id": str(station.id),
+            "name": station.name,
+            "sector_id": station.sector_id,
+            "station_class": station.station_class.value if station.station_class else None,
+            "type": station.type.value if station.type else None,
+            "status": station.status.value if station.status else None,
+            "size": station.size,
+            "owner_id": str(station.owner_id) if station.owner_id else None,
+            "faction_affiliation": station.faction_affiliation,
+            "trade_volume": station.trade_volume,
+            "market_volatility": station.market_volatility,
             "tax_rate": 5.0,  # Default tax rate - TODO: Add to Station model
 
             # Defense information from JSONB
@@ -1268,26 +1268,26 @@ async def get_sector_port(
             "patrol_ships": defenses.get("patrol_ships", 0),
 
             # Services and pricing
-            "services": port.services,
-            "service_prices": port.service_prices,
-            "price_modifiers": port.price_modifiers,
-            "commodities": port.commodities,
+            "services": station.services,
+            "service_prices": station.service_prices,
+            "price_modifiers": station.price_modifiers,
+            "commodities": station.commodities,
 
             # Management
-            "ownership": port.ownership,
-            "is_player_ownable": port.is_player_ownable,
-            "reputation_threshold": port.reputation_threshold,
+            "ownership": station.ownership,
+            "is_player_ownable": station.is_player_ownable,
+            "reputation_threshold": station.reputation_threshold,
 
             # Market information
-            "last_market_update": port.last_market_update.isoformat() if port.last_market_update else None,
-            "market_update_frequency": port.market_update_frequency,
+            "last_market_update": station.last_market_update.isoformat() if station.last_market_update else None,
+            "market_update_frequency": station.market_update_frequency,
 
             # Special flags
-            "is_quest_hub": port.is_quest_hub,
-            "is_faction_headquarters": port.is_faction_headquarters,
+            "is_quest_hub": station.is_quest_hub,
+            "is_faction_headquarters": station.is_faction_headquarters,
 
             # Acquisition requirements
-            "acquisition_requirements": port.acquisition_requirements
+            "acquisition_requirements": station.acquisition_requirements
         }
     }
 
@@ -1416,7 +1416,7 @@ async def update_port(
 ):
     """Update port details including commodity quantities"""
     try:
-        port = db.query(Station).filter(Station.id == station_id).first()
+        station = db.query(Station).filter(Station.id == station_id).first()
         
         if not port:
             raise HTTPException(status_code=404, detail="Station not found")
@@ -1425,9 +1425,9 @@ async def update_port(
         if 'commodities' in port_updates:
             # Update specific commodity fields
             for commodity_name, updates in port_updates['commodities'].items():
-                if commodity_name in port.commodities:
+                if commodity_name in station.commodities:
                     for field, value in updates.items():
-                        port.commodities[commodity_name][field] = value
+                        station.commodities[commodity_name][field] = value
         
         # Handle direct field updates (like quantity updates from frontend)
         for field, value in port_updates.items():
@@ -1438,18 +1438,18 @@ async def update_port(
             elif field.endswith('_quantity'):
                 # Handle direct quantity updates like "ore_quantity"
                 commodity_name = field.replace('_quantity', '')
-                if commodity_name in port.commodities:
-                    port.commodities[commodity_name]['quantity'] = value
+                if commodity_name in station.commodities:
+                    station.commodities[commodity_name]['quantity'] = value
         
         # Mark commodities as modified for SQLAlchemy
-        port.commodities = dict(port.commodities)
+        station.commodities = dict(station.commodities)
         
         db.commit()
         
         return {
             "success": True,
             "message": "Station updated successfully",
-            "station_id": str(port.id)
+            "station_id": str(station.id)
         }
         
     except Exception as e:

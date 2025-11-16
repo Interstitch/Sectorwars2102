@@ -74,12 +74,12 @@ async def get_market_data(
     
     market_data = []
     for price in market_prices:
-        port = price.station
-        sector = port.sector if port else None
+        station = price.station
+        sector = station.sector if port else None
         
         market_data.append(MarketDataResponse(
             station_id=str(price.station_id),
-            port_name=port.name if port else "Unknown",
+            port_name=station.name if port else "Unknown",
             sector_name=f"Sector {sector.sector_id}" if sector else "Unknown",
             commodity=price.commodity,
             buy_price=price.buy_price,
@@ -178,7 +178,7 @@ async def get_price_alerts(
     
     alert_responses = []
     for alert in alerts:
-        port = alert.station
+        station = alert.station
         
         # Get current value based on alert type
         current_value = 0.0
@@ -194,7 +194,7 @@ async def get_price_alerts(
         alert_responses.append(PriceAlertResponse(
             id=str(alert.id),
             station_id=str(alert.station_id),
-            port_name=port.name if port else "Unknown",
+            port_name=station.name if port else "Unknown",
             commodity=alert.commodity,
             alert_type=alert.alert_type,
             threshold_value=alert.threshold_value,
@@ -232,11 +232,11 @@ async def get_price_history(
     # Format for charting
     price_data = []
     for record in history:
-        port = db.query(Station).filter(Station.id == record.station_id).first()
+        station = db.query(Station).filter(Station.id == record.station_id).first()
         price_data.append({
             "timestamp": record.timestamp.isoformat(),
             "station_id": str(record.station_id),
-            "station_name": port.name if port else "Unknown",
+            "station_name": station.name if port else "Unknown",
             "buy_price": record.buy_price,
             "sell_price": record.sell_price,
             "quantity": record.quantity_available,
@@ -339,12 +339,12 @@ async def get_recent_transactions(
     transaction_data = []
     for tx in transactions:
         player = db.query(Player).filter(Player.id == tx.player_id).first()
-        port = db.query(Station).filter(Station.id == tx.station_id).first()
+        station = db.query(Station).filter(Station.id == tx.station_id).first()
         
         transaction_data.append({
             "id": str(tx.id),
             "player_name": player.user.username if player and player.user else "Unknown",
-            "station_name": port.name if port else "Unknown",
+            "station_name": station.name if port else "Unknown",
             "transaction_type": tx.transaction_type.value,
             "commodity": tx.commodity,
             "quantity": tx.quantity,

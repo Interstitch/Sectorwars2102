@@ -344,7 +344,7 @@ class CombatService:
         }
     
     def attack_port(self, attacker_id: uuid.UUID, station_id: uuid.UUID) -> Dict[str, Any]:
-        """Attack a space port."""
+        """Attack a space station."""
         # Get attacker
         attacker = self.db.query(Player).filter(Player.id == attacker_id).first()
         if not attacker:
@@ -355,20 +355,20 @@ class CombatService:
             return {"success": False, "message": "No active ship selected"}
         
         # Get port
-        port = self.db.query(Station).filter(Station.id == station_id).first()
+        station = self.db.query(Station).filter(Station.id == station_id).first()
         if not port:
             return {"success": False, "message": "Station not found"}
         
         # Check if player is in the port's sector
-        if attacker.current_sector_id != port.sector_id:
+        if attacker.current_sector_id != station.sector_id:
             return {"success": False, "message": "You must be in the port's sector to attack it"}
         
         # Check if port has an owner
-        if not port.owner:
+        if not station.owner:
             return {"success": False, "message": "Cannot attack an unowned port"}
         
         # Check if attacker is the owner
-        port_owner = port.owner[0] if port.owner else None
+        port_owner = station.owner[0] if station.owner else None
         if port_owner and port_owner.id == attacker.id:
             return {"success": False, "message": "Cannot attack your own port"}
         
@@ -399,7 +399,7 @@ class CombatService:
             attacker_id=attacker.id,
             attacker_ship_id=attacker.current_ship_id,
             defender_id=port_owner.id if port_owner else None,
-            station_id=port.id,
+            station_id=station.id,
             attacker_team_id=attacker.team_id,
             defender_team_id=port_owner.team_id if port_owner else None,
             turns_consumed=turn_cost,
@@ -421,14 +421,14 @@ class CombatService:
             attacker.defense_drones = max(0, attacker.defense_drones - combat_result["attacker_drones_lost"])
         
         # Update port defenses
-        port.defense_level = max(0, port.defense_level - combat_result["port_damage"])
+        station.defense_level = max(0, station.defense_level - combat_result["port_damage"])
         
         # If port was captured, transfer ownership
         if combat_result["port_captured"]:
             self._transfer_port_ownership(port, attacker)
         
         # Update last_attacked timestamp for port
-        port.last_attacked = datetime.now()
+        station.last_attacked = datetime.now()
         
         # Update last_combat timestamp for sector
         sector.last_combat = datetime.now()
@@ -679,11 +679,11 @@ class CombatService:
                 "owner_name": defender.username if defender else "Unowned"
             }
         elif log.combat_type == CombatType.SHIP_VS_PORT:
-            port = self.db.query(Station).filter(Station.id == log.station_id).first()
+            station = self.db.query(Station).filter(Station.id == log.station_id).first()
             report["target"] = {
                 "type": "station",
                 "id": str(log.station_id) if log.station_id else None,
-                "name": port.name if port else "Unknown",
+                "name": station.name if port else "Unknown",
                 "owner_id": str(log.defender_id) if log.defender_id else None,
                 "owner_name": defender.username if defender else "Unowned"
             }
@@ -747,11 +747,11 @@ class CombatService:
                     "name": planet.name if planet else "Unknown"
                 }
             elif log.combat_type == CombatType.SHIP_VS_PORT:
-                port = self.db.query(Station).filter(Station.id == log.station_id).first()
+                station = self.db.query(Station).filter(Station.id == log.station_id).first()
                 entry["target"] = {
                     "type": "station",
                     "id": str(log.station_id) if log.station_id else None,
-                    "name": port.name if port else "Unknown"
+                    "name": station.name if port else "Unknown"
                 }
             elif log.combat_type == CombatType.SHIP_VS_DRONES:
                 entry["target"] = {
@@ -1320,16 +1320,16 @@ class CombatService:
     
     def _resolve_port_combat(self, attacker: Player, port: Station, 
                             port_owner: Optional[Player]) -> Dict[str, Any]:
-        """Resolve combat between a ship and a port."""
+        """Resolve combat between a ship and a station."""
         # Similar to planet combat but with port-specific parameters
         # Get attacker ship and equipment
         attacker_ship = attacker.current_ship
         attacker_drones = attacker.defense_drones
         
         # Station defenses
-        port_defense_level = port.defense_level or 0
-        port_shields = port.shields or 0
-        port_weapons = port.defense_weapons or 0
+        port_defense_level = station.defense_level or 0
+        port_shields = station.shields or 0
+        port_weapons = station.defense_weapons or 0
         
         # Combat parameters
         attacker_attack = self._calculate_attack_power(attacker_ship, attacker_drones)
@@ -1464,7 +1464,7 @@ class CombatService:
             message = f"Station defenses defeated {attacker.username}"
         elif port_captured:
             result = CombatResult.ATTACKER_VICTORY
-            message = f"{attacker.username} captured port {port.name}"
+            message = f"{attacker.username} captured port {station.name}"
         else:
             result = CombatResult.DRAW
             message = "Combat ended in a stalemate"
@@ -1609,4 +1609,4 @@ class CombatService:
     def _transfer_port_ownership(self, port: Station, new_owner: Player) -> None:
         """Transfer ownership of a port to a new player."""
         # Similar to planet ownership transfer
-        port.owner_id = new_owner.id
+        station.owner_id = new_owner.id

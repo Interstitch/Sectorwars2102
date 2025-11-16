@@ -491,7 +491,7 @@ class GalaxyGenerator:
             port_type = self._choose_station_type_for_sector(sector)
             port_class = self._choose_port_class_for_sector(sector)
             
-            port = Station(
+            station = Station(
                 name=port_name,
                 sector_id=sector.sector_id,
                 sector_uuid=sector.id,
@@ -504,8 +504,8 @@ class GalaxyGenerator:
             )
             
             # Ensure commodities is properly initialized before calling methods that depend on it
-            if port.commodities is None:
-                port.commodities = {
+            if station.commodities is None:
+                station.commodities = {
                     "ore": {
                         "quantity": 1000, "capacity": 5000, "base_price": 15, "current_price": 15,
                         "production_rate": 100, "price_variance": 20, "buys": False, "sells": True
@@ -541,19 +541,19 @@ class GalaxyGenerator:
                 }
             
             # Update trading flags based on port class
-            port.update_commodity_trading_flags()
+            station.update_commodity_trading_flags()
             
             # Update stock levels to match trading role
-            port.update_commodity_stock_levels()
+            station.update_commodity_stock_levels()
             
             self.db.add(port)
             self.db.flush()
             
             # Create market for port
             market = Market(
-                station_id=port.id,
+                station_id=station.id,
                 specialization=self._get_specialization_for_port_type(port_type),
-                size=port.size,
+                size=station.size,
                 tax_rate=0.05,
                 economic_status="stable",
                 resource_availability=self._generate_resource_availability(port_type),
@@ -622,10 +622,10 @@ class GalaxyGenerator:
             return
 
         # Check if Sector 1 already has a port
-        existing_port = self.db.query(Station).filter(Station.sector_uuid == sector_1.id).first()
-        if not existing_port:
+        existing_station = self.db.query(Station).filter(Station.sector_uuid == sector_1.id).first()
+        if not existing_station:
             logger.info(f"Creating guaranteed starter station in Sector 1 of {region.name}")
-            self._create_starter_port_for_sector(sector_1)
+            self._create_starter_station_for_sector(sector_1)
 
         # Check if Sector 1 already has a planet
         existing_planet = self.db.query(Planet).filter(Planet.sector_uuid == sector_1.id).first()
@@ -648,12 +648,12 @@ class GalaxyGenerator:
             return
 
         # Check if Sector 1 already has a port
-        existing_port = self.db.query(Station).filter(Station.sector_id == 1).first()
-        if not existing_port:
+        existing_station = self.db.query(Station).filter(Station.sector_id == 1).first()
+        if not existing_station:
             logger.info("Creating guaranteed starter station in Sector 1")
 
             # Create a Class 1 Trading port (beginner-friendly)
-            starter_port = Station(
+            starter_station = Station(
                 name="Terra Station",  # Friendly name for starter port
                 sector_id=sector_1.sector_id,
                 sector_uuid=sector_1.id,
@@ -666,7 +666,7 @@ class GalaxyGenerator:
             )
 
             # Initialize commodities with balanced starter trading
-            starter_port.commodities = {
+            starter_station.commodities = {
                 "ore": {
                     "quantity": 2000, "capacity": 5000, "base_price": 15, "current_price": 15,
                     "production_rate": 100, "price_variance": 20, "buys": True, "sells": True
@@ -701,12 +701,12 @@ class GalaxyGenerator:
                 }
             }
 
-            self.db.add(starter_port)
+            self.db.add(starter_station)
             self.db.flush()
 
             # Create market for starter port
             starter_market = Market(
-                station_id=starter_port.id,
+                station_id=starter_station.id,
                 specialization="GENERAL",  # General trading for beginners
                 size=5,
                 tax_rate=0.02,  # Lower tax for new players
@@ -724,7 +724,7 @@ class GalaxyGenerator:
             self.db.flush()
             logger.info("✅ Created starter port 'Terra Station' in Sector 1")
         else:
-            logger.info(f"✅ Sector 1 already has station: {existing_port.name}")
+            logger.info(f"✅ Sector 1 already has station: {existing_station.name}")
 
         # Check if Sector 1 already has a planet
         existing_planet = self.db.query(Planet).filter(Planet.sector_id == 1).first()

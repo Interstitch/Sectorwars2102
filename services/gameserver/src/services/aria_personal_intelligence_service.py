@@ -154,7 +154,7 @@ class ARIAPersonalIntelligenceService:
             return None
         
         # Get port's sector
-        port = await db.get(Station, station_id)
+        station = await db.get(Station, station_id)
         if not port:
             return None
         
@@ -200,7 +200,7 @@ class ARIAPersonalIntelligenceService:
             intelligence = ARIAMarketIntelligence(
                 player_id=player_id,
                 station_id=station_id,
-                sector_id=port.sector_id,
+                sector_id=station.sector_id,
                 commodity=commodity,
                 price_observations=[observation],
                 average_price=price,
@@ -253,13 +253,13 @@ class ARIAPersonalIntelligenceService:
         Returns None if player has insufficient data
         """
         # Check if player has visited this port
-        port = await db.get(Station, station_id)
+        station = await db.get(Station, station_id)
         if not port:
             return None
         
-        exploration = await self._get_sector_exploration(player_id, port.sector_id, db)
+        exploration = await self._get_sector_exploration(player_id, station.sector_id, db)
         if not exploration:
-            logger.info(f"Player {player_id} has never visited sector {port.sector_id}")
+            logger.info(f"Player {player_id} has never visited sector {station.sector_id}")
             return None
         
         # Get player's market intelligence for this commodity/port

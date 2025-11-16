@@ -486,12 +486,12 @@ class EnhancedWebSocketService:
                 else:
                     return {"success": False, "error": "Station ID required or ship must be docked"}
             
-            port = await db.get(Station, station_id)
+            station = await db.get(Station, station_id)
             if not port:
                 return {"success": False, "error": "Station not found"}
             
             # Verify player is in the same sector as the port
-            if player.current_sector_id != port.sector_id:
+            if player.current_sector_id != station.sector_id:
                 return {"success": False, "error": "You must be in the same sector as the port"}
             
             # Get current ship

@@ -660,8 +660,8 @@ class EnhancedAIService:
         # Analyze investment opportunities
         for port in available_ports[:max_count]:
             # Calculate ROI based on trade volume and acquisition cost
-            acquisition_cost = port.acquisition_requirements.get("base_price", 500000)
-            monthly_revenue = port.trade_volume * 30 * 0.05  # 5% transaction fee
+            acquisition_cost = station.acquisition_requirements.get("base_price", 500000)
+            monthly_revenue = station.trade_volume * 30 * 0.05  # 5% transaction fee
             roi_months = acquisition_cost / monthly_revenue if monthly_revenue > 0 else 999
             
             if roi_months < 24:  # ROI less than 2 years
@@ -672,17 +672,17 @@ class EnhancedAIService:
                     id=str(uuid.uuid4()),
                     category=AISystemType.STATION,
                     recommendation_type="port_investment",
-                    title=f"Investment Opportunity: {port.name}",
-                    summary=f"Station {port.name} offers {roi_months:.1f} month ROI with current trade volume",
+                    title=f"Investment Opportunity: {station.name}",
+                    summary=f"Station {station.name} offers {roi_months:.1f} month ROI with current trade volume",
                     detailed_analysis={
-                        "station_id": str(port.id),
-                        "station_name": port.name,
-                        "sector_id": port.sector_id,
+                        "station_id": str(station.id),
+                        "station_name": station.name,
+                        "sector_id": station.sector_id,
                         "acquisition_cost": acquisition_cost,
                         "monthly_revenue_estimate": monthly_revenue,
                         "roi_months": roi_months,
-                        "trade_volume": port.trade_volume,
-                        "station_class": port.station_class.value,
+                        "trade_volume": station.trade_volume,
+                        "station_class": station.station_class.value,
                         "investment_rating": investment_rating
                     },
                     priority=priority,

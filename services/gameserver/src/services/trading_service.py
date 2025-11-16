@@ -18,7 +18,7 @@ class TradingService:
             return False, "You must be docked at a port to trade"
         
         # Check if player is in the same sector as the port
-        if player.current_sector_id != port.sector_id:
+        if player.current_sector_id != station.sector_id:
             return False, "You must be in the same sector as the port"
         
         return True, "OK"

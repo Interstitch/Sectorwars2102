@@ -719,28 +719,28 @@ class RouteOptimizer:
             for commodity in commodities:
                 # Find best buy price in sector A (ports that sell this commodity)
                 best_buy_price = float('inf')
-                best_buy_port = None
+                best_buy_station = None
                 for port in ports_a:
-                    commodity_data = port.commodities.get(commodity, {})
+                    commodity_data = station.commodities.get(commodity, {})
                     if commodity_data.get('sells', False) and commodity_data.get('quantity', 0) > 0:
                         current_price = commodity_data.get('current_price', commodity_data.get('base_price', 0))
                         if current_price < best_buy_price:
                             best_buy_price = current_price
-                            best_buy_port = port
+                            best_buy_station = port
                 
                 # Find best sell price in sector B (ports that buy this commodity)
                 best_sell_price = 0
-                best_sell_port = None
+                best_sell_station = None
                 for port in ports_b:
-                    commodity_data = port.commodities.get(commodity, {})
+                    commodity_data = station.commodities.get(commodity, {})
                     if commodity_data.get('buys', False):
                         current_price = commodity_data.get('current_price', commodity_data.get('base_price', 0))
                         if current_price > best_sell_price:
                             best_sell_price = current_price
-                            best_sell_port = port
+                            best_sell_station = port
                 
                 # Check if profitable
-                if best_buy_port and best_sell_port and best_sell_price > best_buy_price * (1 + min_profit_margin):
+                if best_buy_station and best_sell_station and best_sell_price > best_buy_price * (1 + min_profit_margin):
                     profit_per_unit = best_sell_price - best_buy_price
                     distance = await self._get_distance_between_sectors(db, sector_a, sector_b)
                     
@@ -749,7 +749,7 @@ class RouteOptimizer:
                     # Could add more risk calculations based on pirate activity, war zones, etc.
                     
                     # Calculate confidence based on market volatility
-                    avg_volatility = (best_buy_port.market_volatility + best_sell_port.market_volatility) / 2
+                    avg_volatility = (best_buy_station.market_volatility + best_sell_station.market_volatility) / 2
                     confidence = 1.0 - (avg_volatility / 100.0)  # Convert 0-100 to 0-1 scale
                     
                     opportunity = TradingOpportunity(
@@ -760,9 +760,9 @@ class RouteOptimizer:
                         sell_price=best_sell_price,
                         profit_per_unit=profit_per_unit,
                         max_quantity=min(
-                            best_buy_port.commodities[commodity].get('quantity', 0),
-                            best_sell_port.commodities[commodity].get('capacity', 0) - 
-                            best_sell_port.commodities[commodity].get('quantity', 0)
+                            best_buy_station.commodities[commodity].get('quantity', 0),
+                            best_sell_station.commodities[commodity].get('capacity', 0) - 
+                            best_sell_station.commodities[commodity].get('quantity', 0)
                         ),
                         distance=distance,
                         travel_time_hours=distance * self.time_per_distance,

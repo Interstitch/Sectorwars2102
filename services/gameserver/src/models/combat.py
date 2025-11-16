@@ -83,7 +83,7 @@ class CombatResult(enum.Enum):
 #     defender_ship = relationship("Ship", foreign_keys=[defender_ship_id])
 #     sector = relationship("Sector", foreign_keys=[sector_uuid])
 #     planet = relationship("Planet", foreign_keys=[planet_id])
-#     port = relationship("Station", foreign_keys=[station_id])
+#     station = relationship("Station", foreign_keys=[station_id])
 #     attacker_team = relationship("Team", foreign_keys=[attacker_team_id])
 #     defender_team = relationship("Team", foreign_keys=[defender_team_id])
 #     
@@ -125,7 +125,7 @@ class CombatResult(enum.Enum):
 #     owner = relationship("Player", back_populates="drones")
 #     ship = relationship("Ship", back_populates="drones")
 #     planet = relationship("Planet", back_populates="drones")
-#     port = relationship("Station", back_populates="drones")
+#     station = relationship("Station", back_populates="drones")
 #     
 #     def __repr__(self):
 #         location = "ship" if self.ship_id else "planet" if self.planet_id else "port" if self.station_id else f"sector {self.sector_id}"
