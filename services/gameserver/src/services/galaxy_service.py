@@ -495,7 +495,7 @@ class GalaxyGenerator:
                 name=port_name,
                 sector_id=sector.sector_id,
                 sector_uuid=sector.id,
-                port_class=port_class,
+                station_class=port_class,
                 type=port_type,
                 status=StationStatus.OPERATIONAL,
                 size=random.randint(3, 8),
@@ -657,7 +657,7 @@ class GalaxyGenerator:
                 name="Terra Station",  # Friendly name for starter station
                 sector_id=sector_1.sector_id,
                 sector_uuid=sector_1.id,
-                port_class=StationClass.CLASS_1,
+                station_class=StationClass.CLASS_1,
                 type=StationType.TRADING,
                 status=StationStatus.OPERATIONAL,
                 size=5,  # Medium size
