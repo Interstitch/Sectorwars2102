@@ -542,14 +542,14 @@ class GalaxyGenerator:
             
             # Update trading flags based on port class
             station.update_commodity_trading_flags()
-            
+
             # Update stock levels to match trading role
             station.update_commodity_stock_levels()
-            
-            self.db.add(port)
+
+            self.db.add(station)
             self.db.flush()
-            
-            # Create market for port
+
+            # Create market for station
             market = Market(
                 station_id=station.id,
                 specialization=self._get_specialization_for_port_type(port_type),
