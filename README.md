@@ -55,7 +55,7 @@ All services can be deployed using Docker with Docker Compose.
 ## Technical Stack
 
 - **Backend**: FastAPI (Python 3.11)
-- **Database**: PostgreSQL 17 via Neon
+- **Database**: PostgreSQL 15 in Docker
 - **ORM**: SQLAlchemy
 - **Authentication**: JWT-based
 - **Frontend**: React with TypeScript
@@ -78,7 +78,7 @@ The project is designed to work seamlessly across development environments:
 - Node.js 16+ and npm
 - Python 3.11+
 - Docker and Docker Compose
-- Access to a Neon PostgreSQL database
+- Docker environment with PostgreSQL 15
 
 ### Option 1: Using Docker Multi-Container (Local & GitHub Codespaces)
 

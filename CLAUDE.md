@@ -120,13 +120,13 @@ git push origin main                                  # Deploy changes
 
 **DOCKER ENVIRONMENT**: All services run in containers via docker-compose
 - Player Client: http://localhost:3000 (React/TypeScript frontend)
-- Admin UI: http://localhost:3001 (React/TypeScript admin interface)  
+- Admin UI: http://localhost:3001 (React/TypeScript admin interface)
 - Game Server: http://localhost:8080 (FastAPI/Python backend)
-- Database: PostgreSQL via Neon (external, persistent across restarts)
+- Database: PostgreSQL 15 (postgres:15-alpine container on port 5433, persistent via docker volume)
 
 **DUAL ENVIRONMENTS**:
 - **Primary**: GitHub Codespaces (Docker + internal networking + port forwarding)
-- **Secondary**: Replit (PM2 process manager, no Docker, shared Neon database)
+- **Secondary**: Replit (PM2 process manager, no Docker, shared PostgreSQL database)
 - **Unified Scripts**: `./dev-scripts/start-unified.sh` auto-detects environment
 
 **DEVELOPMENT COMMANDS**:
@@ -140,7 +140,7 @@ docker-compose logs <service>                    # Check service logs
 **FILE SYSTEM BEHAVIOR**:
 - All edits are persistent across container restarts
 - Code changes hot-reload within containers
-- Database persists via external Neon service
+- Database persists via Docker volume (postgres_data)
 
 ## 🧬 CORE PRINCIPLES (IMMUTABLE)
 

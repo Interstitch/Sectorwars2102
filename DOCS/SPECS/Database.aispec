@@ -1,12 +1,15 @@
 OVERVIEW:
-PostgreSQL database hosted on Neon provides persistent storage across all development environments. SQLAlchemy ORM handles all database operations with Alembic managing schema migrations. The database supports a multi-regional space trading game with complex player interactions, galaxy navigation, economy, combat, and AI systems.
+PostgreSQL 15 database running in Docker containers provides persistent storage for the game. SQLAlchemy ORM handles all database operations with Alembic managing schema migrations. The database supports a multi-regional space trading game with complex player interactions, galaxy navigation, economy, combat, and AI systems.
 
 FACTS:
-* Remote PostgreSQL 17 database ensures consistent data across environments
+* Local PostgreSQL 15 (postgres:15-alpine) running in Docker containers
+* Development database: sectorwars_dev on port 5433 (mapped from container port 5432)
+* Multi-regional architecture: separate databases for Central Nexus and regional servers
+* Volume persistence: postgres_data volume ensures data survives container restarts
 * SQLAlchemy ORM provides type-safe database operations
 * Alembic handles all schema migrations with rollback support
 * Connection pooling optimizes database performance
-* Separate test database used for automated testing
+* Health checks: pg_isready monitors database availability
 * Soft deletion pattern implemented across critical tables (deleted boolean flag)
 * UUID primary keys used for most tables (better distributed systems support)
 * JSONB columns extensively used for flexible, schema-less data
