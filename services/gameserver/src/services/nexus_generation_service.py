@@ -143,7 +143,7 @@ class NexusGenerationService:
             subscription_tier="nexus",
             status="active",
             governance_type="autocracy",
-            tax_rate=0.0,  # Nexus regions must have 0.0 tax rate per constraint
+            tax_rate=0.05,  # Minimum allowed by valid_tax_rate constraint
             economic_specialization="galactic_hub",
             starting_credits=100,  # Minimum allowed by valid_starting_credits constraint
             starting_ship="none",
