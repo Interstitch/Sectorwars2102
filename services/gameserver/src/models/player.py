@@ -34,7 +34,7 @@ class Player(Base):
     current_ship_id = Column(UUID(as_uuid=True), ForeignKey("ships.id", ondelete="SET NULL"), nullable=True)
     home_sector_id = Column(Integer, nullable=False, default=1)
     current_sector_id = Column(Integer, nullable=False, default=1)
-    is_ported = Column(Boolean, nullable=False, default=False)
+    is_docked = Column(Boolean, nullable=False, default=False)
     is_landed = Column(Boolean, nullable=False, default=False)
     team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True)
     attack_drones = Column(Integer, nullable=False, default=0)

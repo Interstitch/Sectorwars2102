@@ -24,7 +24,7 @@ class MarketTransaction(Base):
     
     # Transaction participants
     player_id = Column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="SET NULL"), nullable=True)
-    port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="SET NULL"), nullable=True)
+    station_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="SET NULL"), nullable=True)
     
     # Transaction details
     transaction_type = Column(SQLEnum(TransactionType), nullable=False)
@@ -34,9 +34,9 @@ class MarketTransaction(Base):
     total_value = Column(Integer, nullable=False)  # quantity * unit_price
     
     # Market conditions at time of transaction
-    port_buy_price = Column(Integer, nullable=True)  # port's buy price at time
-    port_sell_price = Column(Integer, nullable=True)  # port's sell price at time
-    port_quantity = Column(Integer, nullable=True)   # port's available quantity
+    station_buy_price = Column(Integer, nullable=True)  # station's buy price at time
+    station_sell_price = Column(Integer, nullable=True)  # station's sell price at time
+    station_quantity = Column(Integer, nullable=True)   # station's available quantity
     
     # Location and timing  
     sector_id = Column(Integer, nullable=True)  # Human-readable sector number
@@ -54,7 +54,7 @@ class MarketTransaction(Base):
     
     # Relationships
     player = relationship("Player", back_populates="enhanced_market_transactions")
-    port = relationship("Station")
+    station = relationship("Station")
     sector = relationship("Sector", foreign_keys=[sector_uuid])
     reviewer = relationship("User", foreign_keys=[reviewed_by])
 
@@ -63,7 +63,7 @@ class MarketTransaction(Base):
         Index('ix_market_transactions_timestamp', 'timestamp'),
         Index('ix_market_transactions_commodity', 'commodity'),
         Index('ix_market_transactions_player_id', 'player_id'),
-        Index('ix_market_transactions_port_id', 'port_id'),
+        Index('ix_market_transactions_station_id', 'station_id'),
     )
 
 
@@ -73,12 +73,12 @@ class MarketPrice(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Price tracking
-    port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="CASCADE"), nullable=False)
+    station_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="CASCADE"), nullable=False)
     commodity = Column(String(50), nullable=False)
     
     # Current prices
-    buy_price = Column(Integer, nullable=False)   # what port pays players
-    sell_price = Column(Integer, nullable=False)  # what port charges players
+    buy_price = Column(Integer, nullable=False)   # what station pays players
+    sell_price = Column(Integer, nullable=False)  # what station charges players
     quantity = Column(Integer, nullable=False, default=0)
     
     # Price history and volatility
@@ -103,11 +103,11 @@ class MarketPrice(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     # Relationships
-    port = relationship("Station")
+    station = relationship("Station")
 
     # Unique constraint and indexes
     __table_args__ = (
-        Index('ix_market_prices_unique', 'port_id', 'commodity', unique=True),
+        Index('ix_market_prices_unique', 'station_id', 'commodity', unique=True),
         Index('ix_market_prices_updated_at', 'updated_at'),
     )
 
@@ -118,7 +118,7 @@ class PriceHistory(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Price snapshot
-    port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="CASCADE"), nullable=False)
+    station_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="CASCADE"), nullable=False)
     commodity = Column(String(50), nullable=False)
     
     # Historical prices
@@ -141,12 +141,12 @@ class PriceHistory(Base):
     snapshot_type = Column(String(20), nullable=False, default="daily")  # hourly, daily, weekly
     
     # Relationships
-    port = relationship("Station")
+    station = relationship("Station")
 
     # Indexes for analytics queries
     __table_args__ = (
         Index('ix_price_history_date_commodity', 'snapshot_date', 'commodity'),
-        Index('ix_price_history_port_date', 'port_id', 'snapshot_date'),
+        Index('ix_price_history_port_date', 'station_id', 'snapshot_date'),
     )
 
 
@@ -183,7 +183,7 @@ class EconomicMetrics(Base):
     
     # Regional economic data
     most_active_sector = Column(Integer, nullable=True)
-    most_valuable_port = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="SET NULL"), nullable=True)
+    most_valuable_station = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="SET NULL"), nullable=True)
     economic_disparity_index = Column(Float, nullable=False, default=0.0)  # wealth inequality
     
     # Player economics
@@ -196,7 +196,7 @@ class EconomicMetrics(Base):
     calculated_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     # Relationships
-    most_valuable_port_ref = relationship("Station", foreign_keys=[most_valuable_port])
+    most_valuable_station_ref = relationship("Station", foreign_keys=[most_valuable_station])
 
     # Indexes
     __table_args__ = (
@@ -211,7 +211,7 @@ class PriceAlert(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Alert configuration
-    port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="CASCADE"), nullable=False)
+    station_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="CASCADE"), nullable=False)
     commodity = Column(String(50), nullable=False)
     
     # Alert conditions
@@ -236,7 +236,7 @@ class PriceAlert(Base):
     resolve_threshold = Column(Float, nullable=True)
     
     # Relationships
-    port = relationship("Station")
+    station = relationship("Station")
     acknowledger = relationship("User", foreign_keys=[acknowledged_by])
 
     # Indexes
