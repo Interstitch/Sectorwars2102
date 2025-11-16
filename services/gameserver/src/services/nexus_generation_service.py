@@ -145,7 +145,7 @@ class NexusGenerationService:
             governance_type="autocracy",
             tax_rate=0.0,  # Nexus regions must have 0.0 tax rate per constraint
             economic_specialization="galactic_hub",
-            starting_credits=0,  # Nexus regions must have 0 starting credits per constraint
+            starting_credits=100,  # Minimum allowed by valid_starting_credits constraint
             starting_ship="none",
             total_sectors=self.total_sectors,
             language_pack={
