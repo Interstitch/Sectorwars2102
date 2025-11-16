@@ -78,7 +78,7 @@ const StationCard: React.FC<StationCardProps> = ({ port, onDock, isDocked }) => 
       className={`port-card ${!isDocked && port.status.toLowerCase() === 'active' ? 'clickable' : ''}`}
       onClick={handleClick}
     >
-      {/* Port Header */}
+      {/* Station Header */}
       <div className="port-card-header">
         <div className="port-icon">🏢</div>
         <div className="port-info">
@@ -93,7 +93,7 @@ const StationCard: React.FC<StationCardProps> = ({ port, onDock, isDocked }) => 
         </div>
       </div>
 
-      {/* Port Body */}
+      {/* Station Body */}
       <div className="port-card-body">
         {/* Faction Affiliation */}
         {port.faction_affiliation && (

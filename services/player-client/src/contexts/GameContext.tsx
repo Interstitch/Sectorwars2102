@@ -130,7 +130,7 @@ interface GameContextType {
   moveToSector: (sectorId: number) => Promise<any>;
   getAvailableMoves: () => Promise<void>;
   
-  // Port interactions
+  // Station interactions
   dockAtStation: (stationId: string) => Promise<any>;
   marketInfo: MarketInfo | null;
   getMarketInfo: (stationId: string) => Promise<void>;
@@ -667,7 +667,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     moveToSector,
     getAvailableMoves,
     
-    // Port interactions
+    // Station interactions
     dockAtStation,
     marketInfo,
     getMarketInfo,

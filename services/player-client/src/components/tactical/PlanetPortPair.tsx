@@ -17,7 +17,7 @@ interface Planet {
 interface Station {
   id: string;
   name: string;
-  port_class?: number;  // Port class 0-11 (from specification)
+  port_class?: number;  // Station class 0-11 (from specification)
   type: string;
   status: string;
   owner_id?: string | null;
@@ -61,7 +61,7 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
     'jungle': '🌴'
   };
 
-  // Port class names (from specification)
+  // Station class names (from specification)
   const portClassNames: { [key: number]: string } = {
     0: 'Sol System',
     1: 'Mining Operation',
@@ -136,7 +136,7 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
       {/* Orbital Connector */}
       {port && <div className="orbital-connector">→</div>}
 
-      {/* Port Section - Clickable if exists */}
+      {/* Station Section - Clickable if exists */}
       {port && (
         <div
           className={`port-section ${!isDocked && port.status.toLowerCase() === 'operational' ? 'clickable' : 'inactive'}`}

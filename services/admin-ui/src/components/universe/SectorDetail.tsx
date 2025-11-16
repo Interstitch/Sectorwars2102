@@ -34,7 +34,7 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
       try {
         const portResponse = await api.get(`/api/v1/admin/sectors/${sector.sector_id}/port`);
         setPortData(portResponse.data);
-        console.log('Port data loaded:', portResponse.data);
+        console.log('Station data loaded:', portResponse.data);
       } catch (portError) {
         console.log('No port found or error loading port data:', portError);
         setPortData(null);
@@ -336,19 +336,19 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
             {/* Always show port section - either with data or empty state */}
             {sector.has_port && portData ? (
               <div className="feature-card port-card" onClick={() => onPortClick(portData)}>
-                <h3>🏪 Port: {portData.name}</h3>
+                <h3>🏪 Station: {portData.name}</h3>
                 <div className="feature-info">
                   <p>Class {portData.port_class || portData.class || 'Unknown'} Trading Post</p>
                   <p>Type: {portData.type || 'Unknown'}</p>
                   <p>Tax Rate: {portData.tax_rate || 0}%</p>
                   <p>Defense Level: {portData.defense_level || portData.defense_weapons || 0}</p>
                   <p>Status: {portData.status || 'Unknown'}</p>
-                  <button className="view-details">View Port Details →</button>
+                  <button className="view-details">View Station Details →</button>
                 </div>
               </div>
             ) : (
               <div className="feature-card empty-card port-creation">
-                <h3>🏪 No Port in Sector</h3>
+                <h3>🏪 No Station in Sector</h3>
                 <div className="feature-info">
                   <p>This sector has no trading port.</p>
                   <button 
@@ -358,7 +358,7 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
                       handleCreatePort();
                     }}
                   >
-                    + Create Port
+                    + Create Station
                   </button>
                 </div>
               </div>
@@ -422,11 +422,11 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
           </div>
         )}
 
-        {/* Create Port Modal */}
+        {/* Create Station Modal */}
       {showCreatePortModal && (
         <div className="modal-overlay" onClick={() => setShowCreatePortModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>Create New Port</h3>
+            <h3>Create New Station</h3>
             <form onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.target as HTMLFormElement);
@@ -442,14 +442,14 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
               submitCreatePort(portData);
             }}>
               <div className="form-group">
-                <label>Port Name:</label>
+                <label>Station Name:</label>
                 <input type="text" name="name" required placeholder="Enter port name" />
               </div>
               <div className="form-group">
-                <label>Port Class:</label>
+                <label>Station Class:</label>
                 <select name="port_class" required>
                   <option value="1">Class 1 - Basic Trading Post</option>
-                  <option value="2">Class 2 - Standard Port</option>
+                  <option value="2">Class 2 - Standard Station</option>
                   <option value="3">Class 3 - Major Trading Hub</option>
                   <option value="4">Class 4 - Commercial Center</option>
                   <option value="5">Class 5 - Mega Port</option>
@@ -479,7 +479,7 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
               </div>
               <div className="form-actions">
                 <button type="button" onClick={() => setShowCreatePortModal(false)}>Cancel</button>
-                <button type="submit" disabled={isUpdating}>Create Port</button>
+                <button type="submit" disabled={isUpdating}>Create Station</button>
               </div>
             </form>
           </div>

@@ -199,7 +199,7 @@ const TradingInterface: React.FC = () => {
         </div>
         <div className="not-docked-message">
           <div className="message-icon">🚀</div>
-          <h3>Dock at a Port to Trade</h3>
+          <h3>Dock at a Station to Trade</h3>
           <p>You must be docked at a port to access trading facilities.</p>
           {portsInSector.length > 0 && (
             <div className="available-ports">
@@ -238,9 +238,9 @@ const TradingInterface: React.FC = () => {
       )}
 
       <div className="trading-content">
-        {/* Port Selection */}
+        {/* Station Selection */}
         <div className="port-selection">
-          <label htmlFor="port-select">Select Port:</label>
+          <label htmlFor="port-select">Select Station:</label>
           <select 
             id="port-select"
             value={selectedPort} 

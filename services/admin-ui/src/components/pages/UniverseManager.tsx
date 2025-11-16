@@ -360,7 +360,7 @@ const UniverseManager: React.FC = () => {
             </Link>
             <Link to="/universe/stations" className="stat-card clickable-stat-card">
               <div className="stat-icon">🏪</div>
-              <h3>Ports</h3>
+              <h3>Stations</h3>
               <div className="stat-value">{galaxyState.statistics.station_count}</div>
               <div className="stat-detail">
                 {Math.round(galaxyState.statistics.station_count / galaxyState.statistics.total_sectors * 100)}% of sectors

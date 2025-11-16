@@ -340,7 +340,7 @@ function drawPortsOrbiting(
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Port structure - smaller hexagonal space station
+    // Station structure - smaller hexagonal space station
     ctx.strokeStyle = '#00d9ff';
     ctx.fillStyle = 'rgba(0, 217, 255, 0.3)';
     ctx.lineWidth = 1.5;

@@ -87,7 +87,7 @@ export const CombatIntegrationExample: React.FC = () => {
           className="cockpit-btn danger"
           onClick={() => inititateCombat('port')}
         >
-          Raid Port
+          Raid Station
         </button>
       </div>
       

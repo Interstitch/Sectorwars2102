@@ -119,8 +119,8 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack, onUpdate }) => {
   const getPortClassInfo = (portClass: number) => {
     const classInfo: { [key: number]: { name: string; description: string; color: string } } = {
       1: { name: 'Small Outpost', description: 'Basic trading post with minimal services', color: '#888' },
-      2: { name: 'Standard Port', description: 'Common trading hub with standard services', color: '#668' },
-      3: { name: 'Major Port', description: 'Large trading center with full services', color: '#486' },
+      2: { name: 'Standard Station', description: 'Common trading hub with standard services', color: '#668' },
+      3: { name: 'Major Station', description: 'Large trading center with full services', color: '#486' },
       4: { name: 'Regional Hub', description: 'Advanced facility with premium services', color: '#468' },
       5: { name: 'Federation HQ', description: 'Elite trading center with all services', color: '#846' }
     };
@@ -143,7 +143,7 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack, onUpdate }) => {
 
       <div className="detail-content">
         <div className="port-overview">
-          <h3>Port Overview</h3>
+          <h3>Station Overview</h3>
           <div className="info-grid">
             <div className="info-item">
               <span className="label">Name:</span>
@@ -152,7 +152,7 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack, onUpdate }) => {
               </span>
             </div>
             <div className="info-item">
-              <span className="label">Port Class:</span>
+              <span className="label">Station Class:</span>
               <span className="value">
                 <EditableField 
                   field="port_class" 
@@ -252,11 +252,11 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack, onUpdate }) => {
         </div>
 
         <div className="services-section">
-          <h3>Port Services & Equipment</h3>
+          <h3>Station Services Port Services & Equipment Equipment</h3>
           <div className="services-grid">
             <div className="service-item">
               <span className="service-icon">🛡️</span>
-              <span className="service-name">Port Shields</span>
+              <span className="service-name">Station Shields</span>
               <span className="service-status">
                 <EditableField 
                   field="port_shields" 
@@ -313,7 +313,7 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack, onUpdate }) => {
         </div>
 
         <div className="port-administration">
-          <h3>Port Administration</h3>
+          <h3>Station Administration</h3>
           <div className="admin-actions">
             <div className="action-group">
               <h4>Economic Controls</h4>
@@ -363,19 +363,19 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack, onUpdate }) => {
                   if (newShields) handleEdit('port_shields', parseInt(newShields));
                 }}
               >
-                🛡️ Adjust Port Shields
+                🛡️ Adjust Station Shields
               </button>
             </div>
           </div>
         </div>
         
         <div className="trading-tips">
-          <h3>Port Information</h3>
+          <h3>Station Information</h3>
           <ul>
             <li>Class {port.port_class} ports typically trade in {getPortTradingPattern(port.port_class)}</li>
             <li>Tax rate affects all transactions: {port.tax_rate}% current rate</li>
             <li>Defense drones: {port.defense_fighters} protecting the port</li>
-            <li>Port shields: {port.port_shields || 0} / 1000 strength</li>
+            <li>Station shields: {port.port_shields || 0} / 1000 strength</li>
             <li>Click any value above to edit it directly</li>
           </ul>
         </div>

@@ -25,12 +25,12 @@ const mockPlayerData = {
     { type: 'Tech', amount: 42, unit: 'crates' }
   ],
   notifications: [
-    { id: 1, message: 'Trade offer from Port Nebulus', type: 'trade', time: '2 hours ago' },
+    { id: 1, message: 'Trade offer from Station Nebulus', type: 'trade', time: '2 hours ago' },
     { id: 2, message: 'New warp tunnel discovered near sector Beta-7', type: 'discovery', time: '1 day ago' },
     { id: 3, message: 'Ship maintenance required', type: 'warning', time: '3 days ago' }
   ],
   recentActivities: [
-    { id: 1, action: 'Purchased 50 tons of Food', location: 'Port Nebulus', time: '3 hours ago' },
+    { id: 1, action: 'Purchased 50 tons of Food', location: 'Station Nebulus', time: '3 hours ago' },
     { id: 2, action: 'Sold 30 units of Ore', location: 'Federation Trading Hub', time: '5 hours ago' },
     { id: 3, action: 'Discovered new sector', location: 'Gamma Quadrant', time: '2 days ago' },
     { id: 4, action: 'Repaired ship damage', location: 'Omega Shipyards', time: '4 days ago' }
