@@ -14,12 +14,12 @@ if TYPE_CHECKING:
     from src.models.resource import Market
 
 
-# Association table for player-port relationship
+# Association table for player-station relationship
 player_stations = Table(
     "player_stations",
     Base.metadata,
     Column("player_id", UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), primary_key=True),
-    Column("port_id", UUID(as_uuid=True), ForeignKey("ports.id", ondelete="CASCADE"), primary_key=True),
+    Column("station_id", UUID(as_uuid=True), ForeignKey("stations.id", ondelete="CASCADE"), primary_key=True),
     Column("acquired_at", DateTime(timezone=True), server_default=func.now(), nullable=False)
 )
 

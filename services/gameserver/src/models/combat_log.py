@@ -40,7 +40,7 @@ class CombatLog(Base):
     # Combat location
     sector_id = Column(Integer, nullable=True)  # Human-readable sector number (1, 2, 3, etc.)
     sector_uuid = Column(UUID(as_uuid=True), ForeignKey("sectors.id", ondelete="SET NULL"), nullable=True)
-    port_id = Column(UUID(as_uuid=True), ForeignKey("ports.id", ondelete="SET NULL"), nullable=True)
+    port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="SET NULL"), nullable=True)
     planet_id = Column(UUID(as_uuid=True), ForeignKey("planets.id", ondelete="SET NULL"), nullable=True)
     
     # Combat details

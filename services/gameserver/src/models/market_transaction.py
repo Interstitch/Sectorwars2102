@@ -24,7 +24,7 @@ class MarketTransaction(Base):
     
     # Transaction participants
     player_id = Column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="SET NULL"), nullable=True)
-    port_id = Column(UUID(as_uuid=True), ForeignKey("ports.id", ondelete="SET NULL"), nullable=True)
+    port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="SET NULL"), nullable=True)
     
     # Transaction details
     transaction_type = Column(SQLEnum(TransactionType), nullable=False)
@@ -73,7 +73,7 @@ class MarketPrice(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Price tracking
-    port_id = Column(UUID(as_uuid=True), ForeignKey("ports.id", ondelete="CASCADE"), nullable=False)
+    port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="CASCADE"), nullable=False)
     commodity = Column(String(50), nullable=False)
     
     # Current prices
@@ -118,7 +118,7 @@ class PriceHistory(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Price snapshot
-    port_id = Column(UUID(as_uuid=True), ForeignKey("ports.id", ondelete="CASCADE"), nullable=False)
+    port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="CASCADE"), nullable=False)
     commodity = Column(String(50), nullable=False)
     
     # Historical prices
@@ -183,7 +183,7 @@ class EconomicMetrics(Base):
     
     # Regional economic data
     most_active_sector = Column(Integer, nullable=True)
-    most_valuable_port = Column(UUID(as_uuid=True), ForeignKey("ports.id", ondelete="SET NULL"), nullable=True)
+    most_valuable_port = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="SET NULL"), nullable=True)
     economic_disparity_index = Column(Float, nullable=False, default=0.0)  # wealth inequality
     
     # Player economics
@@ -211,7 +211,7 @@ class PriceAlert(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Alert configuration
-    port_id = Column(UUID(as_uuid=True), ForeignKey("ports.id", ondelete="CASCADE"), nullable=False)
+    port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="CASCADE"), nullable=False)
     commodity = Column(String(50), nullable=False)
     
     # Alert conditions
