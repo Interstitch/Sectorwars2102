@@ -124,7 +124,7 @@ class Sector(Base):
     zone = relationship("Zone", back_populates="sectors")
     region = relationship("Region", back_populates="sectors")
     planets = relationship("Planet", back_populates="sector", cascade="all, delete-orphan")
-    ports = relationship("Station", back_populates="sector", cascade="all, delete-orphan")
+    stations = relationship("Station", back_populates="sector", cascade="all, delete-orphan")
     ships = relationship("Ship", primaryjoin="Sector.sector_id==Ship.sector_id", foreign_keys="Ship.sector_id", overlaps="sector")
     discovered_by = relationship("Player", back_populates="discovered_sectors")
     controlling_team = relationship("Team", back_populates="controlled_sectors")

@@ -28,10 +28,10 @@ class PlanetResponse(BaseModel):
     max_population: int
     habitability_score: float
 
-class PortResponse(BaseModel):
+class StationResponse(BaseModel):
     id: str
     name: str
-    port_class: int | None = None  # Station class 0-11 (trading classification)
+    station_class: int | None = None  # Station class 0-11 (trading classification)
     type: str
     status: str
     sector_id: int
@@ -42,8 +42,8 @@ class PortResponse(BaseModel):
 class SectorPlanetsResponse(BaseModel):
     planets: List[PlanetResponse]
 
-class SectorPortsResponse(BaseModel):
-    ports: List[PortResponse]
+class SectorStationsResponse(BaseModel):
+    stations: List[StationResponse]
 
 @router.get("/{sector_id}/planets", response_model=SectorPlanetsResponse)
 async def get_sector_planets(
@@ -90,13 +90,13 @@ async def get_sector_planets(
     
     return SectorPlanetsResponse(planets=planet_responses)
 
-@router.get("/{sector_id}/ports", response_model=SectorPortsResponse)
-async def get_sector_ports(
+@router.get("/{sector_id}/stations", response_model=SectorStationsResponse)
+async def get_sector_stations(
     sector_id: int,
     player: Player = Depends(get_current_player),
     db: Session = Depends(get_db)
 ):
-    """Get all ports in a specific sector"""
+    """Get all stations in a specific sector"""
     # Get player's current region (or None for regionless sectors)
     player_region_id = player.current_region_id
 
@@ -115,21 +115,21 @@ async def get_sector_ports(
             detail=f"Sector {sector_id} not found in your region"
         )
 
-    # Get all ports in this specific sector (by UUID)
-    ports = db.query(Station).filter(Station.sector_uuid == sector.id).all()
-    
-    port_responses = []
-    for port in ports:
-        port_responses.append(PortResponse(
-            id=str(port.id),
-            name=port.name,
-            port_class=port.port_class.value if hasattr(port.port_class, 'value') else port.port_class,
-            type=port.type.value if hasattr(port.type, 'value') else str(port.type),
-            status=port.status.value if hasattr(port.status, 'value') else str(port.status),
-            sector_id=port.sector_id,
-            owner_id=str(port.owner_id) if port.owner_id else None,
-            services=port.services or {},
-            faction_affiliation=port.faction_affiliation
+    # Get all stations in this specific sector (by UUID)
+    stations = db.query(Station).filter(Station.sector_uuid == sector.id).all()
+
+    station_responses = []
+    for station in stations:
+        station_responses.append(StationResponse(
+            id=str(station.id),
+            name=station.name,
+            station_class=station.station_class.value if hasattr(station.station_class, 'value') else station.station_class,
+            type=station.type.value if hasattr(station.type, 'value') else str(station.type),
+            status=station.status.value if hasattr(station.status, 'value') else str(station.status),
+            sector_id=station.sector_id,
+            owner_id=str(station.owner_id) if station.owner_id else None,
+            services=station.services or {},
+            faction_affiliation=station.faction_affiliation
         ))
-    
-    return SectorPortsResponse(ports=port_responses)
+
+    return SectorStationsResponse(stations=station_responses)

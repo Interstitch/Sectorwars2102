@@ -174,7 +174,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     tunnels: []
   });
   const [planetsInSector, setPlanetsInSector] = useState<Planet[]>([]);
-  const [stationsInSector, setPortsInSector] = useState<Station[]>([]);
+  const [stationsInSector, setStationsInSector] = useState<Station[]>([]);
   
   // Market
   const [marketInfo, setMarketInfo] = useState<MarketInfo | null>(null);
@@ -416,8 +416,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
     }
   };
-  
-  // Explore current location (sector, planets, ports)
+
+  // Explore current location (sector, planets, stations)
   const exploreCurrentLocation = async () => {
     if (!user || !playerState) return;
     
@@ -446,14 +446,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setPlanetsInSector([]);
       }
       
-      // Get ports in sector
+      // Get stations in sector
       try {
-        const portsResponse = await api.get(`/api/v1/sectors/${playerState.current_sector_id}/stations`);
-        console.log('GameContext: Ports response:', portsResponse.data);
-        setPortsInSector(portsResponse.data.ports || []);
-      } catch (portsError) {
-        console.warn('GameContext: Failed to load ports:', portsError);
-        setPortsInSector([]);
+        const stationsResponse = await api.get(`/api/v1/sectors/${playerState.current_sector_id}/stations`);
+        console.log('GameContext: Stations response:', stationsResponse.data);
+        setStationsInSector(stationsResponse.data.stations || []);
+      } catch (stationsError) {
+        console.warn('GameContext: Failed to load stations:', stationsError);
+        setStationsInSector([]);
       }
     } catch (error) {
       console.error('GameContext: Error exploring location:', error);
