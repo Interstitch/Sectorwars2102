@@ -144,7 +144,7 @@ async def create_port(
     port = Station(
         name=request.name,
         sector_id=request.sector_id,
-        port_class=request.port_class,
+        port_class=request.station_class,
         owner_id=None,  # Admin-created ports are NPC owned
         tax_rate=request.tax_rate,
         defense_fighters=request.defense_drones,
@@ -165,7 +165,7 @@ async def create_port(
         "id": str(port.id),
         "name": port.name,
         "sector_id": port.sector_id,
-        "port_class": port.port_class,
+        "station_class": port.station_class,
         "created": True
     }
 
@@ -330,7 +330,7 @@ async def get_enhanced_sectors(
                     sector_data["port"] = {
                         "id": str(port.id),
                         "name": port.name,
-                        "class": port.port_class.value,
+                        "class": port.station_class.value,
                         "owner": "NPC" if not port.owner_id else str(port.owner_id)
                     }
             

@@ -676,13 +676,13 @@ class EnhancedAIService:
                     summary=f"Station {port.name} offers {roi_months:.1f} month ROI with current trade volume",
                     detailed_analysis={
                         "station_id": str(port.id),
-                        "port_name": port.name,
+                        "station_name": port.name,
                         "sector_id": port.sector_id,
                         "acquisition_cost": acquisition_cost,
                         "monthly_revenue_estimate": monthly_revenue,
                         "roi_months": roi_months,
                         "trade_volume": port.trade_volume,
-                        "port_class": port.port_class.value,
+                        "station_class": port.station_class.value,
                         "investment_rating": investment_rating
                     },
                     priority=priority,

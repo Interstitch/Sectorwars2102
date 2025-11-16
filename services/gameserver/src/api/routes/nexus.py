@@ -380,7 +380,7 @@ async def get_cluster_details(
                 {
                     "sector_id": p.sector_id,
                     "name": p.name,
-                    "port_class": p.port_class.value if hasattr(p.port_class, 'value') else str(p.port_class),
+                    "station_class": p.station_class.value if hasattr(p.station_class, 'value') else str(p.station_class),
                     "type": p.type.value if hasattr(p.type, 'value') else str(p.type),
                     "docking_fee": p.docking_fee
                 }

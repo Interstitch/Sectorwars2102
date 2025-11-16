@@ -325,7 +325,7 @@ class PlayerCombatService:
             "class_9": 450
         }
         
-        return port_defenses.get(port.port_class, 100)
+        return port_defenses.get(port.station_class, 100)
         
     def _simulate_combat_round(self, combat_log: CombatLog):
         """Simulate one round of combat."""
@@ -516,7 +516,7 @@ class PlayerCombatService:
                     "special": 15000
                 }
                 
-                loot_credits = loot_table.get(port.port_class, 1000)
+                loot_credits = loot_table.get(port.station_class, 1000)
                 attacker = self.db.query(Player).filter(Player.id == combat_log.attacker_id).first()
                 if attacker:
                     attacker.credits += loot_credits

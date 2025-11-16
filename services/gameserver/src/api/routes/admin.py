@@ -1249,7 +1249,7 @@ async def get_sector_port(
             "id": str(port.id),
             "name": port.name,
             "sector_id": port.sector_id,
-            "port_class": port.port_class.value if port.port_class else None,
+            "station_class": port.station_class.value if port.station_class else None,
             "type": port.type.value if port.type else None,
             "status": port.status.value if port.status else None,
             "size": port.size,

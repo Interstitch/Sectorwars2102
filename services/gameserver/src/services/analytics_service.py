@@ -330,10 +330,10 @@ class AnalyticsService:
             # Query resource distribution from ports
             # This is a simplified version - would need actual resource data structure
             resource_counts = {
-                'Food': self.db.query(Station).filter(Station.port_class.like('%food%')).count(),
-                'Tech': self.db.query(Station).filter(Station.port_class.like('%tech%')).count(), 
-                'Ore': self.db.query(Station).filter(Station.port_class.like('%ore%')).count(),
-                'Fuel': self.db.query(Station).filter(Station.port_class.like('%fuel%')).count()
+                'Food': self.db.query(Station).filter(Station.station_class.like('%food%')).count(),
+                'Tech': self.db.query(Station).filter(Station.station_class.like('%tech%')).count(), 
+                'Ore': self.db.query(Station).filter(Station.station_class.like('%ore%')).count(),
+                'Fuel': self.db.query(Station).filter(Station.station_class.like('%fuel%')).count()
             }
             
             # Calculate percentages

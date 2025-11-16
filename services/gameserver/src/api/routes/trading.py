@@ -409,7 +409,7 @@ async def get_trading_history(
             "total_value": tx.total_value,
             "profit_margin": tx.profit_margin,
             "timestamp": tx.timestamp.isoformat(),
-            "port_name": port.name if port else "Unknown Station"
+            "station_name": port.name if port else "Unknown Station"
         })
     
     return {

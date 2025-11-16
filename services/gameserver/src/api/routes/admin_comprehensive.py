@@ -909,7 +909,7 @@ async def get_ports_comprehensive(
 
         # Apply filters
         if filter_class:
-            query = query.filter(Station.port_class == filter_class)
+            query = query.filter(Station.station_class == filter_class)
         if filter_type:
             query = query.filter(Station.type == filter_type)
         if owner_id:
@@ -972,7 +972,7 @@ async def get_ports_comprehensive(
                 name=port.name,
                 sector_id=str(port.sector_id),
                 sector_name=sector_name,
-                port_class=port.port_class.name,
+                port_class=port.station_class.name,
                 trade_volume=trade_volume,
                 max_capacity=max_capacity,
                 security_level=security_level,
@@ -1471,8 +1471,8 @@ async def update_all_port_stock_levels(
                 updated_ports.append({
                     "station_id": str(port.id),
                     "station_name": port.name,
-                    "port_class": port.port_class.value,
-                    "port_type": port.type.value,
+                    "station_class": port.station_class.value,
+                    "station_type": port.type.value,
                     "sector_id": port.sector_id,
                     "changes": changes
                 })
@@ -1941,7 +1941,7 @@ async def create_port_in_sector(
         from src.models.station import Station, PortClass, PortType, StationStatus
         
         try:
-            port_class = PortClass(station_data.port_class)
+            port_class = PortClass(station_data.station_class)
             port_type = PortType(station_data.type)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=f"Invalid port class or type: {str(e)}")
@@ -2099,7 +2099,7 @@ async def get_sector_port(
             "port": {
                 "id": str(port.id),
                 "name": port.name,
-                "port_class": port.port_class.value,
+                "station_class": port.station_class.value,
                 "type": port.type.value,
                 "status": port.status.value,
                 "size": port.size,
@@ -2493,12 +2493,12 @@ async def update_port(
         update_data = station_data.dict(exclude_unset=True)
         
         for field, value in update_data.items():
-            if field == "port_class" and value:
+            if field == "station_class" and value:
                 # Convert string to enum
                 from src.models.station import PortClass
                 try:
                     port_class_enum = getattr(PortClass, value)
-                    setattr(port, "port_class", port_class_enum)
+                    setattr(port, "station_class", port_class_enum)
                 except AttributeError:
                     raise HTTPException(status_code=400, detail=f"Invalid port class: {value}")
             elif field == "owner_name":
@@ -2601,7 +2601,7 @@ async def create_port(
         
         # Parse port class
         try:
-            port_class_str = station_data.get("port_class", "CLASS_1")
+            port_class_str = station_data.get("station_class", "CLASS_1")
             port_class = getattr(PortClass, port_class_str)
         except AttributeError:
             raise HTTPException(status_code=400, detail=f"Invalid port class: {port_class_str}")

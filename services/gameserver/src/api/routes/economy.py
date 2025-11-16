@@ -236,7 +236,7 @@ async def get_price_history(
         price_data.append({
             "timestamp": record.timestamp.isoformat(),
             "station_id": str(record.station_id),
-            "port_name": port.name if port else "Unknown",
+            "station_name": port.name if port else "Unknown",
             "buy_price": record.buy_price,
             "sell_price": record.sell_price,
             "quantity": record.quantity_available,
@@ -344,7 +344,7 @@ async def get_recent_transactions(
         transaction_data.append({
             "id": str(tx.id),
             "player_name": player.user.username if player and player.user else "Unknown",
-            "port_name": port.name if port else "Unknown",
+            "station_name": port.name if port else "Unknown",
             "transaction_type": tx.transaction_type.value,
             "commodity": tx.commodity,
             "quantity": tx.quantity,

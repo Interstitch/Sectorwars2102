@@ -166,7 +166,7 @@ class EconomyAnalyticsService:
                         "alert_type": "price_spike" if price_change > 0 else "price_crash",
                         "severity": self._calculate_alert_severity(price_change),
                         "station_id": str(anomaly.station_id),
-                        "port_name": anomaly.port_name,
+                        "station_name": anomaly.port_name,
                         "sector_id": str(anomaly.sector_id),
                         "resource_type": anomaly.resource_type,
                         "previous_price": float(anomaly.previous_price),
@@ -315,7 +315,7 @@ class EconomyAnalyticsService:
         
         return [{
             "station_id": str(result.id),
-            "port_name": result.name,
+            "station_name": result.name,
             "sector_id": str(result.sector_id),
             "transaction_count": result.transaction_count,
             "total_volume": int(result.total_volume),
@@ -605,7 +605,7 @@ class EconomyAnalyticsService:
                 "player_id": str(trade.player_id),
                 "player_name": player.nickname if player else "Unknown",
                 "station_id": str(trade.station_id),
-                "port_name": port.name if port else "Unknown",
+                "station_name": port.name if port else "Unknown",
                 "resource_type": trade.resource_type,
                 "trade_count": trade.trade_count,
                 "description": f"Potential wash trading detected: {trade.trade_count} trades in 1 hour",
@@ -659,7 +659,7 @@ class EconomyAnalyticsService:
         
         return {
             "station_id": str(station_id),
-            "port_name": port.name,
+            "station_name": port.name,
             "resources_injected": resources
         }
     
