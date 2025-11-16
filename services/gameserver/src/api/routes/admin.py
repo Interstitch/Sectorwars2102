@@ -992,14 +992,61 @@ async def generate_galaxy(
         # Generate galaxy metadata (regions/clusters/sectors created separately via region generation)
         galaxy = generator.generate_galaxy(request.name, config)
 
+        # Auto-generate Terran Space starter region (300 sectors)
+        terran_space_created = False
+        terran_space_sectors = 0
+        try:
+            logger.info("Auto-generating Terran Space starter region (300 sectors)...")
+            from src.models.region import Region, RegionType
+
+            # Create Terran Space region record
+            terran_space = Region(
+                name="terran-space",
+                display_name="Terran Space",
+                region_type=RegionType.PLAYER_OWNED,  # Starter region for players
+                owner_id=None,  # Platform-owned
+                subscription_tier="free",
+                status="active",
+                governance_type="democracy",
+                tax_rate=0.05,
+                economic_specialization="terran_colony",
+                starting_credits=10000,
+                starting_ship="merchant",
+                total_sectors=300,
+                language_pack={
+                    "currency": "credits",
+                    "greeting": "Welcome to Terran Space - Humanity's First Frontier",
+                    "government": "Terran Federation"
+                },
+                aesthetic_theme={
+                    "style": "militaristic",
+                    "atmosphere": "frontier",
+                    "primary_color": "#3b82f6",
+                    "secondary_color": "#1e40af"
+                }
+            )
+            db.add(terran_space)
+            db.flush()
+
+            # Generate content for Terran Space (clusters, sectors, stations, planets)
+            generator.generate_region_content(terran_space, cluster_count=6, config=config)
+            terran_space_created = True
+            terran_space_sectors = 300
+            logger.info(f"Terran Space generation completed: 300 sectors created")
+        except Exception as terran_error:
+            logger.error(f"Terran Space auto-generation failed (non-fatal): {terran_error}")
+            logger.info("Galaxy created, but Terran Space generation failed")
+
         # Auto-generate Central Nexus after galaxy creation
         # This creates the galactic hub that connects starting areas to player-owned regions
         central_nexus_created = False
+        central_nexus_sectors = 0
         try:
             logger.info("Auto-generating Central Nexus as part of universe creation...")
             nexus_result = await nexus_generation_service.generate_central_nexus(async_db)
             central_nexus_created = nexus_result.get("status") in ["completed", "exists"]
             if central_nexus_created:
+                central_nexus_sectors = nexus_result.get("stats", {}).get("total_sectors", 5000)
                 logger.info(f"Central Nexus generation: {nexus_result.get('status')}")
         except Exception as nexus_error:
             # Don't fail galaxy generation if nexus fails - can be retried later
@@ -1013,8 +1060,13 @@ async def generate_galaxy(
             # zone_distribution field removed - zones concept eliminated
             "statistics": galaxy.statistics,
             "state": galaxy.state,
+            "terran_space_created": terran_space_created,
+            "terran_space_sectors": terran_space_sectors,
             "central_nexus_created": central_nexus_created,
-            "message": f"Galaxy '{galaxy.name}' created successfully" + (" with Central Nexus" if central_nexus_created else " (Central Nexus generation pending)")
+            "central_nexus_sectors": central_nexus_sectors,
+            "total_sectors_created": terran_space_sectors + central_nexus_sectors,
+            "message": f"Galaxy '{galaxy.name}' created successfully with {terran_space_sectors + central_nexus_sectors} sectors" +
+                      (f" (Terran Space: {terran_space_sectors}, Central Nexus: {central_nexus_sectors})" if (terran_space_created or central_nexus_created) else "")
         }
 
     except Exception as e:
