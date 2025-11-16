@@ -224,16 +224,28 @@ curl -X GET http://localhost:8080/api/v1/admin/stats \
 ### Galaxy Management
 
 ```bash
-# Generate new galaxy
+# Generate new galaxy (automatically creates Terran Space + Central Nexus)
 curl -X POST http://localhost:8080/api/v1/admin/galaxy/generate \
   -H "Authorization: Bearer {admin_token}" \
   -H "Content-Type: application/json" \
   -d '{
     "size": 5000,
     "density": "medium",
-    "generate_ports": true,
+    "generate_stations": true,
     "generate_planets": true
   }'
+
+# Response includes:
+# {
+#   "galaxy_id": "uuid",
+#   "name": "Sector Wars Galaxy",
+#   "terran_space_created": true,
+#   "terran_space_sectors": 300,
+#   "central_nexus_created": true,
+#   "central_nexus_sectors": 5000,
+#   "total_sectors_created": 5300,
+#   "message": "Galaxy 'Sector Wars Galaxy' created successfully with 5300 sectors"
+# }
 
 # Clear all galaxy data (DANGEROUS)
 curl -X DELETE http://localhost:8080/api/v1/admin/galaxy/clear \
