@@ -80,13 +80,36 @@ A distinct area of space with its own governance and zones. Three region types e
 - Terran Space Frontier: "Frontier Space" (sectors 201-300, policing=2, danger=8)
 
 ### Cluster
-**Navigation and organizational groups** of interconnected sectors. Clusters typically contain 8-15 sectors linked by warp tunnels, forming local navigation networks.
+**Navigation and organizational groups** of interconnected sectors. Clusters typically contain **10-25 sectors** linked by warp tunnels, forming local navigation networks.
 
 **Key Properties**:
 - **Belongs to Region**: Each cluster has a parent region
 - **Navigation Purpose**: Helps players organize sector exploration
 - **Orthogonal to Zones**: Cluster membership independent of zone assignment
 - **Warp Networks**: Sectors in same cluster often have direct warp connections
+- **Nebula Properties**: ~20% of clusters contain nebulae (see Nebula below)
+
+**Cluster Types**: Standard, Resource Rich, Population Center, Trade Hub, Military Zone, Frontier Outpost, Contested, Special Interest
+
+### Nebula
+**Cluster-level property** creating visually stunning environments with unique gameplay mechanics. Nebulae are NOT individual sectors - they are properties of clusters that affect multiple sectors within that cluster.
+
+**Key Characteristics**:
+- **Coverage**: 30-70% of cluster sectors (rarely 100%)
+- **Types**: 6 types (Crimson, Azure, Emerald, Violet, Amber, Obsidian)
+- **Density Gradient**: Core sectors (100% density) vs edge sectors (30-70% density)
+- **Quantum Field Strength**: 20-100 (determines quantum shard spawn rates)
+- **Gameplay Impact**: Sensor interference, navigation difficulty, quantum shard gathering, combat stealth
+
+**Nebula Types**:
+- **Crimson** (Red): Very high quantum activity, quantum shards
+- **Azure** (Blue): Stable quantum fields, photonic crystals
+- **Emerald** (Green): Organic resources, production bonuses
+- **Violet** (Purple): Exotic materials, rare spawns
+- **Amber** (Orange): Radiation hazards, radioactives
+- **Obsidian** (Dark): Stealth operations, sensor masking
+
+**See**: GALAXY_COMPONENTS.md for complete nebula documentation
 
 ### Sector
 The fundamental unit of space in the game. Each sector can contain:
@@ -99,16 +122,33 @@ The fundamental unit of space in the game. Each sector can contain:
 
 Sectors are identified by numeric IDs (Sector 1 = Earth/Sol Station).
 
+**Special Types**: NORMAL, NEBULA (inherits from cluster), ASTEROID_FIELD, BLACK_HOLE, RADIATION_ZONE, WARP_STORM
+
+**Dual Grouping**: Every sector has BOTH a zone_id (security) AND cluster_id (navigation) - these are orthogonal dimensions.
+
 ### Warp Tunnel
-A navigation link between two sectors. Players can travel through warp tunnels at the cost of 1 turn per jump (modified by ship speed). Tunnels form the galaxy's navigation network.
+Special pathways allowing **instantaneous travel between distant sectors**. Unlike standard warps (adjacent sectors), warp tunnels span across clusters, zones, or regions.
 
 **Types**:
-- **Standard Warp Tunnel**: Normal sector-to-sector connection
-- **Quantum Warp Tunnel**: Connects different regions to the Central Nexus
-- **Player-Created Tunnel**: Built using Quantum Crystals
+- **Natural Warp Tunnel**: Permanent, must be discovered through exploration
+- **Artificial Warp Tunnel**: Player-created using Quantum Crystals (5 crystals = 25 quantum shards)
+
+**Mechanics**:
+- **Turn Cost**: 1-3 turns based on distance
+- **Discovery**: Natural tunnels must be found before use
+- **Access Control**: Some tunnels have factional or player restrictions
+- **Disruption**: Warp storms can temporarily disable tunnels
+
+**Artificial Tunnel Requirements**:
+- Warp Jumper ship (sacrificed in construction)
+- 5 Quantum Crystals (assembled from 25 Quantum Shards)
+- 100,000-500,000 credits
+- 7-14 real-time days build time
+
+**See**: WARP_GATE_CONSTRUCTION.md for complete construction process
 
 ### Quantum Jump
-A special ability of the **Warp Jumper** ship that allows directed movement of 5-10 sectors in a targeted direction. Has a 24-hour cooldown. Different from using warp tunnels.
+A special ability of the **Warp Jumper** ship that allows directed movement of 5-10 sectors in a targeted direction. Has a 24-hour cooldown. Different from using warp tunnels - this is ship-based FTL, not infrastructure.
 
 ---
 
