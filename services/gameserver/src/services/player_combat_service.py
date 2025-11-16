@@ -102,7 +102,7 @@ class PlayerCombatService:
             # Create combat log for planetary assault
             combat_log = self._create_planet_combat(attacker, attacker_ship, planet)
             
-        elif target_type == "port":
+        elif target_type == "station":
             port = self.db.query(Station).filter(Station.id == target_id).first()
             if not port:
                 return {

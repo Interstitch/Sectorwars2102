@@ -681,7 +681,7 @@ class CombatService:
         elif log.combat_type == CombatType.SHIP_VS_PORT:
             port = self.db.query(Station).filter(Station.id == log.station_id).first()
             report["target"] = {
-                "type": "port",
+                "type": "station",
                 "id": str(log.station_id) if log.station_id else None,
                 "name": port.name if port else "Unknown",
                 "owner_id": str(log.defender_id) if log.defender_id else None,
@@ -749,7 +749,7 @@ class CombatService:
             elif log.combat_type == CombatType.SHIP_VS_PORT:
                 port = self.db.query(Station).filter(Station.id == log.station_id).first()
                 entry["target"] = {
-                    "type": "port",
+                    "type": "station",
                     "id": str(log.station_id) if log.station_id else None,
                     "name": port.name if port else "Unknown"
                 }

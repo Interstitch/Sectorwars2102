@@ -2085,7 +2085,7 @@ async def get_sector_port(
         port = db.query(Station).filter(Station.sector_uuid == sector.id).first()
         
         if not port:
-            return {"has_port": False, "port": None}
+            return {"has_station": False, "station": None}
         
         # Get owner information if port is owned
         owner_name = None
@@ -2096,7 +2096,7 @@ async def get_sector_port(
         
         return {
             "has_port": True,
-            "port": {
+            "station": {
                 "id": str(port.id),
                 "name": port.name,
                 "station_class": port.station_class.value,

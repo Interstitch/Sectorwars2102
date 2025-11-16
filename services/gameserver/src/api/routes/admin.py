@@ -1237,7 +1237,7 @@ async def get_sector_port(
     if not port:
         return {
             "has_port": False,
-            "port": None
+            "station": None
         }
 
     # Extract defense data from JSONB field
@@ -1245,7 +1245,7 @@ async def get_sector_port(
 
     return {
         "has_port": True,
-        "port": {
+        "station": {
             "id": str(port.id),
             "name": port.name,
             "sector_id": port.sector_id,

@@ -196,7 +196,7 @@ class AssistantStatusResponse(BaseModel):
                 "api_usage": {"quota": 1000, "used": 247, "remaining": 753},
                 "total_interactions": 1542,
                 "last_active": "2025-06-07T15:30:00Z",
-                "access_permissions": {"trading": True, "combat": False, "colony": False, "port": True}
+                "access_permissions": {"trading": True, "combat": False, "colony": False, "station": True}
             }
         }
 

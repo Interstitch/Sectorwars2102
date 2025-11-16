@@ -554,7 +554,7 @@ class ARIAPersonalIntelligenceService:
             cascade_plan["steps"].append({
                 "step": i + 1,
                 "sector": step["sector_id"],
-                "port": step["station_id"],
+                "station": step["station_id"],
                 "action": step["action"],
                 "commodity": step["commodity"],
                 "expected_price": step["expected_price"],

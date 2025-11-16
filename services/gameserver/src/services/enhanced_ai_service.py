@@ -852,7 +852,7 @@ class EnhancedAIService:
             "trading": ["trade", "buy", "sell", "price", "profit", "route", "commodity", "market"],
             "combat": ["battle", "fight", "attack", "defend", "fleet", "tactical", "formation", "war"],
             "colony": ["planet", "colony", "colonist", "terraform", "genesis", "population", "development"],
-            "port": ["port", "station", "buy port", "own", "investment", "acquire", "purchase"],
+            "station": ["station", "buy port", "own", "investment", "acquire", "purchase"],
             "strategic": ["strategy", "plan", "recommend", "advice", "next move", "best option", "should i"],
             "navigation": ["go to", "travel", "navigate", "route to", "path", "direction"],
             "help": ["help", "how to", "what is", "explain", "tutorial", "guide"]
@@ -926,7 +926,7 @@ class EnhancedAIService:
                 return await self._generate_combat_response(assistant, entities, context)
             elif primary_intent == "colony":
                 return await self._generate_colony_response(assistant, entities, context)
-            elif primary_intent == "port":
+            elif primary_intent == "station":
                 return await self._generate_station_response(assistant, entities, context)
             elif primary_intent == "strategic":
                 return await self._generate_strategic_response(assistant, entities, context)
@@ -1132,8 +1132,8 @@ What would you like help with today?"""
             "fleet_action": "combat",
             "planet_colonization": "colony",
             "terraforming": "colony",
-            "port_purchase": "port",
-            "port_management": "port"
+            "station_purchase": "station",
+            "station_management": "station"
         }
         
         return domain_mapping.get(action_type, "strategic")
@@ -1259,7 +1259,7 @@ async def create_enhanced_ai_assistant(db: AsyncSession, player_id: uuid.UUID,
             "trading": True,
             "combat": False,
             "colony": False,
-            "port": False
+            "station": False
         })
     )
     
