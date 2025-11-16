@@ -2,39 +2,43 @@
 
 ## Overview
 
-Players are the user entities within the Sector Wars 2102 galaxy. Each player manages ships, resources, and planetary colonies while navigating through different sectors and engaging in trade and other activities.
+Players are the in-game entities that represent users within the Sector Wars 2102 galaxy. Each player is linked to a User account and manages ships, resources, and planetary colonies while navigating through different sectors and engaging in trade and other activities.
+
+**Note**: Player entities are separate from User entities. User accounts (with username, email, password) are managed in the `users` table, while Player records contain game-specific data. Admin privileges are stored on the User model, not the Player model.
 
 ## Properties
 
 | Property | Type | Description | Constraints |
 |----------|------|-------------|-------------|
-| id | String | Unique identifier | Primary key, UUID |
-| username | String(80) | Player's unique username | Unique, required, no spaces |
-| email | String(120) | Player's email address | Unique, required, valid email format |
-| password_hash | String(256) | Hashed password | Required, never stored in plaintext |
+| id | UUID | Unique identifier | Primary key, auto-generated UUID |
+| user_id | UUID | Reference to user account | Foreign key to users table, unique, required |
+| nickname | String(50) | Optional in-game name | Nullable, different from username |
 | credits | Integer | Current player currency | Default: 10000, non-negative |
-| turns | Integer | Available movement/action turns | Default: 1000, max: 5000, resets daily |
-| reputation | Object | Reputation scores with factions | See Reputation section |
-| ships | Array | Player-owned ships | References to Ship entities |
-| current_ship_id | String | Currently active ship | Foreign key to ships table |
-| home_sector_id | Integer | Current home base sector | Foreign key to sectors table |
-| current_sector_id | Integer | Player's current location | Foreign key to sectors table |
+| turns | Integer | Available movement/action turns | Default: 1000, resets daily |
+| reputation | JSONB | Reputation scores with factions | See Reputation section, stored as JSON |
+| ships | Relationship | Player-owned ships | One-to-many relationship |
+| current_ship_id | UUID | Currently active ship | Foreign key to ships table, nullable |
+| home_sector_id | Integer | Current home base sector | Foreign key to sectors table, default: 1 |
+| current_sector_id | Integer | Player's current location | Foreign key to sectors table, default: 1 |
 | is_ported | Boolean | Whether docked at port | Default: false |
 | is_landed | Boolean | Whether landed on planet | Default: false |
-| planets_owned | Array | Owned planets | References to Planet entities |
-| ports_owned | Array | Owned ports | References to Port entities |
-| team_id | String | Team membership | Foreign key to teams table, nullable |
+| planets_owned | Relationship | Owned planets | Many-to-many relationship |
+| ports_owned | Relationship | Owned ports | Many-to-many relationship |
+| team_id | UUID | Team membership | Foreign key to teams table, nullable |
 | attack_drones | Integer | Offensive drones in inventory | Default: 0, non-negative |
 | defense_drones | Integer | Defensive drones in inventory | Default: 0, non-negative |
 | mines | Integer | Space mines in inventory | Default: 0, non-negative |
-| insurance | Object | Ship insurance details | See Insurance section |
-| last_login | DateTime | Timestamp of last login | UTC time |
-| created_at | DateTime | Account creation timestamp | UTC time, immutable |
-| turn_reset_at | DateTime | Timestamp of last turn reset | UTC time |
-| is_admin | Boolean | Administrator privileges flag | Default: false |
-| is_active | Boolean | Account active status | Default: true |
-| is_deleted | Boolean | Soft deletion flag | Default: false |
-| settings | JSON | Player preferences and settings | See Settings section |
+| genesis_devices | Integer | Genesis devices in inventory | Default: 0, non-negative |
+| insurance | JSONB | Ship insurance details | Nullable, see Insurance section |
+| last_game_login | DateTime | Timestamp of last game login | UTC timezone, nullable |
+| created_at | DateTime | Player creation timestamp | UTC timezone, auto-generated |
+| turn_reset_at | DateTime | Timestamp of last turn reset | UTC timezone, nullable |
+| is_active | Boolean | Player active status | Default: true (Note: Inverted from is_deleted) |
+| settings | JSONB | Player preferences and settings | Default: {}, see Settings section |
+| first_login | JSONB | First login experience data | Default: {"completed": false} |
+| home_region_id | UUID | Home region (multi-regional) | Foreign key to regions table, nullable |
+| current_region_id | UUID | Current region location | Foreign key to regions table, nullable |
+| is_galactic_citizen | Boolean | Galactic citizenship status | Default: false, enables inter-regional travel |
 
 ## Reputation System
 
@@ -259,33 +263,38 @@ export interface PlayerFirstLoginData {
 }
 
 export interface PlayerModel {
-  id: string;
-  username: string;
-  email: string;
-  password_hash: string;
+  id: string;                        // UUID
+  user_id: string;                   // Reference to User account (UUID)
+  nickname: string | null;           // Optional in-game name
   credits: number;
   turns: number;
-  reputation: PlayerFactionReputations;
-  ships: string[];
+  reputation: PlayerFactionReputations;  // Stored as JSONB
+  ships: string[];                   // Relationship, array of ship IDs
   current_ship_id: string | null;
   home_sector_id: number;
   current_sector_id: number;
   is_ported: boolean;
   is_landed: boolean;
-  planets_owned: string[];
-  ports_owned: string[];
+  planets_owned: string[];           // Relationship, array of planet IDs
+  ports_owned: string[];             // Relationship, array of port IDs
   team_id: string | null;
   attack_drones: number;
   defense_drones: number;
   mines: number;
+  genesis_devices: number;           // Genesis device inventory count
   insurance: PlayerInsurance | null;
-  first_login: PlayerFirstLoginData;  // First login experience data
-  last_login: Date;
+  first_login: PlayerFirstLoginData;
+  last_game_login: Date | null;      // Renamed from last_login
   created_at: Date;
-  turn_reset_at: Date;
-  is_admin: boolean;
-  is_active: boolean;
-  is_deleted: boolean;
+  turn_reset_at: Date | null;
+  is_active: boolean;                // Account active status (NOT is_deleted)
   settings: Record<string, any>;
+
+  // Multi-regional fields
+  home_region_id: string | null;     // UUID of home region
+  current_region_id: string | null;  // UUID of current region
+  is_galactic_citizen: boolean;      // Enables inter-regional travel
+
+  // Note: username, email, password_hash, and is_admin are on the User model, not Player
 }
 ```

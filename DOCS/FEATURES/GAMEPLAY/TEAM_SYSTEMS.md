@@ -8,10 +8,10 @@ Team Systems in Sector Wars 2102 allow players to form strategic alliances, crea
 
 ### Team Formation
 
-- **Team Size**: Teams consist of 4 players, providing an optimal balance between coordination and manageability
+- **Team Size**: Teams consist of 4 players by default, providing an optimal balance between coordination and manageability
 - **Creation Cost**: Establishing a new team requires 10,000 credits, representing a significant investment
-- **Team Numbers**: Teams are identified by numbers 1-9, making them easily recognizable in the game world
-- **Joining Process**: Players can join teams through invitation when in the same physical sector
+- **Team Identity**: Teams are identified by unique names and optional tags (2-5 character abbreviations), with customizable logos
+- **Joining Process**: Players can join teams through invitation, with configurable recruitment status (Open, Invite-Only, or Closed)
 - **Cooldown Period**: 24-hour waiting period between leaving one team and joining another
 
 ### Resource Sharing
@@ -47,6 +47,68 @@ Team Systems in Sector Wars 2102 allow players to form strategic alliances, crea
 - **Status Tracking**: Monitor team member activity and contributions to the group
 - **Strategic Planning**: Set objectives and coordinate movements across multiple sectors
 - **Team Dissolution**: Leaders can disband the team if necessary
+
+### Team Roles and Permissions
+
+Teams have a hierarchical role system that defines member capabilities:
+
+- **Leader**: Full control over all team functions including dissolution, treasury management, and leadership transfer
+- **Officer**: Can invite/kick members, manage missions and alliances, assign roles to lower-ranked members
+- **Member**: Standard team member with access to team resources based on permissions
+- **Recruit**: Probationary member with limited permissions until promoted
+
+**Granular Permissions** (configurable per member):
+- Can invite new members
+- Can kick members
+- Can manage treasury (deposit/withdraw)
+- Can manage missions
+- Can manage alliances and diplomatic relations
+- Custom permissions via flexible JSON configuration
+
+### Team Treasury
+
+Teams maintain a shared treasury that members can contribute to and withdraw from based on permissions:
+
+**Treasury Resources** (12 types):
+- **Credits**: Shared credit pool for team expenses
+- **Fuel**: Energy resources for ships
+- **Organics**: Food and biological materials
+- **Equipment**: Ship components and repair materials
+- **Technology**: Advanced tech and upgrades
+- **Luxury Items**: High-value trade goods
+- **Precious Metals**: Rare minerals and metals
+- **Raw Materials**: Basic construction materials
+- **Plasma**: Energy plasma for weapons
+- **Bio Samples**: Scientific specimens
+- **Dark Matter**: Exotic matter for advanced systems
+- **Quantum Crystals**: Rare quantum-state materials
+
+**Treasury Operations**:
+- Deposit resources from personal inventory
+- Withdraw resources (permission-based)
+- Transfer resources between team members
+- Transaction history tracking
+- Shared items (ships, genesis devices) available to all members
+
+### Team Territory
+
+Teams can claim and manage territory across the galaxy:
+
+- **Sector Claims**: Teams can stake claims on sectors for territorial control
+- **Home Sector**: Designated team headquarters providing strategic advantages
+- **Defensive Coordination**: Team-wide defensive posture in claimed territories
+- **Territory Statistics**: Track total planets owned by team members
+- **Strategic Value**: Claimed sectors provide economic and tactical benefits
+
+### Team Statistics
+
+Automatically calculated team performance metrics:
+
+- **Total Credits**: Combined wealth of all team members
+- **Total Planets**: Number of planets owned by team members
+- **Combat Rating**: Overall combat effectiveness based on victories and fleet strength
+- **Trade Rating**: Trading performance across team activities
+- **Activity Level**: Member engagement and contribution tracking
 
 ## Game Balance Considerations
 

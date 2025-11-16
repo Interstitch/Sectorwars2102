@@ -22,13 +22,13 @@ The player has just created their account and logged in for the first time. Inst
 ### Dialogue Sequence
 
 1. **Initial Confrontation**:
-   - The Guard asks: "Hold it right there! This area is restricted to registered pilots only. Which of these vessels belongs to you?" (Three ships are displayed: a sleek Scout Ship, a bulky Cargo Freighter, and a small Escape Pod)
+   - The Guard asks: "Hold it right there! This area is restricted to registered pilots only. Which of these vessels belongs to you?" (Three ships are displayed: a sleek Scout Ship, a bulky Cargo Hauler, and a small Escape Pod)
 
 2. **Ship Selection**:
    - Player can claim any of the three ships through dialogue response
    - Each ship choice influences starting resources and capabilities:
      - **Scout Ship**: Fast with good sensors, low cargo (2000 credits)
-     - **Cargo Freighter**: Slow but spacious, good for trading (5000 credits)
+     - **Cargo Hauler**: Slow but spacious, good for trading (5000 credits)
      - **Escape Pod**: Basic capabilities but highly maneuverable (1000 credits)
 
 3. **Dynamic Challenge Questions**:
@@ -56,7 +56,7 @@ The player has just created their account and logged in for the first time. Inst
 5. **Resolution**:
    - Guard either:
      - Believes the player and grants access to the claimed ship
-     - Recognizes the deception about Scout Ship or Cargo Freighter and says:
+     - Recognizes the deception about Scout Ship or Cargo Hauler and says:
        - "Wait a minute... these records show you're actually registered to the Escape Pod. Your story doesn't add up at all."
        - "Trying to steal a better ship, are we? Nice try. Get back to your Escape Pod before I call security."
      - Catches the player in a lie but offers a "second chance" with reduced starting credits

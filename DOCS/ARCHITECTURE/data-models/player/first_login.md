@@ -9,11 +9,13 @@ The First Login system captures player identity creation, starting resources, an
 ```typescript
 export enum ShipChoice {
   SCOUT_SHIP = "SCOUT_SHIP",            // Fast ship with good sensors
-  CARGO_FREIGHTER = "CARGO_FREIGHTER",  // Spacious trading vessel
+  CARGO_HAULER = "CARGO_HAULER",        // Spacious trading vessel (renamed from CARGO_FREIGHTER)
   ESCAPE_POD = "ESCAPE_POD",            // Basic starter ship (always present)
   LIGHT_FREIGHTER = "LIGHT_FREIGHTER",  // Balanced ship option
   DEFENDER = "DEFENDER",                // Combat-focused ship (rare)
-  FAST_COURIER = "FAST_COURIER"         // Speed-focused ship (uncommon)
+  FAST_COURIER = "FAST_COURIER",        // Speed-focused ship (uncommon)
+  COLONY_SHIP = "COLONY_SHIP",          // Specialized colonization vessel (very rare)
+  CARRIER = "CARRIER"                   // Heavy combat vessel (ultra rare)
 }
 
 export enum NegotiationSkillLevel {
@@ -215,8 +217,10 @@ The first login experience uses a weighted randomization system to determine whi
 | Light Freighter | 2 (Uncommon) | 50% | 2,500 | Medium |
 | Scout Ship | 3 (Rare) | 25% | 2,000 | Medium |
 | Fast Courier | 3 (Rare) | 20% | 3,000 | Medium-High |
-| Cargo Freighter | 4 (Very Rare) | 10% | 5,000 | High |
+| Cargo Hauler | 4 (Very Rare) | 10% | 5,000 | High |
 | Defender | 5 (Extremely Rare) | 5% | 7,000 | Very High |
+| Colony Ship | 6 (Very Rare) | 3% | 8,000 | Very High |
+| Carrier | 7 (Ultra Rare) | 1% | 10,000 | Exceptional |
 
 ### Ship Selection Algorithm
 
@@ -239,8 +243,10 @@ Persuasion thresholds scale by ship rarity and negotiation skill:
 | Light Freighter | 2 | > 0.5 | > 0.6 | > 0.7 |
 | Scout Ship | 3 | > 0.6 | > 0.7 | > 0.8 |
 | Fast Courier | 3 | > 0.65 | > 0.75 | > 0.85 |
-| Cargo Freighter | 4 | > 0.7 | > 0.8 | > 0.9 |
+| Cargo Hauler | 4 | > 0.7 | > 0.8 | > 0.9 |
 | Defender | 5 | > 0.8 | > 0.9 | > 0.95 |
+| Colony Ship | 6 | > 0.85 | > 0.92 | > 0.97 |
+| Carrier | 7 | > 0.9 | > 0.95 | > 0.99 |
 
 ## Starting Resources by Outcome
 
@@ -249,8 +255,10 @@ Persuasion thresholds scale by ship rarity and negotiation skill:
 | Success: Tier 1 | Escape Pod | 1,000 | None | None |
 | Success: Tier 2 | Light Freighter | 2,500 | Small trade bonus if strong | None |
 | Success: Tier 3 | Scout/Courier | 2,000-3,000 | Medium trade bonus if strong | None |
-| Success: Tier 4 | Cargo Freighter | 5,000 | Large trade bonus if strong | None |
+| Success: Tier 4 | Cargo Hauler | 5,000 | Large trade bonus if strong | None |
 | Success: Tier 5 | Defender | 7,000 | Major trade bonus if strong | None |
+| Success: Tier 6 | Colony Ship | 8,000 | Major trade bonus + colonization bonus | None |
+| Success: Tier 7 | Carrier | 10,000 | Maximum trade bonus + fleet bonus | None |
 | Failure | Escape Pod | 500 | None | Minor notoriety penalty |
 | Partial Success | Escape Pod | 800 | None | None |
 

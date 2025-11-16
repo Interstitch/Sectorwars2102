@@ -10,7 +10,8 @@ Teams in Sector Wars 2102 allow players to form alliances, share resources, coor
 export enum TeamRole {
   LEADER = "LEADER",           // Team founder/owner, full permissions
   OFFICER = "OFFICER",         // Can invite/remove members, set policies
-  MEMBER = "MEMBER"            // Standard team member
+  MEMBER = "MEMBER",           // Standard team member
+  RECRUIT = "RECRUIT"          // Probationary member with limited permissions
 }
 
 export enum TeamResourcePolicy {
@@ -23,6 +24,12 @@ export enum TeamReputationHandling {
   AVERAGE = "AVERAGE",         // Team reputation is average of all members
   LOWEST = "LOWEST",           // Team reputation is lowest of any member
   LEADER = "LEADER"            // Team reputation is based on leader only
+}
+
+export enum TeamRecruitmentStatus {
+  OPEN = "OPEN",               // Anyone can join
+  INVITE_ONLY = "INVITE_ONLY", // Requires invitation
+  CLOSED = "CLOSED"            // Not accepting members
 }
 
 export interface TeamMember {
@@ -42,24 +49,32 @@ export interface TeamMember {
     ships: number;             // Ships contributed for team use
   };
   last_active: Date;           // Last time member was online
-  permissions: {               // Custom permission flags
-    can_use_team_resources: boolean;
-    can_land_on_team_planets: boolean;
-    can_withdraw_from_bank: boolean;
-    can_use_team_ships: boolean;
-    can_represent_in_diplomacy: boolean;
-  };
+  permissions: Record<string, any>;  // Custom permissions (JSONB)
+
+  // Explicit permission flags (from database model)
+  can_invite: boolean;         // Can invite new members
+  can_kick: boolean;           // Can remove members
+  can_manage_treasury: boolean; // Can deposit/withdraw from treasury
+  can_manage_missions: boolean; // Can manage team missions
+  can_manage_alliances: boolean; // Can form/break alliances
 }
 
 export interface TeamBank {
   credits: number;             // Shared credit pool
-  resources: {                 // Shared resource pool
-    ore: number;
-    organics: number;
-    equipment: number;
-    luxury_goods: number;
-    medical_supplies: number;
-    technology: number;
+
+  // Treasury resources (12 types matching actual implementation)
+  resources: {
+    fuel: number;              // Energy resources for ships
+    organics: number;          // Food and biological materials
+    equipment: number;         // Ship components and repair materials
+    technology: number;        // Advanced tech and upgrades
+    luxury_items: number;      // High-value trade goods
+    precious_metals: number;   // Rare minerals and metals
+    raw_materials: number;     // Basic construction materials
+    plasma: number;            // Energy plasma for weapons
+    bio_samples: number;       // Scientific specimens
+    dark_matter: number;       // Exotic matter for advanced systems
+    quantum_crystals: number;  // Rare quantum-state materials
   };
   transaction_history: {       // Record of bank transactions
     timestamp: Date;
@@ -91,47 +106,66 @@ export interface TeamFactionRelations {
 }
 
 export interface TeamModel {
-  id: string;                  // Unique identifier
+  id: string;                  // Unique identifier (UUID)
   name: string;                // Team name (unique)
-  tag: string;                 // 2-5 character abbreviation/tag
-  description: string;         // Team description/mission
+  tag: string | null;          // 2-10 character abbreviation/tag (optional)
+  logo: string | null;         // URL to team logo (optional)
+  description: string | null;  // Team description/mission
+  leader_id: string | null;    // Current team leader (UUID)
   created_at: Date;            // When team was formed
-  created_by: string;          // Player ID of founder
-  
+  updated_at: Date;            // Last update timestamp
+  reputation_calculation_method: TeamReputationHandling; // How team rep is calculated
+
+  // Team Properties
+  is_public: boolean;          // Whether team can be joined without invitation
+  max_members: number;         // Maximum team size (default: 4, configurable)
+  recruitment_status: TeamRecruitmentStatus; // Open, Invite-Only, or Closed
+  sector_claims: number[];     // Array of sector IDs claimed by team
+  home_sector_id: number | null; // Team's home base sector
+
   // Membership
-  members: TeamMember[];       // Current team members
-  max_members: number;         // Maximum members allowed (4)
-  invitations: {               // Outstanding invitations
-    player_id: string;
-    player_name: string;
-    invited_by: string;
-    invited_at: Date;
+  members: TeamMember[];       // Current team members (relationship)
+  invitation_codes: Array<{    // Active invitation codes (JSONB)
+    code: string;
+    created_by: string;
     expires_at: Date;
-  }[];
-  
-  // Resources and Assets
-  bank: TeamBank;              // Shared resources and assets
-  resource_policy: TeamResourcePolicy; // How resources are shared
-  shared_planets: string[];    // IDs of planets with team access
-  
-  // Communication
-  message_board: {             // Team announcements/messages
-    id: string;
-    author_id: string;
-    author_name: string;
-    posted_at: Date;
-    content: string;
-    is_pinned: boolean;
-  }[];
-  
+    max_uses: number;
+    uses: number;
+  }>;
+
+  // Treasury (stored as direct columns, not nested)
+  treasury_credits: number;
+  treasury_fuel: number;
+  treasury_organics: number;
+  treasury_equipment: number;
+  treasury_technology: number;
+  treasury_luxury_items: number;
+  treasury_precious_metals: number;
+  treasury_raw_materials: number;
+  treasury_plasma: number;
+  treasury_bio_samples: number;
+  treasury_dark_matter: number;
+  treasury_quantum_crystals: number;
+
+  // Team Statistics (auto-calculated)
+  total_credits: number;       // Combined credits of all members
+  total_planets: number;       // Number of planets owned by team members
+  combat_rating: number;       // Team's overall combat effectiveness (float)
+  trade_rating: number;        // Team's overall trading effectiveness (float)
+
+  // Team Management (JSONB fields)
+  join_requirements: Record<string, any>; // Requirements to join this team
+  member_roles: Record<string, any>;      // Roles assigned to members
+  resource_sharing: Record<string, any>;  // Resource sharing settings
+
   // Relations
-  factionRelations: TeamFactionRelations;  // Basic relations with factions
-  reputation_id: string;       // Reference to TeamReputationModel
-  allies: string[];            // IDs of allied teams
-  enemies: string[];           // IDs of enemy teams
-  
+  reputation: TeamReputation | null; // Reference to TeamReputationModel (relationship)
+
+  // Messages (stored separately, not nested)
+  // Note: Team messages are in separate Message model with team_id foreign key
+
   // Status
-  is_active: boolean;          // Whether team is active
+  is_active: boolean;          // Whether team is active (computed: member_count > 0)
   last_active: Date;           // When team was last active
   
   // Policies and Settings

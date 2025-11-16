@@ -2,138 +2,91 @@
 
 ## Overview
 
-The Message system in Sector Wars 2102 enables communication between players, teams, and the game system. It supports private conversations, team coordination, faction announcements, and system notifications. The messaging system is critical for social interaction, strategic planning, and delivering important game information to players.
+The Message system in Sector Wars 2102 enables communication between players, teams, and the game system. It supports private conversations, team coordination, and system notifications. The messaging system is critical for social interaction, strategic planning, and delivering important game information to players.
+
+**Note**: The current implementation supports basic messaging with threading. Advanced features like attachments, coordinate sharing, templates, and encryption are planned for future releases.
 
 ## Data Model
 
 ```typescript
+// Message types (simplified from original design)
 export enum MessageType {
-  PLAYER_TO_PLAYER = "PLAYER_TO_PLAYER",       // Direct player messages
-  TEAM_MESSAGE = "TEAM_MESSAGE",               // Team chat/announcements
-  SYSTEM_NOTIFICATION = "SYSTEM_NOTIFICATION", // Game system alerts
-  FACTION_BROADCAST = "FACTION_BROADCAST",     // Messages from factions
-  SECTOR_BROADCAST = "SECTOR_BROADCAST",       // Local sector communication
-  MISSION_COMMUNICATION = "MISSION_COMMUNICATION", // Mission-related messages
-  MARKET_ALERT = "MARKET_ALERT",               // Trading opportunities
-  COMBAT_REPORT = "COMBAT_REPORT",             // Battle summaries
-  NEWS_BULLETIN = "NEWS_BULLETIN"              // Galaxy news updates
+  PLAYER = "player",       // Direct player-to-player messages
+  TEAM = "team",           // Team chat and announcements
+  SYSTEM = "system"        // Game system notifications
 }
+
+// Note: Original design included 9 types (faction broadcasts, sector broadcasts, etc.)
+// but implementation currently supports these 3 core types.
 
 export enum MessagePriority {
-  LOW = "LOW",                                 // Routine information
-  NORMAL = "NORMAL",                           // Standard priority
-  HIGH = "HIGH",                               // Important messages
-  URGENT = "URGENT",                           // Critical alerts
-  EMERGENCY = "EMERGENCY"                      // Highest priority
+  LOW = "low",             // Routine information
+  NORMAL = "normal",       // Standard priority (default)
+  HIGH = "high",           // Important messages
+  URGENT = "urgent"        // Critical alerts
 }
+
+// Note: Actual implementation uses lowercase string values, not uppercase enums
 
 export enum MessageStatus {
-  UNREAD = "UNREAD",                           // Not yet viewed
-  READ = "READ",                               // Viewed by recipient
-  ARCHIVED = "ARCHIVED",                       // Stored for later
-  DELETED = "DELETED",                         // Marked for deletion
-  EXPIRED = "EXPIRED"                          // No longer accessible
+  UNREAD = "UNREAD",       // Not yet viewed (no read_at timestamp)
+  READ = "READ",           // Viewed by recipient (has read_at timestamp)
+  DELETED = "DELETED"      // Marked for deletion (soft delete flags)
 }
 
-export interface MessageAttachment {
-  type: string;                                // Attachment type
-  name: string;                                // Attachment name
-  content_id: string;                          // Reference to content
-  size: number;                                // Size in bytes
-  mime_type: string;                           // Content format
-  preview_text: string;                        // Short preview
-  requires_download: boolean;                  // Whether needs separate download
-}
-
-export interface MessageCoordinates {
-  sector_id: number;                           // Referenced sector
-  cluster_id?: string;                         // Referenced cluster
-  region_id?: string;                          // Referenced region
-  x: number;                                   // X coordinate
-  y: number;                                   // Y coordinate
-  z: number;                                   // Z coordinate
-  label: string;                               // Location description
-}
-
-export interface MessageSender {
-  entity_type: string;                         // "player", "system", "faction", etc.
-  entity_id: string;                           // Sender identifier
-  name: string;                                // Display name
-  avatar_url?: string;                         // Sender image
-  faction_id?: string;                         // Associated faction
-  is_verified: boolean;                        // Whether identity confirmed
-}
-
-export interface MessageRecipient {
-  entity_type: string;                         // "player", "team", "all", etc.
-  entity_id: string;                           // Recipient identifier
-  name: string;                                // Display name
-  received_at?: Date;                          // When delivered to recipient
-  read_at?: Date;                              // When read by recipient
-  status: MessageStatus;                       // Current message status
-}
-
-export interface TemplateVariable {
-  key: string;                                 // Variable name
-  value: string;                               // Replacement value
-  format?: string;                             // Formatting instructions
-}
+// Attachments, Coordinates, and Templates interfaces removed - not implemented yet
+// These are planned features for future development
 
 export interface MessageModel {
-  id: string;                                  // Unique identifier
-  message_type: MessageType;                   // Message classification
-  priority: MessagePriority;                   // Importance level
-  created_at: Date;                            // When message was created
-  expires_at?: Date;                           // When message becomes invalid
-  
-  // Content
-  subject: string;                             // Message title/subject
-  body: string;                                // Main message content
-  formatted_body?: string;                     // HTML version if applicable
-  is_encrypted: boolean;                       // Whether content is encrypted
-  language_code: string;                       // ISO language code
-  
-  // Participants
-  sender: MessageSender;                       // Who sent the message
-  recipients: MessageRecipient[];              // Who received the message
-  cc_recipients?: MessageRecipient[];          // Carbon copy recipients
-  reply_to_id?: string;                        // Parent message if a reply
-  
-  // Supplementary Content
-  attachments: MessageAttachment[];            // Files/content attached
-  links: string[];                             // URLs referenced
-  coordinates?: MessageCoordinates[];          // Locations referenced
-  
-  // Metadata
-  tags: string[];                              // Categorization labels
-  template_id?: string;                        // If based on template
-  template_variables?: TemplateVariable[];     // Template customization
-  message_chain_id?: string;                   // Conversation grouping
-  
-  // System Flags
-  requires_confirmation: boolean;              // Whether needs acknowledgment
-  is_automated: boolean;                       // Whether sent by system
-  allows_replies: boolean;                     // Whether replies permitted
-  importance_flag: boolean;                    // User-marked important
+  id: string;                                  // Unique identifier (UUID)
+
+  // Sender and recipient information
+  sender_id: string;                           // Player ID who sent message (UUID)
+  recipient_id: string | null;                 // Player ID of recipient (null for team messages)
+  team_id: string | null;                      // Team ID (null for direct messages)
+
+  // Message content
+  subject: string | null;                      // Message title/subject (max 255 chars)
+  content: string;                             // Main message content (Text field)
+
+  // Message metadata
+  sent_at: Date;                               // When message was sent
+  read_at: Date | null;                        // When message was read (null if unread)
+
+  // Soft deletion flags
+  deleted_by_sender: boolean;                  // Whether sender deleted message
+  deleted_by_recipient: boolean;               // Whether recipient deleted message
+
+  // Threading support
+  thread_id: string | null;                    // For conversation threads (UUID)
+  reply_to_id: string | null;                  // For direct replies (UUID)
+
+  // Message type and flags
+  message_type: string;                        // 'player', 'team', or 'system' (default: 'player')
+  priority: string;                            // 'low', 'normal', 'high', 'urgent' (default: 'normal')
+
+  // Moderation flags (for abuse prevention)
+  flagged: boolean;                            // Whether message has been flagged
+  flagged_reason: string | null;               // Reason for flagging
+  moderated_at: Date | null;                   // When moderation occurred
+  moderated_by: string | null;                 // User ID of moderator (UUID)
+
+  // Relationships (loaded when needed)
+  sender?: Player;                             // Sender player object
+  recipient?: Player;                          // Recipient player object
+  team?: Team;                                 // Team object for team messages
+  reply_to?: MessageModel;                     // Parent message if this is a reply
+  replies?: MessageModel[];                    // Child replies to this message
+  moderator?: User;                            // Moderator user object
 }
 
-export interface MessageTemplate {
-  id: string;                                  // Template identifier
-  name: string;                                // Template name
-  description: string;                         // Template purpose
-  subject_template: string;                    // Subject with variables
-  body_template: string;                       // Body with variables
-  available_variables: {                       // Variables that can be used
-    key: string;
-    description: string;
-    default_value: string;
-    validation_regex?: string;                 // Validation pattern
-  }[];
-  message_type: MessageType;                   // Default message type
-  priority: MessagePriority;                   // Default priority
-  category: string;                            // Template category
-  is_system_template: boolean;                 // Whether system-defined
-}
+// Note: Advanced features not yet implemented:
+// - Attachments (files, images, coordinates)
+// - Message templates
+// - Encryption
+// - CC recipients
+// - Expiration dates
+// - Rich formatting (HTML)
 
 export interface ConversationSummary {
   conversation_id: string;                     // Unique thread identifier
