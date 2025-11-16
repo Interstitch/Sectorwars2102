@@ -1135,15 +1135,15 @@ class GalaxyGenerator:
         appropriate_types = port_type_map.get(cluster_type, [StationType.TRADING, StationType.OUTPOST])
         
         # In frontier zones, chance of black market
-        if sector.cluster.zone.type == ZoneType.FRONTIER and random.random() < 0.3:
+        if sector.zone and sector.zone.type == ZoneType.FRONTIER and random.random() < 0.3:
             appropriate_types.append(StationType.BLACK_MARKET)
-        
+
         return random.choice(appropriate_types)
     
     def _choose_port_class_for_sector(self, sector: Sector) -> StationClass:
         """Choose appropriate port class for a sector based on cluster and zone type."""
         cluster_type = sector.cluster.type
-        zone_type = sector.cluster.zone.type
+        zone_type = sector.zone.type if sector.zone else ZoneType.FRONTIER
 
         # Special case for Sector 1 (Sol System)
         if sector.sector_id == 1:
@@ -1192,7 +1192,7 @@ class GalaxyGenerator:
     
     def _choose_faction_for_sector(self, sector: Sector) -> Optional[str]:
         """Choose controlling faction for a sector based on cosmological zone."""
-        zone_type = sector.cluster.zone.type
+        zone_type = sector.zone.type if sector.zone else ZoneType.FRONTIER
 
         # Default factions by zone
         faction_map = {
@@ -1313,9 +1313,9 @@ class GalaxyGenerator:
             return random.choice([PlanetType.GAS_GIANT, PlanetType.BARREN])
         elif sector.type == SectorType.VOID:
             return random.choice([PlanetType.ICE, PlanetType.BARREN])
-        
+
         # Zones affect planet types too
-        zone_type = sector.cluster.zone.type
+        zone_type = sector.zone.type if sector.zone else ZoneType.FRONTIER
 
         if zone_type == ZoneType.FEDERATION:
             weights = {
