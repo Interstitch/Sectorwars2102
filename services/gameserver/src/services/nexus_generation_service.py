@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 from src.core.database import get_async_session
 from src.models.sector import Sector
 from src.models.planet import Planet
-from src.models.port import Port
+from src.models.station import Station
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
 from src.models.region import Region, RegionType
 from src.models.zone import Zone
@@ -333,7 +333,7 @@ class NexusGenerationService:
 
         # Bulk insert ports
         if batch_ports:
-            await session.execute(insert(Port), batch_ports)
+            await session.execute(insert(Station), batch_ports)
 
         # Bulk insert planets
         if batch_planets:
@@ -347,7 +347,7 @@ class NexusGenerationService:
         Sparse generation: Ports are randomly distributed with mixed types.
         Sector 1 always gets a high-quality trading port for starter access.
         """
-        from src.models.port import PortClass, PortType, PortStatus
+        from src.models.station import StationClass, PortType, PortStatus
 
         # Sector 1 gets a special starter port
         if sector_num == 1:
@@ -383,7 +383,7 @@ class NexusGenerationService:
         size = random.randint(4, 7)
 
         return {
-            "name": f"Nexus Port {sector_num}",
+            "name": f"Nexus Station {sector_num}",
             "sector_id": sector_num,
             "region_id": region_id,
             "port_class": port_class,

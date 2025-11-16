@@ -3,7 +3,7 @@ import { api } from '../../utils/auth';
 import PageHeader from '../ui/PageHeader';
 import './pages.css';
 
-interface Port {
+interface Station {
   id: string;
   name: string;
   sector_id: string;
@@ -21,7 +21,7 @@ interface Port {
 }
 
 const PortsManager: React.FC = () => {
-  const [ports, setPorts] = useState<Port[]>([]);
+  const [ports, setPorts] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,7 +30,7 @@ const PortsManager: React.FC = () => {
   const [itemsPerPage] = useState(20);
   
   // Modal states
-  const [selectedPort, setSelectedPort] = useState<Port | null>(null);
+  const [selectedPort, setSelectedPort] = useState<Station | null>(null);
   const [showPortModal, setShowPortModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'add'>('view');

@@ -11,7 +11,7 @@ from src.models.zone import Zone
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelType, WarpTunnelStatus
-from src.models.port import Port, PortType, PortClass, PortStatus
+from src.models.station import Station, PortType, PortClass, PortStatus
 from src.models.planet import Planet, PlanetType, PlanetStatus
 from src.models.resource import Resource, ResourceType, ResourceQuality, Market
 
@@ -487,11 +487,11 @@ class GalaxyGenerator:
                 continue
             
             # Create port
-            port_name = f"Port {sector_num}"
+            port_name = f"Station {sector_num}"
             port_type = self._choose_port_type_for_sector(sector)
             port_class = self._choose_port_class_for_sector(sector)
             
-            port = Port(
+            port = Station(
                 name=port_name,
                 sector_id=sector.sector_id,
                 sector_uuid=sector.id,
@@ -622,7 +622,7 @@ class GalaxyGenerator:
             return
 
         # Check if Sector 1 already has a port
-        existing_port = self.db.query(Port).filter(Port.sector_uuid == sector_1.id).first()
+        existing_port = self.db.query(Station).filter(Station.sector_uuid == sector_1.id).first()
         if not existing_port:
             logger.info(f"Creating guaranteed starter port in Sector 1 of {region.name}")
             self._create_starter_port_for_sector(sector_1)
@@ -648,12 +648,12 @@ class GalaxyGenerator:
             return
 
         # Check if Sector 1 already has a port
-        existing_port = self.db.query(Port).filter(Port.sector_id == 1).first()
+        existing_port = self.db.query(Station).filter(Station.sector_id == 1).first()
         if not existing_port:
             logger.info("Creating guaranteed starter port in Sector 1")
 
             # Create a Class 1 Trading port (beginner-friendly)
-            starter_port = Port(
+            starter_port = Station(
                 name="Terra Station",  # Friendly name for starter port
                 sector_id=sector_1.sector_id,
                 sector_uuid=sector_1.id,
@@ -868,7 +868,7 @@ class GalaxyGenerator:
     def _update_galaxy_statistics(self, galaxy: Galaxy) -> None:
         """Update the galaxy statistics based on generated content."""
         # Count ports
-        port_count = self.db.query(Port).count()
+        port_count = self.db.query(Station).count()
         
         # Count planets
         planet_count = self.db.query(Planet).count()

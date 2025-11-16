@@ -12,7 +12,7 @@ import logging
 from src.models.player import Player
 from src.models.ship import Ship
 from src.models.planet import Planet
-from src.models.port import Port
+from src.models.station import Station
 from src.models.user import User
 from src.models.player_analytics import PlayerSession, PlayerAnalyticsSnapshot, PlayerActivity
 
@@ -62,7 +62,7 @@ class AnalyticsService:
             # Count ships, planets, ports
             total_ships = self.db.query(Ship).count()
             total_planets = self.db.query(Planet).count()
-            total_ports = self.db.query(Port).count()
+            total_ports = self.db.query(Station).count()
             
             # Calculate session-based metrics
             avg_session_time = self._calculate_average_session_time(week_ago)
@@ -321,19 +321,19 @@ class AnalyticsService:
         Calculate resource distribution across ports
         """
         try:
-            from src.models.port import Port
+            from src.models.station import Station
             # Get all ports and their resource types
-            total_ports = self.db.query(Port).count()
+            total_ports = self.db.query(Station).count()
             if total_ports == 0:
                 return {'Food': 25.0, 'Tech': 25.0, 'Ore': 25.0, 'Fuel': 25.0}
             
             # Query resource distribution from ports
             # This is a simplified version - would need actual resource data structure
             resource_counts = {
-                'Food': self.db.query(Port).filter(Port.port_class.like('%food%')).count(),
-                'Tech': self.db.query(Port).filter(Port.port_class.like('%tech%')).count(), 
-                'Ore': self.db.query(Port).filter(Port.port_class.like('%ore%')).count(),
-                'Fuel': self.db.query(Port).filter(Port.port_class.like('%fuel%')).count()
+                'Food': self.db.query(Station).filter(Station.port_class.like('%food%')).count(),
+                'Tech': self.db.query(Station).filter(Station.port_class.like('%tech%')).count(), 
+                'Ore': self.db.query(Station).filter(Station.port_class.like('%ore%')).count(),
+                'Fuel': self.db.query(Station).filter(Station.port_class.like('%fuel%')).count()
             }
             
             # Calculate percentages

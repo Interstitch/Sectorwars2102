@@ -14,7 +14,7 @@ from src.models.region import Region, RegionalMembership
 from src.models.player import Player
 from src.models.sector import Sector
 from src.models.planet import Planet
-from src.models.port import Port
+from src.models.station import Station
 from src.models.ship import Ship
 from src.models.user import User
 
@@ -179,7 +179,7 @@ class MultiRegionalMigrationService:
         
         # Migrate ports
         result = await session.execute(
-            update(Port).values(region_id=self.default_region_id)
+            update(Station).values(region_id=self.default_region_id)
         )
         stats["ports_migrated"] = result.rowcount
         
@@ -291,7 +291,7 @@ class MultiRegionalMigrationService:
                 update(Planet).values(region_id=None)
             )
             await session.execute(
-                update(Port).values(region_id=None)
+                update(Station).values(region_id=None)
             )
             await session.execute(
                 update(Ship).values(region_id=None)

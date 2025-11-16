@@ -25,7 +25,7 @@ except ImportError:
     logging.warning("SciPy not available - route optimization will use fallback methods")
 
 from src.models.sector import Sector
-from src.models.port import Port
+from src.models.station import Station
 from src.models.market_transaction import MarketTransaction
 from src.models.warp_tunnel import WarpTunnel
 from src.models.player import Player
@@ -695,16 +695,16 @@ class RouteOptimizer:
         min_profit_margin: float
     ) -> List[TradingOpportunity]:
         """Find arbitrage opportunities between two sectors"""
-        # Real commodities from the Port model
+        # Real commodities from the Station model
         commodities = ["ore", "organics", "equipment", "fuel", "luxury_goods", "gourmet_food", "exotic_technology"]
         opportunities = []
         
         try:
             # Query ports in both sectors
-            from src.models.port import Port
+            from src.models.station import Station
             from sqlalchemy import select
-            ports_a_query = select(Port).where(Port.sector_id == int(sector_a))
-            ports_b_query = select(Port).where(Port.sector_id == int(sector_b))
+            ports_a_query = select(Station).where(Station.sector_id == int(sector_a))
+            ports_b_query = select(Station).where(Station.sector_id == int(sector_b))
             
             ports_a_result = await db.execute(ports_a_query)
             ports_b_result = await db.execute(ports_b_query)

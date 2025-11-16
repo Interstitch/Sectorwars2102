@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAdmin } from '../../contexts/AdminContext';
 import SectorDetail from '../universe/SectorDetail';
-import PortDetail from '../universe/PortDetail';  
+import PortDetail from '../universe/StationDetail';  
 import PlanetDetail from '../universe/PlanetDetail';
 import './universe-manager.css';
 

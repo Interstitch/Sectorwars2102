@@ -18,7 +18,7 @@ from src.models.user import User
 from src.models.player import Player
 from src.models.ship import Ship
 from src.models.planet import Planet
-from src.models.port import Port, PortStatus
+from src.models.station import Station, PortStatus
 from src.models.sector import Sector
 from src.models.cluster import Cluster
 from src.models.galaxy import Galaxy
@@ -91,7 +91,7 @@ class SectorManagementResponse(BaseModel):
     player_count: int
     controlling_faction: Optional[str]
 
-class PortManagementResponse(BaseModel):
+class StationManagementResponse(BaseModel):
     id: str
     name: str
     sector_id: str  # Changed to string to match frontend
@@ -139,9 +139,9 @@ class PlanetCreateRequest(BaseModel):
     habitability_score: Optional[int] = Field(50, ge=0, le=100)
     resource_richness: Optional[float] = Field(1.0, ge=0.0, le=3.0)
 
-class PortCreateRequest(BaseModel):
+class StationCreateRequest(BaseModel):
     name: str = Field(..., max_length=100)
-    port_class: int = Field(..., ge=0, le=11)  # PortClass enum values
+    station_class: int = Field(..., ge=0, le=11)  # PortClass enum values
     type: str  # PortType enum
     size: Optional[int] = Field(5, ge=1, le=10)
     faction_affiliation: Optional[str] = None
@@ -303,9 +303,9 @@ async def get_players_comprehensive(
             
             # Count ports for all players
             port_results = db.query(
-                Port.owner_id,
-                func.count(Port.id).label('count')
-            ).filter(Port.owner_id.in_(player_ids)).group_by(Port.owner_id).all()
+                Station.owner_id,
+                func.count(Station.id).label('count')
+            ).filter(Station.owner_id.in_(player_ids)).group_by(Station.owner_id).all()
             ports_counts = {str(result[0]): result[1] for result in port_results}
         
         # Build response data
@@ -847,7 +847,7 @@ async def get_sectors_comprehensive(
         sectors_data = []
         for sector in sectors:
             # Check for ports and planets
-            has_port = db.query(Port).filter(Port.sector_id == sector.sector_id).first() is not None
+            has_port = db.query(Station).filter(Station.sector_id == sector.sector_id).first() is not None
             has_planet = db.query(Planet).filter(Planet.sector_id == sector.sector_id).first() is not None
             has_warp_tunnel = db.query(WarpTunnel).filter(
                 or_(WarpTunnel.origin_sector_id == sector.id, WarpTunnel.destination_sector_id == sector.id)
@@ -890,7 +890,7 @@ async def get_sectors_comprehensive(
         logger.error(f"Error in get_sectors_comprehensive: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch sectors: {str(e)}")
 
-# Port Management Endpoints
+# Station Management Endpoints
 
 @router.get("/ports/comprehensive", response_model=Dict[str, Any])
 async def get_ports_comprehensive(
@@ -905,19 +905,19 @@ async def get_ports_comprehensive(
 ):
     """Get comprehensive port information"""
     try:
-        query = db.query(Port)
+        query = db.query(Station)
 
         # Apply filters
         if filter_class:
-            query = query.filter(Port.port_class == filter_class)
+            query = query.filter(Station.port_class == filter_class)
         if filter_type:
-            query = query.filter(Port.type == filter_type)
+            query = query.filter(Station.type == filter_type)
         if owner_id:
             # Filter by exact owner ID (UUID)
             try:
                 from uuid import UUID
                 owner_uuid = UUID(owner_id)
-                query = query.filter(Port.owner_id == owner_uuid)
+                query = query.filter(Station.owner_id == owner_uuid)
             except ValueError:
                 # Invalid UUID, return empty result
                 return {
@@ -967,7 +967,7 @@ async def get_ports_comprehensive(
             # Extract commodities from commodities data
             commodities = list(commodities_data.keys()) if commodities_data else []
             
-            ports_data.append(PortManagementResponse(
+            ports_data.append(StationManagementResponse(
                 id=str(port.id),
                 name=port.name,
                 sector_id=str(port.sector_id),
@@ -1441,10 +1441,10 @@ async def update_all_port_stock_levels(
     This ensures ports have appropriate inventory for the commodities they trade.
     """
     try:
-        from src.models.port import Port
+        from src.models.station import Station
         
         # Get all ports
-        ports = db.query(Port).all()
+        ports = db.query(Station).all()
         
         updated_ports = []
         
@@ -1469,8 +1469,8 @@ async def update_all_port_stock_levels(
             
             if changes:
                 updated_ports.append({
-                    "port_id": str(port.id),
-                    "port_name": port.name,
+                    "station_id": str(port.id),
+                    "station_name": port.name,
                     "port_class": port.port_class.value,
                     "port_type": port.type.value,
                     "sector_id": port.sector_id,
@@ -1906,7 +1906,7 @@ async def create_planet_in_sector(
 @router.post("/sectors/{sector_id}/port", response_model=Dict[str, Any])
 async def create_port_in_sector(
     sector_id: str,
-    port_data: PortCreateRequest,
+    station_data: StationCreateRequest,
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
@@ -1930,34 +1930,34 @@ async def create_port_in_sector(
             raise HTTPException(status_code=404, detail="Sector not found")
         
         # Check if sector already has a port
-        existing_port = db.query(Port).filter(
-            Port.sector_uuid == sector.id
+        existing_port = db.query(Station).filter(
+            Station.sector_uuid == sector.id
         ).first()
         
         if existing_port:
             raise HTTPException(status_code=400, detail="Sector already has a port")
         
         # Import and validate enums
-        from src.models.port import Port, PortClass, PortType, PortStatus
+        from src.models.station import Station, PortClass, PortType, PortStatus
         
         try:
-            port_class = PortClass(port_data.port_class)
-            port_type = PortType(port_data.type)
+            port_class = PortClass(station_data.port_class)
+            port_type = PortType(station_data.type)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=f"Invalid port class or type: {str(e)}")
         
         # Create new port
-        new_port = Port(
-            name=port_data.name,
+        new_port = Station(
+            name=station_data.name,
             sector_id=sector.sector_id,
             sector_uuid=sector.id,
             port_class=port_class,
             type=port_type,
             status=PortStatus.OPERATIONAL,
-            size=port_data.size,
-            faction_affiliation=port_data.faction_affiliation,
-            trade_volume=port_data.trade_volume,
-            market_volatility=port_data.market_volatility
+            size=station_data.size,
+            faction_affiliation=station_data.faction_affiliation,
+            trade_volume=station_data.trade_volume,
+            market_volatility=station_data.market_volatility
         )
         
         db.add(new_port)
@@ -1967,9 +1967,9 @@ async def create_port_in_sector(
         logger.info(f"Admin {current_admin.username} created port {new_port.name} in sector {sector.sector_id}")
         
         return {
-            "message": "Port created successfully",
-            "port_id": str(new_port.id),
-            "port_name": new_port.name,
+            "message": "Station created successfully",
+            "station_id": str(new_port.id),
+            "station_name": new_port.name,
             "sector_id": str(sector.id),
             "sector_number": sector.sector_id
         }
@@ -2082,7 +2082,7 @@ async def get_sector_port(
             raise HTTPException(status_code=404, detail="Sector not found")
         
         # Find the port in this sector
-        port = db.query(Port).filter(Port.sector_uuid == sector.id).first()
+        port = db.query(Station).filter(Station.sector_uuid == sector.id).first()
         
         if not port:
             return {"has_port": False, "port": None}
@@ -2464,38 +2464,38 @@ async def get_warp_tunnels(
         db=db
     )
 
-# Port CRUD Operations
+# Station CRUD Operations
 
-class PortUpdateRequest(BaseModel):
+class StationUpdateRequest(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
-    port_class: Optional[str] = None  # Port class enum name (e.g., "CLASS_1")
+    port_class: Optional[str] = None  # Station class enum name (e.g., "CLASS_1")
     trade_volume: Optional[int] = Field(None, ge=0)
     max_capacity: Optional[int] = Field(None, ge=0)
     security_level: Optional[int] = Field(None, ge=0, le=100)
     docking_fee: Optional[int] = Field(None, ge=0)
     owner_name: Optional[str] = None
 
-@router.patch("/ports/{port_id}", response_model=Dict[str, Any])
+@router.patch("/ports/{station_id}", response_model=Dict[str, Any])
 async def update_port(
-    port_id: str,
-    port_data: PortUpdateRequest,
+    station_id: str,
+    station_data: StationUpdateRequest,
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Update a port's properties"""
     try:
         # Find the port by ID
-        port = db.query(Port).filter(Port.id == port_id).first()
+        port = db.query(Station).filter(Station.id == station_id).first()
         if not port:
-            raise HTTPException(status_code=404, detail="Port not found")
+            raise HTTPException(status_code=404, detail="Station not found")
         
         # Update fields that were provided
-        update_data = port_data.dict(exclude_unset=True)
+        update_data = station_data.dict(exclude_unset=True)
         
         for field, value in update_data.items():
             if field == "port_class" and value:
                 # Convert string to enum
-                from src.models.port import PortClass
+                from src.models.station import PortClass
                 try:
                     port_class_enum = getattr(PortClass, value)
                     setattr(port, "port_class", port_class_enum)
@@ -2520,42 +2520,42 @@ async def update_port(
         db.commit()
         
         return {
-            "message": "Port updated successfully",
-            "port_id": str(port.id),
+            "message": "Station updated successfully",
+            "station_id": str(port.id),
             "updated_fields": list(update_data.keys())
         }
         
     except Exception as e:
-        logger.error(f"Error updating port {port_id}: {e}")
+        logger.error(f"Error updating port {station_id}: {e}")
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to update port: {str(e)}")
 
-@router.delete("/ports/{port_id}", response_model=Dict[str, Any])
+@router.delete("/ports/{station_id}", response_model=Dict[str, Any])
 async def delete_port(
-    port_id: str,
+    station_id: str,
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Delete a port"""
     try:
         # Find the port by ID
-        port = db.query(Port).filter(Port.id == port_id).first()
+        port = db.query(Station).filter(Station.id == station_id).first()
         if not port:
-            raise HTTPException(status_code=404, detail="Port not found")
+            raise HTTPException(status_code=404, detail="Station not found")
         
-        port_name = port.name
+        station_name = port.name
         
         # Delete the port
         db.delete(port)
         db.commit()
         
         return {
-            "message": f"Port '{port_name}' deleted successfully",
-            "port_id": port_id
+            "message": f"Station '{station_name}' deleted successfully",
+            "station_id": station_id
         }
         
     except Exception as e:
-        logger.error(f"Error deleting port {port_id}: {e}")
+        logger.error(f"Error deleting port {station_id}: {e}")
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete port: {str(e)}")
 
@@ -2568,12 +2568,12 @@ async def create_port(
     """Create a new port"""
     try:
         # Import and validate enums
-        from src.models.port import Port, PortClass, PortType, PortStatus
+        from src.models.station import Station, PortClass, PortType, PortStatus
         
         # Validate required fields
-        if not port_data.get("name"):
-            raise HTTPException(status_code=400, detail="Port name is required")
-        if not port_data.get("sector_id"):
+        if not station_data.get("name"):
+            raise HTTPException(status_code=400, detail="Station name is required")
+        if not station_data.get("sector_id"):
             raise HTTPException(status_code=400, detail="Sector ID is required")
         
         # Find the sector
@@ -2595,20 +2595,20 @@ async def create_port(
             raise HTTPException(status_code=404, detail="Sector not found")
         
         # Check if sector already has a port
-        existing_port = db.query(Port).filter(Port.sector_uuid == sector.id).first()
+        existing_port = db.query(Station).filter(Station.sector_uuid == sector.id).first()
         if existing_port:
             raise HTTPException(status_code=400, detail="Sector already has a port")
         
         # Parse port class
         try:
-            port_class_str = port_data.get("port_class", "CLASS_1")
+            port_class_str = station_data.get("port_class", "CLASS_1")
             port_class = getattr(PortClass, port_class_str)
         except AttributeError:
             raise HTTPException(status_code=400, detail=f"Invalid port class: {port_class_str}")
         
         # Handle owner assignment
         owner_id = None
-        if port_data.get("owner_name"):
+        if station_data.get("owner_name"):
             player = db.query(Player).join(User).filter(User.username == port_data["owner_name"]).first()
             if player:
                 owner_id = player.id
@@ -2616,19 +2616,19 @@ async def create_port(
                 raise HTTPException(status_code=404, detail=f"Player '{port_data['owner_name']}' not found")
         
         # Create the port with all required fields
-        new_port = Port(
+        new_port = Station(
             name=port_data["name"],
             sector_id=sector.sector_id,
             sector_uuid=sector.id,
             port_class=port_class,
             type=PortType.TRADING,  # Default to trading
             status=PortStatus.OPERATIONAL,
-            trade_volume=port_data.get("trade_volume", 1000),
-            size=port_data.get("size", 5),
+            trade_volume=station_data.get("trade_volume", 1000),
+            size=station_data.get("size", 5),
             owner_id=owner_id,
             # Set default values for required fields
-            faction_affiliation=port_data.get("faction_affiliation", None),
-            market_volatility=port_data.get("market_volatility", 50)
+            faction_affiliation=station_data.get("faction_affiliation", None),
+            market_volatility=station_data.get("market_volatility", 50)
         )
         
         # Update commodity stock levels based on port class
@@ -2639,9 +2639,9 @@ async def create_port(
         db.commit()
         
         return {
-            "message": "Port created successfully",
-            "port_id": str(new_port.id),
-            "port_name": new_port.name,
+            "message": "Station created successfully",
+            "station_id": str(new_port.id),
+            "station_name": new_port.name,
             "sector_id": sector.sector_id
         }
         
@@ -2651,7 +2651,7 @@ async def create_port(
         raise
     except Exception as e:
         logger.error(f"Error creating port: {e}")
-        logger.error(f"Port data: {port_data}")
+        logger.error(f"Station data: {port_data}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
         db.rollback()

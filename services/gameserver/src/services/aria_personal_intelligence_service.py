@@ -32,7 +32,7 @@ from sqlalchemy.orm import selectinload
 
 from src.models.player import Player
 from src.models.sector import Sector
-from src.models.port import Port
+from src.models.station import Station
 from src.models.market_transaction import MarketTransaction
 from src.models.aria_personal_intelligence import (
     ARIAPersonalMemory, ARIAMarketIntelligence, ARIAExplorationMap,
@@ -154,7 +154,7 @@ class ARIAPersonalIntelligenceService:
             return None
         
         # Get port's sector
-        port = await db.get(Port, port_id)
+        port = await db.get(Station, port_id)
         if not port:
             return None
         
@@ -253,7 +253,7 @@ class ARIAPersonalIntelligenceService:
         Returns None if player has insufficient data
         """
         # Check if player has visited this port
-        port = await db.get(Port, port_id)
+        port = await db.get(Station, port_id)
         if not port:
             return None
         

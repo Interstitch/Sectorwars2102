@@ -13,7 +13,7 @@ from src.models.galaxy import Galaxy
 from src.models.cluster import Cluster, ClusterType
 from src.models.sector import Sector, SectorType, SectorSpecialType
 from src.models.warp_tunnel import WarpTunnel
-from src.models.port import Port
+from src.models.station import Station
 from src.models.planet import Planet
 
 # Enhanced request schemas
@@ -35,7 +35,7 @@ class SectorUpdateRequest(BaseModel):
     is_explorable: Optional[bool] = None
     resources: Optional[Dict[str, Any]] = None
 
-class PortCreateRequest(BaseModel):
+class StationCreateRequest(BaseModel):
     sector_id: int
     name: str
     port_class: int
@@ -126,7 +126,7 @@ async def update_sector(
 
 @router.post("/port/create", response_model=dict)
 async def create_port(
-    request: PortCreateRequest,
+    request: StationCreateRequest,
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_async_session)
 ):
@@ -141,7 +141,7 @@ async def create_port(
         raise HTTPException(status_code=400, detail="Sector already has a port")
     
     # Create port
-    port = Port(
+    port = Station(
         name=request.name,
         sector_id=request.sector_id,
         port_class=request.port_class,
@@ -310,7 +310,7 @@ async def get_enhanced_sectors(
         
         if include_contents:
             # Check for port in this sector
-            has_port = db.query(Port).filter(Port.sector_id == sector.sector_id).first() is not None
+            has_port = db.query(Station).filter(Station.sector_id == sector.sector_id).first() is not None
             # Check for planet in this sector
             has_planet = db.query(Planet).filter(Planet.sector_id == sector.sector_id).first() is not None
             # Check for warp tunnels from this sector
@@ -325,7 +325,7 @@ async def get_enhanced_sectors(
             
             # Add port info if exists
             if has_port:
-                port = db.query(Port).filter(Port.sector_id == sector.sector_id).first()
+                port = db.query(Station).filter(Station.sector_id == sector.sector_id).first()
                 if port:
                     sector_data["port"] = {
                         "id": str(port.id),

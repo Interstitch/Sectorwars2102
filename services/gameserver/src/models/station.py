@@ -79,7 +79,7 @@ class Station(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     
-    # Port properties
+    # Station properties
     station_class = Column(Enum(StationClass, name="station_class"), nullable=False)
     type = Column(Enum(StationType, name="station_type"), nullable=False)
     status = Column(Enum(StationStatus, name="station_status"), nullable=False, default=StationStatus.OPERATIONAL)
@@ -259,7 +259,7 @@ class Station(Base):
             
             # Determine stock level based on port's role with this commodity
             if commodity_name in pattern.get("sells", []):
-                # Port sells this commodity - needs high stock
+                # Station sells this commodity - needs high stock
                 if is_premium_seller:
                     # Premium sellers have maximum stock
                     stock_level = int(base_capacity * random.uniform(0.8, 1.0))
@@ -274,7 +274,7 @@ class Station(Base):
                     production_rate = commodity_data.get("production_rate", 50)
                     
             elif commodity_name in pattern.get("buys", []):
-                # Port buys this commodity - needs low stock, high capacity
+                # Station buys this commodity - needs low stock, high capacity
                 if is_premium_buyer or is_collection:
                     # Premium buyers and collection hubs have minimal stock, maximum capacity
                     stock_level = int(base_capacity * random.uniform(0.05, 0.15))
@@ -284,7 +284,7 @@ class Station(Base):
                     stock_level = int(base_capacity * random.uniform(0.1, 0.3))
                     production_rate = 0
             else:
-                # Port doesn't trade this commodity - minimal stock
+                # Station doesn't trade this commodity - minimal stock
                 stock_level = int(base_capacity * random.uniform(0.1, 0.25))
                 production_rate = commodity_data.get("production_rate", 10)
             

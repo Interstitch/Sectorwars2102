@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, desc
 
 from src.models.market_transaction import MarketTransaction, MarketPrice, PriceHistory, EconomicMetrics
-from src.models.port import Port
+from src.models.station import Station
 from src.models.resource import ResourceType
 from src.models.player import Player
 from src.services.audit_service import AuditService
@@ -37,7 +37,7 @@ class EconomyAnalyticsService:
             query = query.filter(MarketTransaction.resource_type == resource_type)
         
         if sector_id:
-            query = query.join(Port).filter(Port.sector_id == sector_id)
+            query = query.join(Station).filter(Station.sector_id == sector_id)
         
         transactions = query.all()
         
@@ -147,10 +147,10 @@ class EconomyAnalyticsService:
                 recent_prices.c.resource_type,
                 recent_prices.c.current_price,
                 recent_prices.c.previous_price,
-                Port.name.label('port_name'),
-                Port.sector_id
+                Station.name.label('port_name'),
+                Station.sector_id
             )
-            .join(Port, Port.id == recent_prices.c.port_id)
+            .join(Station, Station.id == recent_prices.c.port_id)
             .filter(recent_prices.c.previous_price != None)
             .all()
         )
@@ -268,7 +268,7 @@ class EconomyAnalyticsService:
             query = query.filter(PriceHistory.resource_type == resource_type)
         
         if sector_id:
-            query = query.join(Port).filter(Port.sector_id == sector_id)
+            query = query.join(Station).filter(Station.sector_id == sector_id)
         
         # Aggregate by hour
         trends = []
@@ -298,16 +298,16 @@ class EconomyAnalyticsService:
         """Get ports with highest trading volume"""
         results = (
             self.db.query(
-                Port.id,
-                Port.name,
-                Port.sector_id,
+                Station.id,
+                Station.name,
+                Station.sector_id,
                 func.count(MarketTransaction.id).label('transaction_count'),
                 func.sum(MarketTransaction.quantity).label('total_volume'),
                 func.sum(MarketTransaction.total_price).label('total_value')
             )
-            .join(MarketTransaction, MarketTransaction.port_id == Port.id)
+            .join(MarketTransaction, MarketTransaction.port_id == Station.id)
             .filter(MarketTransaction.timestamp >= start_time)
-            .group_by(Port.id, Port.name, Port.sector_id)
+            .group_by(Station.id, Station.name, Station.sector_id)
             .order_by(desc('total_value'))
             .limit(limit)
             .all()
@@ -595,7 +595,7 @@ class EconomyAnalyticsService:
         
         for trade in wash_trades:
             player = self.db.query(Player).filter(Player.id == trade.player_id).first()
-            port = self.db.query(Port).filter(Port.id == trade.port_id).first()
+            port = self.db.query(Station).filter(Station.id == trade.port_id).first()
             
             alerts.append({
                 "id": str(uuid.uuid4()),
@@ -648,9 +648,9 @@ class EconomyAnalyticsService:
         port_id = parameters.get('port_id')
         resources = parameters.get('resources', {})
         
-        port = self.db.query(Port).filter(Port.id == port_id).first()
+        port = self.db.query(Station).filter(Station.id == port_id).first()
         if not port:
-            raise ValueError("Port not found")
+            raise ValueError("Station not found")
         
         # Update port inventory
         for resource_type, amount in resources.items():

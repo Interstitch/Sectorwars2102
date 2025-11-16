@@ -26,7 +26,7 @@ import redis.asyncio as redis
 
 from src.models.market_transaction import MarketTransaction
 from src.models.ai_trading import AIMarketPrediction, PlayerTradingProfile
-from src.models.port import Port
+from src.models.station import Station
 from src.models.sector import Sector
 from src.models.player import Player
 from src.core.config import settings

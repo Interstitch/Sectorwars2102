@@ -19,7 +19,7 @@ from src.models.ship import Ship, ShipType
 from src.models.combat_log import CombatLog, CombatStats, CombatOutcome
 from src.models.sector import Sector
 from src.models.planet import Planet
-from src.models.port import Port
+from src.models.station import Station
 from src.models.drone import Drone, DroneDeployment, DroneCombat, DroneType, DroneStatus
 from src.services.drone_service import DroneService
 
@@ -103,7 +103,7 @@ class PlayerCombatService:
             combat_log = self._create_planet_combat(attacker, attacker_ship, planet)
             
         elif target_type == "port":
-            port = self.db.query(Port).filter(Port.id == target_id).first()
+            port = self.db.query(Station).filter(Station.id == target_id).first()
             if not port:
                 return {
                     "combatId": None,
@@ -255,7 +255,7 @@ class PlayerCombatService:
         self,
         attacker: Player,
         attacker_ship: Ship,
-        port: Port
+        port: Station
     ) -> CombatLog:
         """Create combat log for port raid."""
         # Calculate port defense based on class
@@ -309,7 +309,7 @@ class PlayerCombatService:
                 
         return base_defense
         
-    def _calculate_port_defense(self, port: Port) -> int:
+    def _calculate_port_defense(self, port: Station) -> int:
         """Calculate port's defense strength based on class."""
         port_defenses = {
             "special": 500,
@@ -498,8 +498,8 @@ class PlayerCombatService:
                 
         elif combat_log.combat_type == "port_raid":
             # Fixed loot based on port class
-            port = self.db.query(Port).filter(
-                Port.sector_id == combat_log.sector_id
+            port = self.db.query(Station).filter(
+                Station.sector_id == combat_log.sector_id
             ).first()
             
             if port:

@@ -3,7 +3,7 @@ import type {
   Ship,
   Sector,
   Planet,
-  Port,
+  Station,
   MoveOption,
   MarketInfo,
   PlayerState
@@ -13,7 +13,7 @@ export type {
   Ship,
   Sector,
   Planet,
-  Port,
+  Station,
   MoveOption,
   MarketInfo,
   PlayerState
@@ -47,7 +47,7 @@ export interface ExtendedSector extends Sector {
   warps?: Warp[];
   tunnels?: Tunnel[];
   planets?: Planet[];
-  ports?: Port[];
+  stations?: Station[];
 }
 
 // Player marker interface for 3D visualization

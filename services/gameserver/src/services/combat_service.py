@@ -14,7 +14,7 @@ from src.models.combat import CombatType, CombatResult
 from src.models.combat_log import CombatLog
 from src.models.drone import Drone, DroneDeployment
 from src.models.planet import Planet
-from src.models.port import Port
+from src.models.station import Station
 from src.services.ship_service import ShipService
 
 logger = logging.getLogger(__name__)
@@ -355,9 +355,9 @@ class CombatService:
             return {"success": False, "message": "No active ship selected"}
         
         # Get port
-        port = self.db.query(Port).filter(Port.id == port_id).first()
+        port = self.db.query(Station).filter(Station.id == port_id).first()
         if not port:
-            return {"success": False, "message": "Port not found"}
+            return {"success": False, "message": "Station not found"}
         
         # Check if player is in the port's sector
         if attacker.current_sector_id != port.sector_id:
@@ -679,7 +679,7 @@ class CombatService:
                 "owner_name": defender.username if defender else "Unowned"
             }
         elif log.combat_type == CombatType.SHIP_VS_PORT:
-            port = self.db.query(Port).filter(Port.id == log.port_id).first()
+            port = self.db.query(Station).filter(Station.id == log.port_id).first()
             report["target"] = {
                 "type": "port",
                 "id": str(log.port_id) if log.port_id else None,
@@ -747,7 +747,7 @@ class CombatService:
                     "name": planet.name if planet else "Unknown"
                 }
             elif log.combat_type == CombatType.SHIP_VS_PORT:
-                port = self.db.query(Port).filter(Port.id == log.port_id).first()
+                port = self.db.query(Station).filter(Station.id == log.port_id).first()
                 entry["target"] = {
                     "type": "port",
                     "id": str(log.port_id) if log.port_id else None,
@@ -1318,7 +1318,7 @@ class CombatService:
             "combat_details": combat_details
         }
     
-    def _resolve_port_combat(self, attacker: Player, port: Port, 
+    def _resolve_port_combat(self, attacker: Player, port: Station, 
                             port_owner: Optional[Player]) -> Dict[str, Any]:
         """Resolve combat between a ship and a port."""
         # Similar to planet combat but with port-specific parameters
@@ -1326,7 +1326,7 @@ class CombatService:
         attacker_ship = attacker.current_ship
         attacker_drones = attacker.defense_drones
         
-        # Port defenses
+        # Station defenses
         port_defense_level = port.defense_level or 0
         port_shields = port.shields or 0
         port_weapons = port.defense_weapons or 0
@@ -1399,7 +1399,7 @@ class CombatService:
             if port_captured:
                 break
             
-            # Port's turn
+            # Station's turn
             # Calculate chance to hit
             port_hit_chance = min(0.7, port_attack / (attacker_attack * 1.3) * 0.5)
             
@@ -1416,7 +1416,7 @@ class CombatService:
                         "round": round_number,
                         "actor": "defender",
                         "action": "drone_attack",
-                        "message": f"Port defenses destroyed {drones_destroyed} of {attacker.username}'s drones",
+                        "message": f"Station defenses destroyed {drones_destroyed} of {attacker.username}'s drones",
                         "drones_destroyed": drones_destroyed
                     })
                 else:
@@ -1431,14 +1431,14 @@ class CombatService:
                             "round": round_number,
                             "actor": "defender",
                             "action": "ship_destroyed",
-                            "message": f"Port defenses critically damaged {attacker.username}'s ship, forcing ejection"
+                            "message": f"Station defenses critically damaged {attacker.username}'s ship, forcing ejection"
                         })
                     else:
                         combat_details.append({
                             "round": round_number,
                             "actor": "defender",
                             "action": "ship_attack",
-                            "message": f"Port defenses hit {attacker.username}'s ship for {damage} damage"
+                            "message": f"Station defenses hit {attacker.username}'s ship for {damage} damage"
                         })
             else:
                 # Miss
@@ -1446,7 +1446,7 @@ class CombatService:
                     "round": round_number,
                     "actor": "defender",
                     "action": "miss",
-                    "message": f"Port defense systems' attack missed {attacker.username}'s ship"
+                    "message": f"Station defense systems' attack missed {attacker.username}'s ship"
                 })
             
             # Check if combat ends due to round limit
@@ -1461,7 +1461,7 @@ class CombatService:
         # Determine result
         if attacker_ship_destroyed:
             result = CombatResult.DEFENDER_VICTORY
-            message = f"Port defenses defeated {attacker.username}"
+            message = f"Station defenses defeated {attacker.username}"
         elif port_captured:
             result = CombatResult.ATTACKER_VICTORY
             message = f"{attacker.username} captured port {port.name}"
@@ -1606,7 +1606,7 @@ class CombatService:
         # For now, just setting the owner_id
         planet.owner_id = new_owner.id
     
-    def _transfer_port_ownership(self, port: Port, new_owner: Player) -> None:
+    def _transfer_port_ownership(self, port: Station, new_owner: Player) -> None:
         """Transfer ownership of a port to a new player."""
         # Similar to planet ownership transfer
         port.owner_id = new_owner.id

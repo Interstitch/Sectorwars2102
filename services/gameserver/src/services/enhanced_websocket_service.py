@@ -458,7 +458,7 @@ class EnhancedWebSocketService:
         try:
             # Import required models
             from src.models.ship import Ship
-            from src.models.port import Port
+            from src.models.station import Station
             from src.models.market_transaction import MarketPrice, TransactionType
             
             # Get player
@@ -484,11 +484,11 @@ class EnhancedWebSocketService:
                 if ship and ship.current_port_id:
                     port_id = str(ship.current_port_id)
                 else:
-                    return {"success": False, "error": "Port ID required or ship must be docked"}
+                    return {"success": False, "error": "Station ID required or ship must be docked"}
             
-            port = await db.get(Port, port_id)
+            port = await db.get(Station, port_id)
             if not port:
-                return {"success": False, "error": "Port not found"}
+                return {"success": False, "error": "Station not found"}
             
             # Verify player is in the same sector as the port
             if player.current_sector_id != port.sector_id:
@@ -524,7 +524,7 @@ class EnhancedWebSocketService:
                 if market_price.quantity_available < quantity:
                     return {
                         "success": False, 
-                        "error": f"Port only has {market_price.quantity_available} units available"
+                        "error": f"Station only has {market_price.quantity_available} units available"
                     }
                 
                 # Calculate total cost

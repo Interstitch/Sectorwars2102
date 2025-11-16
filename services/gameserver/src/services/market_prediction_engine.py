@@ -27,7 +27,7 @@ except ImportError:
 
 from src.models.market_transaction import MarketTransaction
 from src.models.ai_trading import AIMarketPrediction, AIModelPerformance, AITrainingData
-from src.models.port import Port
+from src.models.station import Station
 
 
 logger = logging.getLogger(__name__)

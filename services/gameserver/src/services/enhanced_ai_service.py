@@ -58,7 +58,7 @@ from src.models.enhanced_ai_models import (
 from src.models.ai_trading import PlayerTradingProfile, AIMarketPrediction, AIRecommendation
 from src.models.player import Player
 from src.models.sector import Sector
-from src.models.port import Port
+from src.models.station import Station
 from src.models.planet import Planet
 from src.models.fleet import Fleet, FleetBattle
 from src.models.team import Team
@@ -650,9 +650,9 @@ class EnhancedAIService:
         recommendations = []
         
         # Get available ports for purchase
-        stmt = select(Port).where(
-            Port.is_player_ownable == True,
-            Port.owner_id.is_(None)
+        stmt = select(Station).where(
+            Station.is_player_ownable == True,
+            Station.owner_id.is_(None)
         ).limit(max_count * 2)  # Get more to analyze
         result = await self.db.execute(stmt)
         available_ports = result.scalars().all()
@@ -673,7 +673,7 @@ class EnhancedAIService:
                     category=AISystemType.PORT,
                     recommendation_type="port_investment",
                     title=f"Investment Opportunity: {port.name}",
-                    summary=f"Port {port.name} offers {roi_months:.1f} month ROI with current trade volume",
+                    summary=f"Station {port.name} offers {roi_months:.1f} month ROI with current trade volume",
                     detailed_analysis={
                         "port_id": str(port.id),
                         "port_name": port.name,
@@ -716,7 +716,7 @@ class EnhancedAIService:
                 id=str(uuid.uuid4()),
                 category=AISystemType.STRATEGIC,
                 recommendation_type="diversification",
-                title="Strategic Diversification: Port Investment",
+                title="Strategic Diversification: Station Investment",
                 summary="Your credit reserves suggest readiness for port ownership to diversify income streams",
                 detailed_analysis={
                     "current_credits": player_data["credits"],
@@ -750,7 +750,7 @@ class EnhancedAIService:
         player = result.scalar_one()
         
         # Check port ownership
-        stmt = select(func.count(Port.id)).where(Port.owner_id == player_id)
+        stmt = select(func.count(Station.id)).where(Station.owner_id == player_id)
         result = await self.db.execute(stmt)
         port_count = result.scalar()
         
@@ -992,7 +992,7 @@ class EnhancedAIService:
         if not assistant.has_permission("port"):
             return "I don't currently have access to port investment data. Please upgrade your AI assistant permissions for investment analysis."
         
-        return "Port investment analysis is coming soon! I'll help you identify profitable port acquisition opportunities and optimize revenue from owned ports."
+        return "Station investment analysis is coming soon! I'll help you identify profitable port acquisition opportunities and optimize revenue from owned ports."
 
     async def _generate_strategic_response(self, assistant: AIComprehensiveAssistant,
                                          entities: Dict[str, List[str]], context: ConversationContext) -> str:
@@ -1011,7 +1011,7 @@ class EnhancedAIService:
 🔹 **Trading**: Market analysis, route optimization, profit recommendations
 🔹 **Combat**: Tactical advice, fleet coordination (coming soon)
 🔹 **Colonization**: Terraforming guidance, development planning (coming soon)  
-🔹 **Port Management**: Investment analysis, revenue optimization (coming soon)
+🔹 **Station Management**: Investment analysis, revenue optimization (coming soon)
 🔹 **Strategic Planning**: Cross-system coordination and long-term strategy (coming soon)
 
 Try asking me:

@@ -14,7 +14,7 @@ interface Planet {
   habitability_score?: number;
 }
 
-interface Port {
+interface Station {
   id: string;
   name: string;
   port_class?: number;  // Port class 0-11 (from specification)
@@ -34,7 +34,7 @@ interface Port {
 
 interface PlanetPortPairProps {
   planet: Planet;
-  port?: Port | null;
+  station?: Station | null;
   onLandOnPlanet: (planetId: string) => void;
   onDockAtPort?: (portId: string) => void;
   isLanded?: boolean;
