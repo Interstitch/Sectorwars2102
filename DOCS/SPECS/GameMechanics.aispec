@@ -12,7 +12,7 @@ FACTS:
 * Commodities trade through ports with 12 class types (0-11)
 * Prices fluctuate based on supply/demand and sector characteristics
 * Planet colonization requires 10,000 population units + 10,000 credits
-* Population purchased from Earth (Sector 1) at 50 credits per unit
+* Population purchased from region's Sector 1 population hub at 50 credits per unit
 * Team maximum: 4 players for balance
 * Ship insurance available at friendly ports for partial value recovery
 * Credits stored virtually (never lost on ship destruction)
@@ -103,7 +103,7 @@ CONSTRAINTS:
 * Unused turns expire at day rollover
 * Teams limited to 4 players maximum
 * Planet colonization minimum: 10k population + 10k credits
-* Population only available from Earth (Sector 1)
+* Population only from Sector 1 population hub of each region
 * Credits never lost on ship destruction
 * Cargo always lost on ship destruction
 * Escape pod movement has high turn cost penalty

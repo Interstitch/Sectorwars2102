@@ -67,17 +67,17 @@ MasterSergeant:
 
 WARRANT_RANKS:
 WarrantOfficer:
-  requirements: 2.5M credits, 1500 sectors, 100 combat victories, 5+ planets, 1 warp tunnel, 1 fleet battle led
+  requirements: 2.5M credits, 1500 sectors, 100 combat victories, 5+ planets, 1 warp gate, 1 fleet battle led
   insignia: Gold bar with silver diamond
   trading_bonus: +8%
   benefits: Can construct advanced facilities
   rarity: 30% (skilled specialists)
 
 ChiefWarrantOfficer:
-  requirements: 5M credits, 2000 sectors, 200 combat victories, 8+ planets, 3+ warp tunnels, 5+ fleet battles, 1 port owned
+  requirements: 5M credits, 2000 sectors, 200 combat victories, 8+ planets, 3+ warp gates, 5+ fleet battles, 1 port owned
   insignia: Gold bar with gold diamond
   trading_bonus: +10%
-  benefits: Reduced warp tunnel construction costs
+  benefits: Reduced warp gate construction costs
   rarity: 30% (skilled specialists)
 
 OFFICER_RANKS:
@@ -111,7 +111,7 @@ Captain:
 
 FLAG_RANKS:
 Commodore:
-  requirements: 250M credits, 5000 combat victories, 25+ planets across 3+ regions, 8+ ports, governs thriving Regional Territory (100+ citizens), led coalition victory in inter-regional conflict, 10+ custom warp tunnels, top 10 all-time galactic leaderboard
+  requirements: 250M credits, 5000 combat victories, 25+ planets across 3+ regions, 8+ ports, governs thriving Regional Territory (100+ citizens), led coalition victory in inter-regional conflict, 10+ custom warp gates, top 10 all-time galactic leaderboard
   insignia: Gold eagle with single star
   trading_bonus: +25%
   benefits: Can propose galactic-level policies, legendary status
@@ -154,7 +154,7 @@ Economic:
 
 Exploration:
   - Explorer's Badge: Discovered 500 unique sectors
-  - Pathfinder Medal: Created 5 new warp tunnels
+  - Pathfinder Medal: Created 5 new warp gates
   - Frontier Spirit: First to discover 10 rare anomalies
   - Genesis Award: Successfully deployed 25 Genesis Devices
 

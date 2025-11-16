@@ -8,8 +8,8 @@ FACTS:
 * Port classes (0-11) determine commodity buy/sell availability
 * Prices fluctuate based on supply/demand and regional variations
 * 5 Quantum Shards combine to create 1 Quantum Crystal
-* Quantum Crystals required for player-created warp tunnels
-* Population only available from Earth (Sector 1) at 50 credits/unit
+* Quantum Crystals required for player-created warp gates
+* Population available from region's Sector 1 population hub at 50 credits/unit
 * Each population unit occupies 1 cargo space during transport
 * Credits never stored on ship (virtual, never lost on destruction)
 * Team treasury supports 12 resource types for shared storage
@@ -68,7 +68,7 @@ LuxuryGoods:
 STRATEGIC_RESOURCES:
 Population:
   cost: 50 credits/unit
-  source: Earth (Sector 1) only
+  source: Region's Sector 1 population hub
   cargo_space: 1 unit per population
   colonization_requirement: 10,000 units minimum
   growth: Natural expansion after planet establishment
@@ -84,7 +84,7 @@ QuantumShards:
 QuantumCrystals:
   rarity: Extremely rare
   creation: Assemble 5 Quantum Shards at specialized facilities
-  usage: Essential for player-created warp tunnels
+  usage: Essential for player-created warp gates
   strategic_value: Enables custom navigation networks
 
 GenesisDevices:
@@ -161,7 +161,7 @@ Exploration:
   route_mapping: Find efficient trade routes between distant markets
 
 CONSTRAINTS:
-* Population only available from Earth (Sector 1)
+* Population only from Sector 1 population hub of each region
 * Quantum Crystals require 5 Quantum Shards
 * Port classes strictly determine buy/sell inventory
 * Cargo lost on ship destruction
@@ -207,8 +207,8 @@ team.treasury.deposit("ORE", quantity=500, from_player=player)
 team.treasury.withdraw("FUEL", quantity=100, to_player=teammate)
 
 # Population transport for colonization
-earth = Sector(id=1)
-player.dock(earth.port)
+terran_sector_1 = get_sector(region="Terran Space", sector_number=1)
+player.dock(terran_sector_1.port)  # Sol Station
 player.buy("POPULATION", quantity=10000, price=50)  # Cost: 500,000 credits
 # Cargo space used: 10,000 units
 player.travel_to(target_planet_sector)
