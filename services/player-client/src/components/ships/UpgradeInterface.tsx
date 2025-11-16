@@ -171,7 +171,7 @@ const AVAILABLE_UPGRADES: ShipUpgrade[] = [
     tier: 5,
     cost: 75000,
     installTime: 10,
-    requirements: { minLevel: 25, shipType: ['Scout', 'Stealth Fighter'] },
+    requirements: { minLevel: 25, shipType: ['Scout', 'Stealth Drone'] },
     effects: [
       { stat: 'stealth', value: 100, type: 'percentage' }
     ],

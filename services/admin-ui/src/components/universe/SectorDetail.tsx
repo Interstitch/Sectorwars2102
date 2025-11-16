@@ -460,7 +460,7 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
                 <input type="number" name="tax_rate" min="0" max="50" step="0.1" defaultValue="5.0" required />
               </div>
               <div className="form-group">
-                <label>Defense Fighters:</label>
+                <label>Defense Drones:</label>
                 <input type="number" name="defense_fighters" min="0" max="10000" defaultValue="100" required />
               </div>
               <div className="form-row">
@@ -499,7 +499,7 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
                 planet_type: formData.get('planet_type'),
                 citadel_level: parseInt(formData.get('citadel_level') as string),
                 shield_level: parseInt(formData.get('shield_level') as string),
-                fighters: parseInt(formData.get('fighters') as string),
+                drones: parseInt(formData.get('drones') as string),
                 breeding_rate: parseFloat(formData.get('breeding_rate') as string)
               };
               submitCreatePlanet(planetData);
@@ -545,8 +545,8 @@ const SectorDetail: React.FC<SectorDetailProps> = ({ sector, onBack, onPortClick
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label>Defense Fighters:</label>
-                  <input type="number" name="fighters" min="0" max="50000" defaultValue="0" required />
+                  <label>Defense Drones:</label>
+                  <input type="number" name="drones" min="0" max="50000" defaultValue="0" required />
                 </div>
                 <div className="form-group">
                   <label>Breeding Rate (%):</label>

@@ -29,7 +29,7 @@ class GameEventResponse(BaseModel):
     status: str
     start_time: datetime
     end_time: Optional[datetime]
-    affected_zones: List[str]  # Cosmological zones (Federation/Border/Frontier)
+    affected_regions: List[str]  # Regions affected (central-nexus, terran-space, player-owned regions)
     effects: List[EventEffectResponse]
     participation_count: int
     rewards_distributed: int
@@ -60,7 +60,7 @@ class CreateEventRequest(BaseModel):
     event_type: str
     start_time: datetime
     end_time: Optional[datetime]
-    affected_zones: List[str]  # Cosmological zones (Federation/Border/Frontier)
+    affected_regions: List[str]  # Regions affected (central-nexus, terran-space, player-owned regions)
     effects: List[Dict[str, Any]]
 
 
@@ -133,7 +133,7 @@ async def get_events(
             status=event.status.value if isinstance(event.status, EventStatus) else event.status,
             start_time=event.start_time,
             end_time=event.end_time,
-            affected_zones=event.affected_zones or [],
+            affected_regions=event.affected_regions or [],
             effects=effect_responses,
             participation_count=participation_count,
             rewards_distributed=event.rewards_distributed or 0,
@@ -231,7 +231,7 @@ async def create_event(
         status=EventStatus.SCHEDULED,
         start_time=event_data.start_time,
         end_time=event_data.end_time,
-        affected_zones=event_data.affected_zones,
+        affected_regions=event_data.affected_regions,
         created_by_id=admin_player.id if admin_player else None,
         created_at=datetime.utcnow()
     )
@@ -276,7 +276,7 @@ async def create_event(
         status=new_event.status.value,
         start_time=new_event.start_time,
         end_time=new_event.end_time,
-        affected_zones=new_event.affected_zones or [],
+        affected_regions=new_event.affected_regions or [],
         effects=effect_responses,
         participation_count=0,
         rewards_distributed=0,
@@ -304,7 +304,7 @@ async def update_event(
     event.event_type = EventType(event_data.event_type)
     event.start_time = event_data.start_time
     event.end_time = event_data.end_time
-    event.affected_zones = event_data.affected_zones
+    event.affected_regions = event_data.affected_regions
     
     # Remove old effects and create new ones
     db.query(EventEffect).filter(EventEffect.event_id == event.id).delete()
@@ -350,7 +350,7 @@ async def update_event(
         status=event.status.value,
         start_time=event.start_time,
         end_time=event.end_time,
-        affected_zones=event.affected_zones or [],
+        affected_regions=event.affected_regions or [],
         effects=effect_responses,
         participation_count=participation_count,
         rewards_distributed=event.rewards_distributed or 0,

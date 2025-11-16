@@ -38,8 +38,8 @@ class CombatStatsResponse(BaseModel):
 
 class BalanceMetricsResponse(BaseModel):
     ship_type_effectiveness: Dict[str, float]
-    fighter_effectiveness: float
-    average_damage_per_fighter: float
+    drone_effectiveness: float
+    average_damage_per_drone: float
     combat_balance_score: float
 
 
@@ -102,13 +102,13 @@ async def get_combat_logs(
                 "username": attacker.username if attacker else "Unknown",
                 "ship_type": log.attacker_ship_type or "Unknown",
                 "ship_name": log.attacker_ship_name or "Unknown",
-                "fighters": log.attacker_fighters
+                "drones": log.attacker_drones
             },
             defender={
                 "username": defender.username if defender else "Unknown",
-                "ship_type": log.defender_ship_type or "Unknown", 
+                "ship_type": log.defender_ship_type or "Unknown",
                 "ship_name": log.defender_ship_name or "Unknown",
-                "fighters": log.defender_fighters
+                "drones": log.defender_drones
             },
             location={
                 "sector_name": f"Sector {log.sector_id}" if log.sector_id else "Unknown",
@@ -250,20 +250,20 @@ async def get_balance_metrics(
         effectiveness = wins / total_fights if total_fights > 0 else 0
         ship_effectiveness[ship_type] = effectiveness
     
-    # Fighter effectiveness (damage per fighter)
-    fighter_damage_query = db.query(
+    # Drone effectiveness (damage per drone)
+    drone_damage_query = db.query(
         func.sum(CombatLog.attacker_damage_dealt + CombatLog.defender_damage_dealt).label('total_damage'),
-        func.sum(CombatLog.attacker_fighters + CombatLog.defender_fighters).label('total_fighters')
+        func.sum(CombatLog.attacker_drones + CombatLog.defender_drones).label('total_drones')
     ).filter(CombatLog.timestamp >= time_threshold).first()
-    
-    avg_damage_per_fighter = 0
-    fighter_effectiveness = 1.0
-    
-    if fighter_damage_query and fighter_damage_query.total_fighters and fighter_damage_query.total_fighters > 0:
-        avg_damage_per_fighter = fighter_damage_query.total_damage / fighter_damage_query.total_fighters
+
+    avg_damage_per_drone = 0
+    drone_effectiveness = 1.0
+
+    if drone_damage_query and drone_damage_query.total_drones and drone_damage_query.total_drones > 0:
+        avg_damage_per_drone = drone_damage_query.total_damage / drone_damage_query.total_drones
         # Normalize to 0-2 range where 1.0 is balanced
-        fighter_effectiveness = min(2.0, max(0.1, avg_damage_per_fighter / 100))
-    
+        drone_effectiveness = min(2.0, max(0.1, avg_damage_per_drone / 100))
+
     # Overall balance score (0.0 = unbalanced, 1.0 = perfectly balanced)
     # Based on distribution of ship type effectiveness
     effectiveness_values = list(ship_effectiveness.values())
@@ -274,11 +274,11 @@ async def get_balance_metrics(
         balance_score = max(0.0, min(1.0, 1.0 - (std_dev * 2)))  # Higher std_dev = lower balance
     else:
         balance_score = 0.5  # Neutral when no data
-    
+
     return BalanceMetricsResponse(
         ship_type_effectiveness=ship_effectiveness,
-        fighter_effectiveness=fighter_effectiveness,
-        average_damage_per_fighter=avg_damage_per_fighter,
+        drone_effectiveness=drone_effectiveness,
+        average_damage_per_drone=avg_damage_per_drone,
         combat_balance_score=balance_score
     )
 

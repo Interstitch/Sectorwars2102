@@ -173,7 +173,7 @@ class PlanetaryService:
         player_id: UUID,
         turrets: Optional[int] = None,
         shields: Optional[int] = None,
-        fighters: Optional[int] = None
+        drones: Optional[int] = None
     ) -> Dict[str, Any]:
         """Update planetary defenses."""
         # Verify ownership
@@ -186,34 +186,34 @@ class PlanetaryService:
                 player_planets.c.player_id == player_id
             )
         ).first()
-        
+
         if not planet:
             raise ValueError("Planet not found or not owned by player")
-            
+
         # Update defenses if provided
         if turrets is not None:
             planet.defense_turrets = max(0, turrets)
         if shields is not None:
             planet.defense_shields = max(0, shields)
-        if fighters is not None:
-            planet.defense_fighters = max(0, fighters)
-            
+        if drones is not None:
+            planet.defense_drones = max(0, drones)
+
         # Calculate total defense power
         defense_power = (
             planet.defense_turrets * 10 +
             planet.defense_shields * 5 +
-            planet.defense_fighters * 2
+            planet.defense_drones * 2
         )
-        
+
         self.db.commit()
         self.db.refresh(planet)
-        
+
         return {
             "success": True,
             "defenses": {
                 "turrets": planet.defense_turrets,
                 "shields": planet.defense_shields,
-                "fighters": planet.defense_fighters
+                "drones": planet.defense_drones
             },
             "defensePower": defense_power
         }
@@ -283,7 +283,7 @@ class PlanetaryService:
             fuel_ore=100,
             organics=100,
             equipment=100,
-            fighters=0
+            drones=0
         )
         
         self.db.add(genesis)
@@ -410,7 +410,7 @@ class PlanetaryService:
             "defenses": {
                 "turrets": planet.defense_turrets or 0,
                 "shields": planet.defense_shields or 0,
-                "fighters": planet.defense_fighters or 0
+                "drones": planet.defense_drones or 0
             },
             "underSiege": False,  # TODO: Implement siege detection
             "siegeDetails": None

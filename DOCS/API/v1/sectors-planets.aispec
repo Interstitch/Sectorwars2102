@@ -15,7 +15,7 @@ MULTI_REGIONAL: Yes (sector access filtered by player's current region)
 * Planet specializations: agricultural, industrial, military, research, balanced
 * Genesis devices create new planets in empty sectors
 * Colonist allocation determines resource production (fuel, organics, equipment)
-* Planetary defenses include turrets, shields, and fighters
+* Planetary defenses include turrets, shields, and drones
 * Ports have classes 0-11 (trading classification system)
 
 ## ENDPOINTS
@@ -79,7 +79,7 @@ BuildingUpgradeRequest:
 DefenseUpdateRequest:
   turrets: integer (>=0), optional
   shields: integer (>=0), optional
-  fighters: integer (>=0), optional
+  drones: integer (>=0), optional
 
 GenesisDeployRequest:
   sectorId: string (UUID), required
@@ -200,7 +200,7 @@ curl -X PUT http://localhost:8080/api/v1/api/planets/planet-uuid/defenses \
   -d '{
     "turrets": 50,
     "shields": 1000,
-    "fighters": 20
+    "drones": 20
   }'
 
 # 6. Set planet specialization
@@ -256,13 +256,13 @@ curl -X POST http://localhost:8080/api/v1/api/planets/genesis/deploy \
 **Planetary Defenses:**
 - Turrets: Automated defense weapons
 - Shields: Energy barriers protecting the planet
-- Fighters: Defensive spacecraft stationed on planet
+- Drones: Defensive spacecraft stationed on planet
 - Strong defenses deter attacks and reduce siege effectiveness
 
 **Planet Specialization:**
 - Agricultural: +50% organics production
 - Industrial: +50% equipment production
-- Military: +50% fighter/turret effectiveness
+- Military: +50% drone/turret effectiveness
 - Research: +50% research speed
 - Balanced: No bonuses but no penalties
 

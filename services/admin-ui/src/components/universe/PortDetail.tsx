@@ -267,7 +267,7 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack, onUpdate }) => {
             </div>
             <div className="service-item">
               <span className="service-icon">🤖</span>
-              <span className="service-name">Defense Fighters</span>
+              <span className="service-name">Defense Drones</span>
               <span className="service-status">
                 <EditableField 
                   field="defense_fighters" 
@@ -350,11 +350,11 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack, onUpdate }) => {
               <button 
                 className="admin-action-btn"
                 onClick={() => {
-                  const newFighters = prompt('Enter new defense fighter count:', port.defense_fighters?.toString() || '100');
+                  const newFighters = prompt('Enter new defense drone count:', port.defense_fighters?.toString() || '100');
                   if (newFighters) handleEdit('defense_fighters', parseInt(newFighters));
                 }}
               >
-                🤖 Deploy Defense Fighters
+                🤖 Deploy Defense Drones
               </button>
               <button 
                 className="admin-action-btn"
@@ -374,7 +374,7 @@ const PortDetail: React.FC<PortDetailProps> = ({ port, onBack, onUpdate }) => {
           <ul>
             <li>Class {port.port_class} ports typically trade in {getPortTradingPattern(port.port_class)}</li>
             <li>Tax rate affects all transactions: {port.tax_rate}% current rate</li>
-            <li>Defense fighters: {port.defense_fighters} protecting the port</li>
+            <li>Defense drones: {port.defense_fighters} protecting the port</li>
             <li>Port shields: {port.port_shields || 0} / 1000 strength</li>
             <li>Click any value above to edit it directly</li>
           </ul>

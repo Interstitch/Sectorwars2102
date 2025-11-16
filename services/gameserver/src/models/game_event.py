@@ -73,7 +73,7 @@ class GameEvent(Base):
     actual_end_time = Column(DateTime(timezone=True), nullable=True)
     
     # Scope and targeting
-    affected_zones = Column(ARRAY(String), nullable=True)  # cosmological zone names/IDs (Federation/Border/Frontier)
+    affected_regions = Column(ARRAY(String), nullable=True)  # region names/IDs (central-nexus, terran-space, player-owned regions)
     affected_sectors = Column(ARRAY(Integer), nullable=True)  # specific sector IDs
     global_event = Column(Boolean, nullable=False, default=False)
     

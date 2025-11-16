@@ -202,7 +202,7 @@ const PlayerAssetManager: React.FC<PlayerAssetManagerProps> = ({
                   <>
                     <span>Sector: {asset.sector_id || 'Unknown'}</span>
                     <span>Tax Rate: {asset.tax_rate || 0}%</span>
-                    <span>Fighters: {asset.defense_fighters || 0}</span>
+                    <span>Drones: {asset.defense_fighters || 0}</span>
                   </>
                 )}
               </div>

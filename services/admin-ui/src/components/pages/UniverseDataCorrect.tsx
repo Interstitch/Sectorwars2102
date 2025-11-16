@@ -108,7 +108,7 @@ interface PlanetEditData {
   breedingRate: number; // 0-100
   citadelLevel: 0 | 1 | 2 | 3 | 4 | 5;
   shieldLevel: 0 | 1 | 2 | 3;
-  fighters: number;
+  drones: number;
 }
 
 // Warp tunnel data
@@ -973,14 +973,14 @@ const UniverseDataCorrect: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label>Fighters: {planetEdit.fighters.toLocaleString()}</label>
+            <label>Drones: {planetEdit.drones.toLocaleString()}</label>
             <input 
               type="range" 
               min="0" 
               max="10000" 
               step="100"
-              value={planetEdit.fighters}
-              onChange={(e) => setPlanetEdit({...planetEdit, fighters: parseInt(e.target.value)})}
+              value={planetEdit.drones}
+              onChange={(e) => setPlanetEdit({...planetEdit, drones: parseInt(e.target.value)})}
             />
           </div>
         </div>
@@ -1355,7 +1355,7 @@ const UniverseDataCorrect: React.FC = () => {
                         breedingRate: 80,
                         citadelLevel: 0,
                         shieldLevel: 0,
-                        fighters: 0
+                        drones: 0
                       });
                       setShowPlanetEditor(true);
                     }}

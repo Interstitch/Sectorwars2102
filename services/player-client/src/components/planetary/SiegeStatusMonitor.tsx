@@ -33,7 +33,7 @@ const SIEGE_PHASES: SiegePhaseInfo[] = [
       'Shield generators under stress'
     ],
     defenseOptions: [
-      'Deploy fighter squadrons',
+      'Deploy drone squadrons',
       'Activate orbital defense platforms',
       'Request allied assistance',
       'Attempt blockade runner'
@@ -273,8 +273,8 @@ export const SiegeStatusMonitor: React.FC<SiegeStatusMonitorProps> = ({
               </div>
               <div className="casualty-item">
                 <span className="casualty-icon">✈️</span>
-                <span className="casualty-label">Fighters Lost:</span>
-                <span className="casualty-value">{planet.siegeDetails.casualties.fighters}</span>
+                <span className="casualty-label">Drones Lost:</span>
+                <span className="casualty-value">{planet.siegeDetails.casualties.drones}</span>
               </div>
             </div>
           </div>
@@ -304,13 +304,13 @@ export const SiegeStatusMonitor: React.FC<SiegeStatusMonitorProps> = ({
               </div>
             </div>
             <div className="defense-item">
-              <span className="defense-label">✈️ Fighters:</span>
+              <span className="defense-label">✈️ Drones:</span>
               <div className="status-bar">
                 <div 
-                  className="status-fill fighters"
+                  className="status-fill drones"
                   style={{ width: `${Math.max(10, defenseEffectiveness * 0.6)}%` }}
                 />
-                <span className="status-text">{planet.defenses.fighters} squadrons</span>
+                <span className="status-text">{planet.defenses.drones} squadrons</span>
               </div>
             </div>
           </div>

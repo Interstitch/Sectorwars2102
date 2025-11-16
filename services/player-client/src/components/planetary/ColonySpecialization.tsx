@@ -80,7 +80,7 @@ const SPECIALIZATIONS: SpecializationInfo[] = [
     benefits: [
       '+50% defense effectiveness',
       '+25% equipment production',
-      'Fighter squadron bonuses',
+      'Drone squadron bonuses',
       'Rapid deployment capabilities'
     ],
     productionBonuses: {

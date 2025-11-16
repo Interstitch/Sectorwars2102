@@ -257,3 +257,4 @@ docker-compose restart <service>                     # Restart service
 ---
 *Self-improving development system v3.0.1 - Evolves automatically with each iteration*
 *Sectorwars2102: Multi-Regional Space Trading Game Platform*
+- Never name components with the word enhanced or improved without first asking Max (the user).

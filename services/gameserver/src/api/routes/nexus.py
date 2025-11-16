@@ -14,6 +14,7 @@ from src.models.sector import Sector
 from src.models.port import Port
 from src.models.planet import Planet
 from src.models.region import Region
+from src.models.cluster import Cluster
 from src.services.nexus_generation_service import nexus_generation_service
 from src.services.regional_auth_service import regional_auth, RegionalPermission
 
@@ -28,7 +29,7 @@ class NexusGenerationRequest(BaseModel):
     """Request to generate or regenerate Central Nexus"""
     force_regenerate: bool = False
     preserve_player_data: bool = True
-    districts_to_regenerate: Optional[List[str]] = None
+    # districts_to_regenerate field removed - districts concept eliminated
 
 
 class NexusStatsResponse(BaseModel):
@@ -37,23 +38,23 @@ class NexusStatsResponse(BaseModel):
     total_ports: int
     total_planets: int
     total_warp_gates: int
-    districts: List[Dict[str, Any]]
+    clusters: List[Dict[str, Any]]  # Changed from districts
     active_players: int
     daily_traffic: int
 
 
-class DistrictInfoResponse(BaseModel):
-    """District information response"""
-    district_type: str
+class ClusterInfoResponse(BaseModel):
+    """Cluster information response (replaces DistrictInfoResponse)"""
+    cluster_id: str
     name: str
-    sector_range: tuple
-    security_level: int
-    development_level: int
-    sectors_count: int
+    cluster_type: str
+    sector_count: int
     ports_count: int
     planets_count: int
-    special_features: Dict[str, Any]
-    current_traffic: int
+    avg_security_level: float
+    avg_development_level: float
+    is_discovered: bool
+    economic_value: int
 
 
 @router.post("/generate")
@@ -92,8 +93,7 @@ async def generate_central_nexus(
         background_tasks.add_task(
             generate_nexus_task,
             request.force_regenerate,
-            request.preserve_player_data,
-            request.districts_to_regenerate
+            request.preserve_player_data
         )
         
         return {
@@ -192,37 +192,43 @@ async def get_nexus_statistics(
         )
         total_planets = planets_result.scalar() or 0
         
-        # Get district breakdown
-        districts_result = await session.execute(
+        # Get cluster breakdown (replaces district breakdown)
+        clusters_result = await session.execute(
             select(
-                Sector.district,
-                func.count(Sector.id).label('sector_count'),
+                Cluster.id,
+                Cluster.name,
+                Cluster.type,
+                Cluster.sector_count,
                 func.avg(Sector.security_level).label('avg_security'),
                 func.avg(Sector.development_level).label('avg_development')
+            ).join(
+                Sector, Cluster.id == Sector.cluster_id
             ).where(
-                Sector.region_id == nexus_region.id
-            ).group_by(Sector.district)
+                Cluster.region_id == nexus_region.id
+            ).group_by(Cluster.id, Cluster.name, Cluster.type, Cluster.sector_count)
         )
-        
-        districts = []
-        for row in districts_result:
-            districts.append({
-                "district_type": row.district,
+
+        clusters = []
+        for row in clusters_result:
+            clusters.append({
+                "cluster_id": str(row.id),
+                "name": row.name,
+                "type": row.type.value if hasattr(row.type, 'value') else str(row.type),
                 "sectors": row.sector_count,
                 "avg_security": round(row.avg_security, 1) if row.avg_security else 0,
                 "avg_development": round(row.avg_development, 1) if row.avg_development else 0
             })
-        
+
         # Get active players (would need player location tracking)
         active_players = 0  # Placeholder
         daily_traffic = 0   # Placeholder
-        
+
         return NexusStatsResponse(
             total_sectors=total_sectors,
             total_ports=total_ports,
             total_planets=total_planets,
             total_warp_gates=0,  # Would need to implement warp gate counting
-            districts=districts,
+            clusters=clusters,  # Changed from districts
             active_players=active_players,
             daily_traffic=daily_traffic
         )
@@ -234,147 +240,135 @@ async def get_nexus_statistics(
         raise HTTPException(status_code=500, detail="Failed to get statistics")
 
 
-@router.get("/districts")
-async def get_districts_info(
+@router.get("/clusters")
+async def get_clusters_info(
     session: AsyncSession = Depends(get_async_session)
-) -> List[DistrictInfoResponse]:
-    """Get information about all districts in Central Nexus"""
+) -> List[ClusterInfoResponse]:
+    """Get information about all clusters in Central Nexus (replaces /districts)"""
     try:
         # Get nexus region
         result = await session.execute(
             select(Region).where(Region.name == "central-nexus")
         )
         nexus_region = result.scalar_one_or_none()
-        
+
         if not nexus_region:
             raise HTTPException(status_code=404, detail="Central Nexus not found")
-        
-        # Get district information
-        districts_result = await session.execute(
-            select(
-                Sector.district,
-                func.count(Sector.id).label('sectors_count'),
-                func.min(Sector.sector_number).label('min_sector'),
-                func.max(Sector.sector_number).label('max_sector'),
-                func.avg(Sector.security_level).label('avg_security'),
-                func.avg(Sector.development_level).label('avg_development'),
-                func.sum(Sector.traffic_level).label('total_traffic')
-            ).where(
-                Sector.region_id == nexus_region.id
-            ).group_by(Sector.district)
+
+        # Get cluster information
+        clusters_result = await session.execute(
+            select(Cluster).where(Cluster.region_id == nexus_region.id)
         )
-        
-        districts = []
-        district_names = {
-            "commerce_central": "Commerce Central",
-            "diplomatic_quarter": "Diplomatic Quarter", 
-            "industrial_zone": "Industrial Zone",
-            "residential_district": "Residential District",
-            "transit_hub": "Transit Hub",
-            "high_security_zone": "High Security Zone",
-            "cultural_center": "Cultural Center",
-            "research_campus": "Research Campus",
-            "free_trade_zone": "Free Trade Zone",
-            "gateway_plaza": "Gateway Plaza"
-        }
-        
-        for row in districts_result:
-            # Get ports and planets count for this district
-            district_sectors = await session.execute(
-                select(Sector.sector_number).where(
-                    Sector.region_id == nexus_region.id,
-                    Sector.district == row.district
-                )
+        clusters_list = clusters_result.scalars().all()
+
+        response = []
+        for cluster in clusters_list:
+            # Get sector statistics for this cluster
+            sector_stats = await session.execute(
+                select(
+                    func.count(Sector.id).label('sector_count'),
+                    func.avg(Sector.security_level).label('avg_security'),
+                    func.avg(Sector.development_level).label('avg_development')
+                ).where(Sector.cluster_id == cluster.id)
             )
-            sector_numbers = [s.sector_number for s in district_sectors]
-            
-            ports_count = 0
-            planets_count = 0
-            if sector_numbers:
-                ports_result = await session.execute(
-                    select(func.count(Port.id)).where(
-                        Port.sector_id.in_(sector_numbers)
-                    )
-                )
-                ports_count = ports_result.scalar() or 0
-                
-                planets_result = await session.execute(
-                    select(func.count(Planet.id)).where(
-                        Planet.sector_id.in_(sector_numbers)
-                    )
-                )
-                planets_count = planets_result.scalar() or 0
-            
-            districts.append(DistrictInfoResponse(
-                district_type=row.district,
-                name=district_names.get(row.district, row.district.replace('_', ' ').title()),
-                sector_range=(row.min_sector, row.max_sector),
-                security_level=int(row.avg_security) if row.avg_security else 0,
-                development_level=int(row.avg_development) if row.avg_development else 0,
-                sectors_count=row.sectors_count,
+            stats = sector_stats.one()
+
+            # Get ports count for this cluster
+            ports_result = await session.execute(
+                select(func.count(Port.id)).join(
+                    Sector, Port.sector_id == Sector.sector_id
+                ).where(Sector.cluster_id == cluster.id)
+            )
+            ports_count = ports_result.scalar() or 0
+
+            # Get planets count for this cluster
+            planets_result = await session.execute(
+                select(func.count(Planet.id)).join(
+                    Sector, Planet.sector_id == Sector.sector_id
+                ).where(Sector.cluster_id == cluster.id)
+            )
+            planets_count = planets_result.scalar() or 0
+
+            response.append(ClusterInfoResponse(
+                cluster_id=str(cluster.id),
+                name=cluster.name,
+                cluster_type=cluster.type.value if hasattr(cluster.type, 'value') else str(cluster.type),
+                sector_count=stats.sector_count or 0,
                 ports_count=ports_count,
                 planets_count=planets_count,
-                special_features={},  # Would get from sector data
-                current_traffic=row.total_traffic or 0
+                avg_security_level=round(stats.avg_security, 1) if stats.avg_security else 0,
+                avg_development_level=round(stats.avg_development, 1) if stats.avg_development else 0,
+                is_discovered=cluster.is_discovered,
+                economic_value=cluster.economic_value or 0
             ))
-        
-        return districts
-    
+
+        return response
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get districts info: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get districts information")
+        logger.error(f"Failed to get clusters info: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get clusters information")
 
 
-@router.get("/districts/{district_type}")
-async def get_district_details(
-    district_type: str,
+@router.get("/clusters/{cluster_id}")
+async def get_cluster_details(
+    cluster_id: str,
     session: AsyncSession = Depends(get_async_session)
 ) -> Dict[str, Any]:
-    """Get detailed information about a specific district"""
+    """Get detailed information about a specific cluster (replaces /districts/{district_type})"""
     try:
-        # Get nexus region
-        result = await session.execute(
-            select(Region).where(Region.name == "central-nexus")
+        # Get cluster
+        cluster_result = await session.execute(
+            select(Cluster).where(Cluster.id == cluster_id)
         )
-        nexus_region = result.scalar_one_or_none()
-        
-        if not nexus_region:
-            raise HTTPException(status_code=404, detail="Central Nexus not found")
-        
-        # Get sectors in this district
+        cluster = cluster_result.scalar_one_or_none()
+
+        if not cluster:
+            raise HTTPException(status_code=404, detail="Cluster not found")
+
+        # Get sectors in this cluster
         sectors_result = await session.execute(
-            select(Sector).where(
-                Sector.region_id == nexus_region.id,
-                Sector.district == district_type
-            ).limit(50)  # Limit for performance
+            select(Sector).where(Sector.cluster_id == cluster.id).limit(50)  # Limit for performance
         )
         sectors = sectors_result.scalars().all()
-        
+
         if not sectors:
-            raise HTTPException(status_code=404, detail="District not found")
-        
+            return {
+                "cluster_id": str(cluster.id),
+                "name": cluster.name,
+                "cluster_type": cluster.type.value if hasattr(cluster.type, 'value') else str(cluster.type),
+                "total_sectors": 0,
+                "sample_sectors": [],
+                "sample_ports": [],
+                "sample_planets": []
+            }
+
         # Get sample ports and planets
         sector_numbers = [s.sector_number for s in sectors[:20]]  # Sample first 20
-        
+
         ports_result = await session.execute(
             select(Port).where(Port.sector_id.in_(sector_numbers)).limit(10)
         )
         sample_ports = ports_result.scalars().all()
-        
+
         planets_result = await session.execute(
             select(Planet).where(Planet.sector_id.in_(sector_numbers)).limit(10)
         )
         sample_planets = planets_result.scalars().all()
-        
+
         return {
-            "district_type": district_type,
+            "cluster_id": str(cluster.id),
+            "name": cluster.name,
+            "cluster_type": cluster.type.value if hasattr(cluster.type, 'value') else str(cluster.type),
             "total_sectors": len(sectors),
-            "sector_range": (min(s.sector_number for s in sectors), max(s.sector_number for s in sectors)),
+            "economic_value": cluster.economic_value or 0,
+            "is_discovered": cluster.is_discovered,
+            "warp_stability": cluster.warp_stability or 0,
             "sample_sectors": [
                 {
                     "sector_number": s.sector_number,
+                    "sector_id": s.sector_id,
                     "security_level": s.security_level,
                     "development_level": s.development_level,
                     "traffic_level": s.traffic_level,
@@ -386,10 +380,9 @@ async def get_district_details(
                 {
                     "sector_id": p.sector_id,
                     "name": p.name,
-                    "port_class": p.port_class,
-                    "port_type": p.port_type,
-                    "docking_fee": p.docking_fee,
-                    "security_level": p.security_level
+                    "port_class": p.port_class.value if hasattr(p.port_class, 'value') else str(p.port_class),
+                    "type": p.type.value if hasattr(p.type, 'value') else str(p.type),
+                    "docking_fee": p.docking_fee
                 }
                 for p in sample_ports
             ],
@@ -397,95 +390,43 @@ async def get_district_details(
                 {
                     "sector_id": p.sector_id,
                     "name": p.name,
-                    "planet_type": p.planet_type,
+                    "type": p.type.value if hasattr(p.type, 'value') else str(p.type),
                     "population": p.population,
-                    "development_level": p.development_level,
-                    "security_level": p.security_level
+                    "habitability_score": p.habitability_score
                 }
                 for p in sample_planets
             ]
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get district details: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get district details")
+        logger.error(f"Failed to get cluster details: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get cluster details")
 
 
-@router.post("/districts/{district_type}/regenerate")
-async def regenerate_district(
-    district_type: str,
-    background_tasks: BackgroundTasks,
-    preserve_player_data: bool = True,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_async_session)
-):
-    """Regenerate a specific district (Admin only)"""
-    try:
-        # Check admin permissions
-        has_permission = await regional_auth.check_regional_permission(
-            str(current_user.id),
-            "central-nexus",
-            RegionalPermission.GALAXY_ADMIN_FULL
-        )
-        
-        if not has_permission:
-            raise HTTPException(status_code=403, detail="Admin access required")
-        
-        # Start regeneration in background
-        background_tasks.add_task(
-            regenerate_district_task,
-            district_type,
-            preserve_player_data
-        )
-        
-        return {
-            "message": f"District {district_type} regeneration started",
-            "status": "in_progress",
-            "preserve_player_data": preserve_player_data
-        }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to start district regeneration: {e}")
-        raise HTTPException(status_code=500, detail="Failed to start regeneration")
+# ENDPOINT REMOVED: POST /districts/{district_type}/regenerate
+# District concept eliminated in favor of cluster-based organization
+# Central Nexus now uses 20 clusters to organize 5000 sectors
+# For cluster-specific regeneration, regenerate the entire Central Nexus region
 
 
 # Background task functions
 async def generate_nexus_task(
     force_regenerate: bool,
-    preserve_player_data: bool,
-    districts_to_regenerate: Optional[List[str]]
+    preserve_player_data: bool
 ):
-    """Background task to generate Central Nexus"""
+    """Background task to generate Central Nexus with cluster-based organization"""
     try:
         async with get_async_session() as session:
-            if districts_to_regenerate:
-                # Regenerate specific districts
-                for district_type in districts_to_regenerate:
-                    await nexus_generation_service.regenerate_district(
-                        session, district_type, preserve_player_data
-                    )
-            else:
-                # Full generation
-                result = await nexus_generation_service.generate_central_nexus(session)
-            
+            # Full Central Nexus generation with 20 clusters organizing 5000 sectors
+            result = await nexus_generation_service.generate_central_nexus(session)
             logger.info("Central Nexus generation completed successfully")
-    
+
     except Exception as e:
         logger.error(f"Central Nexus generation failed: {e}")
 
 
-async def regenerate_district_task(district_type: str, preserve_player_data: bool):
-    """Background task to regenerate a specific district"""
-    try:
-        async with get_async_session() as session:
-            result = await nexus_generation_service.regenerate_district(
-                session, district_type, preserve_player_data
-            )
-            logger.info(f"District {district_type} regenerated successfully: {result}")
-    
-    except Exception as e:
-        logger.error(f"District {district_type} regeneration failed: {e}")
+# FUNCTION REMOVED: regenerate_district_task
+# District regeneration no longer applicable with cluster-based architecture
+# Central Nexus uses unified cluster organization (20 clusters × 250 sectors each)

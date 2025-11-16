@@ -14,7 +14,7 @@ ADMIN_ENDPOINTS: /admin/combat/*
 * Combat logs track attacker/defender, damage, loot, and outcomes
 * Winner can loot credits and cargo from loser
 * Admin endpoints provide combat analytics and dispute resolution
-* Combat effectiveness calculated by fighter count and ship type
+* Combat effectiveness calculated by drone count and ship type
 * All combat is logged in CombatLog model with comprehensive stats
 
 ## ENDPOINTS
@@ -66,8 +66,8 @@ CombatStatusResponse:
 CombatLogResponse (admin):
   combat_id: string (UUID)
   timestamp: ISO datetime
-  attacker: object {username, ship_type, ship_name, fighters}
-  defender: object {username, ship_type, ship_name, fighters}
+  attacker: object {username, ship_type, ship_name, drones}
+  defender: object {username, ship_type, ship_name, drones}
   location: object {sector_name, sector_id}
   outcome: string
   damage_dealt: object {attacker_damage, defender_damage}
@@ -84,8 +84,8 @@ CombatStatsResponse (admin):
 
 BalanceMetricsResponse (admin):
   ship_type_effectiveness: object (ship_type -> win_rate 0.0-1.0)
-  fighter_effectiveness: float (0.1-2.0, 1.0 is balanced)
-  average_damage_per_fighter: float
+  drone_effectiveness: float (0.1-2.0, 1.0 is balanced)
+  average_damage_per_drone: float
   combat_balance_score: float (0.0-1.0, 1.0 is perfectly balanced)
 
 ## QUERY PARAMETERS
@@ -230,8 +230,8 @@ curl -X GET "http://localhost:8080/api/v1/admin/combat/balance?time_filter=30d" 
 #     "BattleCruiser": 0.68,
 #     "Dreadnought": 0.71
 #   },
-#   "fighter_effectiveness": 1.15,
-#   "average_damage_per_fighter": 115.3,
+#   "drone_effectiveness": 1.15,
+#   "average_damage_per_drone": 115.3,
 #   "combat_balance_score": 0.67
 # }
 
@@ -255,7 +255,7 @@ curl -X POST http://localhost:8080/api/v1/admin/combat/combat-uuid/resolve \
 
 **Combat Resolution:**
 - Combat is resolved in rounds
-- Each round calculates hits based on fighters and ship stats
+- Each round calculates hits based on drones and ship stats
 - Damage is applied to shields first, then armor
 - Critical hits deal extra damage
 - Special events (shield regeneration, engine failure, etc.) can occur
@@ -268,7 +268,7 @@ curl -X POST http://localhost:8080/api/v1/admin/combat/combat-uuid/resolve \
 
 **Balance Metrics:**
 - Ship type effectiveness measures win rates by ship class
-- Fighter effectiveness measures damage output per fighter
+- Drone effectiveness measures damage output per drone
 - Balance score indicates how balanced combat is (1.0 = perfect balance)
 - Standard deviation of ship effectiveness determines overall balance
 
@@ -280,7 +280,7 @@ curl -X POST http://localhost:8080/api/v1/admin/combat/combat-uuid/resolve \
 
 ## RELATED ENDPOINTS
 
-- GET /player/state - View current ship status, location, fighters
+- GET /player/state - View current ship status, location, drones
 - GET /ships/{ship_id} - View ship details including combat stats
 - POST /player/move/{sector_id} - Move to sector (required before combat)
 - GET /sectors/{sector_id} - View potential combat targets in sector

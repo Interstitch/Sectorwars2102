@@ -45,7 +45,7 @@ export type BuildingType = 'factory' | 'farm' | 'mine' | 'defense' | 'research';
 export interface PlanetDefenses {
   turrets: number;
   shields: number;
-  fighters: number;
+  drones: number;
 }
 
 export interface SiegeDetails {
@@ -57,7 +57,7 @@ export interface SiegeDetails {
   defenseEffectiveness?: number;
   casualties?: {
     colonists: number;
-    fighters: number;
+    drones: number;
   };
 }
 
@@ -85,7 +85,7 @@ export interface BuildingUpgrade {
 export interface DefenseConfiguration {
   turrets?: number;
   shields?: number;
-  fighters?: number;
+  drones?: number;
 }
 
 // API Response Types

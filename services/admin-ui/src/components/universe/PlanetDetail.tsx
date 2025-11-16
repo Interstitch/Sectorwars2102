@@ -235,9 +235,9 @@ const PlanetDetail: React.FC<PlanetDetailProps> = ({ planet, onBack, onUpdate })
               </span>
             </div>
             <div className="info-item">
-              <span className="label">Defense Fighters:</span>
+              <span className="label">Defense Drones:</span>
               <span className="value">
-                <EditableField field="fighters" value={planet.fighters || 0} type="number" />
+                <EditableField field="drones" value={planet.drones || 0} type="number" />
               </span>
             </div>
             <div className="info-item">
@@ -354,8 +354,8 @@ const PlanetDetail: React.FC<PlanetDetailProps> = ({ planet, onBack, onUpdate })
             <div className="defense-item">
               <div className="defense-icon">🤖</div>
               <div className="defense-info">
-                <h4>Fighters</h4>
-                <p>{planet.fighters || 0} deployed</p>
+                <h4>Drones</h4>
+                <p>{planet.drones || 0} deployed</p>
                 <p className="defense-desc">
                   Automated defense drones protect the planet
                 </p>

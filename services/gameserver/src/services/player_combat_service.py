@@ -217,8 +217,8 @@ class PlayerCombatService:
             defender_ship_type=target_ship.type,
             sector_id=attacker_ship.current_sector_id,
             combat_type="ship_vs_ship",
-            attacker_fighters=attacker_ship.fighters,
-            defender_fighters=target_ship.fighters,
+            attacker_drones=attacker_ship.drones,
+            defender_drones=target_ship.drones,
             outcome=CombatOutcome.ONGOING,
             timestamp=datetime.utcnow()
         )
@@ -244,8 +244,8 @@ class PlayerCombatService:
             defender_ship_type="planet",
             sector_id=attacker_ship.current_sector_id,
             combat_type="planetary_assault",
-            attacker_fighters=attacker_ship.fighters,
-            defender_fighters=planet_defense,
+            attacker_drones=attacker_ship.drones,
+            defender_drones=planet_defense,
             outcome=CombatOutcome.ONGOING,
             timestamp=datetime.utcnow()
         )
@@ -271,8 +271,8 @@ class PlayerCombatService:
             defender_ship_type="port",
             sector_id=attacker_ship.current_sector_id,
             combat_type="port_raid",
-            attacker_fighters=attacker_ship.fighters,
-            defender_fighters=port_defense,
+            attacker_drones=attacker_ship.drones,
+            defender_drones=port_defense,
             outcome=CombatOutcome.ONGOING,
             timestamp=datetime.utcnow()
         )
@@ -293,7 +293,7 @@ class PlayerCombatService:
             ).all()
             
             for ship in defender_ships:
-                base_defense += ship.fighters
+                base_defense += ship.drones
                 
         # Add any deployed drones
         deployments = self.db.query(DroneDeployment).filter(
@@ -360,9 +360,9 @@ class PlayerCombatService:
                 # NPC targets
                 defender_shields = 0
                 if combat_log.combat_type == "planetary_assault":
-                    defender_armor = combat_log.defender_fighters * 10
+                    defender_armor = combat_log.defender_drones * 10
                 else:  # port raid
-                    defender_armor = combat_log.defender_fighters * 5
+                    defender_armor = combat_log.defender_drones * 5
                     
         # Calculate hits and damage
         attacker_accuracy = 0.7 + (attacker_ship.speed / 1000) if attacker_ship else 0.7
@@ -392,7 +392,7 @@ class PlayerCombatService:
                 base_damage = defender_ship.guns * 10
             else:
                 # NPC damage
-                base_damage = combat_log.defender_fighters // 10
+                base_damage = combat_log.defender_drones // 10
                 
             defender_damage = base_damage
             

@@ -48,18 +48,18 @@ class CombatLog(Base):
     outcome = Column(String(20), nullable=False)  # attacker_win, defender_win, draw, escaped
     
     # Forces at combat start
-    attacker_fighters = Column(Integer, nullable=False, default=0)
-    defender_fighters = Column(Integer, nullable=False, default=0)
+    attacker_drones = Column(Integer, nullable=False, default=0)
+    defender_drones = Column(Integer, nullable=False, default=0)
     attacker_attack_drones = Column(Integer, nullable=False, default=0)
     attacker_defense_drones = Column(Integer, nullable=False, default=0)
     defender_attack_drones = Column(Integer, nullable=False, default=0)
     defender_defense_drones = Column(Integer, nullable=False, default=0)
-    
+
     # Combat results
     attacker_damage_dealt = Column(Integer, nullable=False, default=0)
     defender_damage_dealt = Column(Integer, nullable=False, default=0)
-    attacker_fighters_lost = Column(Integer, nullable=False, default=0)
-    defender_fighters_lost = Column(Integer, nullable=False, default=0)
+    attacker_drones_lost = Column(Integer, nullable=False, default=0)
+    defender_drones_lost = Column(Integer, nullable=False, default=0)
     
     # Loot and rewards
     credits_looted = Column(Integer, nullable=False, default=0)
@@ -123,7 +123,7 @@ class CombatStats(Base):
     average_loot_per_combat = Column(Float, nullable=False, default=0.0)
     
     # Combat efficiency
-    total_fighters_lost = Column(Integer, nullable=False, default=0)
+    total_drones_lost = Column(Integer, nullable=False, default=0)
     average_combat_duration = Column(Float, nullable=False, default=0.0)
     most_effective_ship_type = Column(String(50), nullable=True)
     

@@ -25,7 +25,7 @@ const DEFENSE_TYPES: DefenseType[] = [
     name: 'Laser Turrets',
     icon: '🔫',
     description: 'Automated defense turrets that target incoming attackers',
-    effectiveness: 'Effective against fighters and small ships',
+    effectiveness: 'Effective against drones and small ships',
     cost: 500,
     maxUnits: 1000
   },
@@ -39,10 +39,10 @@ const DEFENSE_TYPES: DefenseType[] = [
     maxUnits: 500
   },
   {
-    type: 'fighters',
-    name: 'Defense Fighters',
+    type: 'drones',
+    name: 'Defense Drones',
     icon: '✈️',
-    description: 'Piloted fighters that intercept enemy forces',
+    description: 'Piloted drones that intercept enemy forces',
     effectiveness: 'Versatile defense against all threat types',
     cost: 2000,
     maxUnits: 250
@@ -62,7 +62,7 @@ export const DefenseConfiguration: React.FC<DefenseConfigurationProps> = ({
 
   // Calculate defense power score
   const calculateDefensePower = (def: PlanetDefenses): number => {
-    return def.turrets * 1 + def.shields * 2 + def.fighters * 3;
+    return def.turrets * 1 + def.shields * 2 + def.drones * 3;
   };
 
   // Calculate defense effectiveness rating
@@ -101,16 +101,16 @@ export const DefenseConfiguration: React.FC<DefenseConfigurationProps> = ({
     });
   };
 
-  const handlePreset = (preset: 'balanced' | 'turret' | 'shield' | 'fighter' | 'max') => {
+  const handlePreset = (preset: 'balanced' | 'turret' | 'shield' | 'drone' | 'max') => {
     const presets = {
-      balanced: { turrets: 200, shields: 100, fighters: 50 },
-      turret: { turrets: 500, shields: 50, fighters: 25 },
-      shield: { turrets: 100, shields: 300, fighters: 25 },
-      fighter: { turrets: 100, shields: 50, fighters: 100 },
+      balanced: { turrets: 200, shields: 100, drones: 50 },
+      turret: { turrets: 500, shields: 50, drones: 25 },
+      shield: { turrets: 100, shields: 300, drones: 25 },
+      drone: { turrets: 100, shields: 50, drones: 100 },
       max: { 
         turrets: Math.min(1000, defenses.turrets + 200),
         shields: Math.min(500, defenses.shields + 100),
-        fighters: Math.min(250, defenses.fighters + 50)
+        drones: Math.min(250, defenses.drones + 50)
       }
     };
     
@@ -236,11 +236,11 @@ export const DefenseConfiguration: React.FC<DefenseConfigurationProps> = ({
               🛡️ Shield Focus
             </button>
             <button 
-              className="preset-button fighter"
-              onClick={() => handlePreset('fighter')}
-              title="Emphasize fighter squadrons"
+              className="preset-button drone"
+              onClick={() => handlePreset('drone')}
+              title="Emphasize drone squadrons"
             >
-              ✈️ Fighter Focus
+              ✈️ Drone Focus
             </button>
             <button 
               className="preset-button max"
@@ -335,7 +335,7 @@ export const DefenseConfiguration: React.FC<DefenseConfigurationProps> = ({
               <div className="effectiveness-bar">
                 <div 
                   className="effectiveness-fill"
-                  style={{ width: `${Math.min(100, (tempDefenses.fighters / 1.5))}%` }}
+                  style={{ width: `${Math.min(100, (tempDefenses.drones / 1.5))}%` }}
                 />
               </div>
             </div>

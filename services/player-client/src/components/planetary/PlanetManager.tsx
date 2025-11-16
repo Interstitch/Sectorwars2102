@@ -372,8 +372,8 @@ export const PlanetManager: React.FC = () => {
                 </div>
                 <div className="defense-item">
                   <span className="defense-icon">✈️</span>
-                  <span className="defense-name">Fighters</span>
-                  <span className="defense-value">{selectedPlanet.defenses.fighters}</span>
+                  <span className="defense-name">Drones</span>
+                  <span className="defense-value">{selectedPlanet.defenses.drones}</span>
                 </div>
               </div>
             </div>
@@ -403,7 +403,7 @@ export const PlanetManager: React.FC = () => {
                         👥 {selectedPlanet.siegeDetails.casualties.colonists} colonists
                       </span>
                       <span className="casualty">
-                        ✈️ {selectedPlanet.siegeDetails.casualties.fighters} fighters
+                        ✈️ {selectedPlanet.siegeDetails.casualties.drones} drones
                       </span>
                     </div>
                   )}

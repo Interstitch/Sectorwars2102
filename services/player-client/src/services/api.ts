@@ -79,7 +79,7 @@ export const planetaryAPI = {
       body: JSON.stringify({ buildingType, targetLevel })
     }),
 
-  updateDefenses: (planetId: string, defenses: { turrets?: number, shields?: number, fighters?: number }) =>
+  updateDefenses: (planetId: string, defenses: { turrets?: number, shields?: number, drones?: number }) =>
     apiRequest(`/api/planets/${planetId}/defenses`, {
       method: 'PUT',
       body: JSON.stringify(defenses)
