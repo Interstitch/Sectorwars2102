@@ -1,0 +1,413 @@
+# Infrastructure API
+
+OVERVIEW: System status monitoring, WebSocket real-time connections, multi-regional coordination, payment processing, internationalization, events, AI systems, and audit logging.
+
+BASE_PATH: /api/v1
+AUTH_REQUIRED: Varies by endpoint (some public, most require authentication)
+
+## FACTS
+
+* System status endpoints are public for health monitoring
+* WebSocket provides real-time game updates
+* Multi-regional architecture supports player-owned territories
+* PayPal integration for subscription payments
+* i18n supports 10+ languages with dynamic translation
+* Event system manages dynamic game events
+* AI trading intelligence provides personalized recommendations
+* Audit logging tracks all significant game actions
+
+## ENDPOINT CATEGORIES
+
+### System Status & Health (18 endpoints)
+
+* GET /status - Server health check (public)
+* GET /status/detailed - Detailed system status (public)
+* GET /status/database - Database connection status
+* GET /status/redis - Redis connection status
+* GET /status/metrics - System metrics (CPU, memory, requests/sec)
+* GET /status/version - API version information
+* GET /status/uptime - Server uptime statistics
+* GET /health - Kubernetes health probe (public)
+* GET /ready - Kubernetes readiness probe (public)
+* GET /metrics/prometheus - Prometheus metrics export
+* GET /metrics/game - Game-specific metrics
+* GET /metrics/players - Player activity metrics
+* GET /metrics/economy - Economy health metrics
+* GET /metrics/combat - Combat statistics
+* POST /status/maintenance - Set maintenance mode (admin)
+* DELETE /status/maintenance - Clear maintenance mode (admin)
+* GET /status/feature-flags - Get feature flag status
+* POST /status/feature-flags/{flag} - Toggle feature flag (admin)
+
+### WebSocket Real-Time (9 endpoints)
+
+* WS /ws/connect - Connect to WebSocket server
+* WS /ws/player - Player-specific event stream
+* WS /ws/sector/{sector_id} - Sector event stream
+* WS /ws/team/{team_id} - Team event stream
+* WS /ws/combat/{combat_id} - Combat event stream
+* WS /ws/market - Market price updates stream
+* WS /ws/chat - Chat message stream
+* WS /ws/notifications - Player notifications stream
+* WS /ws/admin - Admin event stream (admin only)
+
+### Multi-Regional Coordination (17 endpoints)
+
+* GET /regions - List all regions (public)
+* GET /regions/{region_id} - Get region details
+* POST /regions/{region_id}/join - Request to join region
+* POST /regions/{region_id}/leave - Leave region
+* GET /regions/{region_id}/governance - Get governance settings
+* POST /regions/{region_id}/vote - Vote on regional proposal
+* GET /regions/{region_id}/proposals - Get active proposals
+* POST /regions/{region_id}/propose - Submit new proposal
+* GET /regions/nexus - Get central nexus information
+* GET /regions/nexus/routes - Get inter-regional routes
+* POST /regions/nexus/travel - Travel to another region
+* GET /regions/{region_id}/economy - Regional economy stats
+* GET /regions/{region_id}/rankings - Regional player rankings
+* POST /regions/create - Create new region (requires ownership token)
+* PATCH /regions/{region_id}/settings - Update region settings (owner)
+* DELETE /regions/{region_id} - Delete region (owner, requires empty)
+* GET /regions/{region_id}/population - Get region population stats
+
+### Internationalization (13 endpoints)
+
+* GET /i18n/languages - List supported languages
+* GET /i18n/translations/{language} - Get translations for language
+* POST /i18n/translations - Submit translation contribution
+* GET /i18n/player-language - Get player's selected language
+* PUT /i18n/player-language - Set player's language preference
+* GET /i18n/coverage - Get translation coverage statistics
+* POST /i18n/validate - Validate translation keys
+* GET /i18n/missing-keys - Get untranslated keys for language
+* POST /i18n/export - Export translations (admin)
+* POST /i18n/import - Import translations (admin)
+* GET /i18n/contributors - Get translation contributor list
+* POST /i18n/approve/{translation_id} - Approve translation (moderator)
+* DELETE /i18n/translations/{translation_id} - Delete translation (moderator)
+
+### Payment Processing (8 endpoints)
+
+* POST /payment/subscription/create - Create PayPal subscription
+* GET /payment/subscription/status - Get subscription status
+* POST /payment/subscription/cancel - Cancel subscription
+* POST /payment/webhook/paypal - PayPal webhook receiver
+* GET /payment/plans - Get available subscription plans
+* POST /payment/subscription/upgrade - Upgrade subscription tier
+* POST /payment/subscription/downgrade - Downgrade subscription tier
+* GET /payment/history - Get payment history
+
+### Events System (8 endpoints)
+
+* GET /events - Get active events
+* GET /events/{event_id} - Get event details
+* POST /events/{event_id}/participate - Participate in event
+* GET /events/history - Get past events
+* GET /events/rewards - Get event rewards
+* POST /events/claim-reward - Claim event reward
+* GET /events/leaderboard/{event_id} - Get event leaderboard
+* POST /events/create - Create event (admin)
+
+### AI Trading Intelligence (9 endpoints)
+
+* GET /ai/trading/recommendations - Get AI trading recommendations
+* POST /ai/trading/optimize-route - Get optimized trading route
+* GET /ai/trading/profile - Get player's AI trading profile
+* POST /ai/trading/update-data - Update trading data point
+* GET /ai/trading/market-analysis - Get AI market analysis
+* POST /ai/trading/predict-prices - Predict future prices
+* GET /ai/trading/risk-assessment - Get trade risk assessment
+* POST /ai/trading/strategy-suggestion - Get strategy suggestions
+* GET /ai/trading/performance - Get AI prediction performance stats
+
+### Audit Logging (4 endpoints)
+
+* GET /audit/player-actions - Get player action history
+* GET /audit/admin-actions - Get admin action history (admin)
+* GET /audit/security-events - Get security-related events (admin)
+* POST /audit/report - Submit audit report
+
+## SCHEMAS
+
+SystemStatusResponse:
+  status: string (healthy|degraded|down)
+  timestamp: ISO datetime
+  version: string
+  uptime: integer (seconds)
+  database: object {connected: boolean, latency_ms: float}
+  redis: object {connected: boolean, latency_ms: float}
+  active_players: integer
+  active_websockets: integer
+
+MetricsResponse:
+  cpu_usage: float (0-100)
+  memory_usage: float (0-100)
+  requests_per_second: float
+  average_response_time: float (ms)
+  error_rate: float (0-1)
+  active_connections: integer
+
+WebSocketMessage:
+  type: string (auth|subscribe|unsubscribe|ping|pong|event)
+  channel: string (optional)
+  data: object (event payload)
+  timestamp: ISO datetime
+
+RegionResponse:
+  id: UUID
+  name: string
+  description: string
+  owner_id: UUID (optional)
+  type: string (central_nexus|player_owned|npc_controlled)
+  sector_count: integer
+  player_count: integer
+  governance: object (voting rules, policies)
+  economy_health: float (0-1)
+  founded_at: ISO datetime
+
+SubscriptionPlan:
+  id: string
+  name: string
+  price: float
+  currency: string (USD)
+  interval: string (month|year)
+  features: array of strings
+  paypal_plan_id: string
+
+EventResponse:
+  id: UUID
+  title: string
+  description: string
+  event_type: string (combat|trading|exploration|special)
+  start_time: ISO datetime
+  end_time: ISO datetime
+  rewards: object
+  participation_count: integer
+  max_participants: integer (optional)
+
+## EXAMPLES
+
+### System Status
+
+```bash
+# Health check (public)
+curl -X GET http://localhost:8080/api/v1/status
+
+# Detailed status
+curl -X GET http://localhost:8080/api/v1/status/detailed
+
+# Prometheus metrics
+curl -X GET http://localhost:8080/api/v1/metrics/prometheus
+
+# Game metrics
+curl -X GET http://localhost:8080/api/v1/metrics/game \
+  -H "Authorization: Bearer {token}"
+```
+
+### WebSocket Connection
+
+```javascript
+// Connect to WebSocket
+const ws = new WebSocket('ws://localhost:8080/api/v1/ws/connect');
+
+// Authenticate
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    type: 'auth',
+    token: 'your_jwt_token'
+  }));
+};
+
+// Subscribe to channels
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  channels: ['player', 'sector:42', 'team:team-uuid', 'market']
+}));
+
+// Handle events
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  console.log('Event:', message.type, message.data);
+};
+
+// Send ping
+setInterval(() => {
+  ws.send(JSON.stringify({type: 'ping'}));
+}, 30000);
+```
+
+### Multi-Regional
+
+```bash
+# List all regions
+curl -X GET http://localhost:8080/api/v1/regions
+
+# Join a region
+curl -X POST http://localhost:8080/api/v1/regions/region-uuid/join \
+  -H "Authorization: Bearer {token}"
+
+# Get nexus routes
+curl -X GET http://localhost:8080/api/v1/regions/nexus/routes \
+  -H "Authorization: Bearer {token}"
+
+# Travel to another region
+curl -X POST http://localhost:8080/api/v1/regions/nexus/travel \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "destination_region_id": "region-uuid"
+  }'
+
+# Vote on proposal
+curl -X POST http://localhost:8080/api/v1/regions/region-uuid/vote \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "proposal_id": "proposal-uuid",
+    "vote": "yes"
+  }'
+```
+
+### Internationalization
+
+```bash
+# Get supported languages
+curl -X GET http://localhost:8080/api/v1/i18n/languages
+
+# Get translations for Spanish
+curl -X GET http://localhost:8080/api/v1/i18n/translations/es
+
+# Set player language
+curl -X PUT http://localhost:8080/api/v1/i18n/player-language \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "fr"
+  }'
+
+# Submit translation
+curl -X POST http://localhost:8080/api/v1/i18n/translations \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "de",
+    "key": "ui.welcome_message",
+    "value": "Willkommen bei SectorWars 2102!"
+  }'
+```
+
+### Payment
+
+```bash
+# Get subscription plans
+curl -X GET http://localhost:8080/api/v1/payment/plans
+
+# Create subscription
+curl -X POST http://localhost:8080/api/v1/payment/subscription/create \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "plan_id": "premium_monthly"
+  }'
+
+# Get subscription status
+curl -X GET http://localhost:8080/api/v1/payment/subscription/status \
+  -H "Authorization: Bearer {token}"
+
+# Cancel subscription
+curl -X POST http://localhost:8080/api/v1/payment/subscription/cancel \
+  -H "Authorization: Bearer {token}"
+```
+
+### Events
+
+```bash
+# Get active events
+curl -X GET http://localhost:8080/api/v1/events \
+  -H "Authorization: Bearer {token}"
+
+# Participate in event
+curl -X POST http://localhost:8080/api/v1/events/event-uuid/participate \
+  -H "Authorization: Bearer {token}"
+
+# Get event leaderboard
+curl -X GET http://localhost:8080/api/v1/events/leaderboard/event-uuid \
+  -H "Authorization: Bearer {token}"
+
+# Claim reward
+curl -X POST http://localhost:8080/api/v1/events/claim-reward \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_id": "event-uuid"
+  }'
+```
+
+### AI Trading
+
+```bash
+# Get AI recommendations
+curl -X GET http://localhost:8080/api/v1/ai/trading/recommendations \
+  -H "Authorization: Bearer {token}"
+
+# Optimize trading route
+curl -X POST http://localhost:8080/api/v1/ai/trading/optimize-route \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "start_sector": 1,
+    "max_jumps": 10,
+    "cargo_capacity": 1000
+  }'
+
+# Get market analysis
+curl -X GET http://localhost:8080/api/v1/ai/trading/market-analysis \
+  -H "Authorization: Bearer {token}"
+```
+
+## GAME MECHANICS
+
+**WebSocket Events:**
+- player.update: Player state changed
+- sector.ship_entered: Ship entered sector
+- sector.ship_left: Ship left sector
+- combat.started: Combat initiated
+- combat.round: Combat round completed
+- market.price_changed: Market prices updated
+- team.message: Team message received
+- notification: Player notification
+
+**Multi-Regional Architecture:**
+- Central Nexus: Hub connecting all regions
+- Player-owned regions: Custom galaxies with own rules
+- Regional governance: Democratic voting on policies
+- Inter-regional travel via quantum warp tunnels
+- Economy isolation per region
+
+**Event Types:**
+- Combat Events: Faction wars, tournaments
+- Trading Events: Double profit weekends
+- Exploration Events: Discover rare sectors
+- Special Events: Holiday themes, limited-time content
+
+**AI Trading Intelligence:**
+- Learns from player's trading patterns
+- Provides personalized recommendations
+- Risk assessment for trades
+- Market trend prediction
+- Route optimization based on player history
+
+## SECURITY NOTES
+
+* WebSocket connections require authentication
+* PayPal webhooks validate signatures
+* Admin endpoints require elevated permissions
+* Audit logs are immutable
+* Rate limiting on all endpoints
+
+---
+
+*Documentation Status: Complete (86 endpoints)*
+*Last Updated: 2025-11-16*
+*Validated Against: services/gameserver/src/api/routes/* (status, websocket, regional, paypal, translation, events, ai, audit)*

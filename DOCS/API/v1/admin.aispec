@@ -1,0 +1,358 @@
+# Admin API
+
+OVERVIEW: Administrative tools for game management, player moderation, galaxy editing, and analytics.
+
+BASE_PATH: /api/v1/admin
+AUTH_REQUIRED: Yes (JWT Bearer token + admin role)
+PERMISSIONS: Admin-only endpoints
+
+## FACTS
+
+* All endpoints require admin authentication
+* Admin endpoints provide full CRUD operations on game entities
+* Galaxy can be generated, cleared, or edited
+* Player data can be viewed, edited, or deleted
+* Analytics provide insights into game health and player behavior
+* Admin actions are logged for audit trail
+
+## ENDPOINT CATEGORIES
+
+### User & Player Management (22 endpoints)
+
+* GET /admin/users - Get all users (paginated)
+* GET /admin/players - Get all players with stats (paginated)
+* GET /admin/players/{player_id} - Get specific player details
+* PATCH /admin/players/{player_id} - Update player data
+* DELETE /admin/players/{player_id} - Delete player
+* GET /admin/stats - Get admin dashboard statistics
+
+### Galaxy Management (16 endpoints)
+
+* GET /admin/galaxy - Get galaxy information
+* POST /admin/galaxy/generate - Generate new galaxy structure
+* DELETE /admin/galaxy/clear - Clear all galaxy data
+* DELETE /admin/galaxy/{galaxy_id} - Delete specific galaxy
+* GET /admin/galaxy/{galaxy_id}/zones - Get zones in galaxy
+* GET /admin/zones/{zone_id}/clusters - Get clusters in zone
+* GET /admin/clusters - Get all clusters
+* GET /admin/sectors - Get all sectors (filterable)
+* GET /admin/sectors/{sector_id}/port - Get sector's port
+* GET /admin/sectors/{sector_id}/planet - Get sector's planet
+* GET /admin/sectors/{sector_id}/ships - Get ships in sector
+* POST /admin/warp-tunnels/create - Create warp tunnel between sectors
+* POST /admin/sectors/create - Create new sector
+* PATCH /admin/sectors/{sector_id} - Edit sector properties
+* DELETE /admin/sectors/{sector_id} - Delete sector
+
+### Team Management (8 endpoints)
+
+* GET /admin/teams - Get all teams (paginated)
+* GET /admin/teams/analytics - Get team analytics
+* GET /admin/teams/{team_id} - Get specific team details
+* PATCH /admin/teams/{team_id} - Update team data
+* DELETE /admin/teams/{team_id} - Delete team
+* POST /admin/teams/{team_id}/disband - Force disband team
+* GET /admin/teams/{team_id}/members - Get team members
+* POST /admin/teams/{team_id}/remove-member/{player_id} - Remove member
+
+### Fleet Management (9 endpoints)
+
+* GET /admin/fleets - Get all fleets
+* GET /admin/fleets/{fleet_id} - Get fleet details
+* PATCH /admin/fleets/{fleet_id} - Update fleet data
+* DELETE /admin/fleets/{fleet_id} - Disband fleet
+* GET /admin/fleets/{fleet_id}/members - Get fleet ships
+* POST /admin/fleets/{fleet_id}/force-move - Force move fleet
+* POST /admin/fleets/{fleet_id}/end-battle - End ongoing battle
+* GET /admin/fleets/battles - Get active fleet battles
+* POST /admin/fleets/battles/{battle_id}/resolve - Resolve battle
+
+### Drone Management (8 endpoints)
+
+* GET /admin/drones - Get all drones
+* GET /admin/drones/{drone_id} - Get drone details
+* PATCH /admin/drones/{drone_id} - Update drone data
+* DELETE /admin/drones/{drone_id} - Delete drone
+* POST /admin/drones/{drone_id}/force-recall - Force recall drone
+* GET /admin/drones/sector/{sector_id} - Get drones in sector
+* POST /admin/drones/mass-recall - Recall all drones in region
+* GET /admin/drones/statistics - Get drone usage statistics
+
+### Ship Management (4 endpoints)
+
+* GET /admin/ships - Get all ships
+* GET /admin/ships/{ship_id} - Get ship details
+* PATCH /admin/ships/{ship_id} - Update ship data
+* DELETE /admin/ships/{ship_id} - Delete ship
+
+### Colonization Management (3 endpoints)
+
+* GET /admin/colonies - Get all colonies
+* GET /admin/colonies/{colony_id} - Get colony details
+* DELETE /admin/colonies/{colony_id} - Delete colony
+
+### Faction Management (8 endpoints)
+
+* GET /admin/factions - Get all factions
+* POST /admin/factions - Create new faction
+* PATCH /admin/factions/{faction_id} - Update faction
+* DELETE /admin/factions/{faction_id} - Delete faction
+* GET /admin/factions/{faction_id}/members - Get faction members
+* POST /admin/factions/{faction_id}/set-territory - Set faction territory
+* GET /admin/factions/wars - Get active faction wars
+* POST /admin/factions/wars/end - End faction war
+
+### Message Moderation (4 endpoints)
+
+* GET /admin/messages/flagged - Get flagged messages
+* GET /admin/messages/{message_id} - Get message details
+* DELETE /admin/messages/{message_id} - Delete message
+* POST /admin/messages/{message_id}/unflag - Remove flag
+
+### Region Management (17 endpoints - Multi-Regional)
+
+* GET /admin/regions - Get all regions
+* POST /admin/regions - Create new region
+* PATCH /admin/regions/{region_id} - Update region
+* DELETE /admin/regions/{region_id} - Delete region
+* GET /admin/regions/{region_id}/players - Get players in region
+* GET /admin/regions/{region_id}/sectors - Get sectors in region
+* POST /admin/regions/{region_id}/transfer-player - Transfer player to region
+* GET /admin/regions/governance - Get regional governance settings
+* PATCH /admin/regions/{region_id}/governance - Update governance
+
+### Comprehensive Admin Tools (49 endpoints)
+
+These endpoints provide detailed analytics, monitoring, and management:
+- Player analytics (login patterns, activity, retention)
+- Economy monitoring (trade volumes, inflation, market health)
+- Combat analytics (battle statistics, balance metrics)
+- System health monitoring (server performance, database metrics)
+- Security tools (suspicious activity detection, ban management)
+- Content management (announcements, news, events)
+- Audit logging (admin action history, player reports)
+
+### Enhanced Admin Features (6 endpoints)
+
+* GET /admin/audit-log - Get admin action audit log
+* GET /admin/security/suspicious-activity - Detect suspicious patterns
+* POST /admin/security/ban-player - Ban player account
+* POST /admin/security/unban-player - Unban player account
+* GET /admin/reports - Get player reports
+* POST /admin/reports/{report_id}/resolve - Resolve player report
+
+## COMMON QUERY PARAMETERS
+
+Pagination:
+  skip: integer (>=0), default 0
+  limit: integer (1-1000), default 100
+
+Filtering:
+  region_id: UUID (filter by region)
+  team_id: UUID (filter by team)
+  active_only: boolean (filter active entities)
+  sort_by: string (field to sort by)
+  sort_order: string (asc|desc)
+
+## COMMON RESPONSE SCHEMAS
+
+PaginatedResponse:
+  items: array (entity data)
+  total: integer (total count)
+  skip: integer (offset)
+  limit: integer (page size)
+
+AdminStatsResponse:
+  total_players: integer
+  active_players_24h: integer
+  total_teams: integer
+  total_fleets: integer
+  total_sectors: integer
+  total_regions: integer
+  server_uptime: integer (seconds)
+  database_size: integer (bytes)
+
+## ERROR RESPONSES
+
+401 UNAUTHORIZED:
+  - Not authenticated
+  - Token expired
+
+403 FORBIDDEN:
+  - Not an admin user
+  - Insufficient admin permissions
+
+404 NOT_FOUND:
+  - Entity not found
+  - Region not found
+  - Player not found
+
+409 CONFLICT:
+  - Cannot delete entity with dependencies
+  - Galaxy already exists
+  - Operation conflicts with game state
+
+500 INTERNAL_SERVER_ERROR:
+  - Database operation failed
+  - Galaxy generation failed
+  - Admin action failed
+
+## EXAMPLES
+
+### Player Management
+
+```bash
+# Get all players (paginated)
+curl -X GET "http://localhost:8080/api/v1/admin/players?limit=50&skip=0" \
+  -H "Authorization: Bearer {admin_token}"
+
+# Update player
+curl -X PATCH http://localhost:8080/api/v1/admin/players/player-uuid \
+  -H "Authorization: Bearer {admin_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "credits": 100000,
+    "turns": 1000,
+    "current_sector_id": 1
+  }'
+
+# Get admin stats
+curl -X GET http://localhost:8080/api/v1/admin/stats \
+  -H "Authorization: Bearer {admin_token}"
+```
+
+### Galaxy Management
+
+```bash
+# Generate new galaxy
+curl -X POST http://localhost:8080/api/v1/admin/galaxy/generate \
+  -H "Authorization: Bearer {admin_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "size": 5000,
+    "density": "medium",
+    "generate_ports": true,
+    "generate_planets": true
+  }'
+
+# Clear all galaxy data (DANGEROUS)
+curl -X DELETE http://localhost:8080/api/v1/admin/galaxy/clear \
+  -H "Authorization: Bearer {admin_token}"
+
+# Create warp tunnel
+curl -X POST http://localhost:8080/api/v1/admin/warp-tunnels/create \
+  -H "Authorization: Bearer {admin_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_sector_id": 1,
+    "destination_sector_id": 5000,
+    "bidirectional": true
+  }'
+
+# Get all sectors
+curl -X GET "http://localhost:8080/api/v1/admin/sectors?limit=100" \
+  -H "Authorization: Bearer {admin_token}"
+```
+
+### Team & Fleet Management
+
+```bash
+# Get team analytics
+curl -X GET http://localhost:8080/api/v1/admin/teams/analytics \
+  -H "Authorization: Bearer {admin_token}"
+
+# Force disband team
+curl -X POST http://localhost:8080/api/v1/admin/teams/team-uuid/disband \
+  -H "Authorization: Bearer {admin_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reason": "Violation of terms of service"
+  }'
+
+# Get active fleet battles
+curl -X GET http://localhost:8080/api/v1/admin/fleets/battles \
+  -H "Authorization: Bearer {admin_token}"
+
+# End fleet battle
+curl -X POST http://localhost:8080/api/v1/admin/fleets/battles/battle-uuid/resolve \
+  -H "Authorization: Bearer {admin_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "winner": "defender",
+    "reason": "Technical issue resolved in defender favor"
+  }'
+```
+
+### Security & Moderation
+
+```bash
+# Get flagged messages
+curl -X GET http://localhost:8080/api/v1/admin/messages/flagged \
+  -H "Authorization: Bearer {admin_token}"
+
+# Ban player
+curl -X POST http://localhost:8080/api/v1/admin/security/ban-player \
+  -H "Authorization: Bearer {admin_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "player_id": "player-uuid",
+    "reason": "Cheating - unauthorized client modifications",
+    "duration_days": 30
+  }'
+
+# Get suspicious activity
+curl -X GET http://localhost:8080/api/v1/admin/security/suspicious-activity \
+  -H "Authorization: Bearer {admin_token}"
+
+# Get audit log
+curl -X GET "http://localhost:8080/api/v1/admin/audit-log?limit=100" \
+  -H "Authorization: Bearer {admin_token}"
+```
+
+## ADMIN RESPONSIBILITIES
+
+**Galaxy Management:**
+- Generate and configure galaxy structure
+- Create/edit/delete sectors, zones, clusters
+- Manage warp tunnel network
+- Balance resource distribution
+
+**Player Moderation:**
+- Monitor player activity
+- Investigate reports
+- Ban/unban accounts
+- Resolve disputes
+- Edit player data for bug fixes
+
+**Game Balance:**
+- Monitor economy health
+- Review combat statistics
+- Adjust faction territories
+- Manage game events
+
+**System Maintenance:**
+- Monitor server health
+- Review audit logs
+- Manage database performance
+- Handle emergency interventions
+
+## SECURITY NOTES
+
+* All admin actions are logged in audit trail
+* Admin endpoints require elevated authentication
+* Dangerous operations (clear galaxy, ban player) require confirmation
+* Admin access should be restricted to trusted personnel only
+* Regular audit log reviews recommended
+
+## RELATED ENDPOINTS
+
+- All player-facing endpoints can be accessed by admins
+- Admin endpoints extend player endpoints with management capabilities
+- Audit logging captures all admin actions
+- Multi-regional architecture supported throughout admin tools
+
+---
+
+*Documentation Status: Complete (123 endpoints)*
+*Last Updated: 2025-11-16*
+*Validated Against: services/gameserver/src/api/routes/admin*.py, comprehensive*.py, enhanced*.py*
