@@ -89,8 +89,8 @@ const TradingInterface: React.FC = () => {
     }
   }, [selectedResource, marketInfo, tradeQuantity, tradeMode, playerState, currentShip]);
 
-  const handlePortChange = (portId: string) => {
-    setSelectedPort(portId);
+  const handlePortChange = (stationId: string) => {
+    setSelectedPort(stationId);
     setSelectedResource('');
     setTradeQuantity(1);
   };

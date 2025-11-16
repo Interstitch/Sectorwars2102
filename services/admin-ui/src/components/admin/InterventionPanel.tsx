@@ -10,8 +10,8 @@ interface Commodity {
 }
 
 interface MarketData {
-  portId: string;
-  portName: string;
+  stationId: string;
+  stationName: string;
   sectorId: string;
   commodities: Commodity[];
 }

@@ -78,7 +78,7 @@ export interface MarketInfo {
     buy_price: number;
     sell_price: number;
   }>;
-  port: {
+  station: {
     id: string;
     name: string;
     type: string;
@@ -471,7 +471,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     
     try {
-      const response = await api.post('/api/v1/trading/dock', { port_id: stationId });
+      const response = await api.post('/api/v1/trading/dock', { station_id: stationId });
       
       // Update player state after docking
       await refreshPlayerState();
@@ -513,7 +513,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       const response = await api.post('/api/v1/trading/buy', {
-        port_id: stationId,
+        station_id: stationId,
         resource_type: resourceType,
         quantity: quantity
       });
@@ -541,7 +541,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       const response = await api.post('/api/v1/trading/sell', {
-        port_id: stationId,
+        station_id: stationId,
         resource_type: resourceType,
         quantity: quantity
       });

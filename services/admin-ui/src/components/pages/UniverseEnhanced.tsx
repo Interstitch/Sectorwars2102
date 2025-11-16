@@ -13,7 +13,7 @@ interface GalaxyConfig {
     frontier: number;
   };
   density: {
-    port_density: number;
+    station_density: number;
     planet_density: number;
     one_way_warp_percentage: number;
   };
@@ -138,7 +138,7 @@ const UniverseEnhanced: React.FC = () => {
       frontier: 40
     },
     density: {
-      port_density: 10,
+      station_density: 10,
       planet_density: 3,
       one_way_warp_percentage: 5
     },
@@ -295,17 +295,17 @@ const UniverseEnhanced: React.FC = () => {
         <h4>Galaxy Density</h4>
         
         <div className="form-group">
-          <label>Port Density: {galaxyConfig.density.port_density}%</label>
+          <label>Port Density: {galaxyConfig.density.station_density}%</label>
           <input 
             type="range" 
             min="5" 
             max="15" 
-            value={galaxyConfig.density.port_density}
+            value={galaxyConfig.density.station_density}
             onChange={(e) => setGalaxyConfig({
               ...galaxyConfig, 
               density: {
                 ...galaxyConfig.density,
-                port_density: parseInt(e.target.value)
+                station_density: parseInt(e.target.value)
               }
             })}
           />
@@ -1392,7 +1392,7 @@ const UniverseEnhanced: React.FC = () => {
                         </div>
                         <div className="stat-card">
                           <h3>Ports</h3>
-                          <div className="stat-value">{galaxyState.statistics.port_count}</div>
+                          <div className="stat-value">{galaxyState.statistics.station_count}</div>
                         </div>
                         <div className="stat-card">
                           <h3>Planets</h3>

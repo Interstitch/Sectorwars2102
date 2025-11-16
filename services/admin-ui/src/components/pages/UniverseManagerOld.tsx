@@ -126,7 +126,7 @@ const UniverseManager: React.FC = () => {
       resource_distribution: resourceDistribution,
       hazard_levels: hazardLevels,
       connectivity: connectivity,
-      port_density: portDensity,
+      station_density: portDensity,
       planet_density: planetDensity,
       warp_tunnel_probability: warpTunnelProbability,
       faction_territory_size: factionTerritorySize
@@ -499,7 +499,7 @@ const UniverseManager: React.FC = () => {
                       </div>
                       <div className="galaxy-stat">
                         <span className="stat-name">Ports:</span>
-                        <span className="stat-data">{galaxyState.statistics.port_count}</span>
+                        <span className="stat-data">{galaxyState.statistics.station_count}</span>
                       </div>
                       <div className="galaxy-stat">
                         <span className="stat-name">Planets:</span>

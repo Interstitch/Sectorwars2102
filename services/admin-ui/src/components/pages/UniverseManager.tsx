@@ -34,7 +34,7 @@ const UniverseManager: React.FC = () => {
   const [galaxyConfig, setGalaxyConfig] = useState({
     name: 'New Galaxy',
     density: {
-      port_density: 10,      // 10% of sectors
+      station_density: 10,      // 10% of sectors
       planet_density: 15,    // 15% of sectors
       one_way_warp_percentage: 5
     },
@@ -97,7 +97,7 @@ const UniverseManager: React.FC = () => {
           resource_distribution: galaxyConfig.resource_distribution,
           hazard_levels: galaxyConfig.hazard_levels,
           connectivity: galaxyConfig.connectivity,
-          port_density: galaxyConfig.density.port_density / 100,
+          station_density: galaxyConfig.density.station_density / 100,
           planet_density: galaxyConfig.density.planet_density / 100,
           warp_tunnel_probability: galaxyConfig.density.one_way_warp_percentage / 100
         }
@@ -130,7 +130,7 @@ const UniverseManager: React.FC = () => {
                 resource_distribution: galaxyConfig.resource_distribution,
                 hazard_levels: galaxyConfig.hazard_levels,
                 connectivity: galaxyConfig.connectivity,
-                port_density: galaxyConfig.density.port_density / 100,
+                station_density: galaxyConfig.density.station_density / 100,
                 planet_density: galaxyConfig.density.planet_density / 100,
                 warp_tunnel_probability: galaxyConfig.density.one_way_warp_percentage / 100
               }
@@ -183,21 +183,21 @@ const UniverseManager: React.FC = () => {
         <h4>Density Settings</h4>
         
         <div className="form-group">
-          <label>Port Density: {galaxyConfig.density.port_density}%</label>
+          <label>Port Density: {galaxyConfig.density.station_density}%</label>
           <input 
             type="range" 
             min="5" 
             max="15" 
-            value={galaxyConfig.density.port_density}
+            value={galaxyConfig.density.station_density}
             onChange={(e) => setGalaxyConfig({
               ...galaxyConfig, 
               density: {
                 ...galaxyConfig.density,
-                port_density: parseInt(e.target.value)
+                station_density: parseInt(e.target.value)
               }
             })}
           />
-          <div className="info-text">~{Math.floor(5300 * galaxyConfig.density.port_density / 100)} ports</div>
+          <div className="info-text">~{Math.floor(5300 * galaxyConfig.density.station_density / 100)} ports</div>
         </div>
 
         <div className="form-group">
@@ -361,9 +361,9 @@ const UniverseManager: React.FC = () => {
             <Link to="/universe/stations" className="stat-card clickable-stat-card">
               <div className="stat-icon">🏪</div>
               <h3>Ports</h3>
-              <div className="stat-value">{galaxyState.statistics.port_count}</div>
+              <div className="stat-value">{galaxyState.statistics.station_count}</div>
               <div className="stat-detail">
-                {Math.round(galaxyState.statistics.port_count / galaxyState.statistics.total_sectors * 100)}% of sectors
+                {Math.round(galaxyState.statistics.station_count / galaxyState.statistics.total_sectors * 100)}% of sectors
               </div>
             </Link>
             <Link to="/universe/planets" className="stat-card clickable-stat-card">

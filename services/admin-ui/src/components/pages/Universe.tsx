@@ -131,7 +131,7 @@ const Universe: React.FC = () => {
         resource_distribution: resourceDistribution,
         hazard_levels: hazardLevels,
         connectivity: connectivity,
-        port_density: portDensity,
+        station_density: portDensity,
         planet_density: planetDensity,
         warp_tunnel_probability: warpTunnelProbability,
         faction_territory_size: factionTerritorySize,
@@ -158,7 +158,7 @@ const Universe: React.FC = () => {
               resource_distribution: resourceDistribution,
               hazard_levels: hazardLevels,
               connectivity: connectivity,
-              port_density: portDensity,
+              station_density: portDensity,
               planet_density: planetDensity,
               warp_tunnel_probability: warpTunnelProbability,
               faction_territory_size: factionTerritorySize,
@@ -608,10 +608,10 @@ const Universe: React.FC = () => {
                           <h4 className="dashboard-stat-title">Infrastructure</h4>
                         </div>
                         <div className="dashboard-stat-value">
-                          {galaxyState.statistics.port_count + galaxyState.statistics.planet_count}
+                          {galaxyState.statistics.station_count + galaxyState.statistics.planet_count}
                         </div>
                         <div className="dashboard-stat-detail">
-                          Ports: {galaxyState.statistics.port_count}<br/>
+                          Ports: {galaxyState.statistics.station_count}<br/>
                           Planets: {galaxyState.statistics.planet_count}<br/>
                           Warp Tunnels: {galaxyState.statistics.warp_tunnel_count}
                         </div>

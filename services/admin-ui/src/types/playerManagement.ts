@@ -39,14 +39,14 @@ export interface PlayerModel {
   // Asset counts (from API)
   ships_count: number;
   planets_count: number;
-  ports_count: number;
+  stations_count: number;
 
   // Computed/derived fields for UI
   status: 'active' | 'inactive' | 'banned';
   assets: {
     ships_count: number;
     planets_count: number;
-    ports_count: number;
+    stations_count: number;
     total_value: number;
   };
   activity: {

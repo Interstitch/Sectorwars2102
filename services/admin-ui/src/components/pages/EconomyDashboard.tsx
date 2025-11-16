@@ -5,7 +5,7 @@ import { useEconomyUpdates } from '../../contexts/WebSocketContext';
 import './economy-dashboard.css';
 
 interface MarketData {
-  port_id: string;
+  station_id: string;
   port_name: string;
   sector_name: string;
   commodity: string;
@@ -40,7 +40,7 @@ const EconomyDashboard: React.FC = () => {
     setMarketData(prevData => {
       // Update or add the new market data
       const index = prevData.findIndex(item => 
-        item.port_id === data.port_id && item.commodity === data.commodity
+        item.station_id === data.station_id && item.commodity === data.commodity
       );
       
       if (index >= 0) {
@@ -114,10 +114,10 @@ const EconomyDashboard: React.FC = () => {
     }
   };
 
-  const handlePriceIntervention = async (portId: string, commodity: string, newPrice: number) => {
+  const handlePriceIntervention = async (stationId: string, commodity: string, newPrice: number) => {
     try {
       await api.post('/api/v1/admin/economy/intervention', {
-        port_id: portId,
+        station_id: stationId,
         commodity,
         new_price: newPrice
       });
@@ -273,7 +273,7 @@ const EconomyDashboard: React.FC = () => {
                             onClick={() => {
                               const newPrice = prompt(`Set new buy price for ${item.commodity}:`, item.buy_price.toString());
                               if (newPrice) {
-                                handlePriceIntervention(item.port_id, item.commodity, parseFloat(newPrice));
+                                handlePriceIntervention(item.station_id, item.commodity, parseFloat(newPrice));
                               }
                             }}
                           >

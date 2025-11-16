@@ -115,7 +115,7 @@ const PlayerAssetManager: React.FC<PlayerAssetManagerProps> = ({
       } else if (assetType === 'planets') {
         updatedPlayer.assets.planets_count += action === 'assign' ? assetIds.length : -assetIds.length;
       } else if (assetType === 'ports') {
-        updatedPlayer.assets.ports_count += action === 'assign' ? assetIds.length : -assetIds.length;
+        updatedPlayer.assets.stations_count += action === 'assign' ? assetIds.length : -assetIds.length;
       }
       onUpdate(updatedPlayer);
 

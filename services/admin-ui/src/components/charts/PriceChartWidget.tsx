@@ -11,8 +11,8 @@ interface Commodity {
 }
 
 interface MarketData {
-  portId: string;
-  portName: string;
+  stationId: string;
+  stationName: string;
   sectorId: string;
   commodities: Commodity[];
 }
@@ -54,7 +54,7 @@ const PriceChartWidget: React.FC<PriceChartWidgetProps> = ({ marketData, selecte
         const item = port.commodities.find(c => c.name === commodity);
         return item ? [{
           commodity,
-          port: port.portName,
+          port: port.stationName,
           buyPrice: item.buyPrice,
           sellPrice: item.sellPrice,
           avgPrice: (item.buyPrice + item.sellPrice) / 2
@@ -65,7 +65,7 @@ const PriceChartWidget: React.FC<PriceChartWidgetProps> = ({ marketData, selecte
 
     // Scales
     const x0 = d3.scaleBand()
-      .domain(marketData.map(d => d.portName))
+      .domain(marketData.map(d => d.stationName))
       .rangeRound([0, width])
       .paddingInner(0.1);
 
@@ -109,7 +109,7 @@ const PriceChartWidget: React.FC<PriceChartWidgetProps> = ({ marketData, selecte
       .selectAll('g')
       .data(marketData)
       .enter().append('g')
-      .attr('transform', d => `translate(${x0(d.portName)},0)`);
+      .attr('transform', d => `translate(${x0(d.stationName)},0)`);
 
     portGroups.selectAll('rect')
       .data(d => commodities.map(commodity => {

@@ -4,8 +4,8 @@ import { InputValidator } from '../../utils/security/inputValidation';
 import './market-analyzer.css';
 
 interface MarketData {
-  portId: string;
-  portName: string;
+  stationId: string;
+  stationName: string;
   sectorId: number;
   prices: {
     fuel: { buy: number; sell: number; stock: number };
@@ -348,8 +348,8 @@ const MarketAnalyzer: React.FC<MarketAnalyzerProps> = ({
         <h4>Price Heatmap</h4>
         <div className="heatmap-grid">
           {marketData.slice(0, 20).map(market => (
-            <div key={market.portId} className="heatmap-cell">
-              <div className="port-name">{market.portName}</div>
+            <div key={market.stationId} className="heatmap-cell">
+              <div className="port-name">{market.stationName}</div>
               <div className="price-indicators">
                 {(['fuel', 'organics', 'equipment'] as const).map(resource => {
                   const change = market.priceChange24h[resource];

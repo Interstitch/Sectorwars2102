@@ -24,8 +24,8 @@ interface Competitor {
 
 interface MarketDominance {
   resource: 'fuel' | 'organics' | 'equipment';
-  portId: string;
-  portName: string;
+  stationId: string;
+  stationName: string;
   dominantTrader: {
     playerId: string;
     username: string;
@@ -367,7 +367,7 @@ const CompetitionMonitor: React.FC<CompetitionMonitorProps> = ({
           {marketDominance.map((market, index) => (
             <div key={index} className="dominance-card">
               <div className="dominance-header">
-                <h4>{market.portName}</h4>
+                <h4>{market.stationName}</h4>
                 <span className="resource-badge">
                   {getResourceIcon(market.resource)} {market.resource.toUpperCase()}
                 </span>

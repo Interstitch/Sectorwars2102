@@ -48,9 +48,9 @@ const GameDashboard: React.FC = () => {
     }
   };
   
-  const handleDock = async (portId: string) => {
+  const handleDock = async (stationId: string) => {
     try {
-      const result = await dockAtPort(portId);
+      const result = await dockAtPort(stationId);
       setDockingResult(result);
     } catch (error) {
       console.error('Error docking at port:', error);

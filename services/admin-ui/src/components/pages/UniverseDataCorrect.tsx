@@ -12,7 +12,7 @@ interface GalaxyConfig {
     frontier: number;
   };
   density: {
-    port_density: number;    // 5-15% of sectors
+    station_density: number;    // 5-15% of sectors
     planet_density: number;  // 2-5% of sectors
     one_way_warp_percentage: number; // 2-8% of warps
   };
@@ -149,7 +149,7 @@ const UniverseDataCorrect: React.FC = () => {
       frontier: 40
     },
     density: {
-      port_density: 10,
+      station_density: 10,
       planet_density: 3,
       one_way_warp_percentage: 5
     },
@@ -298,17 +298,17 @@ const UniverseDataCorrect: React.FC = () => {
         <h4>Galaxy Density</h4>
         
         <div className="form-group">
-          <label>Port Density: {galaxyConfig.density.port_density}% of sectors</label>
+          <label>Port Density: {galaxyConfig.density.station_density}% of sectors</label>
           <input 
             type="range" 
             min="5" 
             max="15" 
-            value={galaxyConfig.density.port_density}
+            value={galaxyConfig.density.station_density}
             onChange={(e) => setGalaxyConfig({
               ...galaxyConfig, 
               density: {
                 ...galaxyConfig.density,
-                port_density: parseInt(e.target.value)
+                station_density: parseInt(e.target.value)
               }
             })}
           />
@@ -1159,9 +1159,9 @@ const UniverseDataCorrect: React.FC = () => {
                         </div>
                         <div className="stat-card">
                           <h3>Ports</h3>
-                          <div className="stat-value">{galaxyState.statistics.port_count}</div>
+                          <div className="stat-value">{galaxyState.statistics.station_count}</div>
                           <div className="stat-detail">
-                            {Math.round(galaxyState.statistics.port_count / galaxyState.statistics.total_sectors * 100)}% of sectors
+                            {Math.round(galaxyState.statistics.station_count / galaxyState.statistics.total_sectors * 100)}% of sectors
                           </div>
                         </div>
                         <div className="stat-card">
@@ -1315,7 +1315,7 @@ const UniverseDataCorrect: React.FC = () => {
                 {showPortEditor && renderPortEditor()}
                 
                 <div className="info-message">
-                  <p>Ports: {galaxyState.statistics.port_count} / {galaxyState.statistics.total_sectors} sectors ({Math.round(galaxyState.statistics.port_count / galaxyState.statistics.total_sectors * 100)}%)</p>
+                  <p>Ports: {galaxyState.statistics.station_count} / {galaxyState.statistics.total_sectors} sectors ({Math.round(galaxyState.statistics.station_count / galaxyState.statistics.total_sectors * 100)}%)</p>
                 </div>
               </div>
             )}

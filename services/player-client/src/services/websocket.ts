@@ -316,7 +316,7 @@ class WebSocketService {
     commodity: string,
     quantity: number,
     sectorId?: number,
-    portId?: number,
+    stationId?: number,
     maxPrice?: number,
     minPrice?: number,
     superpositionStates?: number
@@ -331,7 +331,7 @@ class WebSocketService {
         commodity,
         quantity,
         sector_id: sectorId,
-        port_id: portId,
+        station_id: stationId,
         max_price: maxPrice,
         min_price: minPrice,
         superposition_states: superpositionStates || 3
@@ -371,7 +371,7 @@ class WebSocketService {
     commodity: string,
     quantity: number,
     sectorId?: number,
-    portId?: number
+    stationId?: number
   ): boolean {
     const sessionId = localStorage.getItem('aria_session_id') || 'session_' + Date.now();
 
@@ -383,7 +383,7 @@ class WebSocketService {
         commodity,
         quantity,
         sector_id: sectorId,
-        port_id: portId
+        station_id: stationId
       },
       timestamp: new Date().toISOString(),
       session_id: sessionId

@@ -36,7 +36,7 @@ interface PlanetPortPairProps {
   planet: Planet;
   station?: Station | null;
   onLandOnPlanet: (planetId: string) => void;
-  onDockAtPort?: (portId: string) => void;
+  onDockAtPort?: (stationId: string) => void;
   isLanded?: boolean;
   isDocked?: boolean;
 }

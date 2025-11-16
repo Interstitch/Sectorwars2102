@@ -18,7 +18,7 @@ interface StationCardProps {
       information?: boolean;
     };
   };
-  onDock: (portId: string) => void;
+  onDock: (stationId: string) => void;
   isDocked: boolean;
 }
 

@@ -6,8 +6,8 @@ import './route-optimizer.css';
 interface RouteStop {
   id: string;
   sectorId: number;
-  portId: string;
-  portName: string;
+  stationId: string;
+  stationName: string;
   action: 'buy' | 'sell' | 'both';
   resource: 'fuel' | 'organics' | 'equipment' | 'mixed';
   estimatedProfit: number;
@@ -333,7 +333,7 @@ const RouteOptimizer: React.FC<RouteOptimizerProps> = ({
               <div className="route-preview">
                 {route.stops.slice(0, 3).map((stop, index) => (
                   <span key={index} className="stop-preview">
-                    {stop.portName}
+                    {stop.stationName}
                     {index < 2 && index < route.stops.length - 1 && ' → '}
                   </span>
                 ))}
@@ -376,7 +376,7 @@ const RouteOptimizer: React.FC<RouteOptimizerProps> = ({
                   <div className="stop-connector" />
                   <div className="stop-card">
                     <div className="stop-header">
-                      <h5>{stop.portName}</h5>
+                      <h5>{stop.stationName}</h5>
                       <span className="stop-sector">Sector {stop.sectorId}</span>
                     </div>
                     

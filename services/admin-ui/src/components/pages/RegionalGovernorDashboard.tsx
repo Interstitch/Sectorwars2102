@@ -36,7 +36,7 @@ interface RegionalStats {
   pending_policies: number;
   treaties_count: number;
   planets_count: number;
-  ports_count: number;
+  stations_count: number;
   ships_count: number;
 }
 
@@ -442,7 +442,7 @@ const RegionalGovernorDashboard: React.FC = () => {
                 <div className="stat-label">Sectors</div>
                 <div className="stat-breakdown">
                   <div>Planets: {formatNumber(stats?.planets_count || 0)}</div>
-                  <div>Ports: {formatNumber(stats?.ports_count || 0)}</div>
+                  <div>Ports: {formatNumber(stats?.stations_count || 0)}</div>
                 </div>
               </div>
 

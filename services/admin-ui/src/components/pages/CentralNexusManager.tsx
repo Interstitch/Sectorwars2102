@@ -19,7 +19,7 @@ interface District {
   security_level: number;
   development_level: number;
   sectors_count: number;
-  ports_count: number;
+  stations_count: number;
   planets_count: number;
   current_traffic: number;
 }
@@ -291,7 +291,7 @@ const CentralNexusManager: React.FC = () => {
                         <td className="district-name">{district.name}</td>
                         <td>{district.sector_range[0]} - {district.sector_range[1]}</td>
                         <td>{formatNumber(district.sectors_count)}</td>
-                        <td>{formatNumber(district.ports_count)}</td>
+                        <td>{formatNumber(district.stations_count)}</td>
                         <td>{formatNumber(district.planets_count)}</td>
                         <td>
                           <div className="security-level">

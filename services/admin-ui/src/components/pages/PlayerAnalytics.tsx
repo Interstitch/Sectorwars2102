@@ -111,7 +111,7 @@ const PlayerAnalytics: React.FC = () => {
         assets: {
           ships_count: player.ships_count || 0,
           planets_count: player.planets_count || 0,
-          ports_count: player.ports_count || 0,
+          stations_count: player.stations_count || 0,
           total_value: 0 // Will be calculated later
         },
         activity: {
@@ -525,7 +525,7 @@ const PlayerAnalytics: React.FC = () => {
                                 <div className="flex items-center gap-2 text-sm">
                                   <span>🚀 {player.assets.ships_count}</span>
                                   <span>🌍 {player.assets.planets_count}</span>
-                                  <span>🏪 {player.assets.ports_count}</span>
+                                  <span>🏪 {player.assets.stations_count}</span>
                                 </div>
                               </td>
                             )}
@@ -783,7 +783,7 @@ const PlayerAnalytics: React.FC = () => {
                       </div>
                       <div>
                         <div className="text-sm text-muted">Ports Owned</div>
-                        <div>{state.selectedPlayer.assets.ports_count}</div>
+                        <div>{state.selectedPlayer.assets.stations_count}</div>
                       </div>
                       <div>
                         <div className="text-sm text-muted">Current Ship</div>

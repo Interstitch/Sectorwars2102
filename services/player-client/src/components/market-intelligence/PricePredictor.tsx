@@ -10,8 +10,8 @@ interface PriceHistory {
 
 interface PricePrediction {
   resource: 'fuel' | 'organics' | 'equipment';
-  portId: string;
-  portName: string;
+  stationId: string;
+  stationName: string;
   currentPrice: number;
   predictions: {
     '1h': { price: number; confidence: number; direction: 'up' | 'down' | 'stable' };
@@ -63,7 +63,7 @@ const PricePredictor: React.FC<PricePredictorProps> = ({
       
       try {
         const response = await gameAPI.trading.getPricePredictions({
-          portId: selectedPortId,
+          stationId: selectedPortId,
           resource: selectedResource,
           includeHistory: true
         });
@@ -264,7 +264,7 @@ const PricePredictor: React.FC<PricePredictorProps> = ({
               onClick={() => onPredictionSelect?.(prediction)}
             >
               <div className="prediction-header">
-                <h4>{prediction.portName}</h4>
+                <h4>{prediction.stationName}</h4>
                 <span className="resource-badge">{prediction.resource.toUpperCase()}</span>
               </div>
 
@@ -310,9 +310,9 @@ const PricePredictor: React.FC<PricePredictorProps> = ({
                 </div>
               </div>
 
-              {priceHistory[`${prediction.portId}_${prediction.resource}`] && (
+              {priceHistory[`${prediction.stationId}_${prediction.resource}`] && (
                 <PriceChart 
-                  data={priceHistory[`${prediction.portId}_${prediction.resource}`]}
+                  data={priceHistory[`${prediction.stationId}_${prediction.resource}`]}
                   prediction={prediction.predictions[timeframe].price}
                 />
               )}
@@ -347,7 +347,7 @@ const PricePredictor: React.FC<PricePredictorProps> = ({
         <div className="factors-analysis">
           {predictions.map((prediction, index) => (
             <div key={index} className="factors-card">
-              <h4>{prediction.portName} - {prediction.resource.toUpperCase()}</h4>
+              <h4>{prediction.stationName} - {prediction.resource.toUpperCase()}</h4>
               <div className="factors-list">
                 {prediction.factors.map((factor, idx) => (
                   <div key={idx} className="factor-item">

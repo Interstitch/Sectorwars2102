@@ -495,7 +495,7 @@ const PlayerDetailEditor: React.FC<PlayerDetailEditorProps> = ({ player, onClose
             </div>
             <div className="asset-item">
               <span className="asset-label">Ports Owned:</span>
-              <span className="asset-value">{player.assets.ports_count}</span>
+              <span className="asset-value">{player.assets.stations_count}</span>
             </div>
             <div className="asset-item">
               <span className="asset-label">Total Asset Value:</span>

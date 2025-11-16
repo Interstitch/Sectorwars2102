@@ -15,7 +15,7 @@ export interface AdminStats {
 export interface GalaxyStats {
   total_sectors: number;
   discovered_sectors: number;
-  port_count: number;
+  station_count: number;
   planet_count: number;
   player_count: number;
   team_count: number;
@@ -27,7 +27,7 @@ export interface GalaxyGenerationConfig {
   resource_distribution?: 'balanced' | 'clustered' | 'random';
   hazard_levels?: 'low' | 'moderate' | 'high' | 'extreme';
   connectivity?: 'sparse' | 'normal' | 'dense';
-  port_density?: number;
+  station_density?: number;
   planet_density?: number;
   warp_tunnel_probability?: number;
   faction_territory_size?: number;
@@ -54,7 +54,7 @@ export interface GalaxyState {
     resource_distribution: string;
     hazard_levels: string;
     connectivity: string;
-    port_density: number;
+    station_density: number;
     planet_density: number;
     warp_tunnel_probability: number;
   };
@@ -69,7 +69,7 @@ export interface Region {
   statistics?: {
     total_sectors: number;
     discovered_sectors: number;
-    port_count: number;
+    station_count: number;
     planet_count: number;
   };
 }
@@ -120,7 +120,7 @@ export interface PlayerAccount {
   current_ship_id: string | null;
   ships_count: number;
   planets_count: number;
-  ports_count: number;
+  stations_count: number;
   team_id: string | null;
   is_active: boolean;
   status: string;
@@ -129,7 +129,7 @@ export interface PlayerAccount {
   assets: {
     ships_count: number;
     planets_count: number;
-    ports_count: number;
+    stations_count: number;
     total_value: number;
   };
   activity: {
@@ -360,7 +360,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     resource_distribution: 'balanced',
     hazard_levels: 'moderate',
     connectivity: 'normal',
-    port_density: 0.15,
+    station_density: 0.15,
     planet_density: 0.25,
     warp_tunnel_probability: 0.1,
     faction_territory_size: 25

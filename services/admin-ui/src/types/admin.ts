@@ -36,7 +36,7 @@ export enum PermissionCategory {
 export interface GalaxyStats {
   total_sectors: number;
   discovered_sectors: number;
-  port_count: number;
+  station_count: number;
   planet_count: number;
   player_count: number;
   team_count: number;
@@ -53,7 +53,7 @@ export interface GalaxyConfiguration {
     frontier: number;
   };
   density: {
-    port_density: number;
+    station_density: number;
     planet_density: number;
     one_way_warp_percentage: number;
   };
@@ -332,7 +332,7 @@ export interface Team {
 
 // Market & Economy Types
 export interface MarketData {
-  port_id: string;
+  station_id: string;
   port_name: string;
   sector_id: number;
   resources: ResourceMarketData[];
