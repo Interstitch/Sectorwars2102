@@ -3,7 +3,9 @@ Core terminology and conceptual framework for SectorWars 2102 covering universe 
 
 FACTS:
 * Turn-based gameplay with 1000 turns per day allocation
-* Multi-regional architecture: Central Nexus (5000 sectors) + Regional Territories (500 sectors each)
+* Multi-regional architecture: Terran Space (300 sectors default) + Central Nexus (5000 sectors) + Player Regions (variable size)
+* Starting galaxy: 5,300 sectors (300 Terran Space + 5,000 Central Nexus)
+* Every region has Sector 1 with planet (population hub) and station
 * 7 core commodities + 4 strategic resources + 2 rare materials
 * 8 ship types with distinct capabilities
 * 18 military ranks from Recruit to Fleet Admiral
@@ -11,29 +13,43 @@ FACTS:
 * ARIA: Personal AI companion with consciousness evolution
 * Team maximum: 4 players for balance
 * Faction reputation scale: -1000 (Hostile) to +1000 (Allied)
+* Static universe: grows only via PayPal region subscriptions
 
 TERMINOLOGY:
 
 UNIVERSE_STRUCTURE:
 * Galaxy: Complete game universe containing all regions
-* Region: Large territorial division (Central Nexus or Regional Territory)
-* Central Nexus: Primary region with 5000 sectors, starter area
-* Regional Territory: Player-created region with 500 sectors
-* Cluster: Group of related sectors within a region
+* Region: Large territorial division (Terran Space, Central Nexus, or Player Region)
+* Terran Space: Starting region with 300 sectors (default, configurable via admin panel)
+* Central Nexus: Primary region with 5000 sectors (The Expanse zone)
+* Player Region: Subscription-based region with variable size (typically 500-1000 sectors)
+* Zone: Security and policing region within a parent Region
+* The Expanse: Central Nexus zone covering all 5000 sectors (policing 3, danger 6)
+* Federation Space: High-security zone in standard regions (policing 9, danger 1)
+* Border Regions: Moderate-security zone in standard regions (policing 5, danger 4)
+* Frontier Space: Low-security zone in standard regions (policing 2, danger 8)
+* Cluster: Navigation and organizational grouping of related sectors within a region
+* Isolated Cluster: Group of sectors with no natural warp tunnel connections to main network
 * Sector: Fundamental unit of space containing ports/planets/ships
-* Warp Tunnel: Naturally occurring FTL connection between sectors (one-way or two-way)
+* Sector 1: Special sector in every region containing population hub planet and station
+* Warp Tunnel: Naturally occurring FTL connection between sectors (one-way or two-way, mostly two-way)
 * Warp Gate: Player-created one-way FTL connection between sectors
-* Warp Gate Beacon: Source marker for warp gate construction
-* Warp Gate Focus: Destination marker for warp gate construction
+* Warp Gate Beacon: Physical marker at source sector for warp gate construction (destructible)
+* Warp Gate Focus: Physical marker at destination sector for warp gate construction (destructible)
 * Coordinates: X,Y,Z position of sector in 3D space
 
 ENTITIES:
 * Player: Human-controlled captain with ship, credits, inventory
 * Ship: Player's primary vessel with cargo/drone/defense capabilities
+* Warp Jumper: Specialized ship for warp gate construction and isolated cluster discovery
 * Escape Pod: Indestructible survival craft, high turn cost
 * Planet: Colonizable celestial body generating resources
+* Population Hub: Planet in Sector 1 of each region, exclusive population source for that region
 * Port: Trading station with class (0-11) determining inventory
 * Drone: Autonomous combat unit (1000 credits each)
+* Warp Gate Beacon: Physical entity marking source of warp gate under construction
+* Warp Gate Focus: Physical entity marking destination of warp gate under construction
+* Warp Gate: Completed player-created one-way FTL structure
 * Team: Cooperative alliance of up to 4 players
 * Faction: NPC organization with reputation system
 * NPC: Non-player character (pirates, traders, military)
@@ -46,9 +62,9 @@ RESOURCES:
 * Technology: Ship upgrades (50-120 credits)
 * Exotic Technology: Cutting-edge modifications (150-300 credits)
 * Luxury Goods: High-end merchandise (75-200 credits)
-* Population: Colonization requirement (50 credits, Earth only)
+* Population: Colonization requirement (50 credits, from region's Sector 1 population hub)
 * Quantum Shards: Rare fragments, 5 combine to 1 crystal
-* Quantum Crystals: Required for warp tunnel creation
+* Quantum Crystals: Required for warp gate creation (player-constructed)
 * Genesis Devices: Create new colonizable planet
 * Prismatic Ore: Ultra-rare hull reinforcement material
 * Photonic Crystals: Rare sensor/weapon enhancement material
@@ -108,11 +124,11 @@ COLONIZATION:
 * Terraforming: Genesis Device planet creation
 
 GOVERNANCE:
-* Regional Territory: Player-created and governed region (500 sectors)
-* Governance: Management of Regional Territory
-* Regional Policies: Laws and rules set by territory owner
-* Citizenship: Membership in Regional Territory
-* Taxes: Revenue from territory economic activity
+* Player Region: Player-created and governed region (variable size: 500-1000 sectors based on subscription)
+* Governance: Management of Player Region
+* Regional Policies: Laws and rules set by region owner
+* Citizenship: Membership in Player Region
+* Taxes: Revenue from region economic activity
 * Infrastructure Development: Building trade networks and facilities
 
 GAME_MECHANICS:
@@ -126,8 +142,9 @@ GAME_MECHANICS:
 * Daily Reset: Turn allocation refresh, unused turns expire
 
 SPECIAL_LOCATIONS:
-* Earth (Sector 1): Exclusive source of population
-* Sol Station (Class 0): Buys and sells all commodities
+* Sector 1 (Every Region): Contains population hub planet and station for that region
+* Earth (Terran Space Sector 1): Population hub for Terran Space region
+* Sol Station (Terran Space Sector 1, Class 0): Buys and sells all commodities
 * Black Hole Port (Class 8): Buys all, sells nothing
 * Nova Port (Class 9): Sells all, buys nothing
 * Shipyard: Ship purchase and upgrade facility
@@ -137,13 +154,16 @@ SPECIAL_LOCATIONS:
 CONSTRAINTS:
 * Turns: 1000 per day, no carryover
 * Team Size: Maximum 4 players
-* Population Source: Only from Earth (Sector 1)
+* Population Source: Only from Sector 1 population hub planet of each region
 * Quantum Crystals: Require 5 Quantum Shards to create
 * Credits: Never lost on ship destruction
 * Cargo: Always lost on ship destruction
 * Colonization Minimum: 10,000 population + 10,000 credits
 * Warp Jumper: 1 per player maximum
-* Regional Territory Size: Fixed at 500 sectors
+* Player Region Size: Variable (500-1000 sectors based on subscription tier)
+* Universe Growth: Static - only expands via PayPal region subscriptions
+* Region Removal: Occurs when subscription expires or is cancelled
+* Warp Gates: One-way only (two gates required for bidirectional travel)
 
 RELATED_SPECS:
 * GameMechanics.aispec - Core gameplay systems and turn costs
@@ -168,9 +188,9 @@ player.trade("ORE", quantity=100, action="BUY")  # 0 turns (docked)
 player.undock()  # -1 turn
 # Remaining: 997 turns
 
-# Resource acquisition flow
-earth = Sector(id=1)
-player.dock(earth.port)
+# Resource acquisition flow - from Terran Space population hub
+terran_sector_1 = get_sector(region="Terran Space", sector_number=1)
+player.dock(terran_sector_1.port)  # Sol Station
 player.buy("POPULATION", quantity=10000, price=50)  # 500,000 credits
 # Cargo: 10,000 units used (1 per population)
 player.travel_to(target_sector)
