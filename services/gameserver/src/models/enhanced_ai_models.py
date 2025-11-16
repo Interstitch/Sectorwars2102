@@ -79,7 +79,7 @@ class AIComprehensiveAssistant(Base):
     # Security and access control
     security_level = Column(String(20), nullable=False, default=SecurityLevel.STANDARD)
     encryption_key_id = Column(UUID(as_uuid=True), nullable=True)  # External key management
-    access_permissions = Column(JSONB, nullable=False, default={"trading": True, "combat": False, "colony": False, "port": False})
+    access_permissions = Column(JSONB, nullable=False, default={"trading": True, "combat": False, "colony": False, "station": False})
     
     # Performance and rate limiting
     api_request_quota = Column(Integer, nullable=False, default=1000)
@@ -147,7 +147,7 @@ class AIComprehensiveAssistant(Base):
         if not isinstance(value, dict):
             raise ValueError("Access permissions must be a dictionary")
         
-        required_keys = {'trading', 'combat', 'colony', 'port'}
+        required_keys = {'trading', 'combat', 'colony', 'station'}
         if not required_keys.issubset(value.keys()):
             raise ValueError(f"Access permissions must contain keys: {required_keys}")
         
@@ -243,7 +243,7 @@ class AICrossSystemKnowledge(Base):
     # Constraints
     __table_args__ = (
         CheckConstraint(
-            knowledge_domain.in_(["trading", "combat", "colony", "port", "strategic", "social"]),
+            knowledge_domain.in_(["trading", "combat", "colony", "station", "strategic", "social"]),
             name="valid_knowledge_domain"
         ),
         CheckConstraint(
@@ -403,7 +403,7 @@ class AIStrategicRecommendation(Base):
     # Constraints
     __table_args__ = (
         CheckConstraint(
-            recommendation_category.in_(["trading", "combat", "colony", "port", "strategic", "resource"]),
+            recommendation_category.in_(["trading", "combat", "colony", "station", "strategic", "resource"]),
             name="valid_recommendation_category"
         ),
         CheckConstraint(
