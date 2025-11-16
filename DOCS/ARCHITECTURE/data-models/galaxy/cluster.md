@@ -77,6 +77,40 @@ export interface ClusterResources {
   special_resources: string[];   // Any unique resources
 }
 
+export enum NebulaType {
+  NONE = "NONE",
+  CRIMSON = "CRIMSON",           // Red nebula - high quantum activity
+  AZURE = "AZURE",               // Blue nebula - stable quantum fields
+  EMERALD = "EMERALD",           // Green nebula - organic resources
+  VIOLET = "VIOLET",             // Purple nebula - exotic materials
+  AMBER = "AMBER",               // Orange nebula - radiation hazards
+  OBSIDIAN = "OBSIDIAN"          // Dark nebula - stealth operations
+}
+
+export interface NebulaProperties {
+  type: NebulaType;              // Nebula classification
+  color_hex: string;             // Hex color for rendering (#FF0000, etc.)
+  density: number;               // 0-100, base nebula density
+  quantum_field_strength: number; // 0-100, affects quantum shard spawn rate
+  sensor_interference: number;   // 0-100, affects ship sensor range
+  navigation_difficulty: number; // 0-10, affects movement costs
+
+  // Partial cluster coverage (nebulae rarely fill entire cluster)
+  coverage_percentage: number;   // 0-100, what % of cluster sectors are in nebula
+  core_sectors: number[];        // Sector IDs with full nebula effect (100% density)
+  edge_sectors: number[];        // Sector IDs with partial effect (30-70% density)
+
+  // Visual boundaries for 3D rendering
+  nebula_center: {               // Center point of nebula within cluster
+    x: number;
+    y: number;
+    z: number;
+  };
+  nebula_radius: number;         // How far nebula extends from center (in sectors)
+
+  special_effects: string[];     // Visual/gameplay effects (e.g., "quantum_shimmer", "sensor_echo")
+}
+
 export interface ClusterModel {
   id: string;                    // Unique identifier
   name: string;                  // Cluster name
@@ -118,6 +152,7 @@ export interface ClusterModel {
   
   // Special Properties
   is_hidden: boolean;            // Whether hidden from normal scans
+  nebula_properties: NebulaProperties | null; // Nebula data if this is a nebula cluster (null otherwise)
   special_features: string[];    // Unique cluster characteristics
   description: string;           // Human-readable description
 }
@@ -162,6 +197,68 @@ Clusters are generated using procedural generation with the following parameters
 | Frontier Outpost | Exploration base | 5-10 | Moderate | High |
 | Contested | Multiple factions | 15-20 | High | Very High |
 | Special Interest | Unique features | 10-15 | Variable | Variable |
+
+## Nebula Clusters
+
+Approximately **20% of clusters** contain nebula regions. Nebulae create visually stunning environments with unique gameplay mechanics.
+
+### Nebula Generation Rules
+
+1. **Coverage**: Nebulae typically cover 30-70% of a cluster's sectors (rarely 100%)
+2. **Distribution**: Nebulae expand outward from a central core sector
+3. **Density Gradient**:
+   - **Core sectors** (100% density): Full nebula effects, highest quantum field strength
+   - **Edge sectors** (30-70% density): Partial effects, transition zones
+   - **Clear sectors**: Normal space within the cluster
+4. **Entry Points Safety**: Cluster entry points are NEVER in core nebula sectors (always clear or edge)
+
+### Nebula Type Characteristics
+
+| Type | Color | Quantum Field | Primary Resource | Special Effect |
+|------|-------|---------------|------------------|----------------|
+| Crimson | Red (#DC143C) | Very High (80-100) | Quantum Shards | Enhanced quantum trading |
+| Azure | Blue (#1E90FF) | High (60-80) | Photonic Crystals | Stable warp tunnel formation |
+| Emerald | Green (#00FF7F) | Medium (40-60) | Organics | Accelerated organic production |
+| Violet | Purple (#9370DB) | High (70-90) | Exotic Materials | Rare resource spawns |
+| Amber | Orange (#FF8C00) | Low (20-40) | Radioactives | Radiation hazards |
+| Obsidian | Dark (#2F4F4F) | Medium (50-70) | Stealth Tech | Sensor masking |
+
+### Nebula Gameplay Impact
+
+**Navigation:**
+- **Sensor Interference**: Reduced ship sensor range (30-80% reduction based on density)
+- **Navigation Difficulty**: +1 to +5 turn cost for movement through core sectors
+- **Visual Obscurity**: Difficult to detect other ships/defenses
+
+**Economy:**
+- **Quantum Shard Gathering**: Primary source of quantum shards for warp gate construction
+- **Resource Bonuses**: Special resources spawn more frequently
+- **Port Premiums**: Ports on nebula edges become "gateway stations" with higher prices
+
+**Combat:**
+- **Stealth Advantage**: Attackers harder to detect in dense nebula
+- **Targeting Penalty**: Reduced accuracy for both attackers and defenders
+- **Escape Routes**: Easier to flee into nebula core
+
+**Exploration:**
+- **Discovery Rewards**: First mapping of nebula clusters grants bonus credits
+- **Hidden Sectors**: Nebula cores may contain hidden ports or planetary systems
+- **Quantum Anomalies**: Special events trigger in high quantum field areas
+
+### Example Nebula Cluster Layout
+
+```
+Crimson Nebula Cluster (50% coverage, 20 total sectors)
+Coverage: 10 sectors in nebula, 10 clear
+
+[E][ ][ ][ ][ ]  Legend:
+[ ][C][C][C][ ]  [C] = Core nebula (100% density, quantum field 90)
+[E][C][●][C][E]  [E] = Edge nebula (50% density, quantum field 60)
+[ ][C][C][C][ ]  [●] = Nebula center
+[ ][E][ ][ ][ ]  [ ] = Clear space
+                 Port locations: Edge sectors only
+                 Entry points: Clear sectors marked with *
+```
 
 ## Cluster Navigation
 

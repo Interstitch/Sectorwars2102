@@ -65,8 +65,45 @@ The galaxy features unique locations that serve specific gameplay purposes:
 
 - **Sol System (Sector 1)**: The central hub for new players with essential services
 - **The Cabal Headquarters (Randomly in a Sector between 50-150)**: Home to a powerful NPC faction with unique challenges
-- **Nebula Regions**: Areas with special navigation properties that affect travel
+- **Nebula Clusters**: Approximately 20% of clusters contain nebula regions (see Nebula Generation below)
 - **Resource Hotspots**: Sectors with enhanced economic opportunities or rare resources
+
+### Nebula Generation
+
+**Cluster-Level Nebulae**: Nebulae are defined at the cluster level, creating cohesive cosmic regions:
+
+**Generation Parameters:**
+- **Frequency**: 20% of clusters contain nebulae
+- **Coverage**: Most nebulae cover 30-70% of cluster sectors (rarely 100%)
+- **Types**: Six nebula types (Crimson, Azure, Emerald, Violet, Amber, Obsidian)
+- **Distribution Weights**:
+  - Small nebulae (30% coverage): 50% probability
+  - Medium nebulae (50% coverage): 30% probability
+  - Large nebulae (70% coverage): 15% probability
+  - Full cluster nebulae (100% coverage): 5% probability
+
+**Nebula Structure:**
+1. **Core Sectors**: Center of nebula with 100% density, highest quantum field strength
+2. **Edge Sectors**: Transition zones with 30-70% density
+3. **Clear Sectors**: Normal space within the same cluster
+4. **Entry Point Safety**: Cluster entry points never placed in core nebula sectors
+
+**Nebula Type Distribution by Zone:**
+- **Federation Space**: Azure (50%), Emerald (30%), Obsidian (20%) - safer types
+- **Border Zones**: Crimson (30%), Violet (30%), Azure (20%), Amber (20%) - mixed
+- **Frontier**: Crimson (40%), Violet (30%), Amber (20%), Obsidian (10%) - dangerous types
+
+**Quantum Resource Spawns:**
+- **Crimson Nebulae**: Primary quantum shard sources (80-100 field strength)
+- **Azure Nebulae**: Photonic crystals for stable warp gates (60-80 field strength)
+- **Violet Nebulae**: Exotic materials and rare resources (70-90 field strength)
+- **Other Types**: Specialized resources based on nebula characteristics
+
+**Gameplay Impact:**
+- Enhanced quantum trading opportunities in high-field nebulae
+- Sensor interference creates stealth combat scenarios
+- Gateway ports on nebula edges become strategic trading hubs
+- First-discovery bonuses for mapping nebula clusters
 
 ### Navigational Considerations
 

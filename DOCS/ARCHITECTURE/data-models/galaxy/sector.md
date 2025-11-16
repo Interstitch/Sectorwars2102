@@ -142,6 +142,11 @@ Sectors can be controlled by:
 ## Special Sector Types
 
 1. **Nebula**: Reduced visibility, affected combat dynamics
+   - **Cluster-Level Property**: Nebula properties are defined at the **cluster level**
+   - **Sector Inheritance**: Sectors with `special_type: NEBULA` inherit from parent cluster's `nebula_properties`
+   - **Density Variation**: Core nebula sectors (100% density), edge sectors (30-70% density)
+   - **Quantum Fields**: Quantum shard gathering rate based on cluster's `quantum_field_strength`
+   - **See**: `cluster.md` for complete nebula system documentation
 2. **Asteroid Field**: Rich in resources, difficult navigation
 3. **Black Hole**: Gravitational effects, dangerous but potentially useful for travel
 4. **Radiation Zone**: Hull damage over time, special shielding needed
