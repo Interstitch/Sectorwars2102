@@ -351,7 +351,7 @@ services/admin-ui/src/components/universe/
 
 ## Related Documentation
 - [Admin UI Overview](./ADMIN_UI.md)
-- [Sector Data Model](../DATA_DEFS/galaxy/sector.md)
+- [Sector Data Model](../ARCHITECTURE/data-models/galaxy/sector.md)
 - [API Documentation](../api/admin_routes.md)
 
 ## Support & Troubleshooting

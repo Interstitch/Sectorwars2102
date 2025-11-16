@@ -255,14 +255,13 @@ npx playwright test -c tests/e2e_tests/playwright.config.ts --project=admin-test
 npx playwright test -c tests/e2e_tests/playwright.config.ts --project=player-tests
 ```
 
-Detailed testing documentation can be found in [DOCS/FEATURE_DOCS/TESTING.md](./DOCS/FEATURE_DOCS/TESTING.md).
+Detailed testing documentation can be found in [DOCS/STATUS/development/TESTING.md](./DOCS/STATUS/development/TESTING.md).
 
 ## Documentation
 
 - **Developer Documentation**: See [CLAUDE.md](./CLAUDE.md) for development guide
-- **Admin UI Guide**: See [DOCS/FEATURE_DOCS/ADMIN_UI_COMPREHENSIVE.md](./DOCS/FEATURE_DOCS/ADMIN_UI_COMPREHENSIVE.md) for comprehensive admin interface documentation
-- **Architecture Overview**: See [DOCS/FEATURE_DOCS/ARCHITECTURE.md](./DOCS/FEATURE_DOCS/ARCHITECTURE.md)
-- **Deployment Guide**: See [DOCS/FEATURE_DOCS/DEPLOYMENT.md](./DOCS/FEATURE_DOCS/DEPLOYMENT.md)
-- **Replit Troubleshooting**: See [DOCS/FEATURE_DOCS/REPLIT_TROUBLESHOOTING.md](./DOCS/FEATURE_DOCS/REPLIT_TROUBLESHOOTING.md)
+- **Admin UI Guide**: See [DOCS/FEATURES/ADMIN_UI.md](./DOCS/FEATURES/ADMIN_UI.md) for comprehensive admin interface documentation
+- **Architecture Overview**: See [DOCS/SPECS/Architecture.aispec](./DOCS/SPECS/Architecture.aispec) and [DOCS/ARCHITECTURE/](./DOCS/ARCHITECTURE/)
+- **Docker Guide**: See [DOCS/GUIDES/DOCKER_COMPOSE_GUIDE.md](./DOCS/GUIDES/DOCKER_COMPOSE_GUIDE.md) for deployment information
 - **AI Specification**: See [DOCS/AISPEC/](./DOCS/AISPEC/) for detailed architecture specifications
 - **Development Journal**: See [DEV_JOURNAL/](./DEV_JOURNAL/) for project evolution history

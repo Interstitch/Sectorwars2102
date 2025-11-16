@@ -9,7 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Ship specifications based on DOCS/FEATURE_DOCS/SHIP_TYPES.md
+# Ship specifications based on DOCS/FEATURES/SHIP_TYPES.md
 SHIP_SPECIFICATIONS = {
     ShipType.ESCAPE_POD: {
         "base_cost": 0,
