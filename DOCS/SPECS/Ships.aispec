@@ -23,6 +23,30 @@ TERMINOLOGY:
 * Special Ability: Unique ship capability or bonus
 * Escape Pod: Indestructible survival craft, high turn cost for movement
 * Attack Turn Cost: Turn cost to initiate combat against this ship (scales with ship size/mass - larger ships require more turns to engage)
+* Equipment Capacity: Which specialized equipment this ship can mount
+
+EQUIPMENT_CAPACITY:
+Ships have specialized equipment slots that determine which advanced systems they can use:
+
+quantum_harvester_slot (Quantum Field Harvester):
+  purpose: Extract quantum shards from nebula sectors
+  cost: 50,000 credits to purchase equipment
+  installation: 24 hours at Class 7+ Technology Port
+  operation_cost: 1,000 credits per harvest attempt
+  harvest_time: 15 turns + 2 hours real-time per attempt
+  yield: 1-3 Quantum Shards (RNG based on nebula quantum_field_strength)
+  compatible_ships: Scout Ship, Fast Courier, Defender, Warp Jumper
+  incompatible_ships: Light Freighter, Cargo Hauler, Carrier, Colony Ship
+
+mining_laser_slot (Asteroid Mining Laser):
+  purpose: Extract ore and minerals from asteroid fields
+  compatible_ships: Cargo Hauler, Colony Ship, Defender
+  incompatible_ships: Scout Ship, Fast Courier, Light Freighter, Warp Jumper, Carrier
+
+planetary_lander (Planetary Landing System):
+  purpose: Land on planets for colonization and resource transfer
+  compatible_ships: Colony Ship, Light Freighter, Cargo Hauler
+  incompatible_ships: Scout Ship, Fast Courier, Defender, Carrier, Warp Jumper
 
 SHIP_STATS:
 LightFreighter:
@@ -34,6 +58,10 @@ LightFreighter:
   shields: 300
   hull: 400
   attack_turn_cost: 12 turns
+  equipment_capacity:
+    quantum_harvester_slot: false
+    mining_laser_slot: false
+    planetary_lander: true
   special: Versatile Configuration
   category: Trading
   description: Standard starting ship, balanced performance (medium-small vessel)
@@ -47,6 +75,10 @@ CargoHauler:
   shields: 400
   hull: 600
   attack_turn_cost: 20 turns
+  equipment_capacity:
+    quantum_harvester_slot: false
+    mining_laser_slot: true
+    planetary_lander: true
   special: Cargo Compression (+15% storage)
   category: Trading
   description: Bulk commodity transport specialist (medium-large freighter)
@@ -60,6 +92,10 @@ FastCourier:
   shields: 200
   hull: 300
   attack_turn_cost: 8 turns
+  equipment_capacity:
+    quantum_harvester_slot: true
+    mining_laser_slot: false
+    planetary_lander: false
   special: Stealth Systems (25% pirate avoidance)
   category: Trading
   description: Speed-optimized rapid transit vessel (small, fast target)
@@ -73,6 +109,10 @@ Defender:
   shields: 700
   hull: 800
   attack_turn_cost: 18 turns
+  equipment_capacity:
+    quantum_harvester_slot: true
+    mining_laser_slot: true
+    planetary_lander: false
   special: Shield Projection
   category: Combat
   description: Primary combat vessel, reinforced shields (medium warship)
@@ -86,6 +126,10 @@ Carrier:
   shields: 800
   hull: 900
   attack_turn_cost: 45 turns
+  equipment_capacity:
+    quantum_harvester_slot: false
+    mining_laser_slot: false
+    planetary_lander: false
   special: Fleet Coordination (+20% boost to nearby friendlies)
   category: Combat
   description: Mobile headquarters, multiple drone squadrons (massive capital ship)
@@ -99,6 +143,10 @@ ColonyShip:
   shields: 400
   hull: 600
   attack_turn_cost: 35 turns
+  equipment_capacity:
+    quantum_harvester_slot: false
+    mining_laser_slot: true
+    planetary_lander: true
   special: Terraforming Modules (-30% colonization time)
   category: Specialized
   description: Planetary settlement specialist (large, slow civilian vessel)
@@ -112,6 +160,10 @@ ScoutShip:
   shields: 150
   hull: 200
   attack_turn_cost: 5 turns
+  equipment_capacity:
+    quantum_harvester_slot: true
+    mining_laser_slot: false
+    planetary_lander: false
   special: Advanced Sensors (reveal sector details)
   category: Specialized
   description: Exploration and charting specialist (small, nimble target)
@@ -125,6 +177,10 @@ WarpJumper:
   shields: 500
   hull: 600
   attack_turn_cost: 100 turns
+  equipment_capacity:
+    quantum_harvester_slot: true
+    mining_laser_slot: false
+    planetary_lander: false
   special: Quantum Jump (5-10 sectors, 24h cooldown)
   category: Specialized
   description: Warp gate establishment vessel

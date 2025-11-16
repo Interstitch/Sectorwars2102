@@ -61,41 +61,88 @@
 #### Method 1: Nebula Exploration (Primary)
 **Nebula Clouds** contain naturally-occurring Quantum Shards
 
+**Equipment Requirement: Quantum Field Harvester**
+
+Only ships with `quantum_harvester_slot: true` can extract quantum shards:
+- **Scout Ship** ✅ (25,000 credits)
+- **Fast Courier** ✅ (30,000 credits)
+- **Defender** ✅ (70,000 credits)
+- **Warp Jumper** ✅ (500,000 credits)
+
+**Quantum Field Harvester Equipment:**
+- **Purchase Cost**: 50,000 credits
+- **Installation**: 24 hours at Class 7+ Technology Port
+- **Operation Cost**: 1,000 credits per harvest attempt
+- **Harvest Time**: 15 turns + 2 hours real-time per attempt
+- **Yield**: 1-3 Quantum Shards (RNG based on nebula quantum field strength)
+
+**Total Cost for New Player** (Scout + Harvester):
+- Scout Ship: 25,000 credits
+- Quantum Harvester: 50,000 credits
+- Installation: Free at purchase
+- **Total**: 75,000 credits to start quantum shard gathering
+
 **Process:**
 ```bash
-# Navigate to nebula sector
+# 1. Purchase and equip Quantum Field Harvester
+POST /api/ship/equipment/purchase
+{
+  "equipmentType": "quantum_harvester",
+  "shipId": "player-scout-ship-uuid"
+}
+# Cost: 50,000 credits
+# Installation: 24 hours at Class 7+ port
+
+# 2. Navigate to nebula cluster (see cluster.md for nebula locations)
 POST /player/move/{nebula_sector_id}
+# Note: Use core nebula sectors for highest quantum_field_strength
 
-# Enter nebula cloud (requires 10 turns, dangerous)
-POST /api/exploration/nebula/enter
-
-# Scan for quantum anomalies
+# 3. Scan for quantum anomalies
 POST /api/exploration/nebula/scan
 # Cost: 5 turns
-# Success Rate: 15% base (modified by ship sensors)
+# Success Rate: 15% base + (quantum_field_strength / 10)%
+# Example: Crimson Nebula core (90 field strength) = 24% success rate
 
 # Response (if successful):
 {
   "anomalyDetected": true,
   "type": "QUANTUM_SHARD_DEPOSIT",
+  "quantumFieldStrength": 90,  # From cluster nebula_properties
   "location": {"x": 1250, "y": 3400, "z": 200},
-  "estimatedYield": "1-3 shards",
+  "estimatedYield": "2-3 shards",  # Higher yield in strong fields
   "danger": "MODERATE"  # Radiation, energy fluctuations
 }
 
-# Extract quantum shards
+# 4. Extract quantum shards (requires Quantum Field Harvester equipped)
 POST /api/exploration/nebula/extract
 # Cost: 15 turns
 # Time: 2 hours real-time
-# Yield: 1-3 Quantum Shards (RNG)
-# Risk: 10% chance ship takes minor damage
+# Yield: 1-3 Quantum Shards (RNG weighted by quantum_field_strength)
+# Risk: 10% chance ship takes minor hull damage (50-100 points)
+# Operation Cost: 1,000 credits deducted on extraction
+
+# Response:
+{
+  "success": true,
+  "shardsCollected": 3,
+  "damageIncurred": 0,
+  "operationCost": 1000,
+  "remainingHarvesterDurability": 95  # Harvester degrades 5% per use
+}
 ```
 
-**Nebula Types:**
-- **Purple Nebulae**: 20% shard presence, low danger
-- **Blue Nebulae**: 15% shard presence, moderate danger, higher yields
-- **Green Nebulae**: 30% shard presence, high danger (radiation damage)
-- **Red Nebulae**: 5% shard presence, extreme danger, rare "pristine shards" (2x value)
+**Nebula Cluster Types** (see cluster.md for details):
+- **Crimson Nebulae** (#DC143C, Red): Quantum field 80-100, highest shard yield, moderate danger
+- **Violet Nebulae** (#9370DB, Purple): Quantum field 70-90, high shard yield, exotic materials
+- **Azure Nebulae** (#1E90FF, Blue): Quantum field 60-80, photonic crystals, stable harvesting
+- **Emerald Nebulae** (#00FF7F, Green): Quantum field 40-60, organic-focused, lower shard yield
+- **Amber Nebulae** (#FF8C00, Orange): Quantum field 20-40, radiation hazards, dangerous
+- **Obsidian Nebulae** (#2F4F4F, Dark): Quantum field 50-70, stealth tech, sensor interference
+
+**Best Nebulae for Quantum Shard Gathering**:
+1. Crimson (Primary target - highest yield)
+2. Violet (Secondary - good yield + rare materials)
+3. Azure (Safe option - stable, predictable)
 
 **Nebula Locations:**
 - Central Nexus: ~50 nebula sectors
