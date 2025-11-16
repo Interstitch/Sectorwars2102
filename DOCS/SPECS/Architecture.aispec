@@ -1,31 +1,37 @@
 OVERVIEW:
-Sector Wars 2102 uses a flexible architecture with three separate services: Game API Server, Player Client, and Admin UI, all connecting to a remote PostgreSQL database. Services can be deployed either as Docker containers or run directly with PM2 process management.
+Sector Wars 2102 uses a microservices architecture with three separate services: Game API Server, Player Client, and Admin UI, all connecting to a remote PostgreSQL database. Services deployed as Docker containers with support for multiple deployment profiles (development, multi-regional, production, monitoring).
 
 FACTS:
-* Multiple deployment options with the same codebase:
-  * Docker multi-container (separate containers per service)
-  * Docker single-container (combined container with PM2)
-  * Direct process management via PM2 (for Replit)
+* Docker-based containerization for all deployments
+* Multiple deployment profiles via Docker Compose:
+  * Development profile (default, local dev with hot reload)
+  * Multi-regional profile (testing regional architecture)
+  * Production profile (security-hardened, resource limits)
+  * Monitoring profile (Prometheus + Grafana)
 * Remote Neon PostgreSQL database for persistence across environments
 * Microservices communicate via RESTful API calls
 * Game logic resides exclusively in the Game API server
-* Environment detection determines appropriate runtime configuration
-* PM2 provides process management for both Docker and non-Docker deployments
+* Environment detection determines runtime configuration (local vs Codespaces)
 * Python FastAPI backend with Uvicorn server
-* React with TypeScript frontend services
+* React with TypeScript frontend services (Vite bundler)
+* Nginx reverse proxy for production deployments
+* Redis for cross-regional coordination in multi-regional mode
 
 TERMINOLOGY:
 * Game API Server: Core backend service containing all game logic and database operations
 * Player Client: Web interface for playing the game
 * Admin UI: Specialized interface for game universe administration
-* Environment Detection: System to identify whether code is running in local, Codespaces, or Replit environment
-* PM2: Process Manager for Node.js applications (used for managing all services)
+* Environment Detection: System to identify whether code is running in local or GitHub Codespaces environment
+* Docker Compose Profile: Named configuration subset for specific deployment scenarios
+* Multi-Regional Architecture: Player-owned Regional Territories coordinated via Redis
+* Microservices: Independent services communicating via REST API
 
 FILES:
 - /
-  ├── docker-compose.yml          # Main service orchestration (multi-container)
-  ├── Dockerfile                  # Combined container Dockerfile
-  ├── pm2.replit.config.js        # PM2 configuration for Replit environment
+  ├── docker-compose.yml          # Unified Docker Compose with profiles
+  ├── .devcontainer/              # GitHub Codespaces configuration
+  │   └── devcontainer.json
+  ├── .env                        # Environment variables (not in git)
   ├── CLAUDE.md                   # AI assistant configuration
   ├── tests/                      # Central testing directory
   │   ├── e2e_tests/              # Centralized E2E tests
@@ -41,10 +47,7 @@ FILES:
   │   └── test-results/           # Test reports and artifacts
   ├── dev-scripts/                # Development utility scripts
   │   ├── setup.sh                # Unified setup script
-  │   ├── start-unified.sh        # Main entry script
-  │   └── start-replit-unified.sh # Replit-specific script
-  ├── .env.d/                     # Environment configuration scripts
-  │   └── path.sh                 # Path configuration
+  │   └── start-unified.sh        # Environment detection and startup
   ├── services/
   │   ├── gameserver/            # Game API Server component
   │   │   ├── Dockerfile
@@ -123,73 +126,176 @@ No database schema directly associated with architecture. See Database.aispec fo
 CONSTRAINTS:
 * Game logic must remain exclusively in the Game API Server
 * Frontend services must not contain business logic
-* All persistent data must be stored in external PostgreSQL database, provided by a 3rd party
+* All persistent data must be stored in external PostgreSQL database (Neon)
 * Environment variables must be used for configuration
-* Services must function in all three environments without code changes
-* Replit must run without requiring Docker
+* Services must function in both local and Codespaces environments without code changes
+* All deployments must use Docker for consistency
+* Secrets must not be stored in version control (.env excluded from git)
+* Multi-regional deployments require Redis for coordination
+* Production deployments require Nginx reverse proxy
 
 EXAMPLES:
+```bash
+# Development Profile (default) - Local development with hot reload
+docker-compose up
+# Services: database, gameserver, player-client, admin-ui
+
+# Multi-Regional Profile - Testing regional architecture
+docker-compose --profile multi-regional up
+# Services: central-nexus-db, redis-nexus, central-nexus-server,
+#           player-client, admin-ui, nginx-gateway, region-manager
+
+# Production Profile - Security-hardened deployment
+docker-compose --profile production up
+# Services: central-nexus-db, redis-nexus, central-nexus-server,
+#           player-client, admin-ui, nginx-gateway
+
+# Production with Monitoring
+docker-compose --profile production --profile monitoring up
+# Adds: prometheus, grafana
+
+# Start Individual Service
+docker-compose up gameserver
+docker-compose up player-client
+
+# Run Commands Inside Containers
+docker-compose exec gameserver poetry run pytest
+docker-compose exec player-client npm run typecheck
+docker-compose exec admin-ui npm run build
+
+# View Service Logs
+docker-compose logs -f gameserver
+docker-compose logs -f player-client
 ```
-# Docker multi-container deployment (docker-compose.yml)
+
+```yaml
+# docker-compose.yml - Service definitions
+version: '3.8'
 services:
   gameserver:
-    build: ./services/gameserver
+    build:
+      context: ./services/gameserver
+      dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "${GAMESERVER_PORT:-8080}:8080"
+    volumes:
+      - ./services/gameserver:/app
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - PYTHONUNBUFFERED=1
+    profiles: ["development"]
 
   player-client:
-    build: ./services/player-client
+    build:
+      context: ./services/player-client
+      dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "${PLAYER_CLIENT_PORT:-3000}:3000"
+    volumes:
+      - ./services/player-client:/app
+      - /app/node_modules
     environment:
-      - API_URL=http://gameserver:8080
+      - VITE_API_URL=${API_BASE_URL}
+    depends_on:
+      - gameserver
+    profiles: ["development", "multi-regional", "production"]
 
   admin-ui:
-    build: ./services/admin-ui
+    build:
+      context: ./services/admin-ui
+      dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "${ADMIN_UI_PORT:-3001}:3001"
+    volumes:
+      - ./services/admin-ui:/app
+      - /app/node_modules
     environment:
-      - API_URL=http://gameserver:8080
+      - VITE_API_URL=${API_BASE_URL}
+    depends_on:
+      - gameserver
+    profiles: ["development", "multi-regional", "production"]
+
+  redis-nexus:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    profiles: ["multi-regional", "production"]
+
+  nginx-gateway:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - gameserver
+    profiles: ["multi-regional", "production"]
 ```
 
+```bash
+# Environment Detection and Startup
+#!/bin/bash
 
-```javascript
-// PM2 process management (pm2.replit.config.js)
-module.exports = {
-  apps: [
-    {
-      name: 'game-api-server',
-      cwd: './services/gameserver',
-      script: 'python3',
-      args: '-m uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload',
-      env: {
-        PYTHONUNBUFFERED: 1,
-        DATABASE_URL: process.env.DATABASE_URL
-      },
-      autorestart: true
-    },
-    {
-      name: 'player-client',
-      cwd: './services/player-client',
-      script: 'npm',
-      args: 'run dev -- --host 0.0.0.0 --port 3000',
-      env: {
-        API_URL: 'http://localhost:8080'
-      },
-      autorestart: true
-    },
-    {
-      name: 'admin-ui',
-      cwd: './services/admin-ui',
-      script: 'npm',
-      args: 'run dev -- --host 0.0.0.0 --port 3001',
-      env: {
-        API_URL: 'http://localhost:8080'
-      },
-      autorestart: true
-    }
-  ]
-};
+detect_environment() {
+  if [ -n "$CODESPACE_NAME" ] || [ -n "$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" ]; then
+    echo "codespaces"
+  else
+    echo "local"
+  fi
+}
+
+ENV=$(detect_environment)
+echo "🚀 Detected environment: $ENV"
+
+case "$ENV" in
+  "codespaces")
+    echo "Starting in GitHub Codespaces"
+    docker-compose up
+    ;;
+  "local")
+    echo "Starting in local environment"
+    docker-compose up
+    ;;
+esac
+```
+
+```bash
+# Service Communication Patterns
+
+# Player Client → Game Server (REST API)
+fetch('http://gameserver:8080/api/v1/players/me', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  }
+})
+
+# Admin UI → Game Server (REST API)
+fetch('http://gameserver:8080/api/v1/admin/users', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${adminToken}`,
+    'Content-Type': 'application/json'
+  }
+})
+
+# Game Server → Database (SQLAlchemy)
+from sqlalchemy import select
+from models import Player
+
+result = await session.execute(
+  select(Player).where(Player.id == player_id)
+)
+player = result.scalar_one_or_none()
+
+# Multi-Regional Coordination (Redis)
+import redis
+r = redis.Redis(host='redis-nexus', port=6379)
+r.publish('regional-events', json.dumps({
+  'event': 'player_joined',
+  'region': 'territory-1',
+  'player_id': player_id
+}))
 ```
