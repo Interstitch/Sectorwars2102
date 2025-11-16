@@ -983,13 +983,14 @@ async def generate_galaxy(
         # Prepare configuration with region distribution
         config = request.config or {}
         config.update({
+            "num_sectors": request.num_sectors,  # Include num_sectors in config
             "federation_percentage": request.federation_percentage,
             "border_percentage": request.border_percentage,
             "frontier_percentage": request.frontier_percentage
         })
 
-        # Generate complete galaxy with ports, planets, and warp tunnels
-        galaxy = generator.generate_galaxy(request.name, request.num_sectors, config)
+        # Generate galaxy metadata (regions/clusters/sectors created separately via region generation)
+        galaxy = generator.generate_galaxy(request.name, config)
 
         # Auto-generate Central Nexus after galaxy creation
         # This creates the galactic hub that connects starting areas to player-owned regions
