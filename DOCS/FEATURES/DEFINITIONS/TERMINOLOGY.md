@@ -1,0 +1,679 @@
+# SectorWars 2102 - Comprehensive Terminology
+
+**Last Updated**: 2025-11-16
+**Version**: 1.0
+**Purpose**: Definitive reference for all game terms, concepts, and systems
+
+---
+
+## 🌌 Universe Structure
+
+### Galaxy
+The entire game universe. In the multi-regional architecture, the galaxy consists of the Central Nexus and multiple player-owned Regional Territories.
+
+### Central Nexus
+The primary hub galaxy containing **5,000 sectors** organized into 10 specialized districts. Serves as the universal trade hub connecting all regional territories. All players start here and can always return through quantum warp tunnels.
+
+**Districts**:
+- **Commerce Central**: Premium trading facilities with best port selection
+- **Diplomatic Quarter**: Inter-regional negotiations and treaty signing
+- **Industrial Zone**: Manufacturing complexes and production facilities
+- **Residential District**: Citizen services and player housing
+- **Transit Hub**: Warp gate infrastructure and fast travel
+- **High Security Zone**: Restricted access, military operations
+- **Cultural Center**: Events, festivals, and social gathering
+- **Research Campus**: Technology development and upgrades
+- **Free Trade Zone**: Unrestricted commerce, no taxes
+- **Gateway Plaza**: New player welcome and orientation
+
+### Region (Regional Territory)
+A player-owned galaxy containing **500 sectors** with customizable rules, governance, and economic policies. Requires a PayPal subscription ($25/month for ownership, $5/month for citizenship) to create or govern. Players can customize:
+- Governance type (Democracy, Autocracy, Council Republic)
+- Tax rates (5-25%)
+- PvP rules and combat restrictions
+- Trade policies and bonuses
+- Immigration controls
+- Cultural identity and themes
+
+### Zone
+A collection of Clusters within a Region. Zones typically contain 3-5 Clusters and serve as organizational units for galaxy management.
+
+### Cluster
+A group of interconnected Sectors. Clusters typically contain 8-15 Sectors linked by warp tunnels, forming local navigation networks.
+
+### Sector
+The fundamental unit of space in the game. Each sector can contain:
+- **Warp Tunnels** (connections to other sectors)
+- **Ports** (trading stations)
+- **Planets** (colonizable worlds)
+- **Ships** (player and NPC vessels)
+- **Drones** (defensive or offensive units)
+- **Genesis Devices** (planet-creation tools)
+
+Sectors are identified by numeric IDs (Sector 1 = Earth/Sol Station).
+
+### Warp Tunnel
+A navigation link between two sectors. Players can travel through warp tunnels at the cost of 1 turn per jump (modified by ship speed). Tunnels form the galaxy's navigation network.
+
+**Types**:
+- **Standard Warp Tunnel**: Normal sector-to-sector connection
+- **Quantum Warp Tunnel**: Connects different regions to the Central Nexus
+- **Player-Created Tunnel**: Built using Quantum Crystals
+
+### Quantum Jump
+A special ability of the **Warp Jumper** ship that allows directed movement of 5-10 sectors in a targeted direction. Has a 24-hour cooldown. Different from using warp tunnels.
+
+---
+
+## 🚀 Entities & Objects
+
+### Ship
+Player-controlled spacecraft. Each ship has:
+- **Cargo Capacity**: Maximum units of resources/commodities
+- **Drone Capacity**: Maximum combat drones (0-12)
+- **Genesis Capacity**: Maximum Genesis Devices (0-5)
+- **Speed**: Sectors per turn (0.4-2.5)
+- **Shield Points**: Defensive energy shields
+- **Hull Points**: Structural integrity
+
+See [SHIP_TYPES.md](./SHIP_TYPES.md) for complete ship specifications.
+
+### Escape Pod
+An indestructible survival craft. Every player has one. Key features:
+- **Indestructible**: Cannot be destroyed under any circumstances
+- **High Turn Cost**: Consumes substantially more turns to move between sectors
+- **Credit Protection**: Player retains all credits when ejected to escape pod
+- **Cargo Loss**: All cargo is lost when ship is destroyed
+- **Teammate Docking**: Can dock with teammate's ship for transport
+
+### Planet
+A colonizable world found in sectors. Planets provide:
+- **Resource Production**: Generate commodities automatically
+- **Passive Income**: Credits from population and infrastructure
+- **Strategic Value**: Territory control and team benefits
+
+**Planet Types**:
+- **Uncolonized**: Available for claiming (requires 10,000 population + 10,000 credits)
+- **Colonized**: Owned by player or team, producing resources
+- **Specialized**: Focused on specific production (Agricultural, Industrial, Military, Research, Balanced)
+
+**Infrastructure**:
+- **Factory**: Equipment production
+- **Farm**: Organics/food production
+- **Mine**: Ore extraction
+- **Defense**: Turrets, shields, fighters (levels 1-10)
+- **Research**: Technology development
+
+### Port (Trading Station)
+A space station where players trade commodities. Ports have **classes** (0-11) that determine what they buy and sell:
+
+- **Class 0 (Sol Station)**: Buys/sells all commodities
+- **Class 1**: Buys Ore, sells Basic Food/Fuel/Technology
+- **Class 2**: Buys Basic Food, sells Ore/Fuel/Technology
+- **Class 3**: Buys Fuel, sells Ore/Basic Food/Technology
+- **Class 4**: Buys Technology, sells Ore/Basic Food/Fuel
+- **Class 5**: Buys Luxury Goods, sells Ore/Basic Food/Fuel/Technology
+- **Class 6**: Buys Ore/Basic Food, sells Fuel/Technology
+- **Class 7**: Buys Fuel/Technology, sells Ore/Basic Food
+- **Class 8 (Black Hole)**: Buys all commodities, sells nothing
+- **Class 9 (Nova)**: Sells all commodities, buys nothing
+- **Class 10**: Buys Gourmet Food, sells Technology/Luxury Goods
+- **Class 11**: Buys Exotic Technology, sells advanced components
+
+**Port Actions**:
+- **Dock**: Attach to port (costs 1 turn)
+- **Undock**: Leave port (costs 1 turn)
+- **Buy**: Purchase commodities
+- **Sell**: Sell commodities
+- All trading while docked is instant
+
+### Drone
+Autonomous combat unit. Types include:
+- **Combat Drone**: High firepower, attacks enemies automatically
+- **Mining Drone**: Collects ore and resources from sectors
+- **Scout Drone**: Extended sensor range, intel gathering
+- **Defense Drone**: Protects ports/planets, high shields
+- **Research Drone**: Gathers data, discovers anomalies
+
+**Drone Mechanics**:
+- **Cost**: 1,000 credits each (combat drones from military outposts)
+- **Deployment**: Can be deployed to sectors for autonomous operation
+- **Operational Modes**: Passive, Aggressive, Defensive, Mining
+- **Upgrades**: Shields, weapons, sensors, cargo, engines
+- **Health**: 0-100 (can be damaged and repaired)
+- **Batch Operations**: Can deploy/recall multiple drones at once
+
+### Genesis Device
+A planet-creation tool. Allows players to create new planets in empty sectors. Key features:
+- **Deployment**: Creates a new colonizable planet in current sector
+- **Limited Capacity**: Ships can only carry 0-5 depending on ship type
+- **Strategic Use**: Enables custom territory expansion
+
+---
+
+## 💰 Resources & Commodities
+
+### Credits
+The universal currency. Used for:
+- Purchasing ships, drones, and equipment
+- Trading commodities at ports
+- Colonizing planets
+- Paying taxes in regional territories
+- **Never lost** when ship is destroyed (stored virtually, not on ship)
+
+### Core Trading Commodities
+
+**Ore**
+- Raw materials for construction and manufacturing
+- Price: 15-45 credits per unit
+- Highest value in industrial sectors
+
+**Basic Food**
+- Standard nutritional products
+- Price: 8-25 credits per unit
+- Required for colonization and population survival
+
+**Gourmet Food**
+- Premium foodstuffs and exotic ingredients
+- Price: 30-70 credits per unit
+- Enhances colony development and production efficiency
+
+**Fuel**
+- Refined energy for ships and stations
+- Price: 20-60 credits per unit
+- Consumption increases with ship size
+
+**Technology**
+- Advanced components and equipment
+- Price: 50-120 credits per unit
+- Enables upgrades and infrastructure
+
+**Exotic Technology**
+- Rare prototypes and experimental devices
+- Price: 150-300 credits per unit
+- Essential for advanced capabilities
+
+**Luxury Goods**
+- Rare and desirable high-end merchandise
+- Price: 75-200 credits per unit
+- Highest profit margins, volatile markets
+
+### Strategic Resources
+
+**Population (Colonists)**
+- Colonists seeking new worlds
+- Cost: 50 credits per unit (purchased from Earth/Sector 1)
+- Usage: Required for colonizing planets (minimum 10,000 units)
+- Transport: Each unit occupies 1 cargo space
+- Growth: Population grows naturally over time on planets
+
+**Quantum Shards**
+- Crystalline fragments with exotic energy
+- Acquisition: Found in nebulae and anomalies
+- Rarity: Very rare, dangerous regions
+- Usage: Five shards combine to make one Quantum Crystal
+
+**Quantum Crystals**
+- Powerful energy matrices
+- Creation: Assemble five Quantum Shards at specialized facilities
+- Usage: Essential for constructing player-created warp tunnels
+- Rarity: Extremely rare due to shard collection difficulty
+
+**Prismatic Ore**
+- Unique molecular structure mineral
+- Rarity: Extremely rare (1 in 10,000 asteroids)
+- Usage: Ultra-lightweight hull reinforcement, superior ship construction
+
+**Photonic Crystals**
+- Naturally occurring nebula crystals
+- Rarity: Very rare (specific nebula types only)
+- Usage: Advanced sensors and energy weapon enhancement
+
+---
+
+## ⚛️ Quantum Trading System
+
+### Quantum Trading
+Revolutionary trading system applying quantum mechanics principles to space commerce. Accessible through the "⚛️ QUANTUM TRADING" tab when docked at any port.
+
+### Superposition State
+A quantum trade exists in **multiple probability states simultaneously** until "collapsed" to reality:
+- **Optimistic State** (typically 30% probability): Best outcome, highest profit
+- **Likely State** (typically 40% probability): Expected outcome, moderate profit
+- **Pessimistic State** (typically 30% probability): Worst outcome, minimal profit
+
+### Quantum Actions
+
+**Collapse Trade**
+- Execute the trade and collapse quantum superposition to single reality
+- Quantum mechanics determines which probability state becomes reality
+- Higher probability states are more likely outcomes
+- Risk vs. reward based on quantum uncertainty
+
+**Ghost Trading**
+- Risk-free simulation before real execution
+- Test trading strategies without risking credits
+- ARIA AI analyzes potential outcomes
+- Perfect for learning quantum trading patterns
+
+**Trade DNA Evolution**
+- Your trading patterns evolve and improve over time
+- Successful trades contribute to your personal "Trading DNA"
+- AI learns your preferences and risk tolerance
+- Future trades benefit from evolved patterns
+
+**Trade Cascades**
+- Multi-step quantum strategies
+- Conditional triggers based on quantum outcomes
+- Graduated risk across cascade steps
+- ARIA AI optimizes entire cascade strategy
+
+### Quantum Principles
+
+**Uncertainty Principle**
+- Higher potential profits come with increased quantum uncertainty
+- Risk and reward are inversely related
+
+**Observer Effect**
+- Your decisions influence market outcomes through quantum mechanics
+- Trading behavior affects probability distributions
+
+**Quantum Tunneling**
+- Access hidden market opportunities through quantum field fluctuations
+- Discover non-obvious trading routes
+
+**Quantum Field Strength**
+- Analysis of sector quantum trading potential
+- Shown in 3D galaxy visualization (green=high opportunity, red=high risk)
+
+---
+
+## 🧠 AI Systems
+
+### ARIA (Adaptive Reactive Intelligence Assistant)
+Your personal AI companion that grows and evolves with you throughout the game. ARIA is the world's first personal AI designed specifically for quantum-enhanced space trading.
+
+**Core Capabilities**:
+- **Quantum Trading Intelligence**: Real-time market analysis, superposition state evaluation, quantum field strength assessment
+- **Market Manipulation Detection**: Identifies suspicious trading patterns with confidence levels
+- **Probability Optimization**: Recommendations for optimal trade timing based on quantum mechanics
+- **Personal Trading DNA Evolution**: Learns YOUR specific preferences, risk tolerance, and successful patterns
+- **Natural Language Chat Interface**: Conversational trading assistance with context awareness
+- **Exploration-Based Learning**: Only knows sectors YOU have visited (personal, not generic AI)
+- **Encrypted Memory**: Triple-encrypted personal data (π, e, φ, γ constants) stored locally
+- **Cross-System Intelligence**: Integrates combat, exploration, and colony management insights
+- **3D Strategic Overlays**: Visual recommendations in galaxy visualization
+- **Ghost Trading Simulation**: Risk-free trade testing before real execution
+- **Mobile Voice Integration**: Natural speech recognition and audio notifications
+
+**Learning Modes**:
+- **Educational Mode**: Explains quantum concepts for beginners
+- **Expert Mode**: Advanced quantum mechanics terminology and analysis
+- **Research Mode**: Deep quantum physics insights and theory
+
+**First Login Role**: During first login, ARIA takes the role of a Security Guard, using dynamic AI dialogue to challenge and verify player identity through adaptive questioning.
+
+**Privacy**: Your ARIA memories are yours alone. No two ARIA instances are identical - she becomes uniquely yours through your shared experiences.
+
+### Trading Intelligence AI
+System that learns from player behavior to provide:
+- Personalized trading recommendations
+- Route optimization
+- Market trend prediction
+- Price forecasting
+- Risk assessment for specific trades
+- Performance statistics and learning metrics
+
+---
+
+## 👥 Player Systems
+
+### Turns
+The fundamental action currency. Key mechanics:
+- **Daily Allocation**: 1,000 turns per day
+- **Turn Costs**: Most actions consume turns (travel, trading, combat initiation, planetary development)
+- **No Turn Cost**: Defending against attacks, upgrading ships
+- **No Carryover**: Unused turns do not accumulate to next day
+- **Strategic Resource**: Turn management crucial for daily progress
+
+**Turn Costs by Action**:
+- Sector travel: 1 turn (modified by ship speed)
+- Docking: 1 turn
+- Undocking: 1 turn
+- Trading (buy/sell): 0 turns while docked
+- Combat initiation: Varies
+- Defending: 0 turns
+
+### Team
+A cooperative alliance of up to **4 players maximum**. Teams provide:
+- **Shared Resources**: Team treasury with 12 resource types
+- **Collective Defense**: Coordinated territory protection
+- **Team Planets**: Shared production benefits
+- **Fleet Operations**: Multi-ship coordinated combat
+- **Member Permissions**: Configurable roles (Leader, Officer, Member)
+  - Can invite new members
+  - Can kick members
+  - Can manage treasury
+  - Can create/manage fleets
+
+**Team Treasury Resources**:
+Ore, Basic Food, Gourmet Food, Fuel, Technology, Exotic Technology, Luxury Goods, Population, Quantum Shards, Quantum Crystals, Prismatic Ore, Photonic Crystals
+
+### Fleet
+Team-based coordinated combat unit. Features:
+- **Team Requirement**: Player must be in a team to create/manage fleets
+- **Formations**: Standard, Wedge, Defensive, Offensive, Scatter
+- **Roles**: Attacker, Defender, Scout, Support, Commander
+- **Status**: Forming, Ready, Deployed, In Combat, Disbanded
+- **Statistics**: Total firepower, shields, hull, average speed, morale, supply level
+- **Fleet Battles**: Multi-ship coordinated combat operations
+
+**Formation Effects**:
+- **Standard**: Balanced offense/defense
+- **Wedge**: +20% offense, -10% defense
+- **Defensive**: +30% defense, -20% offense
+- **Offensive**: +30% offense, -30% defense
+- **Scatter**: +30% evasion, -40% coordination
+
+### Reputation
+A numeric value (-1000 to +1000) representing standing with each faction. Affects:
+- **Trading Prices**: Higher reputation = better prices
+- **Mission Availability**: Unlock harder missions with higher reputation
+- **Territory Access**: Hostile factions may attack on sight
+- **Special Rewards**: Faction-exclusive items and bonuses
+
+**Reputation Levels**:
+- **-1000 to -500 (Hostile)**: Attacked on sight, no trading
+- **-499 to -100 (Unfriendly)**: High prices, basic missions only
+- **-99 to +99 (Neutral)**: Normal prices, standard missions
+- **+100 to +499 (Friendly)**: Discount prices, advanced missions
+- **+500 to +1000 (Allied)**: Best prices, elite missions, special rewards
+
+### Faction
+NPC organizations that control territory and offer missions. Players can:
+- Build reputation through missions, trading, and territorial defense
+- Access faction-exclusive missions based on reputation
+- Benefit from pricing modifiers in faction-controlled ports
+- Receive territory information about faction-controlled sectors
+
+**Faction Missions by Difficulty**:
+- **Easy**: +10-50 reputation, basic rewards
+- **Medium**: +50-150 reputation, good rewards
+- **Hard**: +150-300 reputation, excellent rewards
+- **Extreme**: +300-500 reputation, legendary rewards
+
+**Mission Types**: Delivery, Combat, Reconnaissance, Escort, Defense
+
+### Messages
+In-game communication system supporting:
+- **Player-to-Player**: Direct private messages
+- **Team Broadcast**: Messages to all team members
+- **Message Threading**: Conversation organization
+- **Priority Levels**: Low, Normal, High, Urgent
+- **Moderation**: Flagging system for abuse prevention
+- **Message Status**: Read/unread tracking
+
+---
+
+## ⚔️ Combat & Defense
+
+### Combat Initiation
+Starting combat **costs turns**. Can target:
+- **Ships**: Other player or NPC vessels
+- **Planets**: Colonized worlds
+- **Ports**: Trading stations
+- **Drones**: Autonomous units
+
+### Combat Defense
+Defending against attacks **costs zero turns**. Players automatically defend when:
+- Another player attacks your ship
+- Your planet is targeted
+- Your drones are attacked
+- You enter hostile territory
+
+### Combat Resolution
+Determined by:
+- **Number of Drones**: Both attacker and defender
+- **Ship Type**: Defensive capabilities and firepower
+- **Shields**: Energy defensive layer
+- **Hull**: Structural integrity
+- **Random Elements**: Tactical decisions and luck
+- **Formation** (for fleets): Formation bonuses/penalties
+
+### Shield Points
+Energy-based defensive layer. Shields:
+- Absorb damage before hull takes hits
+- Regenerate slowly over time
+- Can be upgraded with technology
+- Vary by ship type (150-900 points)
+
+### Hull Points
+Structural integrity of ship. Hull:
+- Takes damage after shields depleted
+- Represents ship destruction when reaching 0
+- Can be repaired at ports
+- Varies by ship type (200-900 points)
+
+### Citadel
+Planetary defense structure. Can be upgraded in levels (1-10):
+- **Turrets**: Automated defensive weapons
+- **Shields**: Planetary energy barriers
+- **Fighters**: Automated defense craft
+
+---
+
+## 🏛️ Governance & Politics
+
+### Governance Types
+
+**Democracy**
+- Citizens vote on policies and elections
+- Majority rule on proposals
+- Elected representatives
+- Voting periods with configurable thresholds
+
+**Autocracy**
+- Owner-controlled governance
+- Unilateral decision-making
+- Rapid policy implementation
+- No citizen voting required
+
+**Council Republic**
+- Elected council of representatives
+- Council votes on proposals
+- Balanced power structure
+- Representative democracy
+
+### Policy Proposals
+Governance changes that can be voted on:
+- **Tax Rates**: Regional revenue collection (5-25%)
+- **PvP Rules**: Combat restrictions and regulations
+- **Trade Policies**: Economic bonuses and restrictions
+- **Immigration**: Entry requirements and controls
+- **Starting Credits**: New citizen initial resources (100-10,000)
+- **Economic Specialization**: Trade bonuses by resource type (1.0-3.0x)
+
+### Elections
+Democratic selection of leadership positions:
+- **Governor**: Regional leader
+- **Council Members**: Representative body
+- **Ambassadors**: Inter-regional diplomats
+- **Term Management**: Fixed term lengths
+- **Candidate Platforms**: Campaign promises and goals
+- **Weighted Votes**: Voting power based on citizen status
+
+---
+
+## 🌐 Infrastructure & Technical
+
+### Multi-Regional Architecture
+The game's technical foundation supporting multiple concurrent regional territories:
+- **Docker-Based Deployment**: Containerized services
+- **Regional Isolation**: Dedicated databases per region
+- **Auto-Scaling**: Dynamic resource allocation
+- **Central Nexus Services**: Universal functionality
+- **Monitoring Stack**: Prometheus and Grafana integration
+
+### Internationalization (i18n)
+Multi-language support system providing:
+- **10+ Languages**: English, Spanish, French, German, etc.
+- **Dynamic Translation**: Runtime language switching
+- **Translation Workflow**: Community contribution system
+- **Coverage Statistics**: Translation completeness tracking
+- **Contributor Management**: Credit for translators
+- **Translation Approval**: Moderator review process
+
+### WebSocket
+Real-time event streaming system providing:
+- **Player Events**: player.update notifications
+- **Sector Events**: ship_entered, ship_left alerts
+- **Combat Events**: combat.started, combat.round updates
+- **Market Events**: price_changed notifications
+- **Team Events**: Team messages and alerts
+- **Chat Events**: Real-time messaging
+- **Admin Events**: Administrative monitoring stream
+
+**Event Channels**:
+- `/ws/player` - Player-specific stream
+- `/ws/sector/{sector_id}` - Sector event stream
+- `/ws/team/{team_id}` - Team event stream
+- `/ws/combat/{combat_id}` - Combat event stream
+- `/ws/market` - Market price updates
+- `/ws/chat` - Chat messages
+- `/ws/admin` - Admin monitoring (admin only)
+
+### PayPal Integration
+Subscription payment processing for:
+- **Regional Ownership**: $25/month
+- **Galactic Citizenship**: $5/month
+- **Subscription Management**: Create, cancel, upgrade/downgrade
+- **Webhook Handling**: Payment notifications
+- **Grace Periods**: Handling payment failures
+- **Payment History**: Transaction records
+
+### Events System
+Dynamic game events providing:
+- **Event Types**: Combat, Trading, Exploration, Special
+- **Participation**: Player enrollment and tracking
+- **Rewards**: Credits, items, reputation, exclusive content
+- **Leaderboards**: Competitive rankings
+- **Time-Limited**: Start/end times with maximum participants
+
+---
+
+## 📊 Player Progression
+
+### Metrics
+Player advancement measured through:
+- **Credit Accumulation**: Total wealth earned
+- **Planets Owned**: Territory control
+- **Citadel Levels**: Defensive infrastructure development
+- **Ports Owned**: Commercial infrastructure
+- **Ships Owned**: Fleet size and composition
+- **Reputation Levels**: Standing with factions
+- **Trading DNA Evolution**: AI learning progress
+- **Military Rank**: Achievement-based progression (see RANKING_SYSTEM.md)
+
+### Colonization
+Process of claiming planets:
+- **Requirements**: 10,000 population units + 10,000 credits
+- **Development**: Build infrastructure (Factory, Farm, Mine, Defense, Research)
+- **Specialization**: Focus on specific resource production
+- **Passive Income**: Automatic credit and resource generation
+- **Population Growth**: Natural expansion over time
+
+---
+
+## 🎮 Game Mechanics
+
+### Ship Speed Modifier
+Affects turn cost for travel:
+- **Fast Ships** (2.0+ sectors/turn): Move farther per turn
+- **Slow Ships** (0.4-0.75 sectors/turn): Limited range per turn
+- **Escape Pod**: Substantially higher turn cost (inefficient propulsion)
+
+### Docking
+Attaching to a port to enable trading:
+- **Dock Cost**: 1 turn
+- **Undock Cost**: 1 turn
+- **Trading While Docked**: Instant, no additional turns
+- **Multiple Trades**: Can execute many trades per docking
+
+### Market Dynamics
+Economic simulation including:
+- **Supply and Demand**: Prices adjust based on availability
+- **Regional Variations**: Different sector values
+- **Distance Premium**: Farther transport = higher potential profit
+- **Player Impact**: High trading volume affects prices
+- **Faction Modifiers**: Reputation affects pricing
+
+### Ship Insurance
+Protection against ship loss:
+- **Purchase Location**: Friendly ports
+- **Purpose**: Offset replacement costs
+- **Payout**: Partial ship value on destruction
+
+---
+
+## 🔧 Special Mechanics
+
+### Cat Boost
+Hidden first login mechanic:
+- **Trigger**: Mentioning the orange cat during first login dialogue
+- **Effect**: +15% persuasion bonus with Security Guard
+- **Purpose**: Rewards observation and roleplay engagement
+
+### Ship Tier Difficulty
+Dynamic guard skepticism during first login:
+- **Higher-Value Ships**: More difficult to claim (Scout Ship, Cargo Freighter)
+- **Default Ship**: Easy to verify (Escape Pod)
+- **Negotiation Skill**: Evaluated through AI dialogue analysis
+
+### Negotiation Skill
+Player dialogue evaluation affecting:
+- **Persuasion Success**: 25% bonus if strong negotiation detected
+- **Trade Advantages**: Future flag for better trading deals
+- **Guard Suspicion**: Weak skills increase skepticism
+
+---
+
+## 📱 User Interface
+
+### Admin UI
+Administrative interface providing:
+- **User Management**: View, edit, delete players
+- **Galaxy Management**: Generate, clear, edit sectors
+- **Team Administration**: Oversight and moderation
+- **Fleet Management**: Monitor and intervene in battles
+- **Economy Monitoring**: Track trading and inflation
+- **Security Tools**: Suspicious activity detection, ban management
+- **Content Management**: Announcements, events, news
+- **Audit Logging**: Action history and reports
+
+### Player UI (Client)
+Player-facing interface featuring:
+- **Dashboard**: Overview of player status, ship, credits, turns
+- **Galaxy Map**: Navigate sectors, view routes
+- **Trading Interface**: Buy/sell commodities, quantum trading
+- **Quantum Trading Tab**: ⚛️ 3D visualization, ARIA chat, ghost trading
+- **Fleet Management**: Create and manage team fleets
+- **Planetary Management**: Colonization, building, production
+- **Team Interface**: Messaging, treasury, member management
+- **Messages**: Player communication and notifications
+
+### 3D Galaxy Visualization
+Interactive 3D representation showing:
+- **Quantum Particles**: Trading activity intensity
+- **Sector Quantum Fields**: Color-coded opportunities (green/red)
+- **ARIA Insights**: AI recommendations overlaid
+- **Quantum Tunnels**: Optimal trade routes
+- **Manipulation Warnings**: Suspicious activity alerts
+- **Mobile VR Ready**: Optimized for mobile VR experience
+
+---
+
+*This terminology document serves as the authoritative reference for all SectorWars 2102 concepts. When in doubt about game mechanics, definitions, or systems, refer to this document first.*
+
+---
+**Version History**:
+- v1.0 (2025-11-16): Initial comprehensive compilation
