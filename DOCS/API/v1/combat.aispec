@@ -1,0 +1,299 @@
+# Combat API
+
+OVERVIEW: Player combat operations and administrative combat monitoring.
+
+BASE_PATH: /api/v1
+AUTH_REQUIRED: Yes (JWT Bearer token)
+PLAYER_ENDPOINTS: /api/combat/*
+ADMIN_ENDPOINTS: /admin/combat/*
+
+## FACTS
+
+* Combat can target ships, planets, or ports
+* Combat is turn-based with round-by-round resolution
+* Combat logs track attacker/defender, damage, loot, and outcomes
+* Winner can loot credits and cargo from loser
+* Admin endpoints provide combat analytics and dispute resolution
+* Combat effectiveness calculated by fighter count and ship type
+* All combat is logged in CombatLog model with comprehensive stats
+
+## ENDPOINTS
+
+### Player Combat
+
+* POST /api/combat/engage - Initiate combat with a target (ship, planet, or port)
+* GET /api/combat/{combatId}/status - Get current status of ongoing or completed combat
+
+### Admin Combat Monitoring
+
+* GET /admin/combat/logs - Get paginated combat logs with time and outcome filters
+* GET /admin/combat/stats - Get combat statistics (total combats, ships destroyed, looting, etc.)
+* GET /admin/combat/balance - Get combat balance metrics for game balancing
+* POST /admin/combat/{combat_id}/resolve - Resolve a disputed combat result (admin intervention)
+
+## SCHEMAS
+
+CombatEngageRequest:
+  targetType: string (ship|planet|port), required
+  targetId: string (UUID), required
+
+CombatEngageResponse:
+  combatId: string (UUID, optional if error)
+  status: string (initiated|error)
+  message: string (optional, error message or details)
+
+CombatRound:
+  round: integer
+  attackerHits: integer
+  defenderHits: integer
+  attackerDamage: integer
+  defenderDamage: integer
+  attackerShields: integer
+  defenderShields: integer
+  attackerArmor: integer
+  defenderArmor: integer
+  criticalHit: boolean
+  specialEvent: string (optional)
+
+CombatStatusResponse:
+  status: string (ongoing|completed)
+  rounds: array of CombatRound
+  winner: string (optional, if completed)
+  combatDuration: integer (optional, seconds)
+  creditsLooted: integer (optional)
+  cargoLooted: array (optional)
+
+CombatLogResponse (admin):
+  combat_id: string (UUID)
+  timestamp: ISO datetime
+  attacker: object {username, ship_type, ship_name, fighters}
+  defender: object {username, ship_type, ship_name, fighters}
+  location: object {sector_name, sector_id}
+  outcome: string
+  damage_dealt: object {attacker_damage, defender_damage}
+  loot: object {credits, cargo}
+  combat_duration: integer (seconds)
+
+CombatStatsResponse (admin):
+  total_combats_today: integer
+  total_ships_destroyed: integer
+  total_credits_looted: integer
+  average_combat_duration: float (seconds)
+  most_active_combatant: string (username)
+  deadliest_ship_type: string
+
+BalanceMetricsResponse (admin):
+  ship_type_effectiveness: object (ship_type -> win_rate 0.0-1.0)
+  fighter_effectiveness: float (0.1-2.0, 1.0 is balanced)
+  average_damage_per_fighter: float
+  combat_balance_score: float (0.0-1.0, 1.0 is perfectly balanced)
+
+## QUERY PARAMETERS
+
+GET /admin/combat/logs:
+  time_filter: string (24h|7d|30d|all), default "24h"
+  outcome_filter: string (optional, filter by specific outcome)
+  limit: integer (1-1000), default 100
+  offset: integer (pagination), default 0
+
+GET /admin/combat/stats:
+  time_filter: string (24h|7d|30d), default "24h"
+
+GET /admin/combat/balance:
+  time_filter: string (24h|7d|30d), default "7d"
+
+## ERROR RESPONSES
+
+400 BAD_REQUEST:
+  - Invalid target ID format
+  - Invalid combat ID format
+
+403 FORBIDDEN:
+  - You are not involved in this combat (when requesting status)
+
+404 NOT_FOUND:
+  - Combat not found
+  - Combat log not found (admin)
+  - Target not found (combat initiation)
+
+500 INTERNAL_SERVER_ERROR:
+  - Combat initiation failed
+  - Combat status retrieval failed
+
+## EXAMPLES
+
+### Player Combat
+
+```bash
+# 1. Initiate combat with another ship
+curl -X POST http://localhost:8080/api/v1/api/combat/engage \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "targetType": "ship",
+    "targetId": "uuid-of-target-ship"
+  }'
+
+# Response:
+# {
+#   "combatId": "combat-uuid",
+#   "status": "initiated",
+#   "message": "Combat initiated with [ship name]"
+# }
+
+# 2. Check combat status
+curl -X GET http://localhost:8080/api/v1/api/combat/combat-uuid/status \
+  -H "Authorization: Bearer {token}"
+
+# Response (ongoing):
+# {
+#   "status": "ongoing",
+#   "rounds": [
+#     {
+#       "round": 1,
+#       "attackerHits": 5,
+#       "defenderHits": 3,
+#       "attackerDamage": 150,
+#       "defenderDamage": 90,
+#       "attackerShields": 1000,
+#       "defenderShields": 800,
+#       "attackerArmor": 500,
+#       "defenderArmor": 450,
+#       "criticalHit": false
+#     }
+#   ]
+# }
+
+# Response (completed):
+# {
+#   "status": "completed",
+#   "rounds": [...],
+#   "winner": "attacker",
+#   "combatDuration": 45,
+#   "creditsLooted": 5000,
+#   "cargoLooted": ["ORE: 100", "ORGANICS: 50"]
+# }
+
+# 3. Attack a planet
+curl -X POST http://localhost:8080/api/v1/api/combat/engage \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "targetType": "planet",
+    "targetId": "uuid-of-planet"
+  }'
+
+# 4. Attack a port
+curl -X POST http://localhost:8080/api/v1/api/combat/engage \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "targetType": "port",
+    "targetId": "uuid-of-port"
+  }'
+```
+
+### Admin Combat Monitoring
+
+```bash
+# 1. Get recent combat logs (last 24 hours)
+curl -X GET "http://localhost:8080/api/v1/admin/combat/logs?time_filter=24h&limit=50" \
+  -H "Authorization: Bearer {admin_token}"
+
+# 2. Filter by outcome
+curl -X GET "http://localhost:8080/api/v1/admin/combat/logs?outcome_filter=attacker_win&limit=100" \
+  -H "Authorization: Bearer {admin_token}"
+
+# 3. Get combat statistics
+curl -X GET "http://localhost:8080/api/v1/admin/combat/stats?time_filter=7d" \
+  -H "Authorization: Bearer {admin_token}"
+
+# Response:
+# {
+#   "total_combats_today": 145,
+#   "total_ships_destroyed": 23,
+#   "total_credits_looted": 125000,
+#   "average_combat_duration": 32.5,
+#   "most_active_combatant": "SpacePirate42",
+#   "deadliest_ship_type": "BattleCruiser"
+# }
+
+# 4. Get balance metrics for game tuning
+curl -X GET "http://localhost:8080/api/v1/admin/combat/balance?time_filter=30d" \
+  -H "Authorization: Bearer {admin_token}"
+
+# Response:
+# {
+#   "ship_type_effectiveness": {
+#     "Scout": 0.35,
+#     "Frigate": 0.52,
+#     "BattleCruiser": 0.68,
+#     "Dreadnought": 0.71
+#   },
+#   "fighter_effectiveness": 1.15,
+#   "average_damage_per_fighter": 115.3,
+#   "combat_balance_score": 0.67
+# }
+
+# 5. Resolve combat dispute
+curl -X POST http://localhost:8080/api/v1/admin/combat/combat-uuid/resolve \
+  -H "Authorization: Bearer {admin_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "outcome": "defender_win",
+    "notes": "Reviewed combat logs, defender should have won due to critical hit bug",
+    "credits_adjustment": 10000
+  }'
+```
+
+## GAME MECHANICS
+
+**Combat Initiation:**
+- Attacker initiates combat with target (ship, planet, or port)
+- Target must be in same sector as attacker
+- Combat ID is generated and returned for status tracking
+
+**Combat Resolution:**
+- Combat is resolved in rounds
+- Each round calculates hits based on fighters and ship stats
+- Damage is applied to shields first, then armor
+- Critical hits deal extra damage
+- Special events (shield regeneration, engine failure, etc.) can occur
+- Combat continues until one side is destroyed or flees
+
+**Loot System:**
+- Winner can loot a percentage of loser's credits
+- Winner can loot cargo from loser's ship
+- Loot amounts depend on combat outcome and ship sizes
+
+**Balance Metrics:**
+- Ship type effectiveness measures win rates by ship class
+- Fighter effectiveness measures damage output per fighter
+- Balance score indicates how balanced combat is (1.0 = perfect balance)
+- Standard deviation of ship effectiveness determines overall balance
+
+**Admin Tools:**
+- Combat logs provide full audit trail
+- Statistics track combat trends and activity
+- Balance metrics help identify overpowered/underpowered ships
+- Dispute resolution allows admin intervention for bugs or cheating
+
+## RELATED ENDPOINTS
+
+- GET /player/state - View current ship status, location, fighters
+- GET /ships/{ship_id} - View ship details including combat stats
+- POST /player/move/{sector_id} - Move to sector (required before combat)
+- GET /sectors/{sector_id} - View potential combat targets in sector
+
+## SECURITY NOTES
+
+* Players can only view status of combats they're involved in
+* Admin endpoints require admin role
+* Combat IDs are UUIDs to prevent enumeration attacks
+* Combat outcomes are validated server-side (no client-side combat resolution)
+
+---
+
+*Documentation Status: Complete (6 endpoints)*
+*Last Updated: 2025-11-16*
+*Validated Against: services/gameserver/src/api/routes/player_combat.py, combat.py*

@@ -1,0 +1,142 @@
+OVERVIEW:
+Player gameplay APIs for SectorWars 2102 including ship management, sector navigation, first login experience, and player state.
+
+FACTS:
+* Base URLs: /api/v1/player, /api/v1/first-login
+* Requires authentication: Yes (JWT Bearer token)
+* Real-time updates: Available via WebSocket
+* First login: AI-powered narrative dialogue system
+* Player state: Cached for performance
+* Turn-based movement: Consumes turns per action
+
+TERMINOLOGY:
+* Turn: Action currency, regenerates over time
+* Sector: Space location containing planets, ports, ships
+* Ship: Player vehicle with cargo, shields, hull
+* First Login: AI-driven onboarding narrative
+
+FILES:
+- /services/gameserver/src/api/routes/player.py
+- /services/gameserver/src/api/routes/first_login.py
+- /services/gameserver/src/models/player.py
+- /services/gameserver/src/models/ship.py
+- /services/gameserver/src/models/first_login.py
+
+PLAYER_STATE_ENDPOINTS:
+* GET /player - Get current player information
+* GET /player/state - Complete player state and statistics
+* GET /player/ships - All owned ships with specifications
+* GET /player/current-ship - Active ship details
+* GET /player/current-sector - Current sector information
+* POST /player/move/{sector_id} - Move to specified sector
+
+FIRST_LOGIN_ENDPOINTS:
+* GET /first-login/status - Check if first login flow required
+* POST /first-login/start - Start new first login session
+* POST /first-login/claim-ship - Claim starting ship
+* POST /first-login/dialogue - Submit dialogue response to AI guard
+* POST /first-login/complete - Complete onboarding process
+* GET /first-login/debug - Debug session state (dev only)
+* DELETE /first-login/reset - Reset first login session
+
+SCHEMAS:
+PlayerResponse:
+  id: UUID
+  user_id: UUID
+  username: String
+  credits: Decimal
+  turns: Integer
+  experience: Integer
+  current_sector_id: UUID
+  current_ship_id: UUID
+  created_at: DateTime
+
+ShipResponse:
+  id: UUID
+  name: String
+  type: ShipType enum
+  sector_id: UUID
+  cargo_capacity: Integer
+  current_cargo: Integer
+  shields: Integer
+  hull: Integer
+  fuel: Integer
+
+FirstLoginSessionResponse:
+  session_id: UUID
+  player_id: UUID
+  current_stage: String
+  ship_claimed: Boolean
+  dialogue_exchanges: Array<DialogueExchange>
+
+DialogueExchange:
+  exchange_id: UUID
+  guard_message: String
+  player_response: String
+  ai_analysis: Object
+  timestamp: DateTime
+
+CONSTRAINTS:
+* First login required before accessing other player endpoints
+* Movement requires sufficient turns
+* Ship type determines movement cost
+* AI dialogue uses Claude/GPT with fallback to rule-based
+* Session timeout: 30 minutes of inactivity
+* Cannot claim multiple starting ships
+
+EXAMPLES:
+```bash
+# Get player state
+curl -X GET http://localhost:8080/api/v1/player/state \
+  -H "Authorization: Bearer {token}"
+
+# Response
+{
+  "player": {
+    "id": "uuid",
+    "username": "player1",
+    "credits": 10000,
+    "turns": 150,
+    "experience": 0
+  },
+  "current_ship": {
+    "name": "Starter Vessel",
+    "type": "MERCHANT",
+    "cargo_capacity": 50,
+    "shields": 100
+  },
+  "current_sector": {
+    "id": "uuid",
+    "name": "Sector 1",
+    "has_planet": true,
+    "has_port": true
+  }
+}
+
+# Start first login
+curl -X POST http://localhost:8080/api/v1/first-login/start \
+  -H "Authorization: Bearer {token}"
+
+# Claim starting ship
+curl -X POST http://localhost:8080/api/v1/first-login/claim-ship \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{"ship_type": "MERCHANT"}'
+
+# Submit dialogue response
+curl -X POST http://localhost:8080/api/v1/first-login/dialogue \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{"response": "I found this ship drifting in space..."}'
+
+# Move to sector
+curl -X POST http://localhost:8080/api/v1/player/move/uuid-of-sector \
+  -H "Authorization: Bearer {token}"
+```
+
+SECURITY_NOTES:
+* AI dialogue responses sanitized for prompt injection
+* Rate limiting on AI calls to prevent abuse
+* Dialogue cost tracked and limited per session
+* Player can only access own data
+* Movement validated server-side

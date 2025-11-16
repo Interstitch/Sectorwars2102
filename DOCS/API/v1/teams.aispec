@@ -1,0 +1,435 @@
+# Teams API
+
+OVERVIEW: Team management, treasury operations, member permissions, and team communications.
+
+BASE_PATH: /api/v1/teams
+AUTH_REQUIRED: Yes (JWT Bearer token)
+PERMISSIONS: Role-based (Leader, Officer, Member)
+
+## FACTS
+
+* Teams support 2-20 members (configurable per team)
+* Three recruitment statuses: OPEN, INVITE_ONLY, CLOSED
+* Role hierarchy: Leader > Officer > Member
+* Treasury supports multiple resource types (credits + 11 commodities)
+* Treasury operations require can_manage_treasury permission
+* Team messages have priority levels: low, normal, high, urgent
+* Invitation codes expire after a set period
+* Leaders can transfer leadership to other members
+* Teams track collective stats: total_credits, total_planets, combat_rating, trade_rating
+
+## ENDPOINTS
+
+### Team Management
+
+* POST /teams/create - Create a new team (costs credits, makes you leader)
+* GET /teams/{team_id} - Get team details (public, anyone can view)
+* PUT /teams/{team_id} - Update team settings (leader/officer only)
+* DELETE /teams/{team_id} - Delete team permanently (leader only)
+* GET /teams/{team_id}/members - Get all team members with stats
+* GET /teams/{team_id}/permissions - Get current player's permissions in team
+
+### Membership
+
+* POST /teams/{team_id}/invite - Invite a player by nickname (requires can_invite permission)
+* POST /teams/join - Join team via invitation code or directly for open teams
+* POST /teams/leave - Leave current team
+* DELETE /teams/{team_id}/members/{member_id} - Remove member from team (requires can_kick permission)
+* PUT /teams/{team_id}/members/{member_id}/role - Update member's role (leader only)
+* POST /teams/{team_id}/transfer-leadership - Transfer leadership to another member
+
+### Treasury Operations
+
+* GET /teams/{team_id}/treasury - Get team treasury balance
+* POST /teams/{team_id}/treasury/deposit - Deposit resources to treasury (all members)
+* POST /teams/{team_id}/treasury/withdraw - Withdraw resources from treasury (requires can_manage_treasury)
+* POST /teams/{team_id}/treasury/transfer - Transfer resources to specific player (requires can_manage_treasury)
+
+### Team Communications
+
+* GET /teams/{team_id}/messages - Get team message history (paginated, members only)
+* POST /teams/{team_id}/messages - Send message to team (members only)
+
+## SCHEMAS
+
+CreateTeamRequest:
+  name: string (3-80 chars), required
+  description: string (max 500 chars), optional
+  tag: string (2-10 chars, team tag/clan tag), optional
+  max_members: integer (2-20), default 4
+  recruitment_status: string (OPEN|INVITE_ONLY|CLOSED), default OPEN
+
+UpdateTeamRequest:
+  description: string (max 500 chars), optional
+  tag: string (2-10 chars), optional
+  logo: string (URL or base64), optional
+  recruitment_status: string (OPEN|INVITE_ONLY|CLOSED), optional
+  max_members: integer (2-20), optional
+  join_requirements: object (custom requirements), optional
+  resource_sharing: object (resource sharing rules), optional
+
+InvitePlayerRequest:
+  player_nickname: string, required
+
+JoinTeamRequest:
+  team_id: UUID, optional (required if no invitation_code)
+  invitation_code: string, optional (required if no team_id)
+
+UpdateRoleRequest:
+  new_role: string (leader|officer|member), required
+
+TeamResponse:
+  id: UUID
+  name: string
+  description: string (optional)
+  tag: string (optional)
+  logo: string (optional)
+  leader_id: UUID
+  recruitment_status: string
+  max_members: integer
+  member_count: integer
+  total_credits: integer
+  total_planets: integer
+  combat_rating: float
+  trade_rating: float
+  created_at: ISO datetime
+  treasury_credits: integer
+
+TeamMemberResponse:
+  player_id: UUID
+  nickname: string
+  role: string (leader|officer|member)
+  joined_at: ISO datetime
+  last_active: ISO datetime (optional)
+  can_invite: boolean
+  can_kick: boolean
+  can_manage_treasury: boolean
+  can_manage_missions: boolean
+  can_manage_alliances: boolean
+  contribution_credits: object (player's contributions)
+  current_sector: integer (optional)
+  combat_rating: float
+
+InvitationResponse:
+  invitation_code: string
+  invited_player: string
+  expires_at: ISO datetime
+
+PermissionsResponse:
+  can_invite: boolean
+  can_kick: boolean
+  can_manage_treasury: boolean
+  can_manage_missions: boolean
+  can_manage_alliances: boolean
+  is_member: boolean
+  role: string (optional, if is_member)
+
+DepositRequest:
+  resource_type: string (credits|fuel|organics|equipment|technology|luxury_items|precious_metals|raw_materials|plasma|bio_samples|dark_matter|quantum_crystals)
+  amount: integer (>0), required
+
+WithdrawRequest:
+  resource_type: string (same as DepositRequest)
+  amount: integer (>0), required
+
+TransferRequest:
+  recipient_nickname: string, required
+  resource_type: string (same as DepositRequest)
+  amount: integer (>0), required
+
+TreasuryBalanceResponse:
+  credits: integer
+  fuel: integer
+  organics: integer
+  equipment: integer
+  technology: integer
+  luxury_items: integer
+  precious_metals: integer
+  raw_materials: integer
+  plasma: integer
+  bio_samples: integer
+  dark_matter: integer
+  quantum_crystals: integer
+
+SendMessageRequest:
+  subject: string (max 255 chars), required
+  content: string, required
+  priority: string (low|normal|high|urgent), default "normal"
+
+MessageResponse:
+  id: UUID
+  sender_id: UUID
+  sender_name: string
+  subject: string
+  content: string
+  sent_at: ISO datetime
+  read_at: ISO datetime (optional)
+  priority: string
+  is_read: boolean
+
+## QUERY PARAMETERS
+
+GET /teams/{team_id}/messages:
+  skip: integer (>=0), default 0
+  limit: integer (1-100), default 20
+
+## ERROR RESPONSES
+
+400 BAD_REQUEST:
+  - Team name already exists
+  - Invalid request parameters
+  - Either team_id or invitation_code is required (join)
+  - Player already in a team
+  - Not a member of this team
+  - Insufficient resources to deposit/withdraw
+  - Team is full
+  - Invalid invitation code
+
+403 FORBIDDEN:
+  - Insufficient permissions (not leader/officer)
+  - Cannot kick team leader
+  - Cannot manage treasury
+  - Not a member of this team
+  - Only leader can transfer leadership
+  - Only leader can delete team
+
+404 NOT_FOUND:
+  - Team not found
+  - Player not found
+  - Team member not found
+
+500 INTERNAL_SERVER_ERROR:
+  - Failed to create team
+  - Failed to update team
+  - Failed to delete team
+  - Failed to invite player
+  - Failed to join team
+  - Failed to leave team
+  - Failed to remove member
+  - Failed to update role
+  - Failed to transfer leadership
+  - Failed to deposit/withdraw/transfer
+  - Failed to get treasury balance
+
+## EXAMPLES
+
+### Team Management
+
+```bash
+# 1. Create a team
+curl -X POST http://localhost:8080/api/v1/teams/create \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Space Raiders",
+    "description": "Elite trading and combat team",
+    "tag": "[SR]",
+    "max_members": 10,
+    "recruitment_status": "INVITE_ONLY"
+  }'
+
+# 2. Get team details
+curl -X GET http://localhost:8080/api/v1/teams/team-uuid \
+  -H "Authorization: Bearer {token}"
+
+# 3. Update team settings
+curl -X PUT http://localhost:8080/api/v1/teams/team-uuid \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Now recruiting experienced traders!",
+    "recruitment_status": "OPEN",
+    "max_members": 15
+  }'
+
+# 4. Get team members
+curl -X GET http://localhost:8080/api/v1/teams/team-uuid/members \
+  -H "Authorization: Bearer {token}"
+
+# 5. Check your permissions
+curl -X GET http://localhost:8080/api/v1/teams/team-uuid/permissions \
+  -H "Authorization: Bearer {token}"
+```
+
+### Membership Management
+
+```bash
+# 1. Invite a player
+curl -X POST http://localhost:8080/api/v1/teams/team-uuid/invite \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "player_nickname": "CoolTrader42"
+  }'
+
+# Response:
+# {
+#   "invitation_code": "ABC123XYZ",
+#   "invited_player": "CoolTrader42",
+#   "expires_at": "2025-11-23T12:00:00Z"
+# }
+
+# 2. Join team with invitation code
+curl -X POST http://localhost:8080/api/v1/teams/join \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "invitation_code": "ABC123XYZ"
+  }'
+
+# 3. Join open team directly
+curl -X POST http://localhost:8080/api/v1/teams/join \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "team_id": "team-uuid"
+  }'
+
+# 4. Leave team
+curl -X POST http://localhost:8080/api/v1/teams/leave \
+  -H "Authorization: Bearer {token}"
+
+# 5. Remove a member (requires can_kick permission)
+curl -X DELETE http://localhost:8080/api/v1/teams/team-uuid/members/member-uuid \
+  -H "Authorization: Bearer {token}"
+
+# 6. Promote member to officer (leader only)
+curl -X PUT http://localhost:8080/api/v1/teams/team-uuid/members/member-uuid/role \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "new_role": "officer"
+  }'
+
+# 7. Transfer leadership
+curl -X POST http://localhost:8080/api/v1/teams/team-uuid/transfer-leadership?new_leader_id=member-uuid \
+  -H "Authorization: Bearer {token}"
+```
+
+### Treasury Operations
+
+```bash
+# 1. Check treasury balance
+curl -X GET http://localhost:8080/api/v1/teams/team-uuid/treasury \
+  -H "Authorization: Bearer {token}"
+
+# Response:
+# {
+#   "credits": 50000,
+#   "fuel": 1000,
+#   "organics": 500,
+#   "equipment": 200,
+#   ...
+# }
+
+# 2. Deposit credits to treasury
+curl -X POST http://localhost:8080/api/v1/teams/team-uuid/treasury/deposit \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_type": "credits",
+    "amount": 10000
+  }'
+
+# 3. Withdraw resources (requires can_manage_treasury)
+curl -X POST http://localhost:8080/api/v1/teams/team-uuid/treasury/withdraw \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_type": "fuel",
+    "amount": 500
+  }'
+
+# 4. Transfer to specific player (requires can_manage_treasury)
+curl -X POST http://localhost:8080/api/v1/teams/team-uuid/treasury/transfer \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recipient_nickname": "NewMember99",
+    "resource_type": "equipment",
+    "amount": 100
+  }'
+```
+
+### Team Communications
+
+```bash
+# 1. Get team messages
+curl -X GET "http://localhost:8080/api/v1/teams/team-uuid/messages?skip=0&limit=50" \
+  -H "Authorization: Bearer {token}"
+
+# 2. Send message to team
+curl -X POST http://localhost:8080/api/v1/teams/team-uuid/messages \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "Trading Run Tonight",
+    "content": "Meet in Sector 42 at 20:00 for coordinated trading run. Bring fuel!",
+    "priority": "high"
+  }'
+
+# 3. Send urgent message
+curl -X POST http://localhost:8080/api/v1/teams/team-uuid/messages \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "UNDER ATTACK",
+    "content": "Enemy fleet in our territory! Sector 100 - need backup NOW!",
+    "priority": "urgent"
+  }'
+```
+
+## GAME MECHANICS
+
+**Team Creation:**
+- Creating a team makes you the leader automatically
+- Leader has all permissions by default
+- Team starts with empty treasury
+
+**Recruitment:**
+- OPEN: Anyone can join directly
+- INVITE_ONLY: Requires invitation code
+- CLOSED: No new members accepted
+
+**Roles & Permissions:**
+- **Leader**: Full control, can promote/demote, manage all resources, transfer leadership
+- **Officer**: Can invite members, manage treasury (if permitted), kick members (if permitted)
+- **Member**: Basic permissions, can deposit to treasury, can leave anytime
+
+**Treasury:**
+- Shared resource pool for the team
+- Any member can deposit
+- Withdrawals/transfers require can_manage_treasury permission
+- Tracks individual contributions for accounting
+
+**Member Contributions:**
+- System tracks what each member has contributed
+- Used for determining member value/activity
+- Helps leaders decide on rewards/promotions
+
+**Team Stats:**
+- total_credits: Sum of all member credits
+- total_planets: Count of planets owned by team members
+- combat_rating: Team's collective combat effectiveness
+- trade_rating: Team's collective trading performance
+
+## RELATED ENDPOINTS
+
+- GET /player/state - View own credits, resources available for treasury deposit
+- GET /teams (not yet implemented) - Browse/search available teams
+- GET /leaderboards/teams (not yet implemented) - Team rankings by combat/trade
+
+## SECURITY NOTES
+
+* Players can only be in one team at a time
+* Leaving a team returns no resources (treasury contributions are donated)
+* Only team leader can delete the team
+* Deleting a team returns treasury resources to leader
+* Invitation codes expire after a set period (prevents stale invites)
+* Permission checks on all treasury operations (prevent unauthorized access)
+
+---
+
+*Documentation Status: Complete (18 endpoints)*
+*Last Updated: 2025-11-16*
+*Validated Against: services/gameserver/src/api/routes/teams.py*

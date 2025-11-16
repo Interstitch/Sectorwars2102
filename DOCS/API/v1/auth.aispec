@@ -1,0 +1,139 @@
+OVERVIEW:
+Complete authentication and MFA system for SectorWars 2102 including JWT tokens, OAuth providers (GitHub/Google/Steam), multi-factor authentication with TOTP and backup codes.
+
+FACTS:
+* Base URL: /api/v1/auth
+* Authentication methods: Form-based, JSON, OAuth2, Direct login
+* JWT tokens: Access (1 hour) + Refresh (7 days) with sliding window
+* OAuth providers: GitHub, Google, Steam
+* MFA: TOTP (RFC 6238) with QR code generation and backup codes
+* Session management: Refresh token rotation, automatic revocation
+* Security: Argon2id password hashing, CSRF protection, rate limiting
+
+TERMINOLOGY:
+* JWT: JSON Web Token for stateless authentication
+* OAuth2: Open standard for access delegation
+* MFA/2FA: Multi-factor authentication using TOTP
+* TOTP: Time-based One-Time Password (RFC 6238)
+* Refresh Token: Long-lived token for obtaining new access tokens
+
+FILES:
+- /services/gameserver/src/api/routes/auth.py
+- /services/gameserver/src/api/routes/mfa.py
+- /services/gameserver/src/models/user.py
+- /services/gameserver/src/models/oauth_account.py
+- /services/gameserver/src/models/refresh_token.py
+- /services/gameserver/src/models/mfa.py
+
+AUTHENTICATION_ENDPOINTS:
+* POST /auth/login - Form-based login (username/password)
+* POST /auth/login/json - JSON login with MFA support
+* POST /auth/login/direct - Direct login bypassing form validation
+* POST /auth/player/login - Player-specific login endpoint
+* POST /auth/register - User registration
+* POST /auth/refresh - JWT token refresh
+* POST /auth/logout - Token revocation
+* GET /auth/me - Current user information
+* GET /auth/users/{user_id} - Get user by ID (requires auth)
+* PATCH /auth/users/{user_id} - Update user profile
+* DELETE /auth/users/{user_id} - Delete user account
+
+OAUTH_ENDPOINTS:
+* GET /auth/github - GitHub OAuth redirect
+* GET /auth/github/callback - GitHub OAuth callback handler
+* GET /auth/google - Google OAuth redirect
+* GET /auth/google/callback - Google OAuth callback handler
+* GET /auth/steam - Steam OAuth redirect
+
+MFA_ENDPOINTS:
+* POST /mfa/setup - Generate MFA secret with QR code
+* POST /mfa/verify-setup - Verify and enable MFA
+* POST /mfa/verify-login - Validate MFA code during login
+* GET /mfa/status - Check if MFA is enabled
+* POST /mfa/disable - Disable MFA for account
+* GET /mfa/backup-codes - Retrieve backup codes
+* POST /mfa/regenerate-backup-codes - Generate new backup codes
+* GET /mfa/recovery-status - Check recovery code status
+
+SCHEMAS:
+LoginRequest:
+  username: String, required
+  password: String, required
+  remember_me: Boolean, optional
+
+LoginResponse:
+  access_token: String
+  refresh_token: String
+  token_type: "bearer"
+  user: UserResponse
+
+UserResponse:
+  id: UUID
+  username: String
+  email: String
+  is_admin: Boolean
+  is_active: Boolean
+  created_at: DateTime
+
+MFASetupResponse:
+  secret: String (base32 encoded)
+  qr_code: String (data URI)
+  backup_codes: Array<String>
+
+CONSTRAINTS:
+* Passwords must be min 8 characters
+* OAuth tokens stored encrypted at rest
+* MFA required for admin accounts (configurable)
+* Failed login attempts logged for audit
+* Refresh tokens are single-use with rotation
+* CSRF protection required for form-based login
+* Rate limiting: 5 failed attempts = 15 min lockout
+
+EXAMPLES:
+```bash
+# JSON Login
+curl -X POST http://localhost:8080/api/v1/auth/login/json \
+  -H "Content-Type: application/json" \
+  -d '{"username": "player1", "password": "password123"}'
+
+# Response
+{
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "token_type": "bearer",
+  "user": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "username": "player1",
+    "is_admin": false
+  }
+}
+
+# Get current user
+curl -X GET http://localhost:8080/api/v1/auth/me \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
+
+# Refresh token
+curl -X POST http://localhost:8080/api/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc..."}'
+
+# Setup MFA
+curl -X POST http://localhost:8080/api/v1/mfa/setup \
+  -H "Authorization: Bearer {token}"
+
+# Response includes QR code for authenticator app
+{
+  "secret": "JBSWY3DPEHPK3PXP",
+  "qr_code": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+  "backup_codes": ["123456", "789012", ...]
+}
+```
+
+SECURITY_NOTES:
+* Never log plaintext passwords or tokens
+* OAuth state parameter validated to prevent CSRF
+* MFA secrets must be kept secure
+* Backup codes are one-time use only
+* Admin accounts should enforce MFA
+* Token blacklist implemented for logout
+* All auth failures trigger audit log entries
