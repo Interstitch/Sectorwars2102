@@ -1,5 +1,35 @@
 # SectorWars 2102 Documentation Architecture
 
+## 🔍 Documentation Audit & Quality Reports
+
+**Last Audit**: 2025-11-16
+**Average Accuracy**: 64.4% (179 files analyzed)
+
+### Quick Start - Review Documentation Quality
+
+1. **📊 [Accuracy Report](_ACCURACY_REPORT.md)** - Start here for priority-ordered review
+2. **📚 [Cleanup Guide](_DOCUMENTATION_CLEANUP_GUIDE.md)** - Systematic review strategy
+3. **📋 [File Inventory](_INVENTORY.md)** - Complete file index with metadata
+4. **🔍 [Audit Findings](_AUDIT_FINDINGS.md)** - Detailed technical issues
+
+### Automated Tools
+
+```bash
+# Re-run accuracy analysis after updates
+python3 _analyze_accuracy.py
+
+# Regenerate file inventory
+python3 _generate_inventory.py
+```
+
+**Critical Issues Found:**
+- 🔴 5 critically wrong files (0-29% accuracy)
+- 🟡 61 files need significant updates (30-74% accuracy)
+- 17 models exist without documentation
+- All AISPEC files have path mismatches (`/app/` vs `/src/`)
+
+---
+
 ## 📚 Documentation Philosophy
 
 This documentation system uses a **multi-layer architecture** designed for different audiences and consumption patterns:
