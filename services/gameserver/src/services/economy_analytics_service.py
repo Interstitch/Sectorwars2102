@@ -49,7 +49,7 @@ class EconomyAnalyticsService:
         # Get price trends
         price_data = self._get_price_trends(start_time, resource_type, sector_id)
         
-        # Get top trading ports
+        # Get top trading stations
         top_ports = self._get_top_trading_ports(start_time, limit=10)
         
         # Get resource distribution

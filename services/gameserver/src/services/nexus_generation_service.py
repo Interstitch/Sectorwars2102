@@ -278,9 +278,9 @@ class NexusGenerationService:
         """Generate sectors, ports, and planets for a cluster with sparse density
 
         Central Nexus has minimal infrastructure:
-        - 5% port density (vs 15% standard)
+        - 5% station density (vs 15% standard)
         - 10% planet density (vs 25% standard)
-        - Sector 1 ALWAYS has both port and planet
+        - Sector 1 ALWAYS has both station and planet
         """
         stats = {"sectors": 0, "ports": 0, "planets": 0}
 
@@ -345,11 +345,11 @@ class NexusGenerationService:
         """Generate a port configuration for a sector in Central Nexus
 
         Sparse generation: Ports are randomly distributed with mixed types.
-        Sector 1 always gets a high-quality trading port for starter access.
+        Sector 1 always gets a high-quality trading station for starter access.
         """
         from src.models.station import StationClass, StationType, StationStatus
 
-        # Sector 1 gets a special starter port
+        # Sector 1 gets a special starter station
         if sector_num == 1:
             return {
                 "name": "Central Nexus Starport Prime",

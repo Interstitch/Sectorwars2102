@@ -114,10 +114,10 @@ class GalaxyGenerator:
 
         # Populate with ports and planets (sparse for Central Nexus)
         if region.is_central_nexus:
-            self._populate_sectors_with_ports(0.05, region_id=region.id)  # 5% port density
+            self._populate_sectors_with_ports(0.05, region_id=region.id)  # 5% station density
             self._populate_sectors_with_planets(0.10, region_id=region.id)  # 10% planet density
         else:
-            self._populate_sectors_with_ports(0.15, region_id=region.id)  # 15% port density
+            self._populate_sectors_with_ports(0.15, region_id=region.id)  # 15% station density
             self._populate_sectors_with_planets(0.25, region_id=region.id)  # 25% planet density
 
         # Ensure Sector 1 in each region has starter facilities
@@ -654,7 +654,7 @@ class GalaxyGenerator:
 
             # Create a Class 1 Trading port (beginner-friendly)
             starter_station = Station(
-                name="Terra Station",  # Friendly name for starter port
+                name="Terra Station",  # Friendly name for starter station
                 sector_id=sector_1.sector_id,
                 sector_uuid=sector_1.id,
                 port_class=StationClass.CLASS_1,
@@ -704,7 +704,7 @@ class GalaxyGenerator:
             self.db.add(starter_station)
             self.db.flush()
 
-            # Create market for starter port
+            # Create market for starter station
             starter_market = Market(
                 station_id=starter_station.id,
                 specialization="GENERAL",  # General trading for beginners
@@ -722,7 +722,7 @@ class GalaxyGenerator:
             )
             self.db.add(starter_market)
             self.db.flush()
-            logger.info("✅ Created starter port 'Terra Station' in Sector 1")
+            logger.info("✅ Created starter station 'Terra Station' in Sector 1")
         else:
             logger.info(f"✅ Sector 1 already has station: {existing_station.name}")
 
@@ -1282,7 +1282,7 @@ class GalaxyGenerator:
 
         # Adjust based on port type
         if port_type == StationType.TRADING:
-            # Better prices at trading ports
+            # Better prices at trading stations
             for resource in base_prices:
                 base_prices[resource]["buy"] = int(base_prices[resource]["buy"] * 1.1)
                 base_prices[resource]["sell"] = int(base_prices[resource]["sell"] * 0.9)

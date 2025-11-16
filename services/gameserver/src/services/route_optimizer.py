@@ -720,7 +720,7 @@ class RouteOptimizer:
                 # Find best buy price in sector A (ports that sell this commodity)
                 best_buy_price = float('inf')
                 best_buy_station = None
-                for port in ports_a:
+                for station in ports_a:
                     commodity_data = station.commodities.get(commodity, {})
                     if commodity_data.get('sells', False) and commodity_data.get('quantity', 0) > 0:
                         current_price = commodity_data.get('current_price', commodity_data.get('base_price', 0))
@@ -731,7 +731,7 @@ class RouteOptimizer:
                 # Find best sell price in sector B (ports that buy this commodity)
                 best_sell_price = 0
                 best_sell_station = None
-                for port in ports_b:
+                for station in ports_b:
                     commodity_data = station.commodities.get(commodity, {})
                     if commodity_data.get('buys', False):
                         current_price = commodity_data.get('current_price', commodity_data.get('base_price', 0))

@@ -3,7 +3,7 @@ Enhanced AI Service - OWASP Security-First Cross-System Intelligence
 Building on the proven ARIA trading intelligence foundation
 
 This service extends ARIA's excellent trading AI to provide comprehensive intelligence
-across all game systems: trading, combat, colonization, port management, and strategic planning.
+across all game systems: trading, combat, colonization, station management, and strategic planning.
 
 Security Features:
 - Input validation and sanitization (OWASP A03)
@@ -658,7 +658,7 @@ class EnhancedAIService:
         available_ports = result.scalars().all()
         
         # Analyze investment opportunities
-        for port in available_ports[:max_count]:
+        for station in available_ports[:max_count]:
             # Calculate ROI based on trade volume and acquisition cost
             acquisition_cost = station.acquisition_requirements.get("base_price", 500000)
             monthly_revenue = station.trade_volume * 30 * 0.05  # 5% transaction fee
@@ -852,7 +852,7 @@ class EnhancedAIService:
             "trading": ["trade", "buy", "sell", "price", "profit", "route", "commodity", "market"],
             "combat": ["battle", "fight", "attack", "defend", "fleet", "tactical", "formation", "war"],
             "colony": ["planet", "colony", "colonist", "terraform", "genesis", "population", "development"],
-            "station": ["station", "buy port", "own", "investment", "acquire", "purchase"],
+            "station": ["station", "buy station", "own", "investment", "acquire", "purchase"],
             "strategic": ["strategy", "plan", "recommend", "advice", "next move", "best option", "should i"],
             "navigation": ["go to", "travel", "navigate", "route to", "path", "direction"],
             "help": ["help", "how to", "what is", "explain", "tutorial", "guide"]
@@ -999,7 +999,7 @@ class EnhancedAIService:
         """
         Generate strategic planning response
         """
-        return "Strategic planning analysis is coming soon! I'll provide comprehensive guidance spanning trading, combat, colonization, and port management to optimize your overall position."
+        return "Strategic planning analysis is coming soon! I'll provide comprehensive guidance spanning trading, combat, colonization, and station management to optimize your overall position."
 
     async def _generate_help_response(self, assistant: AIComprehensiveAssistant,
                                     entities: Dict[str, List[str]], context: ConversationContext) -> str:
