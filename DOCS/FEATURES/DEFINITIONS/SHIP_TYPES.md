@@ -82,14 +82,15 @@ Sector Wars 2102 features a balanced selection of spacecraft designed for differ
 - **Special Ability**: Advanced Sensors (reveals unexplored sector details)
 - **Description**: Lightweight and agile, Scout Ships excel at charting new territories and identifying potential colonization targets.
 
-#### Warp Jumper
-- **Cost**: 500,000 credits
+#### Warp Jumper ⚠️ CRAFT-ONLY
+- **Cost**: 500,000 credits (construction cost, cannot be purchased directly)
 - **Cargo Capacity**: 200 units
 - **Drone Capacity**: 0
 - **Genesis Capacity**: 1
 - **Speed**: N/A (Uses jump capability instead of conventional movement)
 - **Defense**: Medium (500 shield points, 600 hull points)
 - **Special Ability**: Quantum Jump (can "jump" 5-10 sectors in a targeted direction with 24-hour cooldown)
+- **Acquisition**: **CRAFT-ONLY** - Cannot be purchased from shipyards. Must be constructed at specialized high-tech shipyards using Quantum Shards and Photonic Crystals.
 - **Description**: A highly specialized vessel containing modified warp gate technology that allows it to make directed quantum jumps across multiple sectors. The Warp Jumper is specifically designed to establish warp gates in distant sectors.
 
 ## Upgrade System
@@ -108,7 +109,7 @@ Players can visit shipyards in major sectors to purchase upgrades, with prices v
 
 ## Ship Acquisition
 
-Ships can be acquired through:
+**Most ships** can be acquired through:
 
 1. **Purchase** from shipyards in major sectors
 2. **Salvage** operations in abandoned or contested sectors
@@ -116,15 +117,24 @@ Ships can be acquired through:
 
 Each acquisition method offers different advantages in terms of cost, initial condition, and available customization options.
 
-### Special Acquisition: Warp Jumper
+**Exception**: The Warp Jumper is **craft-only** and cannot be purchased directly (see below).
 
-The Warp Jumper ship requires special conditions to acquire:
+### Special Acquisition: Warp Jumper ⚠️ CRAFT-ONLY
 
-- Can only be built at specialized high-tech shipyards
-- Requires Quantum Shards and Photonic Crystals as key components
-- Construction takes 3-5 days to complete
-- Limited to one per player at any given time
-- Extremely expensive (500,000 credits)
+The Warp Jumper ship is the **ONLY craft-only vessel** in the game. It cannot be purchased from shipyards, salvaged, or received as a reputation reward. It must be constructed.
+
+**Construction Requirements**:
+- **Specialized Shipyard**: Can only be built at high-tech shipyards (Class 7+ Technology Ports)
+- **Materials Required**:
+  - Quantum Shards (specific quantity TBD)
+  - Photonic Crystals (specific quantity TBD)
+  - 500,000 credits (construction cost)
+- **Build Time**: 3-5 real-time days to complete
+- **Limit**: One per player at any given time (cannot own multiple Warp Jumpers simultaneously)
+- **Cannot be purchased directly**: Not available at standard shipyards
+
+**Why Craft-Only?**
+The Warp Jumper's advanced quantum jump technology requires specialized construction facilities and rare materials that cannot be mass-produced. This maintains the ship's exclusivity and strategic value for warp gate construction.
 
 ## Ship Insurance
 
