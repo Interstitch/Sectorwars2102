@@ -90,8 +90,8 @@ class AISystemType(Enum):
     """AI system types for cross-system intelligence"""
     TRADING = "trading"  # TRADING system intelligence
     COMBAT = "combat"  # COMBAT system intelligence
-    COLONY = "colony"  # COLONIZATION system intelligence 
-    PORT = "port"  # PORT_MANAGEMENT system intelligence
+    COLONY = "colony"  # COLONIZATION system intelligence
+    STATION = "station"  # STATION_MANAGEMENT system intelligence
     STRATEGIC = "strategic"  # STRATEGIC planning intelligence
     SOCIAL = "social"
 
@@ -427,7 +427,7 @@ class EnhancedAIService:
             # Default to all systems if none specified
             if not system_types:
                 system_types = [AISystemType.TRADING, AISystemType.COMBAT, 
-                              AISystemType.COLONY, AISystemType.PORT, AISystemType.STRATEGIC]
+                              AISystemType.COLONY, AISystemType.STATION, AISystemType.STRATEGIC]
             
             # Get trading recommendations (leverage existing ARIA excellence)
             if AISystemType.TRADING in system_types and assistant.has_permission("trading"):
@@ -444,9 +444,9 @@ class EnhancedAIService:
                 colony_recs = await self._get_colonization_recommendations(assistant, max_recommendations // 4)
                 recommendations.extend(colony_recs)
             
-            # Get port ownership recommendations
-            if AISystemType.PORT in system_types and assistant.has_permission("port"):
-                port_recs = await self._get_port_recommendations(assistant, max_recommendations // 4)
+            # Get station ownership recommendations
+            if AISystemType.STATION in system_types and assistant.has_permission("station"):
+                port_recs = await self._get_station_recommendations(assistant, max_recommendations // 4)
                 recommendations.extend(port_recs)
             
             # Get strategic cross-system recommendations
@@ -642,10 +642,10 @@ class EnhancedAIService:
         
         return recommendations
 
-    async def _get_port_recommendations(self, assistant: AIComprehensiveAssistant,
+    async def _get_station_recommendations(self, assistant: AIComprehensiveAssistant,
                                       max_count: int) -> List[CrossSystemRecommendation]:
         """
-        Generate AI recommendations for port ownership and investment
+        Generate AI recommendations for station ownership and investment
         """
         recommendations = []
         
@@ -670,7 +670,7 @@ class EnhancedAIService:
                 
                 rec = CrossSystemRecommendation(
                     id=str(uuid.uuid4()),
-                    category=AISystemType.PORT,
+                    category=AISystemType.STATION,
                     recommendation_type="port_investment",
                     title=f"Investment Opportunity: {port.name}",
                     summary=f"Station {port.name} offers {roi_months:.1f} month ROI with current trade volume",
@@ -717,7 +717,7 @@ class EnhancedAIService:
                 category=AISystemType.STRATEGIC,
                 recommendation_type="diversification",
                 title="Strategic Diversification: Station Investment",
-                summary="Your credit reserves suggest readiness for port ownership to diversify income streams",
+                summary="Your credit reserves suggest readiness for station ownership to diversify income streams",
                 detailed_analysis={
                     "current_credits": player_data["credits"],
                     "risk_assessment": "low_risk_high_reward",
@@ -749,7 +749,7 @@ class EnhancedAIService:
         result = await self.db.execute(stmt)
         player = result.scalar_one()
         
-        # Check port ownership
+        # Check station ownership
         stmt = select(func.count(Station.id)).where(Station.owner_id == player_id)
         result = await self.db.execute(stmt)
         port_count = result.scalar()
@@ -927,7 +927,7 @@ class EnhancedAIService:
             elif primary_intent == "colony":
                 return await self._generate_colony_response(assistant, entities, context)
             elif primary_intent == "port":
-                return await self._generate_port_response(assistant, entities, context)
+                return await self._generate_station_response(assistant, entities, context)
             elif primary_intent == "strategic":
                 return await self._generate_strategic_response(assistant, entities, context)
             elif primary_intent == "help":
@@ -984,15 +984,15 @@ class EnhancedAIService:
         
         return "Planetary colonization guidance is coming soon! I'll help you optimize terraforming, colonist allocation, and planetary development strategies."
 
-    async def _generate_port_response(self, assistant: AIComprehensiveAssistant,
+    async def _generate_station_response(self, assistant: AIComprehensiveAssistant,
                                     entities: Dict[str, List[str]], context: ConversationContext) -> str:
         """
-        Generate port ownership response
+        Generate station ownership response
         """
-        if not assistant.has_permission("port"):
-            return "I don't currently have access to port investment data. Please upgrade your AI assistant permissions for investment analysis."
+        if not assistant.has_permission("station"):
+            return "I don't currently have access to station investment data. Please upgrade your AI assistant permissions for investment analysis."
         
-        return "Station investment analysis is coming soon! I'll help you identify profitable port acquisition opportunities and optimize revenue from owned ports."
+        return "Station investment analysis is coming soon! I'll help you identify profitable station acquisition opportunities and optimize revenue from owned stations."
 
     async def _generate_strategic_response(self, assistant: AIComprehensiveAssistant,
                                          entities: Dict[str, List[str]], context: ConversationContext) -> str:

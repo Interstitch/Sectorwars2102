@@ -500,7 +500,7 @@ class GalaxyGenerator:
                 status=StationStatus.OPERATIONAL,
                 size=random.randint(3, 8),
                 faction_affiliation=self._choose_faction_for_sector(sector),
-                description=f"Class {port_class.value} {port_type.name} port in Sector {sector_num}"
+                description=f"Class {port_class.value} {port_type.name} station in Sector {sector_num}"
             )
             
             # Ensure commodities is properly initialized before calling methods that depend on it
@@ -624,7 +624,7 @@ class GalaxyGenerator:
         # Check if Sector 1 already has a port
         existing_port = self.db.query(Station).filter(Station.sector_uuid == sector_1.id).first()
         if not existing_port:
-            logger.info(f"Creating guaranteed starter port in Sector 1 of {region.name}")
+            logger.info(f"Creating guaranteed starter station in Sector 1 of {region.name}")
             self._create_starter_port_for_sector(sector_1)
 
         # Check if Sector 1 already has a planet
@@ -650,7 +650,7 @@ class GalaxyGenerator:
         # Check if Sector 1 already has a port
         existing_port = self.db.query(Station).filter(Station.sector_id == 1).first()
         if not existing_port:
-            logger.info("Creating guaranteed starter port in Sector 1")
+            logger.info("Creating guaranteed starter station in Sector 1")
 
             # Create a Class 1 Trading port (beginner-friendly)
             starter_port = Station(
@@ -724,7 +724,7 @@ class GalaxyGenerator:
             self.db.flush()
             logger.info("✅ Created starter port 'Terra Station' in Sector 1")
         else:
-            logger.info(f"✅ Sector 1 already has port: {existing_port.name}")
+            logger.info(f"✅ Sector 1 already has station: {existing_port.name}")
 
         # Check if Sector 1 already has a planet
         existing_planet = self.db.query(Planet).filter(Planet.sector_id == 1).first()
@@ -1228,7 +1228,7 @@ class GalaxyGenerator:
         return specialization_map.get(port_type, "general_trade")
     
     def _generate_resource_availability(self, port_type: StationType) -> Dict[str, int]:
-        """Generate resource availability for a port."""
+        """Generate resource availability for a station."""
         availability = {}
         
         # Each port has different availability based on type
@@ -1270,7 +1270,7 @@ class GalaxyGenerator:
         return base_resources
     
     def _generate_resource_prices(self, port_type: StationType) -> Dict[str, Dict[str, int]]:
-        """Generate resource prices for a port."""
+        """Generate resource prices for a station."""
         prices = {}
         
         # Base prices for common resources (aligned with RESOURCE_TYPES.md ranges)
