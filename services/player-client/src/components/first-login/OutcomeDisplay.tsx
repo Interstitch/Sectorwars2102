@@ -31,22 +31,22 @@ const OutcomeDisplay: React.FC = () => {
   const [completionResult, setCompletionResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  console.log('🎬 OutcomeDisplay: Rendered with dialogueOutcome:', dialogueOutcome);
+  // Only log once when component mounts with valid outcome
+  React.useEffect(() => {
+    if (dialogueOutcome) {
+      console.log(`[FirstLogin:UI] Outcome screen displayed | ${dialogueOutcome.outcome}`);
+    }
+  }, [dialogueOutcome]);
 
   if (!dialogueOutcome) {
-    console.log('⚠️ OutcomeDisplay: No dialogueOutcome, not rendering');
     return null;
   }
 
-  console.log('✨ OutcomeDisplay: Displaying final outcome screen');
-
   const handleStartGame = async () => {
-    console.log('🎮 OutcomeDisplay: Player clicked "Begin Your Journey"');
     setIsCompleting(true);
     setError(null);
 
     try {
-      console.log('🏁 OutcomeDisplay: Calling completeFirstLogin()...');
       const result = await completeFirstLogin();
       console.log('✅ OutcomeDisplay: First Login marked complete in database:', result);
       setCompletionResult(result);

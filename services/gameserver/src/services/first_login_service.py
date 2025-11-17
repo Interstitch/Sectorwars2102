@@ -805,15 +805,16 @@ class FirstLoginService:
         ai_analysis = None
         ai_used = False
         provider_used = None
-        
+
         try:
             # Build context for AI analysis
             context = self._build_dialogue_context(session, previous_exchanges + [exchange])
-            
+
             # Analyze player response with enhanced AI provider service
+            logger.info(f"Attempting AI analysis for exchange {exchange_id}")
             ai_analysis, provider_used = await self.ai_provider_service.analyze_response(player_response, context)
             ai_used = provider_used != ProviderType.MANUAL
-            
+
             # Store AI analysis in the exchange
             exchange.ai_analysis_data = {
                 "persuasiveness_score": ai_analysis.persuasiveness_score,
@@ -826,14 +827,14 @@ class FirstLoginService:
                 "suggested_guard_mood": ai_analysis.suggested_guard_mood.value,
                 "provider_used": provider_used.value
             }
-            
+
             # Set scores from AI analysis
             exchange.persuasiveness = ai_analysis.persuasiveness_score
             exchange.confidence = ai_analysis.confidence_level
             exchange.consistency = ai_analysis.consistency_score
             exchange.key_extracted_info = {"claims": ai_analysis.extracted_claims}
             exchange.detected_contradictions = ai_analysis.detected_inconsistencies
-            
+
             # Extract player name from AI claims if not already set
             if not session.extracted_player_name:
                 for claim in ai_analysis.extracted_claims:
@@ -843,17 +844,20 @@ class FirstLoginService:
                         if extracted_name:
                             session.extracted_player_name = extracted_name
                             break
-            
+
             # Update session flags
             session.ai_service_used = ai_used
             exchange.ai_service_used = ai_used
             exchange.fallback_to_rules = not ai_used
-            
-            logger.info(f"Analysis completed using {provider_used.value} provider for exchange {exchange_id}")
-            
+
+            logger.info(f"✓ Analysis completed using {provider_used.value} provider for exchange {exchange_id} | " +
+                       f"Scores: P={ai_analysis.persuasiveness_score:.2f} C={ai_analysis.confidence_level:.2f} " +
+                       f"Cons={ai_analysis.consistency_score:.2f} B={ai_analysis.overall_believability:.2f}")
+
         except Exception as e:
-            logger.error(f"All AI providers failed for analysis in exchange {exchange_id}: {e}")
+            logger.error(f"✗ All AI providers failed for analysis in exchange {exchange_id}: {e}")
             ai_used = False
+            provider_used = ProviderType.MANUAL
         
         # Fallback to rule-based analysis if AI failed or unavailable
         if not ai_used:
@@ -878,20 +882,32 @@ class FirstLoginService:
         
         self.db.commit()
         self.db.refresh(exchange)
-        
-        # Build analysis response
+
+        # Calculate believability if not from AI (fallback calculation)
+        if not ai_analysis:
+            # Calculate believability from basic scores using weighted formula
+            believability = (
+                exchange.persuasiveness * 0.4 +
+                exchange.confidence * 0.3 +
+                exchange.consistency * 0.3
+            )
+        else:
+            believability = ai_analysis.overall_believability
+
+        # Build analysis response - ALWAYS include all fields
         analysis_data = {
             "persuasiveness": exchange.persuasiveness,
             "confidence": exchange.confidence,
             "consistency": exchange.consistency,
-            "ai_used": ai_used
+            "overall_believability": believability,  # ← ALWAYS present now
+            "ai_used": ai_used,
+            "provider": provider_used.value if provider_used else "unknown"  # ← Provider tracking
         }
-        
+
         # Add AI-specific analysis if available
         if ai_analysis:
             analysis_data.update({
                 "negotiation_skill": ai_analysis.negotiation_skill,
-                "overall_believability": ai_analysis.overall_believability,
                 "detected_inconsistencies": ai_analysis.detected_inconsistencies,
                 "extracted_claims": ai_analysis.extracted_claims,
                 "guard_mood": ai_analysis.suggested_guard_mood.value
@@ -1032,27 +1048,41 @@ class FirstLoginService:
     
     def _evaluate_dialogue_outcome(self, session: FirstLoginSession) -> Dict[str, Any]:
         """Evaluate the dialogue outcome based on the player's performance"""
+        logger.info(f"=" * 60)
+        logger.info(f"EVALUATING DIALOGUE OUTCOME FOR SESSION {session.id}")
+        logger.info(f"=" * 60)
+
         # Get all exchanges for the session
         exchanges = self.db.query(DialogueExchange).filter_by(
             session_id=session.id
         ).order_by(DialogueExchange.sequence_number).all()
-        
+
+        logger.info(f"Total exchanges: {len(exchanges)}")
+
         # Calculate average persuasiveness, confidence, and consistency
         persuasiveness_scores = [exchange.persuasiveness for exchange in exchanges if exchange.persuasiveness is not None]
         confidence_scores = [exchange.confidence for exchange in exchanges if exchange.confidence is not None]
         consistency_scores = [exchange.consistency for exchange in exchanges if exchange.consistency is not None]
-        
+
         avg_persuasiveness = sum(persuasiveness_scores) / len(persuasiveness_scores) if persuasiveness_scores else 0.5
         avg_confidence = sum(confidence_scores) / len(confidence_scores) if confidence_scores else 0.5
         avg_consistency = sum(consistency_scores) / len(consistency_scores) if consistency_scores else 0.5
-        
+
+        logger.info(f"Average Scores:")
+        logger.info(f"  Persuasiveness: {avg_persuasiveness:.4f} (from {persuasiveness_scores})")
+        logger.info(f"  Confidence: {avg_confidence:.4f} (from {confidence_scores})")
+        logger.info(f"  Consistency: {avg_consistency:.4f} (from {consistency_scores})")
+
         # Calculate overall persuasion score (weighted)
         final_persuasion_score = (
             avg_persuasiveness * 0.5 +
             avg_confidence * 0.3 +
             avg_consistency * 0.2
         )
-        
+
+        logger.info(f"Final Persuasion Score: {final_persuasion_score:.4f}")
+        logger.info(f"  Formula: ({avg_persuasiveness:.4f} * 0.5) + ({avg_confidence:.4f} * 0.3) + ({avg_consistency:.4f} * 0.2)")
+
         # Determine negotiation skill level
         if final_persuasion_score >= 0.7:
             negotiation_skill = NegotiationSkillLevel.STRONG
@@ -1060,11 +1090,22 @@ class FirstLoginService:
             negotiation_skill = NegotiationSkillLevel.AVERAGE
         else:
             negotiation_skill = NegotiationSkillLevel.WEAK
-        
+
+        logger.info(f"Negotiation Skill Level: {negotiation_skill.name}")
+
         # Get the claimed ship and ship config
         claimed_ship = session.ship_claimed or ShipChoice.ESCAPE_POD
         ship_config = self.db.query(ShipRarityConfig).filter_by(ship_type=claimed_ship).first()
-        
+
+        logger.info(f"Claimed Ship: {claimed_ship.name}")
+        if ship_config:
+            logger.info(f"Ship Config Thresholds:")
+            logger.info(f"  WEAK: {ship_config.weak_threshold}")
+            logger.info(f"  AVERAGE: {ship_config.average_threshold}")
+            logger.info(f"  STRONG: {ship_config.strong_threshold}")
+        else:
+            logger.error(f"❌ NO SHIP CONFIG FOUND for {claimed_ship.name}!")
+
         # Determine the persuasion threshold for the claimed ship
         if negotiation_skill == NegotiationSkillLevel.STRONG:
             threshold = ship_config.strong_threshold
@@ -1072,6 +1113,10 @@ class FirstLoginService:
             threshold = ship_config.average_threshold
         else:
             threshold = ship_config.weak_threshold
+
+        logger.info(f"Required Threshold ({negotiation_skill.name}): {threshold}")
+        logger.info(f"Player Score: {final_persuasion_score:.4f}")
+        logger.info(f"Comparison: {final_persuasion_score:.4f} >= {threshold} ? {final_persuasion_score >= threshold}")
         
         # Determine the outcome
         if final_persuasion_score >= threshold:
@@ -1110,7 +1155,15 @@ class FirstLoginService:
         session.starting_credits = starting_credits
         session.negotiation_bonus_flag = negotiation_bonus_flag
         session.notoriety_penalty = notoriety_penalty
-        
+
+        logger.info(f"=" * 60)
+        logger.info(f"FINAL OUTCOME: {outcome.name}")
+        logger.info(f"  Awarded Ship: {awarded_ship.name}")
+        logger.info(f"  Starting Credits: {starting_credits}")
+        logger.info(f"  Negotiation Bonus: {negotiation_bonus_flag}")
+        logger.info(f"  Notoriety Penalty: {notoriety_penalty}")
+        logger.info(f"=" * 60)
+
         self.db.commit()
         self.db.refresh(session)
         
