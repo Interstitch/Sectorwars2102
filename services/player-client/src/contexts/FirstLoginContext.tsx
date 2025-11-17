@@ -205,34 +205,37 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
   const claimShip = async (shipType: string, response: string) => {
     setIsLoading(true);
     setError(null);
-    
-    console.log('FirstLogin: Claiming ship:', shipType);
-    console.log('FirstLogin: Dialogue response:', response);
-    console.log('FirstLogin: Current session:', session);
-    
+
+    console.log('🚀 FirstLogin: Claiming ship:', shipType);
+    console.log('💬 FirstLogin: Initial dialogue response:', response);
+    console.log('📋 FirstLogin: Current session:', session);
+
     try {
       const payload = {
         ship_type: shipType,
         dialogue_response: response
       };
-      console.log('FirstLogin: Sending payload:', payload);
-      
+      console.log('📤 FirstLogin: Sending claim payload:', payload);
+
       const result = await api.post('/api/v1/first-login/claim-ship', payload);
-      
+
+      console.log('✅ FirstLogin: Ship claimed successfully, moving to dialogue phase');
+      console.log('❓ FirstLogin: First guard question:', result.data.npc_prompt);
+
       setSession(result.data);
-      
+
       // Update dialogue history
       setDialogueHistory(prev => [
         ...prev,
         { npc: '', player: response },
         { npc: result.data.npc_prompt, player: '' }
       ]);
-      
+
       // Set new prompt and exchange ID
       setCurrentPrompt(result.data.npc_prompt);
       setExchangeId(result.data.exchange_id || null);
     } catch (error: any) {
-      console.error('Error claiming ship:', error);
+      console.error('❌ FirstLogin: Error claiming ship:', error);
       console.error('Error response:', error.response);
       console.error('Error response data:', error.response?.data);
       console.error('Error response status:', error.response?.status);
@@ -260,24 +263,50 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
   const submitResponse = async (response: string): Promise<DialogueAnalysis> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       if (!exchangeId) {
         throw new Error('No active dialogue exchange.');
       }
-      
+
+      console.log('🎯 FirstLogin: Submitting dialogue response:', {
+        exchangeId,
+        response: response.substring(0, 100) + (response.length > 100 ? '...' : '')
+      });
+
       const result = await api.post(`/api/v1/first-login/dialogue/${exchangeId}`, {
         response
       });
-      
+
+      console.log('📊 FirstLogin: Dialogue analysis received:', {
+        is_final: result.data.is_final,
+        has_outcome: !!result.data.outcome,
+        has_next_question: !!result.data.next_question,
+        analysis: result.data.analysis
+      });
+
+      // Log the scoring details
+      if (result.data.analysis) {
+        console.log('⭐ FirstLogin: Response Scores:', {
+          persuasiveness: result.data.analysis.persuasiveness,
+          confidence: result.data.analysis.confidence,
+          consistency: result.data.analysis.consistency,
+          negotiation_skill: result.data.analysis.negotiation_skill,
+          believability: result.data.analysis.believability,
+          guard_mood: result.data.analysis.guard_mood,
+          inconsistencies: result.data.analysis.inconsistencies
+        });
+      }
+
       // Update dialogue history
       setDialogueHistory(prev => [
         ...prev.slice(0, prev.length - 1),
         { ...prev[prev.length - 1], player: response }
       ]);
-      
+
       // If there's a next question, add it to history and update state
       if (result.data.next_question) {
+        console.log('❓ FirstLogin: Guard asks another question');
         setDialogueHistory(prev => [
           ...prev,
           { npc: result.data.next_question, player: '' }
@@ -285,24 +314,35 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
         setCurrentPrompt(result.data.next_question);
         setExchangeId(result.data.next_exchange_id || null);
       }
-      
+
       // If this is the final response, store the outcome
       if (result.data.is_final && result.data.outcome) {
+        console.log('🎉 FirstLogin: DIALOGUE COMPLETE! Final outcome:', {
+          outcome: result.data.outcome.outcome,
+          awarded_ship: result.data.outcome.awarded_ship,
+          starting_credits: result.data.outcome.starting_credits,
+          negotiation_skill: result.data.outcome.negotiation_skill,
+          negotiation_bonus: result.data.outcome.negotiation_bonus,
+          notoriety_penalty: result.data.outcome.notoriety_penalty
+        });
+
         setDialogueOutcome(result.data.outcome);
-        
+
         // Add the guard's final response to the history
         setDialogueHistory(prev => [
           ...prev,
           { npc: result.data.outcome.guard_response, player: '' }
         ]);
-        
+
         // Update the current prompt
         setCurrentPrompt(result.data.outcome.guard_response);
+
+        console.log('✅ FirstLogin: OutcomeDisplay should now render');
       }
-      
+
       return result.data;
     } catch (error) {
-      console.error('Error submitting dialogue response:', error);
+      console.error('❌ FirstLogin: Error submitting dialogue response:', error);
       setError('Failed to submit dialogue response.');
       throw error;
     } finally {
@@ -314,16 +354,19 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
   const completeFirstLogin = async (): Promise<CompleteFirstLoginResult> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
+      console.log('🏁 FirstLogin: Calling /complete endpoint to finalize First Login');
       const result = await api.post('/api/v1/first-login/complete');
-      
+
+      console.log('✅ FirstLogin: Completion successful:', result.data);
+
       // First login is now complete
       setRequiresFirstLogin(false);
-      
+
       return result.data;
     } catch (error) {
-      console.error('Error completing first login:', error);
+      console.error('❌ FirstLogin: Error completing first login:', error);
       setError('Failed to complete first login process.');
       throw error;
     } finally {

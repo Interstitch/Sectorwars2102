@@ -24,33 +24,44 @@ const OutcomeDisplay: React.FC = () => {
     completeFirstLogin,
     isLoading
   } = useFirstLogin();
-  
+
   const { onFirstLoginComplete } = useGame();
   const navigate = useNavigate();
   const [isCompleting, setIsCompleting] = useState(false);
   const [completionResult, setCompletionResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  console.log('🎬 OutcomeDisplay: Rendered with dialogueOutcome:', dialogueOutcome);
+
   if (!dialogueOutcome) {
+    console.log('⚠️ OutcomeDisplay: No dialogueOutcome, not rendering');
     return null;
   }
 
+  console.log('✨ OutcomeDisplay: Displaying final outcome screen');
+
   const handleStartGame = async () => {
+    console.log('🎮 OutcomeDisplay: Player clicked "Begin Your Journey"');
     setIsCompleting(true);
     setError(null);
-    
+
     try {
+      console.log('🏁 OutcomeDisplay: Calling completeFirstLogin()...');
       const result = await completeFirstLogin();
+      console.log('✅ OutcomeDisplay: First Login marked complete in database:', result);
       setCompletionResult(result);
-      
+
       // Refresh all game data in GameContext
+      console.log('🔄 OutcomeDisplay: Refreshing game data...');
       await onFirstLoginComplete();
-      
+
       // Redirect to the game dashboard after a short delay
+      console.log('🚀 OutcomeDisplay: Redirecting to /game in 1.5 seconds...');
       setTimeout(() => {
         navigate('/game');
       }, 1500);
     } catch (err) {
+      console.error('❌ OutcomeDisplay: Failed to complete first login:', err);
       setError('Failed to complete registration. Please try again.');
       setIsCompleting(false);
     }
