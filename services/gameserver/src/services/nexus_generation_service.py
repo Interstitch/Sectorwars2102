@@ -75,7 +75,8 @@ class NexusGenerationService:
 
             # Generate sectors for each cluster
             sectors_per_cluster = self.total_sectors // self.cluster_count
-            current_sector_num = 1
+            # Start Central Nexus sectors at 301 (after Terran Space sectors 1-300)
+            current_sector_num = 301
 
             for idx, cluster in enumerate(nexus_clusters):
                 logger.info(f"Generating sectors for cluster {idx + 1}/{self.cluster_count}: {cluster.name}")
