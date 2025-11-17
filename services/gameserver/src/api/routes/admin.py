@@ -1003,7 +1003,7 @@ async def generate_galaxy(
             terran_space = Region(
                 name="terran-space",
                 display_name="Terran Space",
-                region_type=RegionType.PLAYER_OWNED,  # Starter region for players
+                region_type=RegionType.TERRAN_SPACE,  # Starter region for players
                 owner_id=None,  # Platform-owned
                 subscription_tier="free",
                 status="active",
