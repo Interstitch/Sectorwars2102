@@ -729,7 +729,7 @@ class GalaxyGenerator:
         # Ensure Sector 1 is SAFE for new players - no hazards or radiation
         sector_1.hazard_level = 0  # No hazards
         sector_1.radiation_level = 0  # No radiation
-        sector_1.sector_type = SectorType.NORMAL  # Normal space
+        sector_1.type = SectorType.STANDARD  # Normal space (field is 'type', not 'sector_type')
         self.db.flush()
         logger.info(f"✅ Ensured Sector 1 in {region.name} is safe (no hazards/radiation)")
 
