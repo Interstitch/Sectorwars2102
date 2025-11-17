@@ -36,16 +36,16 @@ interface PlanetPortPairProps {
   planet: Planet;
   station?: Station | null;
   onLandOnPlanet: (planetId: string) => void;
-  onDockAtPort?: (stationId: string) => void;
+  onDockAtStation?: (stationId: string) => void;
   isLanded?: boolean;
   isDocked?: boolean;
 }
 
 const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
   planet,
-  port,
+  station,
   onLandOnPlanet,
-  onDockAtPort,
+  onDockAtStation,
   isLanded = false,
   isDocked = false
 }) => {
@@ -89,8 +89,8 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
 
   const planetIcon = planetTypeIcons[planet.type?.toLowerCase()] || '🌍';
 
-  // Get port owner display name
-  const portOwnerDisplay = port?.owner_name || (port?.faction_affiliation ? `${port.faction_affiliation} Faction` : null);
+  // Get station owner display name
+  const stationOwnerDisplay = station?.owner_name || (station?.faction_affiliation ? `${station.faction_affiliation} Faction` : null);
 
   const handlePlanetClick = () => {
     if (isLanded) return;
@@ -99,11 +99,11 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
     }
   };
 
-  const handlePortClick = (e: React.MouseEvent) => {
+  const handleStationClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent planet click
-    if (!port || !onDockAtPort || isDocked) return;
-    if (confirm(`Dock at ${port.name}?`)) {
-      onDockAtPort(port.id);
+    if (!station || !onDockAtStation || isDocked) return;
+    if (confirm(`Dock at ${station.name}?`)) {
+      onDockAtStation(station.id);
     }
   };
 
@@ -134,28 +134,28 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
       </div>
 
       {/* Orbital Connector */}
-      {port && <div className="orbital-connector">→</div>}
+      {station && <div className="orbital-connector">→</div>}
 
       {/* Station Section - Clickable if exists */}
-      {port && (
+      {station && (
         <div
-          className={`port-section ${!isDocked && port.status.toLowerCase() === 'operational' ? 'clickable' : 'inactive'}`}
-          onClick={handlePortClick}
+          className={`station-section ${!isDocked && station.status.toLowerCase() === 'operational' ? 'clickable' : 'inactive'}`}
+          onClick={handleStationClick}
         >
-          <span className="port-icon">🛰️</span>
-          <div className="port-details">
-            <div className="port-name-line">
-              <div className="port-name-status">
-                <span className="port-name">{port.name}</span>
-                <span className="port-status">
-                  {port.status.toLowerCase() === 'operational' ? '🟢' : '🔴'}
+          <span className="station-icon">🛰️</span>
+          <div className="station-details">
+            <div className="station-name-line">
+              <div className="station-name-status">
+                <span className="station-name">{station.name}</span>
+                <span className="station-status">
+                  {station.status.toLowerCase() === 'operational' ? '🟢' : '🔴'}
                 </span>
               </div>
-              {portOwnerDisplay && <span className="port-owner">{portOwnerDisplay}</span>}
-              {port.port_class !== undefined && (
-                <span className="port-class">Class {port.port_class}: {portClassNames[port.port_class] || 'Unknown'}</span>
+              {stationOwnerDisplay && <span className="station-owner">{stationOwnerDisplay}</span>}
+              {station.port_class !== undefined && (
+                <span className="station-class">Class {station.port_class}: {portClassNames[station.port_class] || 'Unknown'}</span>
               )}
-              <span className="port-type">{port.type.replace(/_/g, ' ')}</span>
+              <span className="station-type">{station.type.replace(/_/g, ' ')}</span>
             </div>
           </div>
         </div>

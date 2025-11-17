@@ -137,8 +137,8 @@
   }
 }
 
-/* Port Section */
-.port-section {
+/* Station Section */
+.station-section {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -149,26 +149,26 @@
   max-width: 50%;
 }
 
-.port-section.clickable {
+.station-section.clickable {
   cursor: pointer;
 }
 
-.port-section.clickable:hover {
+.station-section.clickable:hover {
   background: rgba(0, 217, 255, 0.15);
   transform: scale(1.02);
 }
 
-.port-section.inactive {
+.station-section.inactive {
   opacity: 0.6;
 }
 
-.port-icon {
+.station-icon {
   font-size: 1.2rem;
   flex-shrink: 0;
   filter: drop-shadow(0 0 6px rgba(0, 217, 255, 0.5));
 }
 
-.port-details {
+.station-details {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -176,42 +176,42 @@
   flex: 1;
 }
 
-.port-name-line {
+.station-name-line {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.2rem;
 }
 
-.port-name-status {
+.station-name-status {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   width: 100%;
 }
 
-.port-name {
+.station-name {
   font-size: 0.75rem;
   font-weight: 700;
   color: #00d9ff;
   line-height: 1.2;
 }
 
-.port-owner {
+.station-owner {
   font-size: 0.6rem;
   color: #00ff41;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.port-class {
+.station-class {
   font-size: 0.6rem;
   color: rgba(255, 215, 0, 0.9);
   font-weight: 600;
   letter-spacing: 0.3px;
 }
 
-.port-type {
+.station-type {
   font-size: 0.6rem;
   color: rgba(0, 217, 255, 0.7);
   text-transform: uppercase;
@@ -219,7 +219,7 @@
   font-weight: 500;
 }
 
-.port-status {
+.station-status {
   font-size: 0.9rem;
   line-height: 1;
   flex-shrink: 0;
@@ -242,7 +242,7 @@
 @media (prefers-reduced-motion: reduce) {
   .planet-port-pair,
   .planet-section,
-  .port-section {
+  .station-section {
     transition: none;
   }
 
