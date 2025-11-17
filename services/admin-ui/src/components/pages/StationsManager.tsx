@@ -8,7 +8,7 @@ interface Station {
   name: string;
   sector_id: string;
   sector_name?: string;
-  port_class: string;
+  station_type: string;
   trade_volume: number;
   max_capacity: number;
   security_level: number;
@@ -38,11 +38,11 @@ const StationsManager: React.FC = () => {
   const fetchPorts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/v1/admin/ports');
-      setPorts(response.data.ports || []);
+      const response = await api.get('/api/v1/admin/stations');
+      setPorts(response.data.stations || []);
       setError(null);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to fetch ports');
+      setError(err.response?.data?.detail || 'Failed to fetch stations');
     } finally {
       setLoading(false);
     }
@@ -108,7 +108,7 @@ const StationsManager: React.FC = () => {
                          port.sector_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          port.owner_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesFilter = filterClass === 'all' || port.port_class.toLowerCase().includes(filterClass.toLowerCase());
+    const matchesFilter = filterClass === 'all' || port.station_type.toLowerCase().includes(filterClass.toLowerCase());
     
     return matchesSearch && matchesFilter;
   });
@@ -205,8 +205,8 @@ const StationsManager: React.FC = () => {
                 </td>
                 <td>{port.sector_name || port.sector_id}</td>
                 <td>
-                  <span className={`port-class ${port.port_class.toLowerCase().replace(' ', '-')}`}>
-                    {port.port_class}
+                  <span className={`port-class ${port.station_type.toLowerCase().replace(' ', '-')}`}>
+                    {port.station_type}
                   </span>
                 </td>
                 <td>
@@ -312,7 +312,7 @@ interface PortModalProps {
 const PortModal: React.FC<PortModalProps> = ({ port, mode, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     name: port.name,
-    port_class: port.port_class,
+    station_type: port.station_type,
     trade_volume: port.trade_volume,
     max_capacity: port.max_capacity,
     security_level: port.security_level,

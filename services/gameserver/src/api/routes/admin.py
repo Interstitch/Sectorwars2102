@@ -1155,6 +1155,46 @@ async def get_all_clusters(
     
     return {"clusters": cluster_list}
 
+@router.get("/stations", response_model=dict)
+async def get_all_stations(
+    limit: int = 100,
+    offset: int = 0,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get all stations with pagination"""
+    try:
+        query = db.query(Station)
+        total = query.count()
+        stations = query.offset(offset).limit(limit).all()
+
+        stations_list = []
+        for station in stations:
+            # Get sector info
+            sector = db.query(Sector).filter(Sector.sector_id == station.sector_id).first()
+
+            stations_list.append({
+                "id": str(station.id),
+                "name": station.name,
+                "sector_id": str(station.sector_id),
+                "sector_name": sector.name if sector else "Unknown",
+                "station_type": station.station_type or "standard",
+                "trade_volume": 0,  # TODO: Calculate from transactions
+                "max_capacity": 10000,  # TODO: Add to Station model
+                "security_level": sector.hazard_level if sector else 5,
+                "docking_fee": station.docking_fee if hasattr(station, 'docking_fee') else 100,
+                "owner_id": None,  # TODO: Add station ownership
+                "owner_name": None,
+                "created_at": station.created_at.isoformat() if station.created_at else None,
+                "is_operational": True,  # TODO: Add to Station model
+                "commodities": []  # TODO: Get from station commodities
+            })
+
+        return {"stations": stations_list, "total": total}
+    except Exception as e:
+        logger.error(f"Error fetching stations: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch stations: {str(e)}")
+
 @router.get("/sectors", response_model=dict)
 async def get_all_sectors(
     region_id: Optional[str] = None,
