@@ -373,7 +373,7 @@ function MainApp() {
                     <line x1="500" y1="400" x2="300" y2="500" stroke="#c961de" strokeWidth="2" className="warp-line" />
                     <line x1="300" y1="500" x2="150" y2="400" stroke="#c961de" strokeWidth="2" className="warp-line" />
                     <line x1="150" y1="400" x2="100" y2="200" stroke="#00d9ff" strokeWidth="2" className="warp-line" />
-                    <line x1="100" y1="200" x2="300" y1="100" stroke="#00d9ff" strokeWidth="2" className="warp-line" />
+                    <line x1="100" y1="200" x2="300" y2="100" stroke="#00d9ff" strokeWidth="2" className="warp-line" />
                     <line x1="300" y1="300" x2="300" y2="100" stroke="#a855f7" strokeWidth="1.5" className="warp-line" />
                     <line x1="300" y1="300" x2="450" y2="200" stroke="#a855f7" strokeWidth="1.5" className="warp-line" />
                     <line x1="300" y1="300" x2="500" y2="400" stroke="#a855f7" strokeWidth="1.5" className="warp-line" />
