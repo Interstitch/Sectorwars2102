@@ -58,9 +58,9 @@ const TranslatedDashboard: React.FC = () => {
   const refreshDashboard = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const response = await axios.get('/api/v1/admin/comprehensive/dashboard', {
+      const response = await axios.get('/api/v1/admin/analytics/dashboard', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -107,7 +107,10 @@ const TranslatedDashboard: React.FC = () => {
     }
   };
 
-  const formatNumber = (num: number): string => {
+  const formatNumber = (num: number | undefined | null): string => {
+    if (num === null || num === undefined || isNaN(num)) {
+      return '0';
+    }
     return num.toLocaleString();
   };
 
