@@ -24,6 +24,7 @@ from src.services.ai_dialogue_service import (
     GuardMood
 )
 from src.services.ai_provider_service import get_ai_provider_service, ProviderType
+from src.utils.guard_personalities import get_guard_for_session
 
 logger = logging.getLogger(__name__)
 
@@ -226,16 +227,27 @@ class FirstLoginService:
         )
         self.db.add(session)
         self.db.flush()  # Get the ID without committing
+
+        # Generate guard personality for this session (deterministic based on session ID)
+        guard = get_guard_for_session(str(session.id))
+        session.guard_name = guard.name
+        session.guard_title = guard.title
+        session.guard_trait = guard.trait
+        session.guard_base_suspicion = guard.base_suspicion
+        session.guard_description = guard.description
+
+        logger.info(f"[FirstLogin:Session] Generated guard personality: {guard.title} {guard.name} ({guard.trait})")
         
         # Generate ship options for this session
         ship_options = self._generate_ship_options(session.id)
         self.db.add(ship_options)
-        
-        # Add initial dialogue exchange
+
+        # Add initial dialogue exchange (will be updated with AI-generated or fallback prompt)
+        # Temporarily use a placeholder; will be replaced immediately
         initial_exchange = DialogueExchange(
             session_id=session.id,
             sequence_number=1,
-            npc_prompt=INITIAL_GUARD_PROMPT,
+            npc_prompt="[Generating initial scene...]",  # Placeholder
             player_response="",  # Player hasn't responded yet
             topic="introduction"
         )
@@ -249,7 +261,72 @@ class FirstLoginService:
         self.db.commit()
         self.db.refresh(session)
         return session
-    
+
+    async def generate_initial_prompt(self, session_id: uuid.UUID) -> str:
+        """
+        Generate AI-enhanced or fallback initial prompt for a session.
+        This is called after session creation to populate the initial dialogue.
+
+        Returns the generated prompt text.
+        """
+        session = self.db.query(FirstLoginSession).filter_by(id=session_id).first()
+        if not session:
+            raise ValueError(f"Invalid session ID: {session_id}")
+
+        # Get ship options for this session
+        ship_options = self.db.query(ShipPresentationOptions).filter_by(session_id=session_id).first()
+        if not ship_options:
+            raise ValueError(f"No ship options found for session {session_id}")
+
+        initial_prompt = None
+        ai_used = False
+
+        # Try AI generation first (if AI provider available)
+        if self.ai_provider_service:
+            try:
+                logger.info(f"[FirstLogin:Scene] Attempting AI generation for session {session_id}")
+                scene_text, provider_used = await self.ai_provider_service.generate_initial_scene(
+                    guard_name=session.guard_name,
+                    guard_title=session.guard_title,
+                    guard_trait=session.guard_trait,
+                    guard_description=session.guard_description,
+                    guard_base_suspicion=session.guard_base_suspicion,
+                    available_ships=ship_options.available_ships
+                )
+
+                if scene_text and provider_used != ProviderType.MANUAL:
+                    initial_prompt = scene_text
+                    ai_used = True
+                    session.ai_service_used = True
+                    session.fallback_to_rules = False
+                    logger.info(f"[FirstLogin:Scene] AI generation successful with {provider_used.value}")
+                else:
+                    logger.info(f"[FirstLogin:Scene] AI generation returned None, using fallback")
+            except Exception as e:
+                logger.warning(f"[FirstLogin:Scene] AI generation failed: {e}, using fallback")
+
+        # Fallback to template if AI failed or unavailable
+        if not initial_prompt:
+            initial_prompt = INITIAL_GUARD_PROMPT
+            session.fallback_to_rules = True
+            logger.info(f"[FirstLogin:Scene] Using template fallback")
+
+        # Update the initial exchange with the generated prompt
+        initial_exchange = self.db.query(DialogueExchange).filter_by(
+            session_id=session_id,
+            sequence_number=1
+        ).first()
+
+        if initial_exchange:
+            initial_exchange.npc_prompt = initial_prompt
+            self.db.commit()
+            logger.info(f"[FirstLogin:Scene] Initial prompt set (AI={ai_used})")
+        else:
+            logger.error(f"[FirstLogin:Scene] Could not find initial exchange for session {session_id}")
+            raise ValueError("Initial exchange not found")
+
+        return initial_prompt
+
     def _generate_ship_options(self, session_id: uuid.UUID) -> ShipPresentationOptions:
         """Generate the ship options to present to the player"""
         # Load all ship configs
@@ -484,7 +561,13 @@ class FirstLoginService:
             negotiation_skill_level=avg_negotiation,
             player_name=session.extracted_player_name,
             security_protocol_level="standard",
-            time_of_day="day_shift"
+            time_of_day="day_shift",
+            # Guard personality for AI-enhanced generation
+            guard_name=session.guard_name,
+            guard_title=session.guard_title,
+            guard_trait=session.guard_trait,
+            guard_description=session.guard_description,
+            guard_base_suspicion=session.guard_base_suspicion
         )
     
     async def generate_guard_question(self, session_id: uuid.UUID) -> Dict[str, Any]:
@@ -858,6 +941,8 @@ class FirstLoginService:
             logger.error(f"✗ All AI providers failed for analysis in exchange {exchange_id}: {e}")
             ai_used = False
             provider_used = ProviderType.MANUAL
+            # Store error info for frontend debugging
+            self.last_ai_error = str(e)
         
         # Fallback to rule-based analysis if AI failed or unavailable
         if not ai_used:
@@ -901,7 +986,8 @@ class FirstLoginService:
             "consistency": exchange.consistency,
             "overall_believability": believability,  # ← ALWAYS present now
             "ai_used": ai_used,
-            "provider": provider_used.value if provider_used else "unknown"  # ← Provider tracking
+            "provider": provider_used.value if provider_used else "unknown",  # ← Provider tracking
+            "ai_error": getattr(self, 'last_ai_error', None) if not ai_used else None  # ← Error info for debugging
         }
 
         # Add AI-specific analysis if available

@@ -134,30 +134,54 @@ class OpenAIProvider(AIProvider):
             raise
     
     async def generate_question(self, context: DialogueContext, analysis: ResponseAnalysis) -> GuardResponse:
-        """Generate guard question using OpenAI"""
+        """Generate guard question using OpenAI with enhanced prompts"""
         if not self.is_available():
             raise ValueError("OpenAI provider not available")
-        
-        prompt = self._build_question_prompt(context, analysis)
-        
-        try:
-            client = openai.OpenAI(api_key=self.api_key)
-            completion = client.chat.completions.create(
-                model=self.config.openai_model,
-                messages=[
-                    {"role": "system", "content": "You are a suspicious security guard in a 2102 space station shipyard."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=self.config.openai_temperature,
-                max_tokens=200
-            )
-            
-            question_text = completion.choices[0].message.content
-            return self._parse_question_response(question_text, context, analysis)
-            
-        except Exception as e:
-            logger.error(f"OpenAI question generation failed: {e}")
-            raise
+
+        # Use enhanced prompt system if guard personality available
+        if hasattr(context, 'guard_name') and context.guard_name:
+            prompts = self._build_enhanced_question_prompt(context, analysis)
+
+            try:
+                client = openai.OpenAI(api_key=self.api_key)
+                completion = client.chat.completions.create(
+                    model=self.config.openai_model,
+                    messages=[
+                        {"role": "system", "content": prompts["system"]},
+                        {"role": "user", "content": prompts["user"]}
+                    ],
+                    temperature=self.config.openai_temperature,
+                    max_tokens=300  # More tokens for dynamic ending detection
+                )
+
+                response_text = completion.choices[0].message.content
+                return self._parse_enhanced_question_response(response_text, context, analysis)
+
+            except Exception as e:
+                logger.error(f"OpenAI enhanced question generation failed: {e}")
+                raise
+        else:
+            # Fallback to basic prompt (legacy support)
+            prompt = self._build_question_prompt(context, analysis)
+
+            try:
+                client = openai.OpenAI(api_key=self.api_key)
+                completion = client.chat.completions.create(
+                    model=self.config.openai_model,
+                    messages=[
+                        {"role": "system", "content": "You are a suspicious security guard in a 2102 space station shipyard."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=self.config.openai_temperature,
+                    max_tokens=200
+                )
+
+                question_text = completion.choices[0].message.content
+                return self._parse_question_response(question_text, context, analysis)
+
+            except Exception as e:
+                logger.error(f"OpenAI question generation failed: {e}")
+                raise
     
     def _build_analysis_prompt(self, response: str, context: DialogueContext) -> str:
         """Build prompt for response analysis"""
@@ -185,8 +209,73 @@ Format as JSON with keys: persuasiveness, confidence, consistency, negotiation_s
 believability, claims, inconsistencies, guard_mood
 """
     
+    def _build_enhanced_question_prompt(self, context: DialogueContext, analysis: ResponseAnalysis) -> Dict[str, str]:
+        """Build enhanced prompt with guard personality and conversation history"""
+        from src.services.ai_prompts import FirstLoginAIPrompts
+
+        # Calculate current scores
+        current_persuasiveness = analysis.persuasiveness_score
+        current_confidence = analysis.confidence_level
+        current_consistency = analysis.consistency_score
+        current_believability = analysis.overall_believability
+
+        # Get conversation history count
+        question_count = len([ex for ex in context.dialogue_history if ex.get('player')])
+
+        # Convert dialogue history to simple dict format
+        history_list = [
+            {"npc": ex.get('npc', ''), "player": ex.get('player', '')}
+            for ex in context.dialogue_history
+        ]
+
+        return FirstLoginAIPrompts.build_question_generation_prompt(
+            guard_name=context.guard_name,
+            guard_title=context.guard_title,
+            guard_trait=context.guard_trait,
+            guard_description=context.guard_description,
+            guard_base_suspicion=context.guard_base_suspicion,
+            claimed_ship=context.claimed_ship.value,
+            ship_tier=self._get_ship_tier(context.claimed_ship),
+            conversation_history=history_list,
+            current_believability=current_believability,
+            current_persuasiveness=current_persuasiveness,
+            current_confidence=current_confidence,
+            current_consistency=current_consistency,
+            detected_contradictions=analysis.detected_inconsistencies,
+            question_count=question_count
+        )
+
+    def _parse_enhanced_question_response(self, response_text: str, context: DialogueContext, analysis: ResponseAnalysis) -> GuardResponse:
+        """Parse enhanced AI response - detects DECISION: for dynamic ending"""
+        response_text = response_text.strip()
+
+        # Check if AI wants to end the conversation
+        if response_text.upper().startswith("DECISION:"):
+            # Extract decision and reasoning
+            decision_text = response_text[9:].strip()  # Remove "DECISION:"
+
+            # Determine if approve or deny based on keywords
+            is_approval = any(word in decision_text.upper() for word in ["APPROVE", "CONVINCED", "BELIEVE", "LET THEM", "GRANT"])
+
+            # Create final guard response
+            return GuardResponse(
+                dialogue_text=decision_text,
+                mood=GuardMood.CONVINCED if is_approval else GuardMood.VERY_SUSPICIOUS,
+                is_final_question=True,  # Signal that conversation should end
+                suggested_next_topic=None
+            )
+        else:
+            # Normal question - continue conversation
+            mood = self._determine_mood(analysis.overall_believability)
+            return GuardResponse(
+                dialogue_text=response_text,
+                mood=mood,
+                is_final_question=False,
+                suggested_next_topic="ai_dynamic"
+            )
+
     def _build_question_prompt(self, context: DialogueContext, analysis: ResponseAnalysis) -> str:
-        """Build prompt for question generation"""
+        """Build prompt for question generation (legacy fallback)"""
         ship_value = self._get_ship_tier(context.claimed_ship)
         return f"""
 You are a security guard questioning someone claiming to own a {context.claimed_ship.value}.
@@ -206,6 +295,17 @@ Generate a follow-up question that:
 
 Keep response under 150 characters. Be direct and authoritative.
 """
+
+    def _determine_mood(self, believability: float) -> GuardMood:
+        """Determine guard mood based on believability score"""
+        if believability < 0.3:
+            return GuardMood.VERY_SUSPICIOUS
+        elif believability < 0.6:
+            return GuardMood.SUSPICIOUS
+        elif believability > 0.8:
+            return GuardMood.CONVINCED
+        else:
+            return GuardMood.NEUTRAL
     
     def _parse_analysis_response(self, analysis_text: str, context: DialogueContext) -> ResponseAnalysis:
         """Parse OpenAI analysis response into structured data"""
@@ -342,13 +442,38 @@ class AnthropicProvider(AIProvider):
             raise
     
     async def generate_question(self, context: DialogueContext, analysis: ResponseAnalysis) -> GuardResponse:
-        """Generate guard question using Anthropic Claude"""
+        """Generate guard question using Anthropic Claude with enhanced prompts"""
         if not self.is_available():
             raise ValueError("Anthropic provider not available")
-        
-        prompt = self._build_question_prompt(context, analysis)
-        
-        try:
+
+        # Use same enhanced/basic prompt logic as OpenAI
+        if hasattr(context, 'guard_name') and context.guard_name:
+            # Use OpenAI provider's helper methods (shared logic)
+            openai_helper = OpenAIProvider(self.config)
+            prompts = openai_helper._build_enhanced_question_prompt(context, analysis)
+
+            try:
+                message = self.client.messages.create(
+                    model=self.config.anthropic_model,
+                    max_tokens=300,
+                    temperature=self.config.anthropic_temperature,
+                    system=prompts["system"],
+                    messages=[
+                        {"role": "user", "content": prompts["user"]}
+                    ]
+                )
+
+                response_text = message.content[0].text
+                return openai_helper._parse_enhanced_question_response(response_text, context, analysis)
+
+            except Exception as e:
+                logger.error(f"Anthropic enhanced question generation failed: {e}")
+                raise
+        else:
+            # Legacy fallback
+            prompt = self._build_question_prompt(context, analysis)
+
+            try:
             message = self.client.messages.create(
                 model=self.config.anthropic_model,
                 max_tokens=200,
@@ -472,6 +597,161 @@ class AIProviderService:
         logger.error(f"All providers failed for question generation. Last error: {last_error}")
         raise RuntimeError(f"All AI providers failed: {last_error}")
     
+    async def generate_initial_scene(
+        self,
+        guard_name: str,
+        guard_title: str,
+        guard_trait: str,
+        guard_description: str,
+        guard_base_suspicion: float,
+        available_ships: List[str]
+    ) -> Tuple[str, ProviderType]:
+        """
+        Generate AI-powered initial scene with guard personality.
+        Falls back through provider chain.
+        Returns: (scene_text, provider_used)
+        """
+        from src.services.ai_prompts import FirstLoginAIPrompts
+
+        prompts = FirstLoginAIPrompts.build_initial_scene_prompt(
+            guard_name, guard_title, guard_trait, guard_description,
+            guard_base_suspicion, available_ships
+        )
+
+        last_error = None
+
+        for provider in self.providers:
+            if not provider.is_available():
+                continue
+
+            # Skip manual provider for scene generation (no template exists)
+            if provider.provider_type == ProviderType.MANUAL:
+                continue
+
+            try:
+                logger.debug(f"Attempting scene generation with {provider.provider_type.value}")
+
+                # Call the AI directly with our custom prompts
+                if provider.provider_type == ProviderType.OPENAI:
+                    scene_text = await self._call_openai_custom(prompts, max_tokens=300)
+                elif provider.provider_type == ProviderType.ANTHROPIC:
+                    scene_text = await self._call_anthropic_custom(prompts, max_tokens=300)
+                else:
+                    continue
+
+                logger.info(f"Scene generation successful with {provider.provider_type.value}")
+                return scene_text.strip(), provider.provider_type
+
+            except Exception as e:
+                logger.warning(f"Scene generation failed with {provider.provider_type.value}: {e}")
+                last_error = e
+                if provider.provider_type != ProviderType.MANUAL:
+                    await asyncio.sleep(self.config.retry_delay)
+
+        # All AI providers failed, return None to trigger manual fallback
+        logger.error(f"All AI providers failed for scene generation: {last_error}")
+        return None, ProviderType.MANUAL
+
+    async def generate_outcome_text(
+        self,
+        guard_name: str,
+        guard_title: str,
+        guard_trait: str,
+        outcome_type: str,
+        claimed_ship: str,
+        awarded_ship: str,
+        final_score: float,
+        negotiation_skill: str,
+        conversation_history: List[Dict[str, str]]
+    ) -> Tuple[str, ProviderType]:
+        """
+        Generate AI-powered outcome text with guard personality.
+        Falls back through provider chain.
+        Returns: (outcome_text, provider_used)
+        """
+        from src.services.ai_prompts import FirstLoginAIPrompts
+
+        prompts = FirstLoginAIPrompts.build_outcome_generation_prompt(
+            guard_name, guard_title, guard_trait, outcome_type,
+            claimed_ship, awarded_ship, final_score, negotiation_skill,
+            conversation_history
+        )
+
+        last_error = None
+
+        for provider in self.providers:
+            if not provider.is_available():
+                continue
+
+            # Skip manual provider (no template)
+            if provider.provider_type == ProviderType.MANUAL:
+                continue
+
+            try:
+                logger.debug(f"Attempting outcome generation with {provider.provider_type.value}")
+
+                if provider.provider_type == ProviderType.OPENAI:
+                    outcome_text = await self._call_openai_custom(prompts, max_tokens=200)
+                elif provider.provider_type == ProviderType.ANTHROPIC:
+                    outcome_text = await self._call_anthropic_custom(prompts, max_tokens=200)
+                else:
+                    continue
+
+                logger.info(f"Outcome generation successful with {provider.provider_type.value}")
+                return outcome_text.strip(), provider.provider_type
+
+            except Exception as e:
+                logger.warning(f"Outcome generation failed with {provider.provider_type.value}: {e}")
+                last_error = e
+                if provider.provider_type != ProviderType.MANUAL:
+                    await asyncio.sleep(self.config.retry_delay)
+
+        # All AI providers failed
+        logger.error(f"All AI providers failed for outcome generation: {last_error}")
+        return None, ProviderType.MANUAL
+
+    async def _call_openai_custom(self, prompts: Dict[str, str], max_tokens: int = 300) -> str:
+        """Helper to call OpenAI with custom prompts"""
+        if not OPENAI_AVAILABLE:
+            raise ValueError("OpenAI not available")
+
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OpenAI API key not configured")
+
+        client = openai.OpenAI(api_key=api_key)
+        completion = client.chat.completions.create(
+            model=self.config.openai_model,
+            messages=[
+                {"role": "system", "content": prompts["system"]},
+                {"role": "user", "content": prompts["user"]}
+            ],
+            temperature=self.config.openai_temperature,
+            max_tokens=max_tokens
+        )
+        return completion.choices[0].message.content
+
+    async def _call_anthropic_custom(self, prompts: Dict[str, str], max_tokens: int = 300) -> str:
+        """Helper to call Anthropic with custom prompts"""
+        if not ANTHROPIC_AVAILABLE:
+            raise ValueError("Anthropic not available")
+
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("Anthropic API key not configured")
+
+        client = anthropic.Anthropic(api_key=api_key)
+        message = client.messages.create(
+            model=self.config.anthropic_model,
+            max_tokens=max_tokens,
+            temperature=self.config.anthropic_temperature,
+            system=prompts["system"],
+            messages=[
+                {"role": "user", "content": prompts["user"]}
+            ]
+        )
+        return message.content[0].text
+
     def get_available_providers(self) -> List[ProviderType]:
         """Get list of currently available providers"""
         return [p.provider_type for p in self.providers if p.is_available()]

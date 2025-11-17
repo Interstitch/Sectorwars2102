@@ -107,7 +107,14 @@ async def start_first_login_session(
     
     # Get or create a session
     session = service.get_or_create_session(player.id)
-    
+
+    # Generate AI-enhanced initial prompt (or use fallback template)
+    # This populates the initial dialogue exchange with guard personality
+    await service.generate_initial_prompt(session.id)
+
+    # Refresh session to get updated exchange
+    db.refresh(session)
+
     # Get the initial dialogue exchange
     from src.models.first_login import DialogueExchange
     exchange = db.query(DialogueExchange).filter_by(

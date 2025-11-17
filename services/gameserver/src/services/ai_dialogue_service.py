@@ -72,6 +72,13 @@ class DialogueContext:
     security_protocol_level: str = "standard"
     time_of_day: str = "day_shift"
 
+    # Guard personality (for AI-enhanced generation)
+    guard_name: Optional[str] = None
+    guard_title: Optional[str] = None
+    guard_trait: Optional[str] = None
+    guard_description: Optional[str] = None
+    guard_base_suspicion: Optional[float] = None
+
 
 @dataclass 
 class ResponseAnalysis:

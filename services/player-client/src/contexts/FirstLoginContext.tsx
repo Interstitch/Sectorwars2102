@@ -273,6 +273,7 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
       const analysis = result.data.analysis;
       const provider = analysis?.provider || 'unknown';
       const believability = analysis?.overall_believability ?? analysis?.believability ?? 0;
+      const aiError = analysis?.ai_error;
 
       console.log(
         `[FirstLogin:Q${dialogueHistory.length}] Provider:${provider} | ` +
@@ -282,6 +283,11 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
         `B=${believability.toFixed(2)} | ` +
         `Status: ${result.data.is_final ? 'FINAL' : 'Continue'}`
       );
+
+      // Log AI errors to help troubleshooting
+      if (aiError && provider === 'manual') {
+        console.warn(`[FirstLogin:AI-Error] Fell back to manual scoring. Reason: ${aiError}`);
+      }
 
       // Update dialogue history
       setDialogueHistory(prev => [

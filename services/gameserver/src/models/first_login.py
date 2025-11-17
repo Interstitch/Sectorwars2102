@@ -83,7 +83,14 @@ class FirstLoginSession(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     ai_service_used = Column(Boolean, nullable=False, default=False)
     fallback_to_rules = Column(Boolean, nullable=False, default=False)
-    
+
+    # Guard Personality (generated per session for consistency)
+    guard_name = Column(String, nullable=True)
+    guard_title = Column(String, nullable=True)
+    guard_trait = Column(String, nullable=True)
+    guard_base_suspicion = Column(Float, nullable=True)
+    guard_description = Column(String, nullable=True)
+
     # Player Choices
     ship_claimed = Column(Enum(ShipChoice, name="ship_choice"), nullable=True)
     extracted_player_name = Column(String, nullable=True)
