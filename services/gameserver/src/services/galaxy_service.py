@@ -971,27 +971,27 @@ class GalaxyGenerator:
 
     def _update_galaxy_statistics(self, galaxy: Galaxy) -> None:
         """Update the galaxy statistics based on generated content."""
-        # Count ports
-        port_count = self.db.query(Station).count()
-        
+        # Count stations (previously called ports)
+        station_count = self.db.query(Station).count()
+
         # Count planets
         planet_count = self.db.query(Planet).count()
-        
+
         # Count warp tunnels
         warp_tunnel_count = self.db.query(WarpTunnel).count()
-        
+
         # Update statistics
         galaxy.statistics.update({
             "total_sectors": self.sectors_generated,
             "discovered_sectors": self.db.query(Sector).filter(Sector.is_discovered == True).count(),
-            "port_count": port_count,
+            "station_count": station_count,  # Changed from port_count to match frontend
             "planet_count": planet_count,
             "warp_tunnel_count": warp_tunnel_count
         })
-        
+
         # Update density information
         galaxy.density.update({
-            "port_density": round(port_count / self.sectors_generated * 100, 1),
+            "station_density": round(station_count / self.sectors_generated * 100, 1),  # Changed from port_density
             "planet_density": round(planet_count / self.sectors_generated * 100, 1)
         })
     
