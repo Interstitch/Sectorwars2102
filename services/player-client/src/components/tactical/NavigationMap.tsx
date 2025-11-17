@@ -207,27 +207,31 @@ const NavigationMap: React.FC<NavigationMapProps> = ({
         <g className="connections">
           {nodes.map(node => {
             const connections = node.sector.connected_sectors || [];
-            return connections.map(connectedId => {
-              const connectedNode = nodes.find(n => n.id === connectedId);
-              if (!connectedNode) return null;
+            return (
+              <React.Fragment key={`connections-${node.id}`}>
+                {connections.map(connectedId => {
+                  const connectedNode = nodes.find(n => n.id === connectedId);
+                  if (!connectedNode) return null;
 
-              const isCurrentConnection = node.id === currentSectorId || connectedId === currentSectorId;
-              const isAvailableConnection = availableMoves.includes(node.id) && availableMoves.includes(connectedId);
+                  const isCurrentConnection = node.id === currentSectorId || connectedId === currentSectorId;
+                  const isAvailableConnection = availableMoves.includes(node.id) && availableMoves.includes(connectedId);
 
-              return (
-                <line
-                  key={`${node.id}-${connectedId}`}
-                  x1={node.x}
-                  y1={node.y}
-                  x2={connectedNode.x}
-                  y2={connectedNode.y}
-                  className={`connection-line ${isCurrentConnection ? 'current' : ''} ${isAvailableConnection ? 'available' : ''}`}
-                  stroke={isCurrentConnection ? '#00ff41' : isAvailableConnection ? '#00d9ff' : '#444'}
-                  strokeWidth={isCurrentConnection ? 2 : 1}
-                  opacity={isCurrentConnection ? 0.8 : isAvailableConnection ? 0.5 : 0.2}
-                />
-              );
-            });
+                  return (
+                    <line
+                      key={`${node.id}-${connectedId}`}
+                      x1={node.x}
+                      y1={node.y}
+                      x2={connectedNode.x}
+                      y2={connectedNode.y}
+                      className={`connection-line ${isCurrentConnection ? 'current' : ''} ${isAvailableConnection ? 'available' : ''}`}
+                      stroke={isCurrentConnection ? '#00ff41' : isAvailableConnection ? '#00d9ff' : '#444'}
+                      strokeWidth={isCurrentConnection ? 2 : 1}
+                      opacity={isCurrentConnection ? 0.8 : isAvailableConnection ? 0.5 : 0.2}
+                    />
+                  );
+                })}
+              </React.Fragment>
+            );
           })}
         </g>
 
