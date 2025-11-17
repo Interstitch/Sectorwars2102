@@ -342,8 +342,8 @@ Purpose: Galaxy-wide metadata, statistics, and configuration
 Primary Key: id (UUID)
 Key Columns:
   - name (String(100))
-  - statistics (JSONB) - total_sectors, discovered_sectors, port_count, planet_count, player_count, etc.
-  - density (JSONB) - port_density, planet_density, one_way_warp_percentage, resource_distribution
+  - statistics (JSONB) - total_sectors, discovered_sectors, station_count, planet_count, player_count, etc.
+  - density (JSONB) - station_density, planet_density, one_way_warp_percentage, resource_distribution
   - faction_influence (JSONB) - faction_name → influence_percentage mapping
   - state (JSONB) - age_in_days, resource_depletion, economic_health, exploration_percentage
   - events (JSONB) - active_events, scheduled_events

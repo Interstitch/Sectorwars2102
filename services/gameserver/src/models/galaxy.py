@@ -25,17 +25,17 @@ class Galaxy(Base):
     statistics = Column(JSONB, nullable=False, default={
         "total_sectors": 0,
         "discovered_sectors": 0,
-        "port_count": 0,
+        "station_count": 0,
         "planet_count": 0,
         "player_count": 0,
         "team_count": 0,
         "warp_tunnel_count": 0,
         "genesis_count": 0
     })
-    
-    # Density - aligned with data definition  
+
+    # Density - aligned with data definition
     density = Column(JSONB, nullable=False, default={
-        "port_density": 10,           # Percentage of sectors with ports (5-15% per spec)
+        "station_density": 10,           # Percentage of sectors with stations (5-15% per spec)
         "planet_density": 3,          # Percentage of sectors with planets (2-5% per spec)
         "one_way_warp_percentage": 5, # Percentage of one-way warps (2-8% per spec)
         "resource_distribution": {    # Overall resource distribution

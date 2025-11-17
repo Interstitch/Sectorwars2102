@@ -18,7 +18,7 @@ The Galaxy follows a clear hierarchical structure:
 export interface GalaxyStatistics {
   total_sectors: number;         // Total sectors in galaxy
   discovered_sectors: number;    // Sectors that have been explored
-  port_count: number;            // Total space ports
+  station_count: number;         // Total space stations
   planet_count: number;          // Total planets
   player_count: number;          // Total active players
   team_count: number;            // Total active teams
@@ -27,7 +27,7 @@ export interface GalaxyStatistics {
 }
 
 export interface GalaxyDensity {
-  port_density: number;          // Percentage of sectors with ports
+  station_density: number;       // Percentage of sectors with stations
   planet_density: number;        // Percentage of sectors with planets
   one_way_warp_percentage: number; // Percentage of one-way warps
   resource_distribution: {       // Overall resource distribution
@@ -138,11 +138,11 @@ Each element in the galaxy exists within a clear hierarchical relationship:
 - Each **Zone** contains multiple **Clusters**
 - Each **Cluster** contains multiple **Sectors**
 - **Sectors** connect to other sectors via **Warps** and **Warp Tunnels**
-- **Sectors** may contain **Planets** and **Ports**
+- **Sectors** may contain **Planets** and **Stations**
 
 ## Galaxy Density Guidelines
 
-1. **Ports**: 5-15% of sectors should have a port
+1. **Stations**: 5-15% of sectors should have a station
 2. **Planets**: 2-5% of sectors should have a planet
 3. **One-Way Warps**: 2-8% of warps should be one-directional
 4. **Resources**: Every sector should have at least one harvestable resource
@@ -156,7 +156,7 @@ Each element in the galaxy exists within a clear hierarchical relationship:
 ## Galaxy Generation
 
 Galaxy generation follows these principles:
-1. **Balance**: Ensure balanced distribution of resources, ports, and planets
+1. **Balance**: Ensure balanced distribution of resources, stations, and planets
 2. **Connectivity**: Guarantee all sectors are reachable
 3. **Progression**: Difficulty increases from Federation to Frontier
 4. **Exploration**: Support for ongoing galaxy expansion through discovery
