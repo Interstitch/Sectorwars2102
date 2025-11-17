@@ -1178,16 +1178,16 @@ async def get_all_stations(
                 "name": station.name,
                 "sector_id": str(station.sector_id),
                 "sector_name": sector.name if sector else "Unknown",
-                "station_type": station.station_type or "standard",
-                "trade_volume": 0,  # TODO: Calculate from transactions
+                "station_type": station.type.value if station.type else "TRADING",
+                "trade_volume": station.trade_volume or 0,
                 "max_capacity": 10000,  # TODO: Add to Station model
                 "security_level": sector.hazard_level if sector else 5,
-                "docking_fee": station.docking_fee if hasattr(station, 'docking_fee') else 100,
-                "owner_id": None,  # TODO: Add station ownership
-                "owner_name": None,
+                "docking_fee": 100,  # Default docking fee
+                "owner_id": str(station.owner_id) if station.owner_id else None,
+                "owner_name": None,  # TODO: Look up owner name
                 "created_at": station.created_at.isoformat() if station.created_at else None,
-                "is_operational": True,  # TODO: Add to Station model
-                "commodities": []  # TODO: Get from station commodities
+                "is_operational": station.status.value == "OPERATIONAL" if station.status else True,
+                "commodities": list(station.commodities.keys()) if station.commodities else []
             })
 
         return {"stations": stations_list, "total": total}

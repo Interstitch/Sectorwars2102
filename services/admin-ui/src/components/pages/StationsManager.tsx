@@ -53,29 +53,29 @@ const StationsManager: React.FC = () => {
   }, []);
 
   // Handler functions
-  const handleViewPort = (port: Port) => {
+  const handleViewPort = (port: Station) => {
     setSelectedPort(port);
     setModalMode('view');
     setShowPortModal(true);
   };
 
-  const handleEditPort = (port: Port) => {
+  const handleEditPort = (port: Station) => {
     setSelectedPort(port);
     setModalMode('edit');
     setShowPortModal(true);
   };
 
-  const handleDeletePort = async (port: Port) => {
-    if (!confirm(`Are you sure you want to delete port "${port.name}"? This action cannot be undone.`)) {
+  const handleDeletePort = async (port: Station) => {
+    if (!confirm(`Are you sure you want to delete station "${port.name}"? This action cannot be undone.`)) {
       return;
     }
 
     try {
-      await api.delete(`/api/v1/admin/ports/${port.id}`);
+      await api.delete(`/api/v1/admin/stations/${port.id}`);
       setPorts(ports.filter(p => p.id !== port.id));
-      alert('Port deleted successfully');
+      alert('Station deleted successfully');
     } catch (err: any) {
-      alert(`Failed to delete port: ${err.response?.data?.detail || err.message}`);
+      alert(`Failed to delete station: ${err.response?.data?.detail || err.message}`);
     }
   };
 
@@ -91,12 +91,12 @@ const StationsManager: React.FC = () => {
     setSelectedPort(null);
   };
 
-  const handlePortUpdated = (updatedPort: Port) => {
+  const handlePortUpdated = (updatedPort: Station) => {
     setPorts(ports.map(p => p.id === updatedPort.id ? updatedPort : p));
     closeModal();
   };
 
-  const handlePortAdded = (newPort: Port) => {
+  const handlePortAdded = (newPort: Station) => {
     setPorts([...ports, newPort]);
     closeModal();
     fetchPorts(); // Refresh to get updated data
@@ -121,10 +121,10 @@ const StationsManager: React.FC = () => {
   if (loading) {
     return (
       <div className="page-container">
-        <PageHeader title="Ports Manager" subtitle="Comprehensive Port Administration" />
+        <PageHeader title="Stations Manager" subtitle="Comprehensive Station Administration" />
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p>Loading ports...</p>
+          <p>Loading stations...</p>
         </div>
       </div>
     );
@@ -132,7 +132,7 @@ const StationsManager: React.FC = () => {
 
   return (
     <div className="page-container">
-      <PageHeader title="Ports Manager" subtitle="Comprehensive Port Administration" />
+      <PageHeader title="Stations Manager" subtitle="Comprehensive Station Administration" />
       
       {error && (
         <div className="error-message">
@@ -141,10 +141,10 @@ const StationsManager: React.FC = () => {
         </div>
       )}
 
-      {/* Add New Port Button */}
+      {/* Add New Station Button */}
       <div className="page-actions">
         <button className="add-btn" onClick={handleAddPort}>
-          + Add New Port
+          + Add New Station
         </button>
       </div>
 
@@ -153,35 +153,34 @@ const StationsManager: React.FC = () => {
         <div className="search-section">
           <input
             type="text"
-            placeholder="Search ports, sectors, or owners..."
+            placeholder="Search stations, sectors, or owners..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
         </div>
-        
+
         <div className="filter-section">
           <select
             value={filterClass}
             onChange={(e) => setFilterClass(e.target.value)}
             className="filter-select"
           >
-            <option value="all">All Port Classes</option>
-            <option value="food">Food Ports</option>
-            <option value="tech">Tech Ports</option>
-            <option value="ore">Ore Ports</option>
-            <option value="fuel">Fuel Ports</option>
-            <option value="military">Military Ports</option>
-            <option value="civilian">Civilian Ports</option>
+            <option value="all">All Station Types</option>
+            <option value="trade">Trade Stations</option>
+            <option value="military">Military Stations</option>
+            <option value="research">Research Stations</option>
+            <option value="mining">Mining Stations</option>
+            <option value="refueling">Refueling Stations</option>
           </select>
         </div>
 
         <div className="results-info">
-          <span>{filteredPorts.length} of {ports.length} ports</span>
+          <span>{filteredPorts.length} of {ports.length} stations</span>
         </div>
       </div>
 
-      {/* Ports Table */}
+      {/* Stations Table */}
       <div className="crud-table-container">
         <table className="crud-table">
           <thead>
