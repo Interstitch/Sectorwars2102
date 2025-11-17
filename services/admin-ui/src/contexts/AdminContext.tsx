@@ -232,15 +232,28 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Load admin stats
   const loadAdminStats = async () => {
     if (!user || !user.is_admin) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      const response = await api.get<AdminStats>('/admin/stats', {
+      // Backend returns snake_case, we need to map to camelCase for TypeScript interface
+      const response = await api.get<any>('/admin/stats', {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
-      setAdminStats(response.data);
+
+      // Map snake_case API response to camelCase interface
+      const mappedStats: AdminStats = {
+        totalUsers: response.data.total_users || 0,
+        activePlayers: response.data.total_players || 0,
+        totalSectors: response.data.total_sectors || 0,
+        totalPlanets: response.data.total_planets || 0,
+        totalPorts: response.data.total_ports || 0,
+        totalShips: response.data.total_ships || 0,
+        playerSessions: response.data.active_sessions || 0
+      };
+
+      setAdminStats(mappedStats);
     } catch (error) {
       console.error('Error loading admin stats:', error);
       setError('Failed to load admin statistics');
