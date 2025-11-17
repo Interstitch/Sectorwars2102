@@ -166,8 +166,8 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
     
     setIsLoading(true);
     setError(null);
-    
-    try:
+
+    try {
       const response = await api.post('/api/v1/first-login/session');
       console.log('[FirstLogin:Session] Started | Ships:', (response.data as any).available_ships);
       setSession(response.data as FirstLoginSession);
