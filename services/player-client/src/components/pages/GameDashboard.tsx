@@ -333,9 +333,20 @@ const GameDashboard: React.FC = () => {
               {sectorPlayers.length > 0 ? (
                 <div className="contacts-compact-list">
                   {sectorPlayers.map((player: any) => (
-                    <div key={player.id} className="contact-list-item">
+                    <div key={player.user_id} className="contact-list-item">
                       <span className="status-indicator online"></span>
-                      <span className="contact-list-name">{player.username}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span
+                          className="contact-list-name"
+                          style={{ color: player.name_color || '#FFFFFF' }}
+                        >
+                          {player.military_rank ? `${player.military_rank.toUpperCase()} ` : ''}
+                          {player.username}
+                        </span>
+                        <span style={{ fontSize: '0.7em', opacity: 0.7 }}>
+                          {player.reputation_tier || 'Neutral'} ({player.personal_reputation >= 0 ? '+' : ''}{player.personal_reputation || 0})
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>

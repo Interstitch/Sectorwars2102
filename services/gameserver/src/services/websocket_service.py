@@ -436,7 +436,7 @@ class ConnectionManager:
         """Get list of players currently in a sector"""
         if sector_id not in self.sector_connections:
             return []
-        
+
         players = []
         for user_id in self.sector_connections[sector_id]:
             metadata = self.connection_metadata.get(user_id, {})
@@ -445,9 +445,14 @@ class ConnectionManager:
                 "user_id": user_id,
                 "username": user_data.get("username"),
                 "connected_at": metadata.get("connected_at", datetime.now(UTC)).isoformat(),
-                "last_heartbeat": metadata.get("last_heartbeat", datetime.now(UTC)).isoformat()
+                "last_heartbeat": metadata.get("last_heartbeat", datetime.now(UTC)).isoformat(),
+                # Reputation and Ranking for Comms display
+                "personal_reputation": user_data.get("personal_reputation", 0),
+                "reputation_tier": user_data.get("reputation_tier", "Neutral"),
+                "name_color": user_data.get("name_color", "#FFFFFF"),
+                "military_rank": user_data.get("military_rank", "Recruit")
             })
-        
+
         return players
     
     def get_team_players(self, team_id: str) -> List[Dict[str, Any]]:

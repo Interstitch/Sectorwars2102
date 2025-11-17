@@ -52,7 +52,12 @@ async def websocket_endpoint(
             "current_sector": player.current_sector_id,
             "team_id": str(player.team_id) if player.team_id else None,
             "credits": player.credits,
-            "turns": player.turns
+            "turns": player.turns,
+            # Reputation and Ranking for Comms display
+            "personal_reputation": player.personal_reputation,
+            "reputation_tier": player.reputation_tier,
+            "name_color": player.name_color,
+            "military_rank": player.military_rank
         }
         
         # Connect to WebSocket manager
