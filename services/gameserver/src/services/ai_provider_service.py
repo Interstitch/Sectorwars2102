@@ -378,6 +378,10 @@ class AnthropicProvider(AIProvider):
     def _parse_question_response(self, question_text: str, context: DialogueContext, analysis: ResponseAnalysis) -> GuardResponse:
         return OpenAIProvider._parse_question_response(self, question_text, context, analysis)
 
+    def _get_ship_tier(self, ship_type: ShipType) -> int:
+        """Get ship tier for difficulty scaling - shared with OpenAI"""
+        return OpenAIProvider._get_ship_tier(self, ship_type)
+
 
 class AIProviderService:
     """Enhanced AI Provider Service with robust fallback chain"""
