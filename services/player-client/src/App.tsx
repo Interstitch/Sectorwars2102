@@ -59,6 +59,11 @@ function MainApp() {
   
   // Simple API URL - use env var or default to localhost:8080
   const getApiUrl = () => {
+    // In GitHub Codespaces, use the Vite proxy (current origin) instead of localhost
+    const isCodespaces = window.location.hostname.includes('.app.github.dev');
+    if (isCodespaces) {
+      return window.location.origin; // Use Vite proxy via current origin
+    }
     return import.meta.env.VITE_API_URL || 'http://localhost:8080';
   };
 
