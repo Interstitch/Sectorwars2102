@@ -166,7 +166,12 @@ const GameDashboard: React.FC = () => {
                 {playerState && (
                   <div className="hud-pilot">
                     <span className="status-indicator online"></span>
-                    CAPT. {playerState.username.toUpperCase()}
+                    <span style={{ color: playerState.name_color || '#FFFFFF' }}>
+                      {playerState.military_rank.toUpperCase()} {playerState.username.toUpperCase()}
+                    </span>
+                    <div className="hud-reputation-tier" style={{ fontSize: '0.7em', opacity: 0.8 }}>
+                      {playerState.reputation_tier} ({playerState.personal_reputation >= 0 ? '+' : ''}{playerState.personal_reputation})
+                    </div>
                   </div>
                 )}
               </div>

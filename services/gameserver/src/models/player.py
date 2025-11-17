@@ -30,7 +30,17 @@ class Player(Base):
     nickname = Column(String(50), nullable=True, default=None)  # Optional in-game name different from username
     credits = Column(Integer, nullable=False, default=10000)
     turns = Column(Integer, nullable=False, default=1000)
-    reputation = Column(JSONB, nullable=False, default={})
+    reputation = Column(JSONB, nullable=False, default={})  # Faction reputations
+
+    # Personal Reputation System (good vs evil alignment)
+    personal_reputation = Column(Integer, nullable=False, default=0)  # -1000 to +1000
+    reputation_tier = Column(String(50), nullable=False, default="Neutral")  # Cached tier name
+    name_color = Column(String(20), nullable=False, default="#FFFFFF")  # Cached color code
+
+    # Military Ranking System (achievement-based progression)
+    military_rank = Column(String(50), nullable=False, default="Recruit")  # Current rank
+    rank_points = Column(Integer, nullable=False, default=0)  # Points toward next rank
+
     current_ship_id = Column(UUID(as_uuid=True), ForeignKey("ships.id", ondelete="SET NULL"), nullable=True)
     home_sector_id = Column(Integer, nullable=False, default=1)
     current_sector_id = Column(Integer, nullable=False, default=1)

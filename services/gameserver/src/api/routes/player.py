@@ -29,6 +29,12 @@ class PlayerStateResponse(BaseModel):
     attack_drones: int
     current_ship_id: str = None
 
+    # Reputation and Ranking
+    personal_reputation: int = 0
+    reputation_tier: str = "Neutral"
+    name_color: str = "#FFFFFF"
+    military_rank: str = "Recruit"
+
 class ShipResponse(BaseModel):
     id: str
     name: str
@@ -99,7 +105,11 @@ async def get_player_state(
         is_landed=player.is_landed,
         defense_drones=player.defense_drones,
         attack_drones=player.attack_drones,
-        current_ship_id=str(player.current_ship_id) if player.current_ship_id else None
+        current_ship_id=str(player.current_ship_id) if player.current_ship_id else None,
+        personal_reputation=player.personal_reputation,
+        reputation_tier=player.reputation_tier,
+        name_color=player.name_color,
+        military_rank=player.military_rank
     )
 
 @router.get("/ships", response_model=List[ShipResponse])

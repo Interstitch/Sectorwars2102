@@ -99,6 +99,12 @@ export interface PlayerState {
   attack_drones: number;
   current_ship_id?: string;
   team_id?: string;
+
+  // Reputation and Ranking
+  personal_reputation: number;
+  reputation_tier: string;
+  name_color: string;
+  military_rank: string;
 }
 
 interface GameContextType {
