@@ -752,13 +752,13 @@ class EnhancedAIService:
         # Check station ownership
         stmt = select(func.count(Station.id)).where(Station.owner_id == player_id)
         result = await self.db.execute(stmt)
-        port_count = result.scalar()
-        
+        station_count = result.scalar()
+
         # Check planet ownership
         stmt = select(func.count(Planet.id)).where(Planet.owner_id == player_id)
         result = await self.db.execute(stmt)
         planet_count = result.scalar()
-        
+
         # Check fleet strength
         stmt = select(func.count(Fleet.id)).where(
             Fleet.player_id == player_id,
@@ -766,14 +766,14 @@ class EnhancedAIService:
         )
         result = await self.db.execute(stmt)
         fleet_count = result.scalar()
-        
+
         return {
             "credits": player.credits,
-            "owns_ports": port_count > 0,
-            "port_count": port_count,
+            "owns_stations": station_count > 0,
+            "station_count": station_count,
             "planet_count": planet_count,
             "fleet_count": fleet_count,
-            "strategic_diversity": len([x for x in [port_count, planet_count, fleet_count] if x > 0])
+            "strategic_diversity": len([x for x in [station_count, planet_count, fleet_count] if x > 0])
         }
 
     # =============================================================================

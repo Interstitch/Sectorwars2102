@@ -880,26 +880,26 @@ async def get_galaxy_info(
         discovered_sectors = 0
         
     try:
-        port_count = db.query(Station).count()
+        station_count = db.query(Station).count()
     except Exception:
-        port_count = 0
-        
+        station_count = 0
+
     try:
         planet_count = db.query(Planet).count()
     except Exception:
         planet_count = 0
-        
+
     try:
         team_count = db.query(Team).count()
     except Exception:
         team_count = 0
-        
+
     # Commit any pending transactions to avoid aborted transaction state
     try:
         db.commit()
     except Exception:
         db.rollback()
-        
+
     try:
         warp_tunnel_count = db.query(WarpTunnel).count()
         logger.info(f"Warp tunnel count from ORM query: {warp_tunnel_count}")
@@ -913,7 +913,7 @@ async def get_galaxy_info(
         except Exception as e2:
             logger.error(f"Failed to query warp_tunnels table: {e2}")
             warp_tunnel_count = 0
-    
+
     return {
         "id": str(galaxy.id),
         "name": galaxy.name,
@@ -923,7 +923,7 @@ async def get_galaxy_info(
         "statistics": {
             "total_sectors": total_sectors,
             "discovered_sectors": discovered_sectors,
-            "port_count": port_count,
+            "station_count": station_count,
             "planet_count": planet_count,
             "player_count": active_players,
             "team_count": team_count,
