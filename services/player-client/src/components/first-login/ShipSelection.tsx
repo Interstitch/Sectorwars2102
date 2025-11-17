@@ -44,14 +44,15 @@ const ShipSelection: React.FC = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (selectedShip && response.trim()) {
       await claimShip(selectedShip, response);
     }
   };
 
-  console.log('ShipSelection: Available ships:', availableShips);
-  console.log('ShipSelection: Session:', session);
+  // Development logging (reduced verbosity)
+  // console.log('ShipSelection: Available ships:', availableShips);
+  // console.log('ShipSelection: Session:', session);
 
   return (
     <div className="ship-selection-content">

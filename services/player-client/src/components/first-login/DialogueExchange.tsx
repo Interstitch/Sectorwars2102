@@ -17,10 +17,11 @@ const DialogueExchange: React.FC = () => {
   } = useFirstLogin();
 
   const [response, setResponse] = useState('');
-  
-  console.log('DialogueExchange: Rendered with session:', session);
-  console.log('DialogueExchange: Current prompt:', currentPrompt);
-  console.log('DialogueExchange: Dialogue history:', dialogueHistory);
+
+  // Development logging (reduced verbosity)
+  // console.log('DialogueExchange: Rendered with session:', session);
+  // console.log('DialogueExchange: Current prompt:', currentPrompt);
+  // console.log('DialogueExchange: Dialogue history:', dialogueHistory);
   const dialogueHistoryRef = useRef<HTMLDivElement>(null);
   
   // Auto-scroll to the bottom of the dialogue history when it updates

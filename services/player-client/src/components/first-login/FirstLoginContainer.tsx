@@ -25,20 +25,21 @@ const FirstLoginContainer: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<'ship_selection' | 'dialogue' | 'completion'>(
     'ship_selection'
   );
-  
-  console.log('FirstLoginContainer: Current step:', currentStep);
-  console.log('FirstLoginContainer: Session:', session);
+
+  // Development logging (reduced verbosity)
+  // console.log('FirstLoginContainer: Current step:', currentStep);
+  // console.log('FirstLoginContainer: Session:', session);
 
   // Initialize the first login session when the component mounts
   useEffect(() => {
     if (requiresFirstLogin && !session && !isLoading) {
-      console.log('FirstLoginContainer: Starting session');
+      // console.log('FirstLoginContainer: Starting session');
       startSession();
     }
-    
+
     // Update the current step based on the session state
     if (session) {
-      console.log('FirstLoginContainer: Updating step from session:', session.current_step);
+      // console.log('FirstLoginContainer: Updating step from session:', session.current_step);
       setCurrentStep(session.current_step);
     }
   }, [requiresFirstLogin, session, isLoading]); // Remove startSession from deps to prevent loops
@@ -82,24 +83,15 @@ const FirstLoginContainer: React.FC = () => {
         )}
 
         {currentStep === 'ship_selection' && session && (
-          <>
-            {console.log('FirstLoginContainer: Rendering ShipSelection')}
-            <ShipSelection />
-          </>
+          <ShipSelection />
         )}
 
         {currentStep === 'dialogue' && session && (
-          <>
-            {console.log('FirstLoginContainer: Rendering DialogueExchange')}
-            <DialogueExchange />
-          </>
+          <DialogueExchange />
         )}
 
         {(currentStep === 'completion' || dialogueOutcome) && (
-          <>
-            {console.log('FirstLoginContainer: Rendering OutcomeDisplay')}
-            <OutcomeDisplay />
-          </>
+          <OutcomeDisplay />
         )}
       </div>
     </div>
