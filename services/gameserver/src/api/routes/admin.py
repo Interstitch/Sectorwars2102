@@ -1034,6 +1034,32 @@ async def generate_galaxy(
             terran_space_sectors = 300
             logger.info(f"Terran Space generation completed: 300 sectors created")
 
+            # CRITICAL: Ensure Sector 1 always has a station (starting location requirement)
+            from src.models.sector import Sector
+            from src.models.station import Station
+            from sqlalchemy import select
+
+            sector_1 = db.execute(select(Sector).where(Sector.sector_id == 1)).scalar_one_or_none()
+            if sector_1:
+                # Check if station already exists in Sector 1
+                existing_station = db.execute(select(Station).where(Station.sector_id == 1)).scalar_one_or_none()
+                if not existing_station:
+                    logger.info("Creating guaranteed station in Sector 1 (Earth Station)")
+                    earth_station = Station(
+                        name="Earth Station",
+                        sector_id=1,
+                        credits=1000000,  # Starting station has ample credits
+                        tax_rate=0.05,    # Standard tax rate
+                        station_type="trade_hub"  # Main trading hub
+                    )
+                    db.add(earth_station)
+                    db.flush()
+                    logger.info("Earth Station created in Sector 1")
+                else:
+                    logger.info(f"Station already exists in Sector 1: {existing_station.name}")
+            else:
+                logger.warning("Sector 1 not found - cannot create starting station")
+
             # CRITICAL: Commit sync session to release locks before async Central Nexus generation
             db.commit()
             logger.info("Terran Space transaction committed, releasing database locks")
