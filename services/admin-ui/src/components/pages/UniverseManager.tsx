@@ -361,17 +361,21 @@ const UniverseManager: React.FC = () => {
             <Link to="/universe/stations" className="stat-card clickable-stat-card">
               <div className="stat-icon">🏪</div>
               <h3>Stations</h3>
-              <div className="stat-value">{galaxyState.statistics.station_count}</div>
+              <div className="stat-value">{galaxyState.statistics.station_count || 0}</div>
               <div className="stat-detail">
-                {Math.round(galaxyState.statistics.station_count / galaxyState.statistics.total_sectors * 100)}% of sectors
+                {galaxyState.statistics.total_sectors > 0
+                  ? Math.round((galaxyState.statistics.station_count || 0) / galaxyState.statistics.total_sectors * 100)
+                  : 0}% of sectors
               </div>
             </Link>
             <Link to="/universe/planets" className="stat-card clickable-stat-card">
               <div className="stat-icon">🌍</div>
               <h3>Planets</h3>
-              <div className="stat-value">{galaxyState.statistics.planet_count}</div>
+              <div className="stat-value">{galaxyState.statistics.planet_count || 0}</div>
               <div className="stat-detail">
-                {Math.round(galaxyState.statistics.planet_count / galaxyState.statistics.total_sectors * 100)}% of sectors
+                {galaxyState.statistics.total_sectors > 0
+                  ? Math.round((galaxyState.statistics.planet_count || 0) / galaxyState.statistics.total_sectors * 100)
+                  : 0}% of sectors
               </div>
             </Link>
             <Link to="/universe/warptunnels" className="stat-card clickable-stat-card">
