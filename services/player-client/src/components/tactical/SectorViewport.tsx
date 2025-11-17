@@ -89,7 +89,7 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isAnimating, sectorType, hazardLevel, radiationLevel, ports, planets, width, height]);
+  }, [isAnimating, sectorType, hazardLevel, radiationLevel, stations, planets, width, height]);
 
   // Mouse event handlers for interactivity
   const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
