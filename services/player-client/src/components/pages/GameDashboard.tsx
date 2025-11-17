@@ -300,7 +300,7 @@ const GameDashboard: React.FC = () => {
                   <PlanetPortPair
                     key={planet.id}
                     planet={planet}
-                    port={portsInSector[index] || null}
+                    port={portsInSector?.[index] || null}
                     onLandOnPlanet={handleLand}
                     onDockAtPort={handleDock}
                     isLanded={playerState?.is_landed || false}
