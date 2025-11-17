@@ -699,13 +699,14 @@ class GalaxyGenerator:
                 "ore": 1000, "organics": 1500, "equipment": 500,
                 "fuel": 800, "luxury_goods": 200, "technology": 300
             },
-            max_population=10000,  # Good capacity
+            population=8_000_000_000,  # 8 billion - Earth's population
+            max_population=10_000_000_000,  # 10 billion max capacity
             description="A welcoming world perfect for new colonists"
         )
 
         self.db.add(starter_planet)
         self.db.flush()
-        logger.info("✅ Created starter planet 'New Earth' in sector")
+        logger.info("✅ Created starter planet 'New Earth' in sector with 8 billion population")
 
     def _ensure_region_starter_sector(self, region: Region) -> None:
         """
@@ -853,13 +854,14 @@ class GalaxyGenerator:
                     "ore": 1000, "organics": 1500, "equipment": 500,
                     "fuel": 800, "luxury_goods": 200, "technology": 300
                 },
-                max_population=10000,  # Good capacity
+                population=8_000_000_000,  # 8 billion - Earth's population
+                max_population=10_000_000_000,  # 10 billion max capacity
                 description="A welcoming world perfect for new colonists"
             )
 
             self.db.add(starter_planet)
             self.db.flush()
-            logger.info("✅ Created starter planet 'New Earth' in Sector 1")
+            logger.info("✅ Created starter planet 'New Earth' in Sector 1 with 8 billion population")
         else:
             logger.info(f"✅ Sector 1 already has planet: {existing_planet.name}")
 
