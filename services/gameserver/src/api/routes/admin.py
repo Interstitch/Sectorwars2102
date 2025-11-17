@@ -1053,6 +1053,9 @@ async def generate_galaxy(
             if central_nexus_created:
                 central_nexus_sectors = nexus_result.get("stats", {}).get("total_sectors", 5000)
                 logger.info(f"Central Nexus generation: {nexus_result.get('status')}")
+                # CRITICAL: Commit async session to persist Central Nexus sectors to database
+                await async_db.commit()
+                logger.info(f"Central Nexus async session committed: {central_nexus_sectors} sectors persisted to database")
         except Exception as nexus_error:
             # Don't fail galaxy generation if nexus fails - can be retried later
             logger.error(f"Central Nexus auto-generation failed (non-fatal): {nexus_error}")

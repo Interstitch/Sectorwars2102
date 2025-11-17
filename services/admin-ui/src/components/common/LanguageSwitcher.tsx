@@ -22,40 +22,18 @@ const LanguageSwitcher: React.FC = () => {
   const [languages, setLanguages] = useState<Language[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch available languages from API
+  // Initialize languages from static configuration
   useEffect(() => {
-    const fetchLanguages = async () => {
-      try {
-        const response = await fetch('/api/v1/i18n/languages', {
-          credentials: 'include'
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setLanguages(data);
-        } else {
-          // Fallback to static configuration
-          const staticLanguages = Object.entries(SUPPORTED_LANGUAGES).map(([code, info]) => ({
-            code,
-            name: info.name,
-            nativeName: info.nativeName,
-            direction: info.direction,
-            isActive: code === 'en' || ['es', 'fr', 'zh', 'pt'].includes(code),
-            completionPercentage: code === 'en' ? 100 : 0
-          }));
-          setLanguages(staticLanguages.filter(lang => lang.isActive));
-        }
-      } catch (error) {
-        console.error('Failed to fetch languages:', error);
-        // Use minimal fallback
-        setLanguages([
-          { code: 'en', name: 'English', nativeName: 'English', direction: 'ltr', isActive: true, completionPercentage: 100 },
-          { code: 'es', name: 'Spanish', nativeName: 'Español', direction: 'ltr', isActive: true, completionPercentage: 0 }
-        ]);
-      }
-    };
-
-    fetchLanguages();
+    // Use static configuration directly - no API call needed
+    const staticLanguages = Object.entries(SUPPORTED_LANGUAGES).map(([code, info]) => ({
+      code,
+      name: info.name,
+      nativeName: info.nativeName,
+      direction: info.direction,
+      isActive: code === 'en' || ['es', 'fr', 'zh', 'pt'].includes(code),
+      completionPercentage: code === 'en' ? 100 : 0
+    }));
+    setLanguages(staticLanguages.filter(lang => lang.isActive));
   }, []);
 
   const handleLanguageChange = async (languageCode: string) => {
