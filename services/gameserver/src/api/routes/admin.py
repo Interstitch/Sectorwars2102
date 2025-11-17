@@ -1329,6 +1329,61 @@ async def clear_all_galaxy_data(
         logger.error(f"Failed to clear galaxy data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to clear galaxy data: {str(e)}")
 
+@router.post("/galaxy/fix-statistics", response_model=dict)
+async def fix_galaxy_statistics(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Migrate galaxy statistics from old field names (port_count) to new field names (station_count)"""
+    try:
+        from sqlalchemy.orm.attributes import flag_modified
+
+        galaxy = db.query(Galaxy).first()
+        if not galaxy:
+            raise HTTPException(status_code=404, detail="No galaxy found")
+
+        # Count actual stations in database
+        actual_station_count = db.query(Station).count()
+
+        logger.info(f"Found galaxy: {galaxy.name}")
+        logger.info(f"Current statistics: {galaxy.statistics}")
+        logger.info(f"Actual stations in database: {actual_station_count}")
+
+        # Migrate port_count -> station_count
+        if 'port_count' in galaxy.statistics:
+            galaxy.statistics['station_count'] = galaxy.statistics['port_count']
+            del galaxy.statistics['port_count']
+            logger.info("Renamed port_count -> station_count")
+        else:
+            # Set station_count to actual count if it doesn't exist
+            galaxy.statistics['station_count'] = actual_station_count
+            logger.info("Added station_count field")
+
+        # Migrate port_density -> station_density
+        if 'port_density' in galaxy.statistics:
+            galaxy.statistics['station_density'] = galaxy.statistics['port_density']
+            del galaxy.statistics['port_density']
+            logger.info("Renamed port_density -> station_density")
+
+        # Mark as modified so SQLAlchemy knows to update the JSON field
+        flag_modified(galaxy, 'statistics')
+        db.commit()
+
+        logger.info(f"Updated statistics: {galaxy.statistics}")
+
+        return {
+            "message": "Galaxy statistics fixed successfully",
+            "updated_statistics": galaxy.statistics,
+            "actual_station_count": actual_station_count
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to fix galaxy statistics: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fix galaxy statistics: {str(e)}")
+
 @router.delete("/galaxy/{galaxy_id}", response_model=dict)
 async def delete_galaxy(
     galaxy_id: str,
