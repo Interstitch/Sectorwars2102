@@ -1,8 +1,8 @@
 import React from 'react';
-import './port-card.css';
+import './station-card.css';
 
 interface StationCardProps {
-  port: {
+  station: {
     id: string;
     name: string;
     type: string;
@@ -22,15 +22,15 @@ interface StationCardProps {
   isDocked: boolean;
 }
 
-const StationCard: React.FC<StationCardProps> = ({ port, onDock, isDocked }) => {
+const StationCard: React.FC<StationCardProps> = ({ station, onDock, isDocked }) => {
   const handleClick = () => {
     if (isDocked) return;
-    if (confirm(`Dock at ${port.name}?`)) {
-      onDock(port.id);
+    if (confirm(`Dock at ${station.name}?`)) {
+      onDock(station.id);
     }
   };
-  // Determine port status color and icon
-  const getPortStatusInfo = (status: string) => {
+  // Determine station status color and icon
+  const getStationStatusInfo = (status: string) => {
     const statusMap: { [key: string]: { color: string; icon: string; label: string } } = {
       'active': { color: '#00ff41', icon: '✓', label: 'ACTIVE' },
       'damaged': { color: '#ffb000', icon: '⚠', label: 'DAMAGED' },
@@ -63,49 +63,49 @@ const StationCard: React.FC<StationCardProps> = ({ port, onDock, isDocked }) => 
     'information': '📡'
   };
 
-  const statusInfo = getPortStatusInfo(port.status);
-  const factionColor = getFactionColor(port.faction_affiliation);
+  const statusInfo = getStationStatusInfo(station.status);
+  const factionColor = getFactionColor(station.faction_affiliation);
 
   // Get available services
-  const availableServices = port.services
-    ? Object.entries(port.services)
+  const availableServices = station.services
+    ? Object.entries(station.services)
         .filter(([_, available]) => available)
         .map(([service, _]) => service)
     : [];
 
   return (
     <div
-      className={`port-card ${!isDocked && port.status.toLowerCase() === 'active' ? 'clickable' : ''}`}
+      className={`station-card ${!isDocked && station.status.toLowerCase() === 'active' ? 'clickable' : ''}`}
       onClick={handleClick}
     >
       {/* Station Header */}
-      <div className="port-card-header">
-        <div className="port-icon">🏢</div>
-        <div className="port-info">
-          <div className="port-name">{port.name}</div>
-          <div className="port-type-badge" style={{ borderColor: factionColor, color: factionColor }}>
-            {port.type}
+      <div className="station-card-header">
+        <div className="station-icon">🏢</div>
+        <div className="station-info">
+          <div className="station-name">{station.name}</div>
+          <div className="station-type-badge" style={{ borderColor: factionColor, color: factionColor }}>
+            {station.type}
           </div>
         </div>
-        <div className="port-status" style={{ color: statusInfo.color }}>
+        <div className="station-status" style={{ color: statusInfo.color }}>
           <span className="status-icon">{statusInfo.icon}</span>
           <span className="status-label">{statusInfo.label}</span>
         </div>
       </div>
 
       {/* Station Body */}
-      <div className="port-card-body">
+      <div className="station-card-body">
         {/* Faction Affiliation */}
-        {port.faction_affiliation && (
-          <div className="port-faction">
+        {station.faction_affiliation && (
+          <div className="station-faction">
             <span className="faction-icon" style={{ color: factionColor }}>⚑</span>
-            <span className="faction-name">{port.faction_affiliation}</span>
+            <span className="faction-name">{station.faction_affiliation}</span>
           </div>
         )}
 
         {/* Services */}
         {availableServices.length > 0 && (
-          <div className="port-services">
+          <div className="station-services">
             <div className="services-label">Available Services:</div>
             <div className="services-grid">
               {availableServices.map(service => (
@@ -119,8 +119,8 @@ const StationCard: React.FC<StationCardProps> = ({ port, onDock, isDocked }) => 
         )}
 
         {/* Market Preview (placeholder for future enhancement) */}
-        {port.services?.trading && (
-          <div className="port-market-preview">
+        {station.services?.trading && (
+          <div className="station-market-preview">
             <div className="market-label">📊 Market Active</div>
             <div className="market-hint">Click to dock</div>
           </div>
