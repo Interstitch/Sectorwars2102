@@ -15,14 +15,14 @@ import './cockpit.css';
 import '../tactical/tactical-layout.css';
 
 const GameDashboard: React.FC = () => {
-  const { 
-    playerState, 
-    currentSector, 
-    planetsInSector, 
-    portsInSector, 
+  const {
+    playerState,
+    currentSector,
+    planetsInSector,
+    stationsInSector,
     availableMoves,
     moveToSector,
-    dockAtPort,
+    dockAtStation,
     error
   } = useGame();
   
@@ -50,7 +50,7 @@ const GameDashboard: React.FC = () => {
   
   const handleDock = async (stationId: string) => {
     try {
-      const result = await dockAtPort(stationId);
+      const result = await dockAtStation(stationId);
       setDockingResult(result);
     } catch (error) {
       console.error('Error docking at port:', error);
@@ -131,7 +131,7 @@ const GameDashboard: React.FC = () => {
                 sectorName={currentSector.name}
                 hazardLevel={currentSector.hazard_level}
                 radiationLevel={currentSector.radiation_level}
-                ports={portsInSector}
+                stations={stationsInSector}
                 planets={planetsInSector}
                 width={Math.floor(window.innerWidth - 320)}
                 height={Math.floor((window.innerHeight - 80) * 0.40)}
@@ -300,11 +300,11 @@ const GameDashboard: React.FC = () => {
                   <PlanetPortPair
                     key={planet.id}
                     planet={planet}
-                    port={portsInSector?.[index] || null}
+                    station={stationsInSector?.[index] || null}
                     onLandOnPlanet={handleLand}
-                    onDockAtPort={handleDock}
+                    onDockAtStation={handleDock}
                     isLanded={playerState?.is_landed || false}
-                    isDocked={playerState?.is_ported || false}
+                    isDocked={playerState?.is_docked || false}
                   />
                 ))
               ) : (

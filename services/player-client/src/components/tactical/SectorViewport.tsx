@@ -6,11 +6,11 @@ interface SectorViewportProps {
   sectorName?: string;
   hazardLevel?: number;
   radiationLevel?: number;
-  ports?: any[];
+  stations?: any[];
   planets?: any[];
   width?: number;
   height?: number;
-  onEntityClick?: (entity: { type: 'port' | 'planet'; id: string; name: string }) => void;
+  onEntityClick?: (entity: { type: 'station' | 'planet'; id: string; name: string }) => void;
 }
 
 interface OrbitalBody {
@@ -25,7 +25,7 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
   sectorName = 'Unknown Sector',
   hazardLevel = 0,
   radiationLevel = 0,
-  ports = [],
+  stations = [],
   planets = [],
   width = 450,
   height = 300,
@@ -34,10 +34,10 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
   const [isAnimating, setIsAnimating] = useState(true);
-  const [hoveredEntity, setHoveredEntity] = useState<{ type: 'port' | 'planet'; name: string; x: number; y: number } | null>(null);
+  const [hoveredEntity, setHoveredEntity] = useState<{ type: 'station' | 'planet'; name: string; x: number; y: number } | null>(null);
 
   // Store entity positions for hit detection
-  const entityPositionsRef = useRef<Array<{ type: 'port' | 'planet'; id: string; name: string; x: number; y: number; radius: number }>>([]);
+  const entityPositionsRef = useRef<Array<{ type: 'station' | 'planet'; id: string; name: string; x: number; y: number; radius: number }>>([]);
 
   // Store static starfield (generated once)
   const starfieldRef = useRef<Array<{ x: number; y: number; size: number; brightness: number }>>([]);
@@ -73,8 +73,8 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
       // Draw planets (larger, static positions)
       drawPlanetsEnhanced(ctx, planets, width, height, entityPositionsRef.current);
 
-      // Draw ports orbiting their planets (animated)
-      drawPortsOrbiting(ctx, ports, planets, width, height, entityPositionsRef.current);
+      // Draw stations orbiting their planets (animated)
+      drawStationsOrbiting(ctx, stations, planets, width, height, entityPositionsRef.current);
 
       // Draw sector-specific effects
       drawSectorEffects(ctx, sectorType, width, height, hazardLevel, radiationLevel);
@@ -146,7 +146,7 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
               top: `${hoveredEntity.y + 10}px`
             }}
           >
-            <div className="tooltip-type">{hoveredEntity.type === 'port' ? '🏢 PORT' : '🪐 PLANET'}</div>
+            <div className="tooltip-type">{hoveredEntity.type === 'station' ? '🏢 STATION' : '🪐 PLANET'}</div>
             <div className="tooltip-name">{hoveredEntity.name}</div>
           </div>
         )}
@@ -158,8 +158,8 @@ const SectorViewport: React.FC<SectorViewportProps> = ({
           <div className="legend-label">Planets</div>
         </div>
         <div className="legend-item">
-          <div className="legend-icon port-icon">⬡</div>
-          <div className="legend-label">Ports</div>
+          <div className="legend-icon station-icon">⬡</div>
+          <div className="legend-label">Stations</div>
         </div>
       </div>
     </div>
@@ -289,25 +289,25 @@ function drawPlanetsEnhanced(
   });
 }
 
-// Draw ports orbiting their paired planets
-function drawPortsOrbiting(
+// Draw stations orbiting their paired planets
+function drawStationsOrbiting(
   ctx: CanvasRenderingContext2D,
-  ports: any[],
+  stations: any[],
   planets: any[],
   width: number,
   height: number,
-  entityPositions: Array<{ type: 'port' | 'planet'; id: string; name: string; x: number; y: number; radius: number }>
+  entityPositions: Array<{ type: 'station' | 'planet'; id: string; name: string; x: number; y: number; radius: number }>
 ) {
-  if (!ports || ports.length === 0 || !planets || planets.length === 0) return;
+  if (!stations || stations.length === 0 || !planets || planets.length === 0) return;
 
   const planetCount = planets.length;
   const spacing = width / (planetCount + 1);
   const planetRadius = 35;
-  const orbitRadius = 60; // Distance from planet center to port
-  const portSize = 10; // Smaller than planets
+  const orbitRadius = 60; // Distance from planet center to station
+  const stationSize = 10; // Smaller than planets
 
-  ports.forEach((port, index) => {
-    // Pair port with planet by index (same as PlanetPortPair component)
+  stations.forEach((station, index) => {
+    // Pair station with planet by index (same as PlanetPortPair component)
     const planetIndex = index;
     if (planetIndex >= planets.length) return;
 
@@ -317,18 +317,18 @@ function drawPortsOrbiting(
 
     // Calculate orbital position using time
     const time = Date.now() * 0.0003; // Slow rotation
-    const orbitAngle = time + (index * Math.PI * 0.5); // Offset each port
-    const portX = planetX + Math.cos(orbitAngle) * orbitRadius;
-    const portY = planetY + Math.sin(orbitAngle) * orbitRadius;
+    const orbitAngle = time + (index * Math.PI * 0.5); // Offset each station
+    const stationX = planetX + Math.cos(orbitAngle) * orbitRadius;
+    const stationY = planetY + Math.sin(orbitAngle) * orbitRadius;
 
     // Track position for hit detection
     entityPositions.push({
-      type: 'port',
-      id: port.id,
-      name: port.name,
-      x: portX,
-      y: portY,
-      radius: portSize + 6 // Hit area
+      type: 'station',
+      id: station.id,
+      name: station.name,
+      x: stationX,
+      y: stationY,
+      radius: stationSize + 6 // Hit area
     });
 
     // Draw orbital path (faint circle)
@@ -348,8 +348,8 @@ function drawPortsOrbiting(
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI / 3) * i;
-      const px = portX + portSize * Math.cos(angle);
-      const py = portY + portSize * Math.sin(angle);
+      const px = stationX + stationSize * Math.cos(angle);
+      const py = stationY + stationSize * Math.sin(angle);
       if (i === 0) {
         ctx.moveTo(px, py);
       } else {
@@ -363,7 +363,7 @@ function drawPortsOrbiting(
     // Station core (inner circle)
     ctx.fillStyle = 'rgba(0, 217, 255, 0.6)';
     ctx.beginPath();
-    ctx.arc(portX, portY, portSize * 0.4, 0, Math.PI * 2);
+    ctx.arc(stationX, stationY, stationSize * 0.4, 0, Math.PI * 2);
     ctx.fill();
 
     // Blinking status light
@@ -371,7 +371,7 @@ function drawPortsOrbiting(
     if (blink) {
       ctx.fillStyle = '#00ff41';
       ctx.beginPath();
-      ctx.arc(portX, portY, 1.5, 0, Math.PI * 2);
+      ctx.arc(stationX, stationY, 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -381,14 +381,14 @@ function drawPortsOrbiting(
     ctx.textBaseline = 'top';
 
     // Label background
-    const labelY = portY + portSize + 6;
-    const labelWidth = ctx.measureText(port.name).width + 6;
+    const labelY = stationY + stationSize + 6;
+    const labelWidth = ctx.measureText(station.name).width + 6;
     ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.fillRect(portX - labelWidth / 2, labelY, labelWidth, 14);
+    ctx.fillRect(stationX - labelWidth / 2, labelY, labelWidth, 14);
 
     // Label text
     ctx.fillStyle = '#00d9ff';
-    ctx.fillText(port.name, portX, labelY + 2);
+    ctx.fillText(station.name, stationX, labelY + 2);
   });
 }
 
