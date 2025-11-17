@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
-from src.core.database import get_async_session
+from src.core.database import get_db
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.models.first_login import ShipChoice
@@ -64,7 +64,7 @@ class CompleteFirstLoginResponse(BaseModel):
 @router.get("/status", response_model=FirstLoginStatusResponse)
 async def get_first_login_status(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     ai_service: AIDialogueService = Depends(get_ai_dialogue_service)
 ):
     """Check if the player needs to go through the first login experience"""

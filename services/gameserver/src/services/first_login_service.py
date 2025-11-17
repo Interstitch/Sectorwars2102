@@ -200,10 +200,10 @@ class FirstLoginService:
     def should_show_first_login(self, player_id: uuid.UUID) -> bool:
         """Check if the player should see the first login experience"""
         player = self.db.query(Player).filter_by(id=player_id).first()
-        
+
         if not player:
             return False
-        
+
         # Check if this is really their first time
         state = self.get_player_first_login_state(player_id)
         return not state.has_completed_first_login
