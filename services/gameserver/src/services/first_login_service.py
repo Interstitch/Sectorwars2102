@@ -60,63 +60,63 @@ DEFAULT_SHIP_CONFIGS = [
         "rarity_tier": 2,
         "spawn_chance": 50,
         "base_credits": 2500,
-        "weak_threshold": 0.7,
-        "average_threshold": 0.6,
-        "strong_threshold": 0.5
+        "weak_threshold": 0.4,  # Lowered from 0.7 - much easier to claim
+        "average_threshold": 0.35,  # Lowered from 0.6
+        "strong_threshold": 0.3  # Lowered from 0.5
     },
     {
         "ship_type": ShipChoice.SCOUT_SHIP,
         "rarity_tier": 3,
         "spawn_chance": 25,
         "base_credits": 2000,
-        "weak_threshold": 0.8,
-        "average_threshold": 0.7,
-        "strong_threshold": 0.6
+        "weak_threshold": 0.5,  # Lowered from 0.8
+        "average_threshold": 0.45,  # Lowered from 0.7
+        "strong_threshold": 0.4  # Lowered from 0.6
     },
     {
         "ship_type": ShipChoice.FAST_COURIER,
         "rarity_tier": 3,
         "spawn_chance": 20,
         "base_credits": 3000,
-        "weak_threshold": 0.85,
-        "average_threshold": 0.75,
-        "strong_threshold": 0.65
+        "weak_threshold": 0.55,  # Lowered from 0.85
+        "average_threshold": 0.5,  # Lowered from 0.75
+        "strong_threshold": 0.45  # Lowered from 0.65
     },
     {
         "ship_type": ShipChoice.CARGO_HAULER,
         "rarity_tier": 4,
         "spawn_chance": 10,
         "base_credits": 5000,
-        "weak_threshold": 0.9,
-        "average_threshold": 0.8,
-        "strong_threshold": 0.7
+        "weak_threshold": 0.65,  # Lowered from 0.9
+        "average_threshold": 0.55,  # Lowered from 0.8
+        "strong_threshold": 0.5  # Lowered from 0.7
     },
     {
         "ship_type": ShipChoice.DEFENDER,
         "rarity_tier": 5,
         "spawn_chance": 5,
         "base_credits": 7000,
-        "weak_threshold": 0.95,
-        "average_threshold": 0.9,
-        "strong_threshold": 0.8
+        "weak_threshold": 0.75,  # Lowered from 0.95
+        "average_threshold": 0.65,  # Lowered from 0.9
+        "strong_threshold": 0.6  # Lowered from 0.8
     },
     {
         "ship_type": ShipChoice.COLONY_SHIP,
         "rarity_tier": 6,
         "spawn_chance": 3,
         "base_credits": 10000,
-        "weak_threshold": 0.97,
-        "average_threshold": 0.92,
-        "strong_threshold": 0.85
+        "weak_threshold": 0.8,  # Lowered from 0.97
+        "average_threshold": 0.7,  # Lowered from 0.92
+        "strong_threshold": 0.65  # Lowered from 0.85
     },
     {
         "ship_type": ShipChoice.CARRIER,
         "rarity_tier": 7,
         "spawn_chance": 1,
         "base_credits": 15000,
-        "weak_threshold": 0.99,
-        "average_threshold": 0.95,
-        "strong_threshold": 0.9
+        "weak_threshold": 0.85,  # Lowered from 0.99
+        "average_threshold": 0.75,  # Lowered from 0.95
+        "strong_threshold": 0.7  # Lowered from 0.9
     }
 ]
 

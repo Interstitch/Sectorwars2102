@@ -726,6 +726,13 @@ class GalaxyGenerator:
             logger.error(f"Sector 1 not found in region {region.name}! Cannot ensure starter sector.")
             return
 
+        # Ensure Sector 1 is SAFE for new players - no hazards or radiation
+        sector_1.hazard_level = 0  # No hazards
+        sector_1.radiation_level = 0  # No radiation
+        sector_1.sector_type = SectorType.NORMAL  # Normal space
+        self.db.flush()
+        logger.info(f"✅ Ensured Sector 1 in {region.name} is safe (no hazards/radiation)")
+
         # Check if Sector 1 already has a port
         existing_station = self.db.query(Station).filter(Station.sector_uuid == sector_1.id).first()
         if not existing_station:
