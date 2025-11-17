@@ -603,6 +603,110 @@ class GalaxyGenerator:
             self.db.add(planet)
             self.db.flush()
 
+    def _create_starter_station_for_sector(self, sector: Sector) -> None:
+        """Create a starter trading station for the given sector"""
+        from src.models.resource import Market
+
+        # Create a Class 1 Trading station (beginner-friendly)
+        starter_station = Station(
+            name="Terra Station",  # Friendly name for starter station
+            sector_id=sector.sector_id,
+            sector_uuid=sector.id,
+            station_class=StationClass.CLASS_1,
+            type=StationType.TRADING,
+            status=StationStatus.OPERATIONAL,
+            size=5,  # Medium size
+            faction_affiliation="Terran Federation",  # Safe faction
+            description="A welcoming trading station for new spacers"
+        )
+
+        # Initialize commodities with balanced starter trading
+        starter_station.commodities = {
+            "ore": {
+                "quantity": 2000, "capacity": 5000, "base_price": 15, "current_price": 15,
+                "production_rate": 100, "price_variance": 20, "buys": True, "sells": True
+            },
+            "organics": {
+                "quantity": 1500, "capacity": 3000, "base_price": 18, "current_price": 18,
+                "production_rate": 80, "price_variance": 25, "buys": True, "sells": True
+            },
+            "equipment": {
+                "quantity": 1000, "capacity": 2000, "base_price": 35, "current_price": 35,
+                "production_rate": 50, "price_variance": 30, "buys": True, "sells": True
+            },
+            "fuel": {
+                "quantity": 2000, "capacity": 4000, "base_price": 12, "current_price": 12,
+                "production_rate": 120, "price_variance": 15, "buys": False, "sells": True
+            },
+            "luxury_goods": {
+                "quantity": 300, "capacity": 800, "base_price": 100, "current_price": 100,
+                "production_rate": 20, "price_variance": 40, "buys": True, "sells": False
+            },
+            "gourmet_food": {
+                "quantity": 200, "capacity": 600, "base_price": 80, "current_price": 80,
+                "production_rate": 15, "price_variance": 35, "buys": True, "sells": False
+            },
+            "exotic_technology": {
+                "quantity": 100, "capacity": 200, "base_price": 250, "current_price": 250,
+                "production_rate": 5, "price_variance": 50, "buys": True, "sells": False
+            },
+            "colonists": {
+                "quantity": 200, "capacity": 500, "base_price": 50, "current_price": 50,
+                "production_rate": 10, "price_variance": 10, "buys": False, "sells": True
+            }
+        }
+
+        self.db.add(starter_station)
+        self.db.flush()
+
+        # Create market for starter station
+        starter_market = Market(
+            station_id=starter_station.id,
+            specialization="GENERAL",  # General trading for beginners
+            size=5,
+            tax_rate=0.02,  # Lower tax for new players
+            economic_status="stable",
+            resource_availability={
+                "ore": 80, "organics": 75, "equipment": 70,
+                "fuel": 90, "luxury_goods": 60, "technology": 50
+            },
+            resource_prices={
+                "ore": 15, "organics": 18, "equipment": 35,
+                "fuel": 12, "luxury_goods": 100, "technology": 250
+            }
+        )
+        self.db.add(starter_market)
+        self.db.flush()
+        logger.info("✅ Created starter station 'Terra Station' in sector")
+
+    def _create_starter_planet_for_sector(self, sector: Sector) -> None:
+        """Create a starter planet for the given sector"""
+        # Create a Terran planet (most habitable for beginners)
+        starter_planet = Planet(
+            name="New Earth",  # Friendly name for starter planet
+            sector_id=sector.sector_id,
+            sector_uuid=sector.id,
+            type=PlanetType.TERRAN,
+            status=PlanetStatus.HABITABLE,
+            size=7,  # Good size
+            position=3,  # Habitable zone
+            gravity=1.0,  # Earth-like
+            temperature=20.0,  # Pleasant
+            water_coverage=65.0,  # Earth-like
+            habitability_score=95,  # Highly habitable
+            resource_richness=1.2,  # Good resources
+            resources={
+                "ore": 1000, "organics": 1500, "equipment": 500,
+                "fuel": 800, "luxury_goods": 200, "technology": 300
+            },
+            max_population=10000,  # Good capacity
+            description="A welcoming world perfect for new colonists"
+        )
+
+        self.db.add(starter_planet)
+        self.db.flush()
+        logger.info("✅ Created starter planet 'New Earth' in sector")
+
     def _ensure_region_starter_sector(self, region: Region) -> None:
         """
         Guarantee that Sector 1 in this region has both a port and a planet.

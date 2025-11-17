@@ -1033,9 +1033,14 @@ async def generate_galaxy(
             terran_space_created = True
             terran_space_sectors = 300
             logger.info(f"Terran Space generation completed: 300 sectors created")
+
+            # CRITICAL: Commit sync session to release locks before async Central Nexus generation
+            db.commit()
+            logger.info("Terran Space transaction committed, releasing database locks")
         except Exception as terran_error:
             logger.error(f"Terran Space auto-generation failed (non-fatal): {terran_error}")
             logger.info("Galaxy created, but Terran Space generation failed")
+            db.rollback()  # Rollback on error
 
         # Auto-generate Central Nexus after galaxy creation
         # This creates the galactic hub that connects starting areas to player-owned regions
