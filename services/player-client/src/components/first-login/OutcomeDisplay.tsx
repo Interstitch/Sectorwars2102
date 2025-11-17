@@ -91,7 +91,37 @@ const OutcomeDisplay: React.FC = () => {
         </div>
         <div className="ship-name">{SHIP_NAMES[dialogueOutcome.awarded_ship] || dialogueOutcome.awarded_ship}</div>
       </div>
-      
+
+      {/* Score Breakdown - shows why player passed/failed */}
+      {dialogueOutcome.final_persuasion_score !== undefined && (
+        <div className="score-breakdown" style={{
+          margin: '20px 0',
+          padding: '15px',
+          background: dialogueOutcome.outcome === 'SUCCESS' ? 'rgba(0, 200, 100, 0.1)' : 'rgba(200, 100, 0, 0.1)',
+          borderRadius: '8px',
+          border: dialogueOutcome.outcome === 'SUCCESS' ? '1px solid rgba(0, 200, 100, 0.3)' : '1px solid rgba(200, 100, 0, 0.3)'
+        }}>
+          <div style={{fontWeight: 'bold', marginBottom: '10px', color: '#aaa'}}>
+            Evaluation Results:
+          </div>
+          <div style={{fontSize: '0.9em', lineHeight: '1.6'}}>
+            <div>Your Persuasion Score: <strong>{dialogueOutcome.final_persuasion_score.toFixed(4)}</strong></div>
+            <div>Negotiation Level: <strong>{dialogueOutcome.negotiation_skill}</strong></div>
+            <div style={{marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.1)'}}>
+              {dialogueOutcome.outcome === 'SUCCESS' ? (
+                <span style={{color: '#0c0'}}>
+                  ✓ Your score met the threshold for {SHIP_NAMES[dialogueOutcome.awarded_ship] || dialogueOutcome.awarded_ship}
+                </span>
+              ) : (
+                <span style={{color: '#c80'}}>
+                  ✗ Your score didn't meet the required threshold. Keep practicing your negotiation skills!
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="outcome-details">
         <div className="outcome-item">
           <div className="outcome-icon">💰</div>
