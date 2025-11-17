@@ -2,7 +2,7 @@ import uuid
 import enum
 from datetime import datetime
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
-from sqlalchemy import Boolean, Column, DateTime, String, Integer, Float, ForeignKey, Enum, Table, func
+from sqlalchemy import Boolean, Column, DateTime, String, Integer, BigInteger, Float, ForeignKey, Enum, Table, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.orm import relationship
 
@@ -87,8 +87,8 @@ class Planet(Base):
     
     # Colonization 
     colonized_at = Column(DateTime(timezone=True), nullable=True)
-    population = Column(Integer, nullable=False, default=0)  # Current population
-    max_population = Column(Integer, nullable=False, default=0)  # Maximum sustainable population
+    population = Column(BigInteger, nullable=False, default=0)  # Current population
+    max_population = Column(BigInteger, nullable=False, default=0)  # Maximum sustainable population
     population_growth = Column(Float, nullable=False, default=0.0)  # Growth rate percentage
     colonists = Column(Integer, nullable=False, default=0)
     max_colonists = Column(Integer, nullable=False, default=10000)
