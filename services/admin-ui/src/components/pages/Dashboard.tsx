@@ -340,7 +340,7 @@ const Dashboard: React.FC = () => {
                   <div className="text-xs text-tertiary">Planets →</div>
                 </Link>
                 <Link to="/universe/stations" className="text-center hover:opacity-80 transition-opacity">
-                  <div className="text-lg font-semibold text-secondary">{dashboardData.universe_stats.total_ports}</div>
+                  <div className="text-lg font-semibold text-secondary">{dashboardData.universe_stats.total_ports || 0}</div>
                   <div className="text-xs text-tertiary">Ports →</div>
                 </Link>
                 <Link to="/universe/warptunnels" className="text-center hover:opacity-80 transition-opacity">
