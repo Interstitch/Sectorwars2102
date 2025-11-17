@@ -47,7 +47,7 @@ class GalaxyGenerator:
             statistics={
                 "total_sectors": 0,  # Will be updated as regions are populated
                 "discovered_sectors": 0,
-                "port_count": 0,
+                "station_count": 0,  # Changed from port_count to match frontend
                 "planet_count": 0,
                 "player_count": 0,
                 "team_count": 0,
@@ -56,7 +56,7 @@ class GalaxyGenerator:
             },
             max_sectors=config.get("max_sectors", 10000),  # Total capacity across all regions
             density={
-                "port_density": int(config.get("port_density", 0.15) * 100),
+                "station_density": int(config.get("station_density", config.get("port_density", 0.15)) * 100),  # Changed from port_density
                 "planet_density": int(config.get("planet_density", 0.25) * 100),
                 "one_way_warp_percentage": int(config.get("warp_tunnel_probability", 0.1) * 100),
                 "resource_distribution": config.get("resource_distribution", "balanced")
