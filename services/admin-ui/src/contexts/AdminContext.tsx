@@ -8,6 +8,7 @@ export interface AdminStats {
   activePlayers: number;
   totalSectors: number;
   totalPlanets: number;
+  totalPorts: number;
   totalShips: number;
   playerSessions: number;
 }
