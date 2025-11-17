@@ -101,6 +101,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   }>>([]);
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const [recentMovements, setRecentMovements] = useState<PlayerMovementMessage[]>([]);
+  const [quantumTrades, setQuantumTrades] = useState<any[]>([]);
+  const [ghostTrades, setGhostTrades] = useState<any[]>([]);
+  const [quantumMarketData, setQuantumMarketData] = useState<any[]>([]);
 
   // Keep track of cleanup functions
   const cleanupFunctions = useRef<Array<() => void>>([]);
