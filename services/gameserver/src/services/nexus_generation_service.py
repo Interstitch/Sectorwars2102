@@ -112,7 +112,9 @@ class NexusGenerationService:
             generation_stats["total_warp_tunnels"] = warp_tunnel_count
             logger.info(f"Created {warp_tunnel_count} warp tunnels")
 
-            await session.commit()
+            # NOTE: Don't commit here - let the caller handle transaction management
+            # This avoids async/sync context issues when called from sync endpoints
+            await session.flush()  # Flush changes to get IDs
 
             logger.info(f"Central Nexus generation completed: {generation_stats}")
 
