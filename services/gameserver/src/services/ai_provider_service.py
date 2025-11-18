@@ -261,17 +261,20 @@ believability, claims, inconsistencies, guard_mood
             return GuardResponse(
                 dialogue_text=decision_text,
                 mood=GuardMood.CONVINCED if is_approval else GuardMood.VERY_SUSPICIOUS,
-                is_final_question=True,  # Signal that conversation should end
-                suggested_next_topic=None
+                suspicion_level=0.0 if is_approval else 1.0,
+                is_final_decision=True,  # Signal that conversation should end
+                outcome="success" if is_approval else "failure"
             )
         else:
             # Normal question - continue conversation
             mood = self._determine_mood(analysis.overall_believability)
+            suspicion = 1.0 - analysis.overall_believability  # Inverse of believability
             return GuardResponse(
                 dialogue_text=response_text,
                 mood=mood,
-                is_final_question=False,
-                suggested_next_topic="ai_dynamic"
+                suspicion_level=suspicion,
+                is_final_decision=False,
+                outcome="continue"
             )
 
     def _build_question_prompt(self, context: DialogueContext, analysis: ResponseAnalysis) -> str:
@@ -321,13 +324,21 @@ Keep response under 150 characters. Be direct and authoritative.
                 # Fallback parsing
                 data = self._fallback_parse_analysis(analysis_text)
             
+            # Ensure inconsistencies is always a list (AI sometimes returns 0 instead of [])
+            inconsistencies_raw = data.get('inconsistencies', [])
+            inconsistencies = inconsistencies_raw if isinstance(inconsistencies_raw, list) else []
+
+            # Ensure claims is always a list
+            claims_raw = data.get('claims', [])
+            claims = claims_raw if isinstance(claims_raw, list) else []
+
             return ResponseAnalysis(
                 persuasiveness_score=float(data.get('persuasiveness', 0.5)),
                 confidence_level=float(data.get('confidence', 0.5)),
                 consistency_score=float(data.get('consistency', 0.5)),
                 negotiation_skill=float(data.get('negotiation_skill', 0.5)),
-                detected_inconsistencies=data.get('inconsistencies', []),
-                extracted_claims=data.get('claims', []),
+                detected_inconsistencies=inconsistencies,
+                extracted_claims=claims,
                 overall_believability=float(data.get('believability', 0.5)),
                 suggested_guard_mood=GuardMood(data.get('guard_mood', 'neutral'))
             )
@@ -474,21 +485,21 @@ class AnthropicProvider(AIProvider):
             prompt = self._build_question_prompt(context, analysis)
 
             try:
-            message = self.client.messages.create(
-                model=self.config.anthropic_model,
-                max_tokens=200,
-                temperature=self.config.anthropic_temperature,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            
-            question_text = message.content[0].text
-            return self._parse_question_response(question_text, context, analysis)
-            
-        except Exception as e:
-            logger.error(f"Anthropic question generation failed: {e}")
-            raise
+                message = self.client.messages.create(
+                    model=self.config.anthropic_model,
+                    max_tokens=200,
+                    temperature=self.config.anthropic_temperature,
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+
+                question_text = message.content[0].text
+                return self._parse_question_response(question_text, context, analysis)
+
+            except Exception as e:
+                logger.error(f"Anthropic question generation failed: {e}")
+                raise
     
     # Reuse OpenAI methods for prompt building and parsing
     def _build_analysis_prompt(self, response: str, context: DialogueContext) -> str:
