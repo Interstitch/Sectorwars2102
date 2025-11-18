@@ -116,14 +116,15 @@ async def start_first_login_session(
     db.refresh(session)
 
     # Get the initial dialogue exchange
-    from src.models.first_login import DialogueExchange
+    from src.models.first_login import DialogueExchange, ShipPresentationOptions
     exchange = db.query(DialogueExchange).filter_by(
         session_id=session.id,
         sequence_number=1
     ).first()
-    
-    # Get available ships
-    available_ships = session.ship_options.available_ships if session.ship_options else ["ESCAPE_POD"]
+
+    # Get ship options (explicit query to ensure it's loaded)
+    ship_options = db.query(ShipPresentationOptions).filter_by(session_id=session.id).first()
+    available_ships = ship_options.available_ships if ship_options else ["ESCAPE_POD"]
     
     # Determine the current step
     current_step = "ship_selection"
