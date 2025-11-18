@@ -3,8 +3,10 @@ import { useFirstLogin } from '../../contexts/FirstLoginContext';
 import './first-login.css';
 
 /**
- * DialogueExchange component handles the ongoing conversation between the player
- * and the security guard during the first login experience.
+ * DialogueExchange component - Chat-style conversation interface
+ *
+ * Handles the ongoing conversation between the player and the security guard
+ * with modern chat UI, typing indicators, and score badges.
  */
 const DialogueExchange: React.FC = () => {
   const {
@@ -17,23 +19,30 @@ const DialogueExchange: React.FC = () => {
   } = useFirstLogin();
 
   const [response, setResponse] = useState('');
-
-  // Development logging (reduced verbosity)
-  // console.log('DialogueExchange: Rendered with session:', session);
-  // console.log('DialogueExchange: Current prompt:', currentPrompt);
-  // console.log('DialogueExchange: Dialogue history:', dialogueHistory);
+  const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   const dialogueHistoryRef = useRef<HTMLDivElement>(null);
-  
+
+  // Show typing indicator when loading
+  useEffect(() => {
+    if (isLoading) {
+      setShowTypingIndicator(true);
+    } else {
+      // Delay hiding typing indicator for smooth transition
+      const timeout = setTimeout(() => setShowTypingIndicator(false), 300);
+      return () => clearTimeout(timeout);
+    }
+  }, [isLoading]);
+
   // Auto-scroll to the bottom of the dialogue history when it updates
   useEffect(() => {
     if (dialogueHistoryRef.current) {
       dialogueHistoryRef.current.scrollTop = dialogueHistoryRef.current.scrollHeight;
     }
-  }, [dialogueHistory]);
+  }, [dialogueHistory, showTypingIndicator]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (response.trim() && !isLoading && !dialogueOutcome) {
       try {
         await submitResponse(response);
@@ -44,70 +53,118 @@ const DialogueExchange: React.FC = () => {
     }
   };
 
+  // Get score badge class based on score value
+  const getScoreBadgeClass = (score: number | null): string => {
+    if (score === null) return 'medium';
+    if (score >= 0.7) return 'high';
+    if (score >= 0.4) return 'medium';
+    return 'low';
+  };
+
+  // Render typing indicator
+  const renderTypingIndicator = () => (
+    <div className="typing-indicator">
+      <span className="typing-indicator-text">Security guard is thinking</span>
+      <div className="typing-dots">
+        <div className="typing-dot"></div>
+        <div className="typing-dot"></div>
+        <div className="typing-dot"></div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="dialogue-exchange-content">
-      {/* Display dialogue history */}
+    <>
+      {/* Dialogue history (scrollable chat area) */}
       <div className="dialogue-history" ref={dialogueHistoryRef}>
         {dialogueHistory && dialogueHistory.length > 0 ? (
-          dialogueHistory.map((exchange, index) => (
-            <div key={index} className="history-item">
-              {exchange.npc && (
-                <div className="npc-message">
-                  <div className="dialogue-header">
-                    <div className="speaker-name">Security Guard:</div>
-                    {/* Debug indicator */}
-                    {exchange.npc.includes('[RULE-BASED]') && (
-                      <div className="debug-indicator debug-fallback">🤖 FALLBACK</div>
-                    )}
-                    {exchange.npc.includes('[AI-ANTHROPIC]') && (
-                      <div className="debug-indicator debug-ai-anthropic">🧠 AI-CLAUDE</div>
-                    )}
-                    {exchange.npc.includes('[AI-OPENAI]') && (
-                      <div className="debug-indicator debug-ai-openai">🧠 AI-GPT</div>
-                    )}
+          <>
+            {dialogueHistory.map((exchange, index) => (
+              <div key={index} className="history-item">
+                {/* Guard's message */}
+                {exchange.npc && (
+                  <div className="npc-message">
+                    <div className="message-meta">
+                      <span>Security Guard</span>
+                      {/* Debug indicator */}
+                      {exchange.npc.includes('[RULE-BASED]') && (
+                        <span className="debug-indicator debug-fallback">FALLBACK</span>
+                      )}
+                      {exchange.npc.includes('[AI-ANTHROPIC]') && (
+                        <span className="debug-indicator debug-ai-anthropic">AI-CLAUDE</span>
+                      )}
+                      {exchange.npc.includes('[AI-OPENAI]') && (
+                        <span className="debug-indicator debug-ai-openai">AI-GPT</span>
+                      )}
+                    </div>
+                    <div className="message-text">
+                      {exchange.npc.replace(/\[(RULE-BASED|AI-ANTHROPIC|AI-OPENAI)\]\s*/, '')}
+                    </div>
                   </div>
-                  <div className="dialogue-text">{exchange.npc.replace(/\[(RULE-BASED|AI-ANTHROPIC|AI-OPENAI)\]\s*/, '')}</div>
-                </div>
-              )}
-              {exchange.player && (
-                <div className="player-message">
-                  <div className="dialogue-text">{exchange.player}</div>
-                </div>
-              )}
-            </div>
-          ))
+                )}
+
+                {/* Player's message with score badges */}
+                {exchange.player && (
+                  <div className="player-message">
+                    <div className="message-meta">
+                      <span>You</span>
+                      {/* Score badges */}
+                      {exchange.consistency !== null && (
+                        <span className={`score-badge ${getScoreBadgeClass(exchange.consistency)}`}>
+                          C: {(exchange.consistency * 100).toFixed(0)}%
+                        </span>
+                      )}
+                      {exchange.confidence !== null && (
+                        <span className={`score-badge ${getScoreBadgeClass(exchange.confidence)}`}>
+                          Conf: {(exchange.confidence * 100).toFixed(0)}%
+                        </span>
+                      )}
+                      {exchange.persuasiveness !== null && (
+                        <span className={`score-badge ${getScoreBadgeClass(exchange.persuasiveness)}`}>
+                          P: {(exchange.persuasiveness * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="message-text">{exchange.player}</div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Typing indicator when guard is thinking */}
+            {showTypingIndicator && renderTypingIndicator()}
+          </>
         ) : (
           <div className="loading-message">
-            <p>Loading dialogue history...</p>
-            <p>Current prompt: {currentPrompt || 'None'}</p>
-            <p>Session ID: {session?.session_id || 'None'}</p>
+            <p>Waiting for guard to begin questioning...</p>
           </div>
         )}
       </div>
 
-      {/* Current prompt and response input */}
+      {/* Input area (fixed at bottom of dialogue section) */}
       {!dialogueOutcome && (
-        <form onSubmit={handleSubmit} className="dialogue-response">
+        <form onSubmit={handleSubmit} className="dialogue-input-area">
           <textarea
             className="response-input"
             placeholder="Type your response to the guard..."
             value={response}
             onChange={(e) => setResponse(e.target.value)}
             disabled={isLoading || !!dialogueOutcome}
+            rows={3}
           />
-          
+
           <div className="response-buttons">
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="submit-response"
               disabled={!response.trim() || isLoading || !!dialogueOutcome}
             >
-              Submit
+              {isLoading ? 'Sending...' : 'Submit Response'}
             </button>
           </div>
         </form>
       )}
-    </div>
+    </>
   );
 };
 

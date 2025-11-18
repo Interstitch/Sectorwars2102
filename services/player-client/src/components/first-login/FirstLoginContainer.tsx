@@ -3,13 +3,19 @@ import { useFirstLogin } from '../../contexts/FirstLoginContext';
 import ShipSelection from './ShipSelection';
 import DialogueExchange from './DialogueExchange';
 import OutcomeDisplay from './OutcomeDisplay';
-import TrustMeter from './TrustMeter';
 import { getGuardForSession, GuardPersonality } from '../../utils/guardPersonalities';
 import './first-login.css';
 
 /**
- * FirstLoginContainer serves as the main component for the first login experience.
- * It manages the overall flow between ship selection, dialogue exchanges, and outcome display.
+ * FirstLoginContainer - Interrogation Booth UI
+ *
+ * The main component for the first login experience, redesigned as an immersive
+ * interrogation booth with guard profile, central trust meter, and ship claim display.
+ *
+ * Layout (3-column grid during dialogue):
+ * - Left: Guard Profile Panel (silhouette, personality, stats)
+ * - Center: Trust Meter (top) + Dialogue Exchange (bottom)
+ * - Right: Ship Claim Display (holographic ship, specs, ownership status)
  */
 const FirstLoginContainer: React.FC = () => {
   const {
@@ -35,24 +41,42 @@ const FirstLoginContainer: React.FC = () => {
   // Trust level (0-1) that updates with each response
   const [currentTrust, setCurrentTrust] = useState<number>(0.5);
 
-  // Update trust level based on dialogue history (simple heuristic)
+  // Trust level classification for color coding
+  const getTrustLevel = (trust: number): 'high' | 'medium' | 'warning' | 'danger' => {
+    if (trust >= 0.8) return 'high';
+    if (trust >= 0.6) return 'medium';
+    if (trust >= 0.4) return 'warning';
+    return 'danger';
+  };
+
+  // Update trust level based on dialogue history
   useEffect(() => {
     if (dialogueHistory && dialogueHistory.length > 1) {
-      // Count completed player responses
-      const completedExchanges = dialogueHistory.filter(ex => ex.player).length;
-      if (completedExchanges > 0) {
-        // Gradually adjust trust based on number of exchanges
-        // More exchanges without failure = increasing trust
-        const trustAdjustment = completedExchanges * 0.1;
-        const newTrust = Math.min(1.0, (guardPersonality?.baseSuspicion ? 1 - guardPersonality.baseSuspicion : 0.5) + trustAdjustment);
-        setCurrentTrust(newTrust);
+      // Get the latest exchange with scores
+      const latestExchange = dialogueHistory
+        .filter(ex => ex.player && (ex.consistency !== null || ex.confidence !== null))
+        .pop();
+
+      if (latestExchange) {
+        // Calculate trust based on consistency, confidence, and persuasiveness
+        // Using the same 50/30/20 weighting as backend
+        const consistency = latestExchange.consistency ?? 0.5;
+        const confidence = latestExchange.confidence ?? 0.5;
+        const persuasiveness = latestExchange.persuasiveness ?? 0.5;
+
+        const calculatedTrust = (
+          consistency * 0.5 +
+          confidence * 0.3 +
+          persuasiveness * 0.2
+        );
+
+        setCurrentTrust(calculatedTrust);
       }
+    } else if (guardPersonality) {
+      // Initial trust = inverted base suspicion
+      setCurrentTrust(1 - guardPersonality.baseSuspicion);
     }
   }, [dialogueHistory, guardPersonality]);
-
-  // Development logging (reduced verbosity)
-  // console.log('FirstLoginContainer: Current step:', currentStep);
-  // console.log('FirstLoginContainer: Session:', session);
 
   // Initialize the first login session when the component mounts
   useEffect(() => {
@@ -80,40 +104,217 @@ const FirstLoginContainer: React.FC = () => {
     return null;
   }
 
-  return (
-    <div className="first-login-container">
-      {/* Always show some content so the container is visible */}
-      <div className="dialogue-box">
-        <div className="game-title-header">
-          <h1 className="game-title">SECTOR WARS 2102</h1>
-          <p className="game-subtitle">Welcome to the Galaxy - Security Registration</p>
-          {guardPersonality && (
-            <div style={{
-              margin: '10px 0',
-              padding: '10px',
-              background: 'rgba(0, 0, 0, 0.3)',
-              borderRadius: '4px',
-              fontSize: '0.9em',
-              color: '#bbb'
-            }}>
-              <div style={{fontWeight: 'bold', color: '#fff'}}>
-                {guardPersonality.title} {guardPersonality.name}
-              </div>
-              <div style={{fontSize: '0.85em', fontStyle: 'italic', marginTop: '4px'}}>
-                {guardPersonality.description}
-              </div>
+  // Render guard silhouette SVG
+  const renderGuardSilhouette = () => (
+    <div className="guard-silhouette">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        {/* Simple humanoid silhouette */}
+        <ellipse cx="100" cy="60" rx="35" ry="40" className="guard-silhouette-shape" />
+        <rect x="70" y="95" width="60" height="80" rx="10" className="guard-silhouette-shape" />
+        <rect x="45" y="100" width="25" height="60" rx="8" className="guard-silhouette-shape" />
+        <rect x="130" y="100" width="25" height="60" rx="8" className="guard-silhouette-shape" />
+      </svg>
+      <div className="scanning-lines"></div>
+    </div>
+  );
+
+  // Render guard profile panel (left column)
+  const renderGuardProfile = () => {
+    if (!guardPersonality) return null;
+
+    return (
+      <div className="guard-profile-panel">
+        {renderGuardSilhouette()}
+
+        <div className="guard-info">
+          <div className="guard-name">{guardPersonality.name}</div>
+          <div className="guard-title">{guardPersonality.title}</div>
+          <div className="guard-trait">"{guardPersonality.trait}"</div>
+
+          <div className="guard-stats">
+            <div className="guard-stat">
+              <span className="guard-stat-label">PERSONALITY</span>
+              <span className="guard-stat-value">{guardPersonality.description}</span>
             </div>
-          )}
-          <button onClick={resetSession} style={{padding: '5px 10px', margin: '10px', background: '#ff6b6b', color: 'white', border: 'none', borderRadius: '4px'}}>
-            Reset Session (Debug)
-          </button>
+            <div className="guard-stat">
+              <span className="guard-stat-label">BASE SUSPICION</span>
+              <span className="guard-stat-value">{(guardPersonality.baseSuspicion * 100).toFixed(0)}%</span>
+            </div>
+            <div className="suspicion-meter">
+              <div
+                className="suspicion-fill"
+                style={{ width: `${guardPersonality.baseSuspicion * 100}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render central trust meter
+  const renderTrustMeter = () => {
+    const trustPercent = Math.round(currentTrust * 100);
+    const trustLevel = getTrustLevel(currentTrust);
+
+    // SVG circle parameters
+    const radius = 94;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (currentTrust * circumference);
+
+    // Calculate threshold marker rotation (example: 60% threshold = 216 degrees)
+    const thresholdPercent = session?.ship_choice ? 0.6 : 0.5; // Example threshold
+    const thresholdRotation = (thresholdPercent * 360) - 90;
+
+    return (
+      <div className="trust-meter-section">
+        <div className="trust-meter-title">TRUST ASSESSMENT</div>
+
+        <div className="trust-meter-container">
+          <div className="trust-meter-circle">
+            <svg>
+              <circle
+                className="trust-meter-bg"
+                cx="100"
+                cy="100"
+                r={radius}
+              />
+              <circle
+                className={`trust-meter-progress ${trustLevel}`}
+                cx="100"
+                cy="100"
+                r={radius}
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+              />
+            </svg>
+
+            <div className="trust-meter-center">
+              <div className={`trust-meter-value ${trustLevel}`}>{trustPercent}</div>
+              <div className="trust-meter-label">TRUST</div>
+            </div>
+
+            {/* Threshold marker */}
+            <div className="threshold-marker">
+              <div
+                className="threshold-indicator"
+                style={{ transform: `rotate(${thresholdRotation}deg)` }}
+              ></div>
+            </div>
+          </div>
         </div>
 
-        {/* Trust Meter - shows during dialogue phase */}
-        {currentStep === 'dialogue' && guardPersonality && (
-          <TrustMeter trustLevel={currentTrust} guardName={guardPersonality.name} />
-        )}
+        {/* Risk assessment warning */}
+        <div className={`risk-assessment ${trustLevel === 'high' ? 'safe' : trustLevel === 'medium' ? 'caution' : 'danger'}`}>
+          {trustLevel === 'high' && '✓ VERIFICATION LIKELY'}
+          {trustLevel === 'medium' && '⚠ APPROACHING THRESHOLD'}
+          {trustLevel === 'warning' && '⚠ CRITICAL - BELOW THRESHOLD'}
+          {trustLevel === 'danger' && '✗ FAILURE IMMINENT'}
+        </div>
 
+        {/* Score breakdown */}
+        {dialogueHistory && dialogueHistory.length > 0 && (() => {
+          const latestExchange = dialogueHistory
+            .filter(ex => ex.player && (ex.consistency !== null || ex.confidence !== null))
+            .pop();
+
+          if (!latestExchange) return null;
+
+          return (
+            <div className="score-breakdown">
+              <div className="score-item">
+                <span className="score-item-label">CONSISTENCY</span>
+                <span className="score-item-value">
+                  {latestExchange.consistency !== null ? (latestExchange.consistency * 100).toFixed(0) : '-'}%
+                </span>
+              </div>
+              <div className="score-item">
+                <span className="score-item-label">CONFIDENCE</span>
+                <span className="score-item-value">
+                  {latestExchange.confidence !== null ? (latestExchange.confidence * 100).toFixed(0) : '-'}%
+                </span>
+              </div>
+              <div className="score-item">
+                <span className="score-item-label">PERSUASIVE</span>
+                <span className="score-item-value">
+                  {latestExchange.persuasiveness !== null ? (latestExchange.persuasiveness * 100).toFixed(0) : '-'}%
+                </span>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    );
+  };
+
+  // Render ship claim panel (right column)
+  const renderShipClaim = () => {
+    if (!session?.ship_choice) return null;
+
+    const shipName = session.ship_choice.replace(/_/g, ' ');
+    const shipClass = session.ship_choice.toLowerCase().replace(/_/g, '-');
+
+    return (
+      <div className="ship-claim-panel">
+        <div className="ship-claim-title">CLAIM VERIFICATION</div>
+
+        {/* Holographic ship display */}
+        <div className="ship-hologram">
+          <div
+            className={`ship-hologram-image ship-image ${shipClass}`}
+            style={{ backgroundImage: `url('/ships/${shipClass}.png')` }}
+          ></div>
+        </div>
+
+        {/* Ship specifications */}
+        <div className="ship-specs">
+          <div className="ship-spec-item">
+            <span className="ship-spec-label">CLASS</span>
+            <span className="ship-spec-value">{shipName}</span>
+          </div>
+          <div className="ship-spec-item">
+            <span className="ship-spec-label">TIER</span>
+            <span className="ship-spec-value">
+              {session.ship_choice === 'ESCAPE_POD' ? 'I' :
+               session.ship_choice === 'LIGHT_FREIGHTER' ? 'II' :
+               session.ship_choice === 'SCOUT_SHIP' || session.ship_choice === 'FAST_COURIER' ? 'III' :
+               session.ship_choice === 'CARGO_HAULER' ? 'IV' :
+               session.ship_choice === 'DEFENDER' ? 'V' : 'VI+'}
+            </span>
+          </div>
+          <div className="ship-spec-item">
+            <span className="ship-spec-label">VALUE</span>
+            <span className="ship-spec-value">
+              {session.ship_choice === 'ESCAPE_POD' ? '5K CR' :
+               session.ship_choice === 'LIGHT_FREIGHTER' ? '150K CR' :
+               session.ship_choice === 'SCOUT_SHIP' ? '500K CR' :
+               session.ship_choice === 'FAST_COURIER' ? '450K CR' :
+               session.ship_choice === 'CARGO_HAULER' ? '1.2M CR' :
+               session.ship_choice === 'DEFENDER' ? '2.5M CR' : '5M+ CR'}
+            </span>
+          </div>
+        </div>
+
+        {/* Ownership status */}
+        <div className="ownership-status">
+          <div className="ownership-status-label">STATUS</div>
+          <div className="ownership-status-value">UNVERIFIED</div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="first-login-container">
+      <div className="dialogue-box">
+        {/* Header with game title */}
+        <div className="game-title-header">
+          <h1 className="game-title">SECTOR WARS 2102</h1>
+          <p className="game-subtitle">Security Checkpoint - Callisto Colony</p>
+          <p className="location-context">Docking Bay 7 - Authorization Required</p>
+        </div>
+
+        {/* Loading state */}
         {isLoading && (
           <div className="loading-message">
             <div className="loading-spinner"></div>
@@ -121,6 +322,7 @@ const FirstLoginContainer: React.FC = () => {
           </div>
         )}
 
+        {/* Error state */}
         {error && (
           <div className="error-message">
             <p>{error}</p>
@@ -128,6 +330,7 @@ const FirstLoginContainer: React.FC = () => {
           </div>
         )}
 
+        {/* Waiting for session start */}
         {!isLoading && !error && !session && (
           <div className="waiting-message">
             <p>Preparing your arrival at the spaceport...</p>
@@ -135,14 +338,30 @@ const FirstLoginContainer: React.FC = () => {
           </div>
         )}
 
+        {/* Ship Selection Phase (fullscreen, no columns) */}
         {currentStep === 'ship_selection' && session && (
-          <ShipSelection />
+          <div className="ship-selection-content">
+            <ShipSelection />
+          </div>
         )}
 
-        {currentStep === 'dialogue' && session && (
-          <DialogueExchange />
+        {/* Dialogue Phase (3-column interrogation booth layout) */}
+        {currentStep === 'dialogue' && session && guardPersonality && (
+          <div className="interrogation-booth">
+            {renderGuardProfile()}
+
+            <div className="center-panel">
+              {renderTrustMeter()}
+              <div className="dialogue-exchange-section">
+                <DialogueExchange />
+              </div>
+            </div>
+
+            {renderShipClaim()}
+          </div>
         )}
 
+        {/* Completion Phase (outcome display) */}
         {(currentStep === 'completion' || dialogueOutcome) && (
           <OutcomeDisplay />
         )}
