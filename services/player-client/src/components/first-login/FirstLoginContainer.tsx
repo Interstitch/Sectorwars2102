@@ -101,7 +101,7 @@ const FirstLoginContainer: React.FC = () => {
         console.log(`[FirstLogin:Guard] ${guard.title} ${guard.name} | Trait: ${guard.trait} | Base Trust: ${(1 - guard.baseSuspicion).toFixed(2)}`);
       }
     }
-  }, [requiresFirstLogin, session, isLoading, guardPersonality]);
+  }, [requiresFirstLogin, session, isLoading]); // Removed guardPersonality to prevent infinite loop
 
   // If the player doesn't need first login, don't show this component
   if (!requiresFirstLogin) {
