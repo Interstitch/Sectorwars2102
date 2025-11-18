@@ -154,6 +154,12 @@ Generate an immersive opening scene (3-4 sentences) that:
 3. Asks which ship they're claiming to own
 4. Matches your suspicion level in tone
 
+FORMATTING REQUIREMENTS:
+- Write as NATURAL CONVERSATION
+- NO numbered lists, bullet points, or labels
+- Just dialogue as you would naturally speak
+- 3-4 sentences maximum
+
 Be direct. Stay in character. Make it feel alive."""
 
         user_prompt = f"""Generate the opening scene and question.
@@ -164,7 +170,7 @@ The player is approaching. They look like they just came out of cryo-sleep (memo
 
 Write your opening dialogue naturally. Show your personality through word choice and tone.
 
-Format: Just the dialogue, no labels. 3-4 sentences max."""
+IMPORTANT: Write as natural speech, NOT numbered lists or bullet points. Just the dialogue."""
 
         return {
             "system": system_prompt,
@@ -275,6 +281,14 @@ If continuing, ask a follow-up question that:
 4. Stays in character with your personality
 5. References previous answers to test consistency
 
+FORMATTING REQUIREMENTS:
+- Write questions as NATURAL CONVERSATION, not lists
+- DO NOT use numbered points (1, 2, 3) or bullet points (-, *)
+- DO NOT write "Question:" or similar labels
+- Just write the dialogue naturally as the guard would speak
+- Example GOOD: "So you say you own this Scout Ship. When did you acquire it?"
+- Example BAD: "1. When did you acquire the ship? 2. What's the registration?"
+
 IMPORTANT: Don't be too easy. A real security guard asks 5-6 questions minimum."""
 
         user_prompt = f"""Based on their last response and your analysis, what do you do next?
@@ -351,6 +365,12 @@ Write a final response (2-3 sentences) that:
 3. Tells them what ship they're approved for (or denied)
 4. Stays in character - don't break immersion
 
+FORMATTING REQUIREMENTS:
+- Write as NATURAL CONVERSATION
+- NO numbered lists, bullet points, or formal labels
+- Just dialogue as you would naturally speak
+- 2-3 sentences maximum
+
 If SUCCESS: Be professional but show your personality (veteran might give advice, newbie might be relieved they made the right call, etc.)
 If FAILURE: Explain why you're denying them, reference the weakness in their story
 
@@ -361,7 +381,9 @@ Be human. Be in-character. Make it memorable."""
 Outcome: {outcome_type}
 Awarded Ship: {awarded_ship}
 
-Write naturally. Reference their story. Stay in character."""
+Write naturally. Reference their story. Stay in character.
+
+IMPORTANT: Write as natural speech, NOT numbered lists. Just your final words to them."""
 
         return {
             "system": system_prompt,
