@@ -325,6 +325,22 @@ const FirstLoginContainer: React.FC = () => {
           <h1 className="game-title">SECTOR WARS 2102</h1>
           <p className="game-subtitle">Security Checkpoint - Callisto Colony</p>
           <p className="location-context">Docking Bay 7 - Authorization Required</p>
+
+          {/* Dev Reset Button */}
+          {session && (
+            <button
+              className="dev-reset-button"
+              onClick={() => {
+                if (window.confirm('Reset first login session? This will clear your progress.')) {
+                  resetSession();
+                  window.location.reload();
+                }
+              }}
+              title="Reset first login session (dev only)"
+            >
+              🔄 Reset
+            </button>
+          )}
         </div>
 
         {/* Loading state */}

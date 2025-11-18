@@ -170,12 +170,27 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
     try {
       const response = await api.post('/api/v1/first-login/session');
       console.log('[FirstLogin:Session] Started | Ships:', (response.data as any).available_ships);
+
+      // Check if this is a completed session (auto-reset for testing)
+      if ((response.data as any).current_step === 'completion' && !dialogueOutcome) {
+        console.log('[FirstLogin:Session] Detected completed session, auto-resetting...');
+        await api.delete('/api/v1/first-login/session');
+        // Retry with a fresh session
+        const retryResponse = await api.post('/api/v1/first-login/session');
+        setSession(retryResponse.data as FirstLoginSession);
+        setCurrentPrompt((retryResponse.data as any).npc_prompt);
+        setExchangeId((retryResponse.data as any).exchange_id || null);
+        setDialogueHistory([{ npc: (retryResponse.data as any).npc_prompt, player: '' }]);
+        console.log('[FirstLogin:Session] Fresh session created after auto-reset');
+        return;
+      }
+
       setSession(response.data as FirstLoginSession);
-      
+
       // Set initial prompt and exchange ID
       setCurrentPrompt((response.data as any).npc_prompt);
       setExchangeId((response.data as any).exchange_id || null);
-      
+
       // Initialize dialogue history with the first NPC prompt
       setDialogueHistory([{ npc: (response.data as any).npc_prompt, player: '' }]);
     } catch (error: any) {
