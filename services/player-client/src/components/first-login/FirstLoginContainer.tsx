@@ -54,15 +54,19 @@ const FirstLoginContainer: React.FC = () => {
     if (dialogueHistory && dialogueHistory.length > 1) {
       // Get the latest exchange with scores
       const latestExchange = dialogueHistory
-        .filter(ex => ex.player && (ex.consistency !== null || ex.confidence !== null))
+        .filter(ex => ex.player && (
+          ex.consistency !== null && ex.consistency !== undefined &&
+          ex.confidence !== null && ex.confidence !== undefined &&
+          ex.persuasiveness !== null && ex.persuasiveness !== undefined
+        ))
         .pop();
 
       if (latestExchange) {
         // Calculate trust based on consistency, confidence, and persuasiveness
         // Using the same 50/30/20 weighting as backend
-        const consistency = latestExchange.consistency ?? 0.5;
-        const confidence = latestExchange.confidence ?? 0.5;
-        const persuasiveness = latestExchange.persuasiveness ?? 0.5;
+        const consistency = latestExchange.consistency!;
+        const confidence = latestExchange.confidence!;
+        const persuasiveness = latestExchange.persuasiveness!;
 
         const calculatedTrust = (
           consistency * 0.5 +

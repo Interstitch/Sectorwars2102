@@ -81,10 +81,48 @@ const OutcomeDisplay: React.FC = () => {
     }
   };
 
+  // Extract AI-generated response (remove debug tags)
+  const guardFinalMessage = dialogueOutcome.guard_response
+    ? dialogueOutcome.guard_response.replace(/\[(RULE-BASED|AI-ANTHROPIC|AI-OPENAI)\]\s*/, '')
+    : getOutcomeMessage();
+
+  // Get outcome header class for styling
+  const outcomeHeaderClass = dialogueOutcome.outcome === 'SUCCESS' ? 'success' : 'failure';
+
   return (
     <div className="outcome-container">
-      <h2 className="outcome-header">{getOutcomeMessage()}</h2>
-      
+      <h2 className={`outcome-header ${outcomeHeaderClass}`}>
+        {dialogueOutcome.outcome === 'SUCCESS' ? 'ACCESS GRANTED' : 'ACCESS DENIED'}
+      </h2>
+
+      {/* Guard's final verdict - AI generated */}
+      <div className="guard-final-message" style={{
+        margin: '20px auto',
+        padding: '20px',
+        maxWidth: '600px',
+        background: 'rgba(74, 144, 226, 0.1)',
+        borderLeft: '4px solid #4a90e2',
+        borderRadius: '8px',
+        textAlign: 'left'
+      }}>
+        <div className="message-meta" style={{marginBottom: '10px', fontSize: '0.85rem', color: '#888'}}>
+          <span>Security Guard</span>
+          {/* Debug indicator for final response */}
+          {dialogueOutcome.guard_response && dialogueOutcome.guard_response.includes('[RULE-BASED]') && (
+            <span className="debug-indicator debug-fallback">FALLBACK</span>
+          )}
+          {dialogueOutcome.guard_response && dialogueOutcome.guard_response.includes('[AI-ANTHROPIC]') && (
+            <span className="debug-indicator debug-ai-anthropic">AI-CLAUDE</span>
+          )}
+          {dialogueOutcome.guard_response && dialogueOutcome.guard_response.includes('[AI-OPENAI]') && (
+            <span className="debug-indicator debug-ai-openai">AI-GPT</span>
+          )}
+        </div>
+        <div className="message-text" style={{fontSize: '1rem', lineHeight: '1.6', color: '#e0e0e0'}}>
+          {guardFinalMessage}
+        </div>
+      </div>
+
       <div className="outcome-ship">
         <div className={`ship-image-large ${dialogueOutcome.awarded_ship.toLowerCase().replace(/_/g, '-')}`}>
           <div className="fallback">{SHIP_NAMES[dialogueOutcome.awarded_ship] || dialogueOutcome.awarded_ship}</div>
@@ -151,26 +189,7 @@ const OutcomeDisplay: React.FC = () => {
           </div>
         )}
       </div>
-      
-      <div className="guard-final-message dialogue-text">
-        <div className="dialogue-header">
-          <div className="speaker-name">Security Guard:</div>
-          {/* Debug indicator for final response */}
-          {dialogueOutcome.guard_response.includes('[RULE-BASED]') && (
-            <div className="debug-indicator debug-fallback">🤖 FALLBACK</div>
-          )}
-          {dialogueOutcome.guard_response.includes('[AI-ANTHROPIC]') && (
-            <div className="debug-indicator debug-ai-anthropic">🧠 AI-CLAUDE</div>
-          )}
-          {dialogueOutcome.guard_response.includes('[AI-OPENAI]') && (
-            <div className="debug-indicator debug-ai-openai">🧠 AI-GPT</div>
-          )}
-        </div>
-        <div style={{marginTop: '10px'}}>
-          {dialogueOutcome.guard_response.replace(/\[(RULE-BASED|AI-ANTHROPIC|AI-OPENAI)\]\s*/, '')}
-        </div>
-      </div>
-      
+
       {error && <div className="error-message">{error}</div>}
       
       <button 

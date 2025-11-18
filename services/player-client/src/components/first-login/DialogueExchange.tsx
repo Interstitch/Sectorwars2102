@@ -79,60 +79,66 @@ const DialogueExchange: React.FC = () => {
       <div className="dialogue-history" ref={dialogueHistoryRef}>
         {dialogueHistory && dialogueHistory.length > 0 ? (
           <>
-            {dialogueHistory.map((exchange, index) => (
-              <div key={index} className="history-item">
-                {/* Guard's message */}
-                {exchange.npc && (
-                  <div className="npc-message">
-                    <div className="message-meta">
-                      <span>Security Guard</span>
-                      {/* Debug indicator */}
-                      {exchange.npc.includes('[RULE-BASED]') && (
-                        <span className="debug-indicator debug-fallback">FALLBACK</span>
-                      )}
-                      {exchange.npc.includes('[AI-ANTHROPIC]') && (
-                        <span className="debug-indicator debug-ai-anthropic">AI-CLAUDE</span>
-                      )}
-                      {exchange.npc.includes('[AI-OPENAI]') && (
-                        <span className="debug-indicator debug-ai-openai">AI-GPT</span>
-                      )}
-                    </div>
-                    <div className="message-text">
-                      {exchange.npc.replace(/\[(RULE-BASED|AI-ANTHROPIC|AI-OPENAI)\]\s*/, '')}
-                    </div>
-                  </div>
-                )}
+            {dialogueHistory.map((exchange, index) => {
+              const isLastExchange = index === dialogueHistory.length - 1;
 
-                {/* Player's message with score badges */}
-                {exchange.player && (
-                  <div className="player-message">
-                    <div className="message-meta">
-                      <span>You</span>
-                      {/* Score badges */}
-                      {exchange.consistency !== null && (
-                        <span className={`score-badge ${getScoreBadgeClass(exchange.consistency)}`}>
-                          C: {(exchange.consistency * 100).toFixed(0)}%
-                        </span>
-                      )}
-                      {exchange.confidence !== null && (
-                        <span className={`score-badge ${getScoreBadgeClass(exchange.confidence)}`}>
-                          Conf: {(exchange.confidence * 100).toFixed(0)}%
-                        </span>
-                      )}
-                      {exchange.persuasiveness !== null && (
-                        <span className={`score-badge ${getScoreBadgeClass(exchange.persuasiveness)}`}>
-                          P: {(exchange.persuasiveness * 100).toFixed(0)}%
-                        </span>
-                      )}
+              return (
+                <div key={index} className="history-item">
+                  {/* Guard's message */}
+                  {exchange.npc && (
+                    <div className="npc-message">
+                      <div className="message-meta">
+                        <span>Security Guard</span>
+                        {/* Debug indicator */}
+                        {exchange.npc.includes('[RULE-BASED]') && (
+                          <span className="debug-indicator debug-fallback">FALLBACK</span>
+                        )}
+                        {exchange.npc.includes('[AI-ANTHROPIC]') && (
+                          <span className="debug-indicator debug-ai-anthropic">AI-CLAUDE</span>
+                        )}
+                        {exchange.npc.includes('[AI-OPENAI]') && (
+                          <span className="debug-indicator debug-ai-openai">AI-GPT</span>
+                        )}
+                      </div>
+                      <div className="message-text">
+                        {exchange.npc.replace(/\[(RULE-BASED|AI-ANTHROPIC|AI-OPENAI)\]\s*/, '')}
+                      </div>
                     </div>
-                    <div className="message-text">{exchange.player}</div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
 
-            {/* Typing indicator when guard is thinking */}
-            {showTypingIndicator && renderTypingIndicator()}
+                  {/* Player's message with score badges */}
+                  {exchange.player && (
+                    <div className="player-message">
+                      <div className="message-meta">
+                        <span>You</span>
+                        {/* Score badges */}
+                        {exchange.consistency !== null && exchange.consistency !== undefined && (
+                          <span className={`score-badge ${getScoreBadgeClass(exchange.consistency)}`}>
+                            C: {(exchange.consistency * 100).toFixed(0)}%
+                          </span>
+                        )}
+                        {exchange.confidence !== null && exchange.confidence !== undefined && (
+                          <span className={`score-badge ${getScoreBadgeClass(exchange.confidence)}`}>
+                            Conf: {(exchange.confidence * 100).toFixed(0)}%
+                          </span>
+                        )}
+                        {exchange.persuasiveness !== null && exchange.persuasiveness !== undefined && (
+                          <span className={`score-badge ${getScoreBadgeClass(exchange.persuasiveness)}`}>
+                            P: {(exchange.persuasiveness * 100).toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="message-text">{exchange.player}</div>
+                    </div>
+                  )}
+
+                  {/* Typing indicator AFTER the last player message */}
+                  {isLastExchange && exchange.player && showTypingIndicator && (
+                    renderTypingIndicator()
+                  )}
+                </div>
+              );
+            })}
           </>
         ) : (
           <div className="loading-message">

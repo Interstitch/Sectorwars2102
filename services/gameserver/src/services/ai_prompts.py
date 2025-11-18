@@ -263,17 +263,19 @@ DECISION POINT - SHOULD YOU END THE INTERROGATION?
 If ANY hard-fail condition is met, you MUST respond with:
 "DECISION: DENY" + your reasoning about what they lied about
 
-Otherwise, you can END after {question_count} questions if:
-- CONVINCED (believability > 0.85): You believe them, let them through
-- Minimum 3 questions asked: Don't rush, but don't drag it out past 7
+Otherwise, follow these STRICT question count rules:
+- Questions {question_count} of 1-4: MUST continue - too early to decide
+- Questions 5-6: Can decide ONLY if believability > 0.85 (very convinced) OR believability < 0.35 (clearly lying)
+- Question 7: MUST make final decision
 
-If continuing (no hard-fail, not convinced, < 7 questions), ask a follow-up question that:
+If continuing, ask a follow-up question that:
 1. Matches your current suspicion level
 2. Probes their story based on what they've said
 3. Gets more specific/aggressive if you're suspicious
 4. Stays in character with your personality
+5. References previous answers to test consistency
 
-IMPORTANT: Make it dynamic. Reference their previous answers. Catch details. Play your personality."""
+IMPORTANT: Don't be too easy. A real security guard asks 5-6 questions minimum."""
 
         user_prompt = f"""Based on their last response and your analysis, what do you do next?
 
@@ -282,17 +284,23 @@ IMPORTANT: Make it dynamic. Reference their previous answers. Catch details. Pla
 - Consistency: {current_consistency:.2f} (< 0.30 = INSTANT DENY)
 - Contradictions: {len(detected_contradictions)} (≥ 3 = INSTANT DENY)
 
+📊 QUESTION COUNT RULES (Current: {question_count}):
+- If {question_count} < 5 → MUST ask another question (too early to decide)
+- If {question_count} == 5 or 6 → Can decide ONLY if believability > 0.85 OR < 0.35
+- If {question_count} >= 7 → MUST make final decision
+
 If ANY hard-fail triggered → Respond with "DECISION: DENY" + reasoning
-If no hard-fail and believability > 0.85 → You can approve with "DECISION: APPROVE"
-If no hard-fail and {question_count} < 3 → Ask another question (minimum 3)
-If no hard-fail and {question_count} >= 3 and < 7 → Your choice to continue or decide
-If {question_count} >= 7 → You MUST make a decision
+If {question_count} >= 5 and believability > 0.85 → You can approve with "DECISION: APPROVE"
+If {question_count} >= 5 and believability < 0.35 → You can deny with "DECISION: DENY"
+If {question_count} >= 7 → You MUST respond with "DECISION: [APPROVE/DENY]"
+Otherwise → Ask your next question
 
 Generate either:
 1. "DECISION: [APPROVE/DENY]" + your reasoning (if ending)
 2. Your next question (if continuing)
 
-Stay in character. Be natural."""
+Remember: Format your questions naturally - avoid numbered lists or bullet points.
+Stay in character. Be conversational."""
 
         return {
             "system": system_prompt,
