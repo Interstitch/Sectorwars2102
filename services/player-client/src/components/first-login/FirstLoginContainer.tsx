@@ -108,6 +108,15 @@ const FirstLoginContainer: React.FC = () => {
     return null;
   }
 
+  // Debug logging
+  console.log('[FirstLoginContainer] Rendering with:', {
+    currentStep,
+    hasSession: !!session,
+    hasGuardPersonality: !!guardPersonality,
+    sessionId: session?.session_id,
+    shipChoice: session?.ship_choice
+  });
+
   // Render guard silhouette SVG
   const renderGuardSilhouette = () => (
     <div className="guard-silhouette">
@@ -344,9 +353,7 @@ const FirstLoginContainer: React.FC = () => {
 
         {/* Ship Selection Phase (fullscreen, no columns) */}
         {currentStep === 'ship_selection' && session && (
-          <div className="ship-selection-content">
-            <ShipSelection />
-          </div>
+          <ShipSelection />
         )}
 
         {/* Dialogue Phase (3-column interrogation booth layout) */}
