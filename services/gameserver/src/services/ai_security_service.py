@@ -292,19 +292,20 @@ class AISecurityService:
         return is_safe, violations
 
     def sanitize_input(self, text: str) -> str:
-        """Sanitize input text for safe processing"""
+        """Sanitize input text for safe AI processing (NOT for HTML rendering)"""
         if not text:
             return ""
-        
-        # HTML escape
-        sanitized = html.escape(text, quote=True)
-        
+
+        # DO NOT HTML escape here - it causes &#x27; artifacts in AI responses
+        # The AI doesn't understand HTML entities and will echo them back
+        # HTML escaping should only happen when rendering to HTML, not for AI prompts
+
         # Remove null bytes and control characters
-        sanitized = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', sanitized)
-        
+        sanitized = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
+
         # Normalize whitespace
         sanitized = re.sub(r'\s+', ' ', sanitized).strip()
-        
+
         # Limit length to prevent buffer overflow attempts
         if len(sanitized) > self.rate_limits["max_chars_per_request"]:
             sanitized = sanitized[:self.rate_limits["max_chars_per_request"]]

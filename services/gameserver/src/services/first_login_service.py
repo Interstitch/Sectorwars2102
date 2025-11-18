@@ -1160,14 +1160,40 @@ class FirstLoginService:
         logger.info(f"  Consistency: {avg_consistency:.4f} (from {consistency_scores})")
 
         # Calculate overall persuasion score (weighted)
+        # Consistency is CRITICAL (50%) - lying/contradictions should be heavily penalized
+        # Confidence (30%) and Persuasiveness (20%) are secondary
         final_persuasion_score = (
-            avg_persuasiveness * 0.5 +
+            avg_consistency * 0.5 +
             avg_confidence * 0.3 +
-            avg_consistency * 0.2
+            avg_persuasiveness * 0.2
         )
 
         logger.info(f"Final Persuasion Score: {final_persuasion_score:.4f}")
-        logger.info(f"  Formula: ({avg_persuasiveness:.4f} * 0.5) + ({avg_confidence:.4f} * 0.3) + ({avg_consistency:.4f} * 0.2)")
+        logger.info(f"  Formula: ({avg_consistency:.4f} * 0.5) + ({avg_confidence:.4f} * 0.3) + ({avg_persuasiveness:.4f} * 0.2)")
+
+        # HARD-FAIL CHECKS: Instant denial for critical failures
+        hard_fail_reason = None
+
+        # Check 1: Consistency catastrophically low (confession/major contradiction)
+        if avg_consistency < 0.3:
+            hard_fail_reason = f"Critical consistency failure ({avg_consistency:.2f}) - Player confessed to lying or major contradictions detected"
+            logger.warning(f"⚠️  HARD FAIL: {hard_fail_reason}")
+
+        # Check 2: Multiple contradictions detected
+        total_contradictions = sum(
+            len(exchange.detected_contradictions) if exchange.detected_contradictions else 0
+            for exchange in exchanges
+        )
+        if total_contradictions >= 3:
+            hard_fail_reason = f"Multiple contradictions detected ({total_contradictions}) - Story fell apart"
+            logger.warning(f"⚠️  HARD FAIL: {hard_fail_reason}")
+
+        # Check 3: Any individual response with consistency < 0.2 (confession indicator)
+        for exchange in exchanges:
+            if exchange.consistency is not None and exchange.consistency < 0.2:
+                hard_fail_reason = f"Confession detected (consistency {exchange.consistency:.2f} on question {exchange.sequence_number})"
+                logger.warning(f"⚠️  HARD FAIL: {hard_fail_reason}")
+                break
 
         # Determine negotiation skill level
         if final_persuasion_score >= 0.7:
@@ -1194,18 +1220,44 @@ class FirstLoginService:
 
         # Determine the persuasion threshold for the claimed ship
         if negotiation_skill == NegotiationSkillLevel.STRONG:
-            threshold = ship_config.strong_threshold
+            base_threshold = ship_config.strong_threshold
         elif negotiation_skill == NegotiationSkillLevel.AVERAGE:
-            threshold = ship_config.average_threshold
+            base_threshold = ship_config.average_threshold
         else:
-            threshold = ship_config.weak_threshold
+            base_threshold = ship_config.weak_threshold
+
+        # Apply guard personality modifier to threshold
+        # Friendly guards are easier (lower threshold)
+        # Strict/paranoid guards are harder (higher threshold)
+        personality_modifier = 0.0
+        if session.guard_base_suspicion <= 0.35:  # Friendly Veteran
+            personality_modifier = -0.10  # 10% easier
+        elif session.guard_base_suspicion >= 0.60:  # Strict Rule-Follower or Paranoid Newbie
+            personality_modifier = +0.10  # 10% harder
+
+        threshold = base_threshold + personality_modifier
+        threshold = max(0.2, min(0.95, threshold))  # Clamp between 0.2 and 0.95
+
+        logger.info(f"Base Threshold ({negotiation_skill.name}): {base_threshold}")
+        logger.info(f"Guard Personality ({session.guard_trait}): {session.guard_base_suspicion:.2f} suspicion")
+        logger.info(f"Personality Modifier: {personality_modifier:+.2f}")
+        logger.info(f"Final Threshold: {threshold:.2f}")
 
         logger.info(f"Required Threshold ({negotiation_skill.name}): {threshold}")
         logger.info(f"Player Score: {final_persuasion_score:.4f}")
         logger.info(f"Comparison: {final_persuasion_score:.4f} >= {threshold} ? {final_persuasion_score >= threshold}")
-        
+
         # Determine the outcome
-        if final_persuasion_score >= threshold:
+        # HARD-FAIL overrides everything
+        if hard_fail_reason:
+            # Automatic failure for critical violations
+            logger.error(f"❌ FORCING FAILURE DUE TO: {hard_fail_reason}")
+            outcome = DialogueOutcome.FAILURE
+            awarded_ship = ShipChoice.ESCAPE_POD
+            starting_credits = 300  # Extra penalty for lying
+            negotiation_bonus_flag = False
+            notoriety_penalty = True  # Lying gets you flagged
+        elif final_persuasion_score >= threshold:
             # Success - player gets the claimed ship
             outcome = DialogueOutcome.SUCCESS
             awarded_ship = claimed_ship
