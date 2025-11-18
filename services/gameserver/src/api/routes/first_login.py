@@ -43,6 +43,7 @@ class FirstLoginSessionResponse(BaseModel):
     npc_prompt: str
     exchange_id: Optional[str] = None
     sequence_number: Optional[int] = None
+    ship_claimed: Optional[str] = None
 
 class DialogueAnalysisResponse(BaseModel):
     exchange_id: str
@@ -138,7 +139,8 @@ async def start_first_login_session(
         "current_step": current_step,
         "npc_prompt": exchange.npc_prompt if exchange else "ERROR: Missing initial prompt",
         "exchange_id": str(exchange.id) if exchange else None,
-        "sequence_number": exchange.sequence_number if exchange else None
+        "sequence_number": exchange.sequence_number if exchange else None,
+        "ship_claimed": session.ship_claimed.name if session.ship_claimed else None
     }
 
 
@@ -209,7 +211,8 @@ async def claim_ship(
             "current_step": "dialogue",
             "npc_prompt": question_data["question"],
             "exchange_id": str(question_data["exchange_id"]),
-            "sequence_number": question_data["sequence_number"]
+            "sequence_number": question_data["sequence_number"],
+            "ship_claimed": session.ship_claimed.name if session.ship_claimed else None
         }
         
     except HTTPException:

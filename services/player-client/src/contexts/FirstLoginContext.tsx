@@ -26,6 +26,7 @@ export interface FirstLoginSession {
   npc_prompt: string;
   exchange_id?: string;
   sequence_number?: number;
+  ship_claimed?: string;
 }
 
 export interface DialogueAnalysis {

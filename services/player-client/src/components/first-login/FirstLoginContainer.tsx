@@ -228,7 +228,11 @@ const FirstLoginContainer: React.FC = () => {
         {/* Score breakdown */}
         {dialogueHistory && dialogueHistory.length > 0 && (() => {
           const latestExchange = dialogueHistory
-            .filter(ex => ex.player && (ex.consistency !== null || ex.confidence !== null))
+            .filter(ex => ex.player && (
+              ex.consistency !== null && ex.consistency !== undefined &&
+              ex.confidence !== null && ex.confidence !== undefined &&
+              ex.persuasiveness !== null && ex.persuasiveness !== undefined
+            ))
             .pop();
 
           if (!latestExchange) return null;
@@ -262,10 +266,10 @@ const FirstLoginContainer: React.FC = () => {
 
   // Render ship claim panel (right column)
   const renderShipClaim = () => {
-    if (!session?.ship_choice) return null;
+    if (!session?.ship_claimed) return null;
 
-    const shipName = session.ship_choice.replace(/_/g, ' ');
-    const shipClass = session.ship_choice.toLowerCase().replace(/_/g, '-');
+    const shipName = session.ship_claimed.replace(/_/g, ' ');
+    const shipClass = session.ship_claimed.toLowerCase().replace(/_/g, '-');
 
     return (
       <div className="ship-claim-panel">
@@ -288,22 +292,22 @@ const FirstLoginContainer: React.FC = () => {
           <div className="ship-spec-item">
             <span className="ship-spec-label">TIER</span>
             <span className="ship-spec-value">
-              {session.ship_choice === 'ESCAPE_POD' ? 'I' :
-               session.ship_choice === 'LIGHT_FREIGHTER' ? 'II' :
-               session.ship_choice === 'SCOUT_SHIP' || session.ship_choice === 'FAST_COURIER' ? 'III' :
-               session.ship_choice === 'CARGO_HAULER' ? 'IV' :
-               session.ship_choice === 'DEFENDER' ? 'V' : 'VI+'}
+              {session.ship_claimed === 'ESCAPE_POD' ? 'I' :
+               session.ship_claimed === 'LIGHT_FREIGHTER' ? 'II' :
+               session.ship_claimed === 'SCOUT_SHIP' || session.ship_claimed === 'FAST_COURIER' ? 'III' :
+               session.ship_claimed === 'CARGO_HAULER' ? 'IV' :
+               session.ship_claimed === 'DEFENDER' ? 'V' : 'VI+'}
             </span>
           </div>
           <div className="ship-spec-item">
             <span className="ship-spec-label">VALUE</span>
             <span className="ship-spec-value">
-              {session.ship_choice === 'ESCAPE_POD' ? '5K CR' :
-               session.ship_choice === 'LIGHT_FREIGHTER' ? '150K CR' :
-               session.ship_choice === 'SCOUT_SHIP' ? '500K CR' :
-               session.ship_choice === 'FAST_COURIER' ? '450K CR' :
-               session.ship_choice === 'CARGO_HAULER' ? '1.2M CR' :
-               session.ship_choice === 'DEFENDER' ? '2.5M CR' : '5M+ CR'}
+              {session.ship_claimed === 'ESCAPE_POD' ? '5K CR' :
+               session.ship_claimed === 'LIGHT_FREIGHTER' ? '150K CR' :
+               session.ship_claimed === 'SCOUT_SHIP' ? '500K CR' :
+               session.ship_claimed === 'FAST_COURIER' ? '450K CR' :
+               session.ship_claimed === 'CARGO_HAULER' ? '1.2M CR' :
+               session.ship_claimed === 'DEFENDER' ? '2.5M CR' : '5M+ CR'}
             </span>
           </div>
         </div>

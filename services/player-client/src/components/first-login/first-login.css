@@ -877,9 +877,11 @@
   padding: var(--space-md);
   font-size: 0.95rem;
   font-family: var(--font-body);
-  min-height: 80px;
+  min-height: 150px;
+  width: 100%;
   resize: vertical;
   transition: all var(--anim-normal) ease;
+  line-height: 1.6;
 }
 
 .response-input:focus {
