@@ -331,31 +331,61 @@
 .dialogue-history {
   max-height: 50vh;
   overflow-y: auto;
+  overflow-x: hidden;  /* Prevent horizontal scroll */
   margin-bottom: 20px;
-  padding: 10px 20px;
+  padding: 15px 20px;
   background-color: rgba(0, 0, 0, 0.4);
   border-radius: 8px;
   flex: 1;
+  scroll-behavior: smooth;  /* Smooth auto-scroll */
+}
+
+/* Custom scrollbar for dialogue history */
+.dialogue-history::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dialogue-history::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.dialogue-history::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.5);
+  border-radius: 4px;
+}
+
+.dialogue-history::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 255, 0.7);
 }
 
 .history-item {
-  margin-bottom: 15px;
-  padding-bottom: 15px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.history-item:last-child {
+  border-bottom: none;  /* Remove border from last item */
+}
+
 .npc-message {
-  background-color: rgba(74, 144, 226, 0.2);
+  background-color: rgba(74, 144, 226, 0.25);
+  border-left: 4px solid #4a90e2;
   border-radius: 8px;
-  padding: 10px;
+  padding: 15px;
   margin-bottom: 10px;
+  max-width: 85%;  /* Prevent full-width messages */
 }
 
 .player-message {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 212, 255, 0.15);
+  border-right: 4px solid #00d4ff;
   border-radius: 8px;
-  padding: 10px;
+  padding: 15px;
   text-align: right;
+  margin-left: auto;  /* Push to right */
+  max-width: 85%;  /* Prevent full-width messages */
 }
 
 /* Outcome display */
