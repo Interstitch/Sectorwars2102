@@ -1007,7 +1007,7 @@ class FirstLoginService:
         
         # If this is the final exchange, evaluate the outcome
         if result["is_final"]:
-            outcome = self._evaluate_dialogue_outcome(session)
+            outcome = await self._evaluate_dialogue_outcome(session)
             result["outcome"] = outcome
             
             # Mark the player as having completed questions
@@ -1074,7 +1074,7 @@ class FirstLoginService:
         
         # If this is the final exchange, evaluate the outcome
         if result["is_final"]:
-            outcome = self._evaluate_dialogue_outcome(session)
+            outcome = await self._evaluate_dialogue_outcome(session)
             result["outcome"] = outcome
             
             # Mark the player as having completed questions
@@ -1132,7 +1132,7 @@ class FirstLoginService:
         
         return analysis
     
-    def _evaluate_dialogue_outcome(self, session: FirstLoginSession) -> Dict[str, Any]:
+    async def _evaluate_dialogue_outcome(self, session: FirstLoginSession) -> Dict[str, Any]:
         """Evaluate the dialogue outcome based on the player's performance"""
         logger.info(f"=" * 60)
         logger.info(f"EVALUATING DIALOGUE OUTCOME FOR SESSION {session.id}")
@@ -1305,6 +1305,9 @@ class FirstLoginService:
         self.db.commit()
         self.db.refresh(session)
         
+        # Generate AI-powered personalized outcome message
+        guard_response = await self._generate_guard_outcome_response_async(session)
+
         return {
             "outcome": outcome.name,
             "awarded_ship": awarded_ship.name,
@@ -1313,39 +1316,66 @@ class FirstLoginService:
             "final_persuasion_score": final_persuasion_score,
             "negotiation_bonus": negotiation_bonus_flag,
             "notoriety_penalty": notoriety_penalty,
-            "guard_response": self._generate_guard_outcome_response(session)
+            "guard_response": guard_response
         }
     
-    def _generate_guard_outcome_response(self, session: FirstLoginSession) -> str:
-        """Generate the guard's response based on the dialogue outcome"""
-        # Get the player's claimed ship and awarded ship
+    async def _generate_guard_outcome_response_async(self, session: FirstLoginSession) -> str:
+        """Generate AI-powered personalized guard response based on the dialogue outcome"""
+        try:
+            # Get all dialogue exchanges for this session
+            exchanges = self.db.query(DialogueExchange).filter_by(
+                session_id=session.id
+            ).order_by(DialogueExchange.sequence_number).all()
+
+            # Build conversation history
+            conversation_history = []
+            for exchange in exchanges:
+                if exchange.player_response:
+                    conversation_history.append({
+                        'npc': exchange.npc_prompt,
+                        'player': exchange.player_response
+                    })
+
+            # Build the outcome generation prompt
+            prompts = self.ai_dialogue_service.build_outcome_generation_prompt(
+                guard_name=session.guard_name,
+                guard_title=session.guard_title,
+                guard_trait=session.guard_trait,
+                outcome_type=session.outcome.name,
+                claimed_ship=session.ship_claimed.name if session.ship_claimed else "ESCAPE_POD",
+                awarded_ship=session.awarded_ship.name if session.awarded_ship else "ESCAPE_POD",
+                final_score=session.final_persuasion_score or 0.0,
+                negotiation_skill=session.negotiation_skill.name if session.negotiation_skill else "AVERAGE",
+                conversation_history=conversation_history
+            )
+
+            # Generate AI response
+            response, provider = await self.ai_provider_service.generate_outcome(prompts)
+            logger.info(f"[AI-{provider.upper()}] Generated outcome response")
+
+            return f"[AI-{provider.upper()}] {response}"
+
+        except Exception as e:
+            logger.error(f"Failed to generate AI outcome response: {e}", exc_info=True)
+            # Fallback to static response
+            return self._generate_guard_outcome_response_fallback(session)
+
+    def _generate_guard_outcome_response_fallback(self, session: FirstLoginSession) -> str:
+        """Fallback static response if AI generation fails"""
         claimed_ship = session.ship_claimed or ShipChoice.ESCAPE_POD
         awarded_ship = session.awarded_ship or ShipChoice.ESCAPE_POD
-        
-        # Generate the appropriate response
+
         if session.outcome == DialogueOutcome.SUCCESS:
             if claimed_ship == ShipChoice.ESCAPE_POD:
-                return """Guard: "Everything seems to be in order. Your Escape Pod is cleared for departure. 
-Safe travels through the outer sectors."
-"""
+                return "[RULE-BASED] Everything seems to be in order. Your Escape Pod is cleared for departure."
             else:
                 ship_type = claimed_ship.name.replace("_", " ").title()
-                return f"""Guard: "Alright, your credentials check out. Your {ship_type} is cleared for departure.
-Just be careful out there in the frontier sectors. I hear there's been raider activity recently."
-"""
+                return f"[RULE-BASED] Alright, your credentials check out. Your {ship_type} is cleared for departure."
         elif session.outcome == DialogueOutcome.PARTIAL_SUCCESS:
-            return """Guard: "Hmm, there seem to be some irregularities in your documentation. 
-I'll let you depart in your Escape Pod, but I'm noting this discrepancy in the system.
-Next time make sure your paperwork is in order."
-"""
+            return "[RULE-BASED] There are some irregularities, but I'll clear your Escape Pod for departure."
         else:  # FAILURE
             ship_type = claimed_ship.name.replace("_", " ").title()
-            return f"""Guard: "Wait a minute..." *taps on datapad* "These records indicate you arrived on that 
-Escape Pod over there. You're trying to claim someone else's {ship_type}!"
-
-"I'm not calling security this time, but get back to your Escape Pod before I change my mind.
-And don't try something like this again - you're now flagged in the system."
-"""
+            return f"[RULE-BASED] Your story doesn't add up. You're getting the Escape Pod, not the {ship_type}."
     
     def complete_first_login(self, session_id: uuid.UUID) -> Dict[str, Any]:
         """Complete the first login process and grant the player their ship and credits"""

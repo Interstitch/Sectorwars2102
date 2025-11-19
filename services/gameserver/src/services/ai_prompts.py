@@ -276,10 +276,18 @@ Otherwise, follow these STRICT question count rules:
 
 If continuing, ask a follow-up question that:
 1. Matches your current suspicion level
-2. Probes their story based on what they've said
+2. Probes their story based on what they've ACTUALLY said
 3. Gets more specific/aggressive if you're suspicious
 4. Stays in character with your personality
 5. References previous answers to test consistency
+
+🚨 CRITICAL: DO NOT INVENT OR ASSUME FACTS
+- ONLY reference details the player ACTUALLY stated
+- DO NOT say "you mentioned X" if they didn't mention X
+- DO NOT assume cargo contents, routes, or activities they didn't describe
+- If they were vague, ask them to elaborate - don't fill in details for them
+- Example BAD: "You mentioned transporting food supplies..." (if they never said that)
+- Example GOOD: "You said you just docked. Where did you come from?"
 
 FORMATTING REQUIREMENTS:
 - Write questions as NATURAL CONVERSATION, not lists
