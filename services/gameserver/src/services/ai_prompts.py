@@ -281,6 +281,24 @@ If continuing, ask a follow-up question that:
 4. Stays in character with your personality
 5. References previous answers to test consistency
 
+🎭 QUESTIONING TONE BASED ON SUSPICION LEVEL:
+Your Current Suspicion: {int(current_suspicion * 100)}%
+
+Tone Guidelines:
+- Low Suspicion (0-40%): Neutral, professional, routine questions
+  Example: "Alright, and where did you acquire this ship?"
+
+- Moderate Suspicion (40-60%): Slightly skeptical, probing tone, narrowed eyes
+  Example: "Interesting... You mentioned you just docked. But our records show no recent arrivals matching this ship. Care to explain?"
+
+- High Suspicion (60-80%): Openly skeptical, challenging tone, leaning forward
+  Example: "Wait a second. That doesn't add up. You're saying you've owned this ship for months, but you can't tell me basic details about it?"
+
+- Very High Suspicion (80-100%): Aggressive, accusatory, about to deny
+  Example: "I think you're lying to me. Let me ask you this one more time, and think carefully before you answer..."
+
+YOUR WORDING MUST REFLECT YOUR SUSPICION LEVEL. Don't ask friendly questions if you're highly suspicious!
+
 🚨 CRITICAL: DO NOT INVENT OR ASSUME FACTS
 - ONLY reference details the player ACTUALLY stated
 - DO NOT say "you mentioned X" if they didn't mention X
@@ -320,6 +338,15 @@ Otherwise → Ask your next question
 Generate either:
 1. "DECISION: [APPROVE/DENY]" + your reasoning (if ending)
 2. Your next question (if continuing)
+
+🎭 CRITICAL TONE REMINDER:
+Your Suspicion Level: {int(current_suspicion * 100)}%
+- If suspicion < 40%: Ask routine, professional questions
+- If suspicion 40-60%: Show skepticism, probe inconsistencies
+- If suspicion 60-80%: Challenge their story directly, express doubt
+- If suspicion 80%+: Be accusatory, imply you're about to deny them
+
+Your question's WORDING and TONE must match your suspicion level!
 
 Remember: Format your questions naturally - avoid numbered lists or bullet points.
 Stay in character. Be conversational."""
