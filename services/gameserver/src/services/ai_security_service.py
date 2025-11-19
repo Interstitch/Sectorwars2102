@@ -158,9 +158,9 @@ class AISecurityService:
             r"\bpowershell\b",
             r"\bbash\b",
             r"\bsh\b",
-            r"\beval\b",
-            r"\bexec\b",
-            r"\bsystem\b",
+            r"\beval\s*\(",  # Changed: only match eval() as function call
+            r"\bexec\s*\(",  # Changed: only match exec() as function call
+            r"\bsystem\s*\(",  # Changed: only match system() as function call, not "navigation system"
             r"\bpasswd\b",
             r"\bsudo\b",
             r"\brm\s+-rf",

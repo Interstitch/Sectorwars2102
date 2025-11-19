@@ -259,6 +259,12 @@ PLAYER'S CURRENT PERFORMANCE:
 CONVERSATION SO FAR:
 {history_text}
 
+⚠️ HALLUCINATION WARNING - READ THIS CAREFULLY:
+{"🔴 THIS IS THE FIRST QUESTION - THE PLAYER HAS NOT SAID ANYTHING YET!" if question_count == 0 else ""}
+{"DO NOT reference things they 'said' or 'mentioned' - they haven't answered any questions yet!" if question_count == 0 else ""}
+{"ONLY ask about the ship they claimed. DO NOT invent backstory or assume details!" if question_count == 0 else ""}
+{"You can ONLY reference what they ACTUALLY said in the conversation above." if question_count > 0 else ""}
+
 DECISION POINT - SHOULD YOU END THE INTERROGATION?
 
 🚨 CRITICAL HARD-FAIL CONDITIONS (IMMEDIATE DENY):
