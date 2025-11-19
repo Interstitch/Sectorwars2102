@@ -1017,12 +1017,12 @@ class FirstLoginService:
         
         return result
     
-    def record_player_answer_sync(
-        self, 
-        exchange_id: uuid.UUID, 
+    async def record_player_answer_sync(
+        self,
+        exchange_id: uuid.UUID,
         player_response: str
     ) -> Dict[str, Any]:
-        """Synchronous version of record_player_answer for backward compatibility"""
+        """Async version of record_player_answer for backward compatibility (now async due to outcome generation)"""
         exchange = self.db.query(DialogueExchange).filter_by(id=exchange_id).first()
         
         if not exchange:
