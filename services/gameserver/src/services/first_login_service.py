@@ -1300,6 +1300,11 @@ class FirstLoginService:
         session.negotiation_bonus_flag = negotiation_bonus_flag
         session.notoriety_penalty = notoriety_penalty
 
+        # Mark dialogue as completed when outcome is determined
+        # (Resources will be allocated later when player clicks "Start Game")
+        if not session.completed_at:
+            session.completed_at = datetime.now()
+
         logger.info(f"=" * 60)
         logger.info(f"FINAL OUTCOME: {outcome.name}")
         logger.info(f"  Awarded Ship: {awarded_ship.name}")
