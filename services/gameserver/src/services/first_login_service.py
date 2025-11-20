@@ -18,15 +18,42 @@ from src.models.first_login import (
 )
 from src.models.ship import Ship, ShipType
 from src.services.ai_dialogue_service import (
-    AIDialogueService, 
-    DialogueContext, 
+    AIDialogueService,
+    DialogueContext,
     ShipType as AIShipType,
     GuardMood
 )
 from src.services.ai_provider_service import get_ai_provider_service, ProviderType
 from src.utils.guard_personalities import get_guard_for_session
+from src.core.ship_specifications_seeder import SHIP_SPECIFICATIONS
 
 logger = logging.getLogger(__name__)
+
+def get_ship_specifications(ship_choice: ShipChoice) -> Optional[Dict[str, Any]]:
+    """
+    Get ship specifications for a given ship choice.
+    Returns detailed specs including cargo, speed, weapons, etc.
+    """
+    # Map ShipChoice to ShipType
+    ship_type_map = {
+        ShipChoice.ESCAPE_POD: ShipType.ESCAPE_POD,
+        ShipChoice.LIGHT_FREIGHTER: ShipType.LIGHT_FREIGHTER,
+        ShipChoice.CARGO_HAULER: ShipType.CARGO_HAULER,
+        ShipChoice.FAST_COURIER: ShipType.FAST_COURIER,
+        ShipChoice.SCOUT_SHIP: ShipType.SCOUT_SHIP,
+    }
+
+    ship_type = ship_type_map.get(ship_choice)
+    if not ship_type:
+        logger.warning(f"Unknown ship choice: {ship_choice}")
+        return None
+
+    specs = SHIP_SPECIFICATIONS.get(ship_type)
+    if not specs:
+        logger.warning(f"No specifications found for ship type: {ship_type}")
+        return None
+
+    return specs
 
 # Initial dialogue prompts
 INITIAL_GUARD_PROMPT = """The year is 2102. You find yourself in a bustling shipyard on the outskirts of the Callisto Colony. 
@@ -555,6 +582,28 @@ class FirstLoginService:
         # Convert FAST_COURIER -> Fast Courier (proper title case)
         claimed_ship_display = session.ship_claimed.name.replace("_", " ").title() if session.ship_claimed else "Escape Pod"
 
+        # Get ship specifications for the claimed ship
+        ship_specs = get_ship_specifications(session.ship_claimed) if session.ship_claimed else None
+
+        # Format ship specs for AI context (human-readable)
+        ship_specs_text = None
+        if ship_specs:
+            ship_specs_text = f"""
+Ship Type: {claimed_ship_display}
+Base Cost: {ship_specs.get('base_cost', 0):,} credits
+Max Cargo: {ship_specs.get('max_cargo', 0)} units
+Speed: {ship_specs.get('speed', 0)} sectors/turn
+Max Shields: {ship_specs.get('max_shields', 0)} points
+Hull Points: {ship_specs.get('hull_points', 0)}
+Attack Rating: {ship_specs.get('attack_rating', 0)}/10
+Defense Rating: {ship_specs.get('defense_rating', 0)}/10
+Evasion: {ship_specs.get('evasion', 0)}%
+Max Drones: {ship_specs.get('max_drones', 0)}
+Scanner Range: {ship_specs.get('scanner_range', 0)} sectors
+Warp Capable: {'Yes' if ship_specs.get('warp_compatible', False) else 'No'}
+Description: {ship_specs.get('description', 'N/A')}
+""".strip()
+
         return DialogueContext(
             session_id=str(session.id),
             claimed_ship=claimed_ship,
@@ -572,7 +621,9 @@ class FirstLoginService:
             guard_title=session.guard_title,
             guard_trait=session.guard_trait,
             guard_description=session.guard_description,
-            guard_base_suspicion=session.guard_base_suspicion
+            guard_base_suspicion=session.guard_base_suspicion,
+            # Ship specifications for technical questions
+            ship_specifications=ship_specs_text
         )
     
     async def generate_guard_question(self, session_id: uuid.UUID) -> Dict[str, Any]:
@@ -1005,22 +1056,46 @@ class FirstLoginService:
                 "guard_mood": ai_analysis.suggested_guard_mood.value
             })
         
+        # Check for early termination conditions
+        early_termination = False
+        termination_reason = None
+
+        # Get current suspicion from exchange (if available)
+        current_suspicion = exchange.current_suspicion if exchange.current_suspicion is not None else 0.5
+
+        # Early termination: Guard is too suspicious (caught red-handed)
+        if current_suspicion > 0.85 and completed_exchanges >= 2:
+            early_termination = True
+            termination_reason = "high_suspicion"
+            logger.info(f"Early termination triggered: High suspicion ({current_suspicion:.2f}) after {completed_exchanges} exchanges")
+
+        # Early termination: Guard is convinced (smooth talker)
+        elif current_suspicion < 0.20 and believability > 0.75 and completed_exchanges >= 3:
+            early_termination = True
+            termination_reason = "convinced"
+            logger.info(f"Early termination triggered: Low suspicion ({current_suspicion:.2f}), high believability ({believability:.2f}) after {completed_exchanges} exchanges")
+
+        # Normal completion after 5 questions
+        is_final = completed_exchanges >= 5 or early_termination
+
         result = {
             "exchange_id": exchange.id,
             "analysis": analysis_data,
-            "is_final": completed_exchanges >= 3  # After 3 exchanges, make a decision
+            "is_final": is_final,  # After 5 exchanges or early termination
+            "early_termination": early_termination,
+            "termination_reason": termination_reason if early_termination else None
         }
-        
+
         # If this is the final exchange, evaluate the outcome
         if result["is_final"]:
             outcome = await self._evaluate_dialogue_outcome(session)
             result["outcome"] = outcome
-            
+
             # Mark the player as having completed questions
             state = self.get_player_first_login_state(session.player_id)
             state.answered_questions = True
             self.db.commit()
-        
+
         return result
     
     async def record_player_answer_sync(

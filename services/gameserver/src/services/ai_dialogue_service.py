@@ -80,6 +80,9 @@ class DialogueContext:
     guard_description: Optional[str] = None
     guard_base_suspicion: Optional[float] = None
 
+    # Ship specifications (for technical questioning)
+    ship_specifications: Optional[str] = None
+
 
 @dataclass 
 class ResponseAnalysis:
