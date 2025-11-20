@@ -14,8 +14,8 @@
 
 /* Filters Section */
 .conversation-filters {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--surface-primary);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: var(--space-4);
 }
@@ -36,24 +36,24 @@
 .filter-group label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .filter-select,
 .filter-input {
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   font-size: 0.875rem;
-  background: var(--color-background);
-  color: var(--color-text);
+  background: var(--background-primary);
+  color: var(--text-primary);
   transition: border-color 0.2s;
 }
 
 .filter-select:focus,
 .filter-input:focus {
   outline: none;
-  border-color: var(--color-primary);
+  border-color: var(--color-primary-500);
 }
 
 .filter-actions {
@@ -68,14 +68,14 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--surface-primary);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
 
 .result-count {
   font-size: 0.875rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 /* Error Banner */
@@ -99,8 +99,8 @@
 .empty-state {
   padding: var(--space-8);
   text-align: center;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--surface-primary);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
 
@@ -113,11 +113,11 @@
 
 .table-loading i {
   font-size: 2rem;
-  color: var(--color-primary);
+  color: var(--color-primary-500);
 }
 
 .empty-state {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .empty-icon {
@@ -127,13 +127,13 @@
 
 .empty-state h3 {
   margin: 0 0 var(--space-2) 0;
-  color: var(--color-text);
+  color: var(--text-primary);
 }
 
 .conversation-table-container {
   overflow-x: auto;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--surface-primary);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
 }
 
@@ -144,25 +144,25 @@
 }
 
 .conversation-table thead {
-  background: var(--color-background);
-  border-bottom: 2px solid var(--color-border);
+  background: var(--background-secondary);
+  border-bottom: 2px solid var(--border-light);
 }
 
 .conversation-table th {
   padding: var(--space-3);
   text-align: left;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
 .conversation-table td {
   padding: var(--space-3);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .conversation-table tbody tr:hover {
-  background: var(--color-background);
+  background: var(--background-secondary);
 }
 
 .player-username {
@@ -171,7 +171,7 @@
 
 .date-cell {
   font-size: 0.8125rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .in-progress-badge {
@@ -274,7 +274,7 @@
 }
 
 .cost-normal {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .actions-cell {
@@ -285,15 +285,15 @@
   padding: var(--space-2);
   border: none;
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: all 0.2s;
 }
 
 .btn-icon:hover {
-  background: var(--color-background);
-  color: var(--color-primary);
+  background: var(--background-secondary);
+  color: var(--color-primary-600);
 }
 
 /* Pagination */
@@ -307,7 +307,7 @@
 
 .page-info {
   font-size: 0.875rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 /* Conversation Detail Modal */
@@ -327,7 +327,7 @@
 }
 
 .conversation-modal-content {
-  background: var(--color-surface);
+  background: var(--surface-primary);
   border-radius: var(--radius-lg);
   max-width: 1200px;
   width: 100%;
@@ -335,6 +335,7 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-light);
 }
 
 .modal-header {
@@ -342,7 +343,7 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: var(--space-6);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .header-left h2 {
@@ -351,7 +352,7 @@
 
 .session-id {
   font-size: 0.75rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: monospace;
 }
 
@@ -365,15 +366,15 @@
   border: none;
   background: transparent;
   font-size: 1.5rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: all 0.2s;
 }
 
 .close-button:hover {
-  background: var(--color-background);
-  color: var(--color-text);
+  background: var(--background-secondary);
+  color: var(--text-primary);
 }
 
 .modal-body {
@@ -397,8 +398,8 @@
 
 /* Session Summary */
 .session-summary {
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
+  background: var(--background-secondary);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: var(--space-4);
 }
@@ -418,14 +419,14 @@
 .summary-item label {
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .summary-item span {
   font-size: 0.875rem;
-  color: var(--color-text);
+  color: var(--text-primary);
 }
 
 /* Guard Personality Card */
@@ -493,8 +494,8 @@
 
 /* Metrics Timeline */
 .metrics-timeline {
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
+  background: var(--background-secondary);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: var(--space-4);
 }
@@ -531,7 +532,7 @@
 
 .legend-label {
   text-transform: capitalize;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 /* Dialogue Exchanges */
@@ -546,8 +547,8 @@
 }
 
 .exchange-card {
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
+  background: var(--background-secondary);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: var(--space-4);
   display: flex;
@@ -561,17 +562,17 @@
   gap: var(--space-3);
   flex-wrap: wrap;
   padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .exchange-number {
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--text-primary);
 }
 
 .exchange-timestamp {
   font-size: 0.8125rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .provider-badge {
@@ -585,12 +586,12 @@
 .response-time,
 .exchange-cost {
   font-size: 0.8125rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .exchange-topic {
   font-size: 0.875rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .exchange-dialogue {
@@ -631,8 +632,8 @@
 
 /* Exchange Metrics */
 .exchange-metrics {
-  background: white;
-  border: 1px solid var(--color-border);
+  background: var(--surface-primary);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   padding: var(--space-3);
 }
@@ -640,7 +641,7 @@
 .exchange-metrics h5 {
   margin: 0 0 var(--space-3) 0;
   font-size: 0.875rem;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .metrics-grid {
@@ -658,7 +659,7 @@
 .metric-bar label {
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .bar-container {
@@ -677,7 +678,7 @@
 .metric-value {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--text-primary);
 }
 
 /* Contradictions */
@@ -707,8 +708,8 @@
 
 /* Prompt Inspector */
 .prompt-inspector {
-  background: #f9fafb;
-  border: 1px solid var(--color-border);
+  background: var(--background-tertiary);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
@@ -725,12 +726,12 @@
   gap: var(--space-2);
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-text);
+  color: var(--text-primary);
   transition: background 0.2s;
 }
 
 .prompt-toggle:hover {
-  background: var(--color-background);
+  background: var(--background-secondary);
 }
 
 .prompt-content {
@@ -745,15 +746,15 @@
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin-bottom: var(--space-2);
   padding: var(--space-2);
-  background: var(--color-background);
+  background: var(--background-secondary);
   border-radius: var(--radius-sm);
 }
 
 .prompt-content summary:hover {
-  background: var(--color-surface);
+  background: var(--surface-primary);
 }
 
 .prompt-text {
@@ -783,22 +784,22 @@
 }
 
 .btn-primary {
-  background: var(--color-primary);
+  background: var(--color-primary-600);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--color-primary-dark);
+  background: var(--color-primary-700);
 }
 
 .btn-secondary {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--color-background);
+  background: var(--background-secondary);
 }
 
 .btn:disabled {
