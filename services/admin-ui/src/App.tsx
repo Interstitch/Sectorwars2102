@@ -44,6 +44,7 @@ const ColonizationManagement = lazy(() => import('./components/pages/Colonizatio
 const AITradingDashboard = lazy(() => import('./components/pages/AITradingDashboard'));
 const CentralNexusManager = lazy(() => import('./components/pages/CentralNexusManager'));
 const RegionalGovernorDashboard = lazy(() => import('./components/pages/RegionalGovernorDashboard'));
+const FirstLoginConversations = lazy(() => import('./components/pages/FirstLoginConversations'));
 
 // Helper component for protected lazy routes
 const ProtectedLazyRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => (
@@ -95,6 +96,9 @@ function App() {
 
                 {/* Regional Governance Routes */}
                 <Route path="regional-governor" element={<ProtectedLazyRoute element={<RegionalGovernorDashboard />} />} />
+
+                {/* First Login Conversations */}
+                <Route path="first-login-conversations" element={<ProtectedLazyRoute element={<FirstLoginConversations />} />} />
 
                 {/* Redirect root to dashboard */}
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
