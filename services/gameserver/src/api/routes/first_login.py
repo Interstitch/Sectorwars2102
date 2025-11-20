@@ -237,10 +237,15 @@ async def answer_dialogue(
 ):
     """Submit a dialogue response and get analysis and the next question (if any)"""
     # CRITICAL SECURITY: Validate input before any processing
+    # Note: Skip SQL/XSS checks for First Login since it's creative storytelling,
+    # not form input. Players use technical terms like "SELECT coordinates" which
+    # would false-positive as SQL injection.
     is_safe, violations = security_service.validate_input(
-        response.response, 
-        str(player.id), 
-        str(exchange_id)
+        response.response,
+        str(player.id),
+        str(exchange_id),
+        skip_sql_injection=True,  # Creative storytelling context
+        skip_xss=True  # Not HTML rendering context
     )
     
     if not is_safe:

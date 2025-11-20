@@ -200,10 +200,24 @@ class AISecurityService:
             r"(.{10,})\1{5,}",  # Repeated phrases
         ]
 
-    def validate_input(self, text: str, player_id: str, session_id: str) -> Tuple[bool, List[SecurityViolation]]:
+    def validate_input(
+        self,
+        text: str,
+        player_id: str,
+        session_id: str,
+        skip_sql_injection: bool = False,
+        skip_xss: bool = False
+    ) -> Tuple[bool, List[SecurityViolation]]:
         """
         Comprehensive input validation and security scanning
-        
+
+        Args:
+            text: The user input to validate
+            player_id: ID of the player submitting input
+            session_id: ID of the current session
+            skip_sql_injection: Skip SQL injection checks (use for creative/storytelling contexts)
+            skip_xss: Skip XSS checks (use for non-HTML contexts like AI dialogue)
+
         Returns:
             Tuple[bool, List[SecurityViolation]]: (is_safe, violations_found)
         """
@@ -243,14 +257,16 @@ class AISecurityService:
         
         # Sanitization (creates cleaned version but doesn't modify original for analysis)
         sanitized_text = self.sanitize_input(text)
-        
-        # XSS detection
-        xss_violations = self.detect_xss(text, player_id, session_id)
-        violations.extend(xss_violations)
-        
-        # SQL injection detection
-        sql_violations = self.detect_sql_injection(text, player_id, session_id)
-        violations.extend(sql_violations)
+
+        # XSS detection (skip for non-HTML contexts)
+        if not skip_xss:
+            xss_violations = self.detect_xss(text, player_id, session_id)
+            violations.extend(xss_violations)
+
+        # SQL injection detection (skip for creative/storytelling contexts)
+        if not skip_sql_injection:
+            sql_violations = self.detect_sql_injection(text, player_id, session_id)
+            violations.extend(sql_violations)
         
         # AI-specific attack detection
         ai_violations = self.detect_ai_specific_attacks(text, player_id, session_id)
