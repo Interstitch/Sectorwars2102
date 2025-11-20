@@ -48,6 +48,66 @@ class GuardMood(Enum):
     ANNOYED = "annoyed"
 
 
+def parse_guard_mood_safe(mood_value: str, context: str = "unknown") -> GuardMood:
+    """
+    Safely parse guard mood from AI response with semantic fallback mapping.
+
+    This function handles cases where AI providers return creative mood values
+    that don't exactly match our enum, preventing parsing failures that would
+    trigger fallback to default 0.50 scores.
+
+    Args:
+        mood_value: The mood string returned by the AI
+        context: Context for logging (e.g., "openai_analysis", "anthropic_generation")
+
+    Returns:
+        Valid GuardMood enum value
+    """
+    if not mood_value:
+        logger.warning(f"[{context}] Empty mood value, defaulting to NEUTRAL")
+        return GuardMood.NEUTRAL
+
+    mood_lower = mood_value.lower().strip()
+
+    # Try exact match first
+    try:
+        return GuardMood(mood_lower)
+    except ValueError:
+        pass  # Not an exact match, try semantic mapping
+
+    # Semantic mapping for common AI variations
+    semantic_map = {
+        "engaged": GuardMood.NEUTRAL,  # Actively participating, not yet suspicious
+        "skeptical": GuardMood.SUSPICIOUS,
+        "doubtful": GuardMood.SUSPICIOUS,
+        "concerned": GuardMood.SUSPICIOUS,
+        "wary": GuardMood.SUSPICIOUS,
+        "uncertain": GuardMood.SUSPICIOUS,
+        "highly_suspicious": GuardMood.VERY_SUSPICIOUS,
+        "extremely_suspicious": GuardMood.VERY_SUSPICIOUS,
+        "angry": GuardMood.ANNOYED,
+        "frustrated": GuardMood.ANNOYED,
+        "irritated": GuardMood.ANNOYED,
+        "impatient": GuardMood.ANNOYED,
+        "satisfied": GuardMood.CONVINCED,
+        "confident": GuardMood.CONVINCED,
+        "reassured": GuardMood.CONVINCED,
+        "trusting": GuardMood.CONVINCED,
+    }
+
+    if mood_lower in semantic_map:
+        mapped_mood = semantic_map[mood_lower]
+        logger.info(f"[{context}] Mapped unexpected mood '{mood_value}' → {mapped_mood.value}")
+        return mapped_mood
+
+    # Unknown value - log for monitoring and default to neutral
+    logger.warning(
+        f"[{context}] Unknown guard mood: '{mood_value}' - defaulting to NEUTRAL. "
+        f"Consider adding to semantic_map if this appears frequently."
+    )
+    return GuardMood.NEUTRAL
+
+
 class ShipType(Enum):
     """Available ship types in the shipyard"""
     ESCAPE_POD = "escape_pod"
@@ -204,16 +264,16 @@ class AIDialogueService:
                 raise
 
     async def _analyze_with_anthropic(
-        self, 
-        response: str, 
+        self,
+        response: str,
         context: DialogueContext
     ) -> ResponseAnalysis:
         """Analyze response using Anthropic Claude"""
         logger.info("🧠 AI: Using Anthropic Claude for response analysis")
-        
+
         system_prompt = self._build_analysis_system_prompt()
         user_prompt = self._build_analysis_user_prompt(response, context)
-        
+
         try:
             message = await asyncio.to_thread(
                 self.anthropic_client.messages.create,
@@ -223,11 +283,15 @@ class AIDialogueService:
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}]
             )
-            
+
             # Parse JSON response
             response_text = message.content[0].text
             analysis_data = json.loads(response_text)
-            
+
+            # Use safe mood parsing to handle unexpected AI values
+            raw_mood = analysis_data.get("suggested_guard_mood", "neutral")
+            parsed_mood = parse_guard_mood_safe(raw_mood, context="anthropic_analysis")
+
             return ResponseAnalysis(
                 persuasiveness_score=analysis_data.get("persuasiveness_score", 0.5),
                 confidence_level=analysis_data.get("confidence_level", 0.5),
@@ -236,9 +300,9 @@ class AIDialogueService:
                 detected_inconsistencies=analysis_data.get("detected_inconsistencies", []),
                 extracted_claims=analysis_data.get("extracted_claims", []),
                 overall_believability=analysis_data.get("overall_believability", 0.5),
-                suggested_guard_mood=GuardMood(analysis_data.get("suggested_guard_mood", "neutral"))
+                suggested_guard_mood=parsed_mood
             )
-            
+
         except Exception as e:
             logger.error(f"Anthropic analysis failed: {e}")
             raise
@@ -250,10 +314,10 @@ class AIDialogueService:
     ) -> GuardResponse:
         """Generate guard response using Anthropic Claude"""
         logger.info("🧠 AI: Using Anthropic Claude for guard response generation")
-        
+
         system_prompt = self._build_generation_system_prompt()
         user_prompt = self._build_generation_user_prompt(context, analysis)
-        
+
         try:
             message = await asyncio.to_thread(
                 self.anthropic_client.messages.create,
@@ -263,39 +327,43 @@ class AIDialogueService:
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}]
             )
-            
+
             # Parse JSON response
             response_text = message.content[0].text
             response_data = json.loads(response_text)
-            
+
             dialogue_text = response_data.get("dialogue_text", "I need to check with my supervisor.")
             # Add debug indicator for AI responses
             dialogue_text = f"[AI-ANTHROPIC] {dialogue_text}"
-            
+
+            # Use safe mood parsing to handle unexpected AI values
+            raw_mood = response_data.get("mood", "neutral")
+            parsed_mood = parse_guard_mood_safe(raw_mood, context="anthropic_generation")
+
             return GuardResponse(
                 dialogue_text=dialogue_text,
-                mood=GuardMood(response_data.get("mood", "neutral")),
+                mood=parsed_mood,
                 suspicion_level=response_data.get("suspicion_level", 0.5),
                 is_final_decision=response_data.get("is_final_decision", False),
                 outcome=response_data.get("outcome"),
                 credits_modifier=response_data.get("credits_modifier", 1.0)
             )
-            
+
         except Exception as e:
             logger.error(f"Anthropic generation failed: {e}")
             raise
 
     async def _analyze_with_openai(
-        self, 
-        response: str, 
+        self,
+        response: str,
         context: DialogueContext
     ) -> ResponseAnalysis:
         """Analyze response using OpenAI GPT"""
         logger.info("🧠 AI: Using OpenAI GPT for response analysis")
-        
+
         system_prompt = self._build_analysis_system_prompt()
         user_prompt = self._build_analysis_user_prompt(response, context)
-        
+
         try:
             completion = await asyncio.to_thread(
                 self.openai_client.chat.completions.create,
@@ -307,11 +375,15 @@ class AIDialogueService:
                 temperature=0.3,
                 max_tokens=1000
             )
-            
+
             # Parse JSON response
             response_text = completion.choices[0].message.content
             analysis_data = json.loads(response_text)
-            
+
+            # Use safe mood parsing to handle unexpected AI values
+            raw_mood = analysis_data.get("suggested_guard_mood", "neutral")
+            parsed_mood = parse_guard_mood_safe(raw_mood, context="openai_analysis")
+
             return ResponseAnalysis(
                 persuasiveness_score=analysis_data.get("persuasiveness_score", 0.5),
                 confidence_level=analysis_data.get("confidence_level", 0.5),
@@ -320,9 +392,9 @@ class AIDialogueService:
                 detected_inconsistencies=analysis_data.get("detected_inconsistencies", []),
                 extracted_claims=analysis_data.get("extracted_claims", []),
                 overall_believability=analysis_data.get("overall_believability", 0.5),
-                suggested_guard_mood=GuardMood(analysis_data.get("suggested_guard_mood", "neutral"))
+                suggested_guard_mood=parsed_mood
             )
-            
+
         except Exception as e:
             logger.error(f"OpenAI analysis failed: {e}")
             raise
@@ -334,10 +406,10 @@ class AIDialogueService:
     ) -> GuardResponse:
         """Generate guard response using OpenAI GPT"""
         logger.info("🧠 AI: Using OpenAI GPT for guard response generation")
-        
+
         system_prompt = self._build_generation_system_prompt()
         user_prompt = self._build_generation_user_prompt(context, analysis)
-        
+
         try:
             completion = await asyncio.to_thread(
                 self.openai_client.chat.completions.create,
@@ -349,24 +421,28 @@ class AIDialogueService:
                 temperature=0.7,
                 max_tokens=1000
             )
-            
+
             # Parse JSON response
             response_text = completion.choices[0].message.content
             response_data = json.loads(response_text)
-            
+
             dialogue_text = response_data.get("dialogue_text", "I need to check with my supervisor.")
             # Add debug indicator for AI responses
             dialogue_text = f"[AI-OPENAI] {dialogue_text}"
-            
+
+            # Use safe mood parsing to handle unexpected AI values
+            raw_mood = response_data.get("mood", "neutral")
+            parsed_mood = parse_guard_mood_safe(raw_mood, context="openai_generation")
+
             return GuardResponse(
                 dialogue_text=dialogue_text,
-                mood=GuardMood(response_data.get("mood", "neutral")),
+                mood=parsed_mood,
                 suspicion_level=response_data.get("suspicion_level", 0.5),
                 is_final_decision=response_data.get("is_final_decision", False),
                 outcome=response_data.get("outcome"),
                 credits_modifier=response_data.get("credits_modifier", 1.0)
             )
-            
+
         except Exception as e:
             logger.error(f"OpenAI generation failed: {e}")
             raise

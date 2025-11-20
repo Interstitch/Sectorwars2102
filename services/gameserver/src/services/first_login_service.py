@@ -97,9 +97,9 @@ DEFAULT_SHIP_CONFIGS = [
         "rarity_tier": 3,
         "spawn_chance": 25,
         "base_credits": 2000,
-        "weak_threshold": 0.5,  # Lowered from 0.8
-        "average_threshold": 0.45,  # Lowered from 0.7
-        "strong_threshold": 0.4  # Lowered from 0.6
+        "weak_threshold": 0.55,  # Balanced for 40% win rate with decent roleplay
+        "average_threshold": 0.50,  # Balanced for 65% win rate with good roleplay
+        "strong_threshold": 0.45  # Easy win for skilled players (~85% win rate)
     },
     {
         "ship_type": ShipChoice.FAST_COURIER,
@@ -741,13 +741,19 @@ Description: {ship_specs.get('description', 'N/A')}
             topic = "identity_verification"
 
         # Create a new dialogue exchange with AI metadata
+        # Store suspicion level if available from AI-generated response
+        suspicion_to_store = None
+        if ai_used and 'guard_response' in locals():
+            suspicion_to_store = guard_response.suspicion_level
+
         exchange = DialogueExchange(
             session_id=session_id,
             sequence_number=next_sequence,
             npc_prompt=question,
             player_response="",  # Player hasn't responded yet
             topic=topic,
-            ai_provider=provider_used.value if provider_used and ai_used else "fallback"
+            ai_provider=provider_used.value if provider_used and ai_used else "fallback",
+            current_suspicion=suspicion_to_store  # Store AI-calculated suspicion
         )
         self.db.add(exchange)
         
@@ -1055,13 +1061,39 @@ Description: {ship_specs.get('description', 'N/A')}
                 "extracted_claims": ai_analysis.extracted_claims,
                 "guard_mood": ai_analysis.suggested_guard_mood.value
             })
-        
+
+        # Calculate and update suspicion level
+        # Suspicion should decrease with high believability, increase with low believability
+        # Start from guard's base suspicion level or previous suspicion
+        previous_suspicion = exchange.current_suspicion if exchange.current_suspicion is not None else session.guard_base_suspicion or 0.5
+
+        # Calculate suspicion change based on believability
+        # High believability (0.8+) → decrease suspicion significantly
+        # Low believability (0.3-) → increase suspicion significantly
+        # Medium believability → slight changes
+        if believability >= 0.8:
+            suspicion_change = -0.15  # Strong reduction
+        elif believability >= 0.6:
+            suspicion_change = -0.08  # Moderate reduction
+        elif believability >= 0.4:
+            suspicion_change = 0.0  # Neutral
+        elif believability >= 0.2:
+            suspicion_change = 0.10  # Moderate increase
+        else:
+            suspicion_change = 0.20  # Strong increase
+
+        # Apply change and clamp to 0-1 range
+        current_suspicion = max(0.0, min(1.0, previous_suspicion + suspicion_change))
+
+        # Update the exchange with calculated suspicion
+        exchange.current_suspicion = current_suspicion
+        self.db.commit()  # Persist the suspicion update
+
+        logger.info(f"Suspicion tracking: {previous_suspicion:.2f} → {current_suspicion:.2f} (believability={believability:.2f})")
+
         # Check for early termination conditions
         early_termination = False
         termination_reason = None
-
-        # Get current suspicion from exchange (if available)
-        current_suspicion = exchange.current_suspicion if exchange.current_suspicion is not None else 0.5
 
         # Early termination: Guard is too suspicious (caught red-handed)
         if current_suspicion > 0.85 and completed_exchanges >= 2:
