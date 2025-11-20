@@ -552,7 +552,8 @@ class FirstLoginService:
         claimed_ship = SHIP_CHOICE_TO_AI_TYPE.get(session.ship_claimed, AIShipType.ESCAPE_POD)
 
         # Get actual ship name for display (what the player claimed)
-        claimed_ship_display = session.ship_claimed.name.lower() if session.ship_claimed else "escape_pod"
+        # Convert FAST_COURIER -> Fast Courier (proper title case)
+        claimed_ship_display = session.ship_claimed.name.replace("_", " ").title() if session.ship_claimed else "Escape Pod"
 
         return DialogueContext(
             session_id=str(session.id),
@@ -687,14 +688,15 @@ class FirstLoginService:
             logger.error(f"No question generated for session {session_id}, using emergency fallback")
             question = "Hold on, let me verify your credentials. What's your pilot registration number?"
             topic = "identity_verification"
-        
-        # Create a new dialogue exchange
+
+        # Create a new dialogue exchange with AI metadata
         exchange = DialogueExchange(
             session_id=session_id,
             sequence_number=next_sequence,
             npc_prompt=question,
             player_response="",  # Player hasn't responded yet
-            topic=topic
+            topic=topic,
+            ai_provider=provider_used.value if provider_used and ai_used else "fallback"
         )
         self.db.add(exchange)
         

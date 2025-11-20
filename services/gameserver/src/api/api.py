@@ -6,6 +6,7 @@ from src.api.routes.test import router as test_router
 from src.api.routes.status import router as status_router
 from src.api.routes.first_login import router as first_login_router
 from src.api.routes.admin import router as admin_router
+from src.api.routes.admin_first_login import router as admin_first_login_router
 from src.api.routes.admin_enhanced import router as admin_enhanced_router
 from src.api.routes.admin_comprehensive import router as admin_comprehensive_router
 from src.api.routes.combat import router as combat_router
@@ -57,6 +58,7 @@ api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(users_router, prefix="/users", tags=["users"])
 api_router.include_router(first_login_router, prefix="/first-login", tags=["first-login"])
 api_router.include_router(admin_router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_first_login_router, tags=["admin-first-login"])
 api_router.include_router(admin_enhanced_router, prefix="/admin", tags=["admin-enhanced"])
 api_router.include_router(admin_comprehensive_router, prefix="/admin", tags=["admin-comprehensive"])
 api_router.include_router(combat_router, tags=["combat"])

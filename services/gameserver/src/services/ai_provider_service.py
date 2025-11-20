@@ -46,20 +46,33 @@ class ProviderType(Enum):
 
 
 @dataclass
+class AIGenerationMetadata:
+    """Metadata captured from AI generation for logging and debugging"""
+    provider: str  # 'openai', 'anthropic', 'fallback'
+    system_prompt: str
+    user_prompt: str
+    raw_response: str
+    response_time_ms: int
+    estimated_cost_usd: float
+    tokens_used: int = 0
+    model_used: str = ""
+
+
+@dataclass
 class ProviderConfig:
     """Configuration for AI providers"""
     primary_provider: ProviderType = ProviderType.OPENAI
     secondary_provider: ProviderType = ProviderType.ANTHROPIC
     fallback_provider: ProviderType = ProviderType.MANUAL
-    
+
     # OpenAI settings
     openai_model: str = "gpt-3.5-turbo"
     openai_temperature: float = 0.7
-    
-    # Anthropic settings  
+
+    # Anthropic settings
     anthropic_model: str = "claude-3-sonnet-20240229"
     anthropic_temperature: float = 0.7
-    
+
     # Retry settings
     max_retries: int = 2
     retry_delay: float = 1.0
@@ -524,12 +537,15 @@ class AnthropicProvider(AIProvider):
 
 class AIProviderService:
     """Enhanced AI Provider Service with robust fallback chain"""
-    
+
     def __init__(self, config: Optional[ProviderConfig] = None):
         self.config = config or ProviderConfig()
-        
+
         # Initialize providers in priority order
         self.providers: List[AIProvider] = []
+
+        # Store metadata from last generation for logging
+        self.last_generation_metadata: Optional[AIGenerationMetadata] = None
         
         # Add providers based on configuration
         if self.config.primary_provider == ProviderType.OPENAI:

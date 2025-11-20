@@ -41,13 +41,28 @@ class DialogueExchange(Base):
     player_response = Column(String, nullable=False)   # Player's exact response
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     topic = Column(String, nullable=True)              # Topic category of question
-    
-    # AI analysis data
+
+    # AI analysis data (existing)
     persuasiveness = Column(Float, nullable=True)      # 0-1 persuasion score
     confidence = Column(Float, nullable=True)          # 0-1 confidence score
     consistency = Column(Float, nullable=True)         # 0-1 consistency with prior claims
     key_extracted_info = Column(JSONB, nullable=True)  # Key-value pairs of extracted data
     detected_contradictions = Column(ARRAY(String), nullable=True)  # Any contradictions found
+
+    # NEW: AI provider and prompt logging (for admin debugging)
+    ai_provider = Column(String(20), nullable=True)    # 'openai', 'anthropic', 'fallback'
+    ai_system_prompt = Column(String, nullable=True)   # Full system prompt sent to AI
+    ai_user_prompt = Column(String, nullable=True)     # Full user prompt sent to AI
+    ai_raw_response = Column(String, nullable=True)    # Raw AI response before parsing
+
+    # NEW: Additional analysis metrics
+    believability = Column(Float, nullable=True)       # 0-1 overall believability
+    current_suspicion = Column(Float, nullable=True)   # Guard's suspicion at this exchange
+
+    # NEW: Performance & cost tracking
+    response_time_ms = Column(Integer, nullable=True)  # AI response time in milliseconds
+    estimated_cost_usd = Column(Float, nullable=True)  # Estimated API cost
+    tokens_used = Column(Integer, nullable=True)       # Total tokens (input + output)
 
     # Relationship
     session = relationship("FirstLoginSession", back_populates="dialogue_exchanges")
