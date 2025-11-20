@@ -314,16 +314,19 @@
 .conversation-modal {
   position: fixed;
   top: 0;
-  left: 0;
+  left: 0 !important;  /* Override any parent container offset */
   right: 0;
   bottom: 0;
+  width: 100vw;  /* Full viewport width */
+  height: 100vh;  /* Full viewport height */
   background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
   padding: var(--space-6);
   overflow-y: auto;
+  margin: 0;  /* Reset any inherited margins */
 }
 
 .conversation-modal-content {
