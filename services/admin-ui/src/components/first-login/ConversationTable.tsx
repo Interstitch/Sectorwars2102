@@ -12,6 +12,10 @@ export const ConversationTable: React.FC<ConversationTableProps> = ({
   onSelectConversation,
   loading = false
 }) => {
+  // Debug logging
+  React.useEffect(() => {
+    console.log('[ConversationTable] Received conversations:', conversations);
+  }, [conversations]);
   const getOutcomeBadgeClass = (outcome: string | null): string => {
     if (!outcome) return 'outcome-unknown';
     switch (outcome.toUpperCase()) {
