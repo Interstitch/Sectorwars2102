@@ -550,7 +550,10 @@ class FirstLoginService:
         
         # Map ship choice to AI service ship type
         claimed_ship = SHIP_CHOICE_TO_AI_TYPE.get(session.ship_claimed, AIShipType.ESCAPE_POD)
-        
+
+        # Get actual ship name for display (what the player claimed)
+        claimed_ship_display = session.ship_claimed.name.lower() if session.ship_claimed else "escape_pod"
+
         return DialogueContext(
             session_id=str(session.id),
             claimed_ship=claimed_ship,
@@ -562,6 +565,7 @@ class FirstLoginService:
             player_name=session.extracted_player_name,
             security_protocol_level="standard",
             time_of_day="day_shift",
+            claimed_ship_display_name=claimed_ship_display,  # Use actual ship name player claimed
             # Guard personality for AI-enhanced generation
             guard_name=session.guard_name,
             guard_title=session.guard_title,

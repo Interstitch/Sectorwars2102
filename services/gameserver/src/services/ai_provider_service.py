@@ -228,13 +228,16 @@ believability, claims, inconsistencies, guard_mood
             for ex in context.dialogue_history
         ]
 
+        # Use the actual claimed ship name (what player sees) instead of mapped AIShipType
+        claimed_ship_name = context.claimed_ship_display_name or context.claimed_ship.value
+
         return FirstLoginAIPrompts.build_question_generation_prompt(
             guard_name=context.guard_name,
             guard_title=context.guard_title,
             guard_trait=context.guard_trait,
             guard_description=context.guard_description,
             guard_base_suspicion=context.guard_base_suspicion,
-            claimed_ship=context.claimed_ship.value,
+            claimed_ship=claimed_ship_name,
             ship_tier=self._get_ship_tier(context.claimed_ship),
             conversation_history=history_list,
             current_believability=current_believability,

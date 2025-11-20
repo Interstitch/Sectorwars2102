@@ -71,6 +71,7 @@ class DialogueContext:
     player_name: Optional[str] = None
     security_protocol_level: str = "standard"
     time_of_day: str = "day_shift"
+    claimed_ship_display_name: Optional[str] = None  # Actual ship name shown to player (e.g., "fast_courier")
 
     # Guard personality (for AI-enhanced generation)
     guard_name: Optional[str] = None
