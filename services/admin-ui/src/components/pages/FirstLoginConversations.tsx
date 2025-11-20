@@ -8,6 +8,7 @@ import {
   ConversationDetail,
   ConversationFilters as Filters
 } from '../../types/firstLogin';
+import { api } from '../../utils/auth';
 import '../../styles/first-login-conversations.css';
 
 const FirstLoginConversations: React.FC = () => {
@@ -36,27 +37,15 @@ const FirstLoginConversations: React.FC = () => {
       if (filters.start_date) queryParams.append('start_date', filters.start_date);
       if (filters.end_date) queryParams.append('end_date', filters.end_date);
 
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(
-        `/api/v1/admin/first-login/conversations?${queryParams}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
+      const response = await api.get(
+        `/api/v1/admin/first-login/conversations?${queryParams}`
       );
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch conversations: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setConversations(data);
+      setConversations(response.data);
 
       // Calculate pagination (rough estimate since backend returns array, not pagination metadata)
       // TODO: Update backend to return total count for accurate pagination
-      const hasMore = data.length === (filters.limit || 50);
+      const hasMore = response.data.length === (filters.limit || 50);
       setTotalPages(hasMore ? page + 1 : page);
     } catch (err) {
       console.error('Error fetching conversations:', err);
@@ -72,23 +61,11 @@ const FirstLoginConversations: React.FC = () => {
 
   const handleSelectConversation = async (sessionId: string) => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(
-        `/api/v1/admin/first-login/conversations/${sessionId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
+      const response = await api.get(
+        `/api/v1/admin/first-login/conversations/${sessionId}`
       );
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch conversation details: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setSelectedConversation(data);
+      setSelectedConversation(response.data);
     } catch (err) {
       console.error('Error fetching conversation details:', err);
       setError(err instanceof Error ? err.message : 'Failed to load conversation details');
