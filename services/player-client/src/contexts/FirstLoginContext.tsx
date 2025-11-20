@@ -218,9 +218,10 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
       const response = await api.post('/api/v1/first-login/session');
       console.log('[FirstLogin:Session] Started | Ships:', (response.data as any).available_ships);
 
-      // Check if this is a completed session (auto-reset for testing)
-      if ((response.data as any).current_step === 'completion' && !dialogueOutcome) {
-        console.log('[FirstLogin:Session] Detected completed session, auto-resetting...');
+      // Auto-reset any existing session on page load/reload
+      // This ensures players always start from ship selection when refreshing
+      if ((response.data as any).current_step !== 'ship_selection') {
+        console.log('[FirstLogin:Session] Detected existing session, auto-resetting for fresh start...');
         await api.delete('/api/v1/first-login/session');
         // Retry with a fresh session
         const retryResponse = await api.post('/api/v1/first-login/session');
