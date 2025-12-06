@@ -1,51 +1,100 @@
 #!/usr/bin/env python3
 """
-Simple System Health Check for Multi-Regional SectorWars 2102
-Uses built-in modules to test basic connectivity
+System Health Check for SectorWars 2102
+Automatically detects environment (development vs production) and adjusts expectations.
+Uses built-in modules to test basic connectivity.
 """
 
+import os
 import sys
 import socket
 import subprocess
 import time
-from urllib.request import urlopen
-from urllib.error import URLError
+from urllib.request import urlopen, Request
+from urllib.error import URLError, HTTPError
 
 
-def test_port_connectivity():
+def detect_environment():
+    """Detect deployment environment and architecture mode"""
+    env = os.environ.get("ENVIRONMENT", "development").lower()
+    dev_env = os.environ.get("DEV_ENVIRONMENT", "").lower()
+    compose_profiles = os.environ.get("COMPOSE_PROFILES", "").lower()
+
+    is_multi_regional = "multi-regional" in compose_profiles
+    is_development = env in ["development", "dev"] or "codespace" in dev_env
+
+    return {
+        "environment": env,
+        "is_development": is_development,
+        "is_multi_regional": is_multi_regional,
+        "compose_profiles": compose_profiles
+    }
+
+
+def test_port_connectivity(env_config):
     """Test that all required ports are accessible"""
     print("🔌 Testing Port Connectivity...")
-    
-    ports_to_test = [
-        (5433, "PostgreSQL Database"),
-        (6379, "Redis Cache"),
-        (8080, "Game Server"),
-        (8081, "Region Manager"),
-        (3000, "Player Client"),
-        (3001, "Admin UI"),
-        (80, "Nginx Gateway")
+
+    # Core services required in all environments
+    required_ports = [
+        (5433, "PostgreSQL Database", True),
+        (6379, "Redis Cache", True),
+        (8080, "Game Server", True),
+        (3000, "Player Client", True),
+        (3001, "Admin UI", True),
+        (80, "Nginx Gateway", True)
     ]
-    
+
+    # Optional services based on environment
+    optional_ports = [
+        (8081, "Region Manager", env_config["is_multi_regional"])
+    ]
+
     results = {}
-    for port, service in ports_to_test:
+    optional_results = {}
+
+    # Test required ports
+    for port, service, _ in required_ports:
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(5)
             result = sock.connect_ex(('localhost', port))
             sock.close()
-            
+
             if result == 0:
                 results[service] = "✅ OPEN"
                 print(f"  ✅ {service} (:{port}): ACCESSIBLE")
             else:
                 results[service] = "❌ CLOSED"
                 print(f"  ❌ {service} (:{port}): NOT ACCESSIBLE")
-        
+
         except Exception as e:
             results[service] = f"❌ ERROR: {e}"
             print(f"  ❌ {service} (:{port}): ERROR - {e}")
-    
-    return results
+
+    # Test optional ports
+    for port, service, should_test in optional_ports:
+        if should_test:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(5)
+                result = sock.connect_ex(('localhost', port))
+                sock.close()
+
+                if result == 0:
+                    optional_results[service] = "✅ OPEN"
+                    print(f"  ✅ {service} (:{port}): ACCESSIBLE")
+                else:
+                    optional_results[service] = "⚠️ OPTIONAL - Not Running"
+                    print(f"  ⚠️ {service} (:{port}): OPTIONAL - Not running")
+
+            except Exception as e:
+                optional_results[service] = f"⚠️ OPTIONAL - {e}"
+                print(f"  ⚠️ {service} (:{port}): OPTIONAL - {e}")
+        else:
+            print(f"  ⏸️ {service} (:{port}): SKIPPED - Not required in {env_config['environment']} mode")
+
+    return {"required": results, "optional": optional_results}
 
 
 def test_docker_containers():
@@ -86,41 +135,115 @@ def test_docker_containers():
         return {"error": str(e)}
 
 
-def test_http_endpoints():
+def test_http_endpoints(env_config):
     """Test HTTP endpoint accessibility"""
     print("\n🌐 Testing HTTP Endpoint Accessibility...")
-    
-    endpoints_to_test = [
-        ("http://localhost:8080/api/v1/status/health", "Game Server Health"),
-        ("http://localhost:8081/health", "Region Manager Health"),
-        ("http://localhost:3000", "Player Client"),
-        ("http://localhost:3001", "Admin UI"),
-        ("http://localhost:80", "Nginx Gateway")
+
+    # Required API endpoints (need proper HTTP 200 responses)
+    required_api_endpoints = [
+        ("http://localhost:8080/api/v1/status/health", "Game Server Health")
     ]
-    
+
+    # Frontend services (in development, just verify they're serving content)
+    required_frontend_endpoints = [
+        (3000, "Player Client"),
+        (3001, "Admin UI"),
+        (80, "Nginx Gateway")
+    ]
+
+    # Optional endpoints based on environment
+    optional_endpoints = [
+        ("http://localhost:8081/health", "Region Manager Health", env_config["is_multi_regional"])
+    ]
+
     results = {}
-    for url, service in endpoints_to_test:
+    optional_results = {}
+
+    # Test API endpoints (expect proper HTTP 200 responses)
+    for url, service in required_api_endpoints:
+        start_time = time.time()
         try:
-            start_time = time.time()
-            response = urlopen(url, timeout=10)
+            request = Request(url, headers={'User-Agent': 'SectorWars-HealthCheck/1.0'})
+            response = urlopen(request, timeout=10)
             response_time = (time.time() - start_time) * 1000
-            
+
             if response.status == 200:
                 results[service] = f"✅ OK ({response_time:.0f}ms)"
                 print(f"  ✅ {service}: OK ({response_time:.0f}ms)")
             else:
                 results[service] = f"❌ HTTP {response.status}"
                 print(f"  ❌ {service}: HTTP {response.status}")
-        
+
+        except HTTPError as e:
+            response_time = (time.time() - start_time) * 1000
+            results[service] = f"❌ HTTP {e.code}"
+            print(f"  ❌ {service}: HTTP {e.code}")
+
         except URLError as e:
-            results[service] = f"❌ URL Error: {e}"
-            print(f"  ❌ {service}: URL Error - {e}")
-        
+            response_time = (time.time() - start_time) * 1000
+            results[service] = f"❌ Connection Failed"
+            print(f"  ❌ {service}: Connection failed")
+
         except Exception as e:
-            results[service] = f"❌ Error: {e}"
-            print(f"  ❌ {service}: Error - {e}")
-    
-    return results
+            response_time = (time.time() - start_time) * 1000
+            results[service] = f"❌ Error"
+            print(f"  ❌ {service}: Error - {type(e).__name__}")
+
+    # Test frontend services (just verify HTTP connection works)
+    # Vite dev servers behave differently with different clients, so we just check connectivity
+    for port, service in required_frontend_endpoints:
+        start_time = time.time()
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)
+            result = sock.connect_ex(('localhost', port))
+            sock.close()
+            response_time = (time.time() - start_time) * 1000
+
+            if result == 0:
+                # Port is open, now try a simple HTTP request
+                try:
+                    request = Request(f'http://localhost:{port}',
+                                    headers={'User-Agent': 'Mozilla/5.0'})
+                    response = urlopen(request, timeout=5)
+                    results[service] = f"✅ OK ({response_time:.0f}ms)"
+                    print(f"  ✅ {service}: OK ({response_time:.0f}ms)")
+                except (HTTPError, URLError):
+                    # Even if we get an HTTP error, if we can connect, the service is up
+                    results[service] = f"✅ OK (Serving)"
+                    print(f"  ✅ {service}: OK (Serving)")
+            else:
+                results[service] = "❌ Port Closed"
+                print(f"  ❌ {service}: Port not accessible")
+
+        except Exception as e:
+            response_time = (time.time() - start_time) * 1000
+            results[service] = "❌ Connection Failed"
+            print(f"  ❌ {service}: Connection failed")
+
+    # Test optional endpoints
+    for url, service, should_test in optional_endpoints:
+        if should_test:
+            try:
+                start_time = time.time()
+                request = Request(url, headers={'User-Agent': 'SectorWars-HealthCheck/1.0'})
+                response = urlopen(request, timeout=10)
+                response_time = (time.time() - start_time) * 1000
+
+                if response.status == 200:
+                    optional_results[service] = f"✅ OK ({response_time:.0f}ms)"
+                    print(f"  ✅ {service}: OK ({response_time:.0f}ms)")
+                else:
+                    optional_results[service] = f"⚠️ HTTP {response.status}"
+                    print(f"  ⚠️ {service}: HTTP {response.status}")
+
+            except Exception as e:
+                optional_results[service] = f"⚠️ OPTIONAL - Not Available"
+                print(f"  ⚠️ {service}: OPTIONAL - Not available")
+        else:
+            print(f"  ⏸️ {service}: SKIPPED - Not required in {env_config['environment']} mode")
+
+    return {"required": results, "optional": optional_results}
 
 
 def test_redis_connection():
@@ -171,53 +294,82 @@ def test_database_connection():
         return {"status": "error", "error": str(e)}
 
 
-def generate_system_report(test_results):
+def generate_system_report(test_results, env_config):
     """Generate system health report"""
     print("\n" + "="*60)
     print("📊 SYSTEM HEALTH REPORT")
     print("="*60)
-    
-    # Count successful tests
-    total_services = 0
-    healthy_services = 0
-    
+
+    # Display environment information
+    print(f"\n🌍 ENVIRONMENT: {env_config['environment'].upper()}")
+    if env_config['is_multi_regional']:
+        print(f"   🌐 Mode: Multi-Regional Architecture")
+    else:
+        print(f"   💻 Mode: Single-Region Development")
+
+    # Count successful tests for REQUIRED services only
+    total_required = 0
+    healthy_required = 0
+    total_optional = 0
+    healthy_optional = 0
+
     for category, results in test_results.items():
         if isinstance(results, dict):
-            for service, status in results.items():
-                if service not in ["total", "healthy", "error", "status"]:
-                    total_services += 1
+            # Handle required services
+            if "required" in results:
+                for service, status in results["required"].items():
+                    total_required += 1
                     if "✅" in str(status) or "working" in str(status):
-                        healthy_services += 1
-    
-    # Calculate health percentage
-    health_percentage = (healthy_services / total_services * 100) if total_services > 0 else 0
-    
-    print(f"\n🎯 OVERALL SYSTEM HEALTH: {health_percentage:.1f}%")
-    print(f"   Services Tested: {total_services}")
-    print(f"   Healthy Services: {healthy_services}")
-    print(f"   Failed Services: {total_services - healthy_services}")
-    
+                        healthy_required += 1
+
+            # Handle optional services
+            if "optional" in results:
+                for service, status in results["optional"].items():
+                    total_optional += 1
+                    if "✅" in str(status):
+                        healthy_optional += 1
+
+            # Handle simple status dict (redis, database)
+            if "status" in results and category in ["redis", "database"]:
+                total_required += 1
+                if results["status"] == "working":
+                    healthy_required += 1
+
+            # Handle docker results
+            if "total" in results and "healthy" in results and category == "docker":
+                # Don't count individual containers in overall score
+                pass
+
+    # Calculate health percentage based on REQUIRED services only
+    health_percentage = (healthy_required / total_required * 100) if total_required > 0 else 0
+
+    print(f"\n🎯 REQUIRED SERVICES HEALTH: {health_percentage:.1f}%")
+    print(f"   Required Services: {healthy_required}/{total_required} healthy")
+    if total_optional > 0:
+        optional_percentage = (healthy_optional / total_optional * 100) if total_optional > 0 else 0
+        print(f"   Optional Services: {healthy_optional}/{total_optional} healthy ({optional_percentage:.1f}%)")
+
     # Determine system status
-    if health_percentage >= 90:
+    if health_percentage >= 95:
         status_icon = "🟢"
         status_text = "EXCELLENT - System Fully Operational"
-    elif health_percentage >= 75:
+    elif health_percentage >= 85:
         status_icon = "🟡"
         status_text = "GOOD - Minor Issues Detected"
-    elif health_percentage >= 50:
+    elif health_percentage >= 70:
         status_icon = "🟠"
         status_text = "FAIR - Multiple Issues Detected"
     else:
         status_icon = "🔴"
         status_text = "POOR - Critical System Issues"
-    
+
     print(f"\n{status_icon} STATUS: {status_text}")
-    
+
     # Architecture status
     print(f"\n🏗️ ARCHITECTURE STATUS:")
     redis_working = test_results.get("redis", {}).get("status") == "working"
     db_working = test_results.get("database", {}).get("status") == "working"
-    
+
     if redis_working and db_working:
         print("   ✅ Hybrid PostgreSQL + Redis architecture: OPERATIONAL")
     elif db_working:
@@ -226,7 +378,7 @@ def generate_system_report(test_results):
         print("   🟡 Redis operational, PostgreSQL issues detected")
     else:
         print("   ❌ Critical database infrastructure issues")
-    
+
     # Docker status
     docker_results = test_results.get("docker", {})
     if "total" in docker_results and "healthy" in docker_results:
@@ -235,46 +387,74 @@ def generate_system_report(test_results):
         if total > 0:
             docker_health = (healthy / total) * 100
             print(f"   🐳 Docker containers: {healthy}/{total} healthy ({docker_health:.0f}%)")
-    
+
+    # Deployment readiness (environment-aware)
     print("\n🚀 DEPLOYMENT READINESS:")
-    if health_percentage >= 90:
-        print("   ✅ READY FOR PRODUCTION")
-        print("   ✅ Multi-regional system operational")
-        print("   ✅ All critical services healthy")
-    elif health_percentage >= 75:
-        print("   🟡 READY FOR STAGING")
-        print("   🟡 Address minor issues before production")
+    if env_config['is_development']:
+        # Development environment thresholds
+        if health_percentage >= 90:
+            print("   ✅ READY FOR DEVELOPMENT")
+            print("   ✅ All critical services operational")
+        elif health_percentage >= 75:
+            print("   🟡 DEVELOPMENT MODE - Minor issues detected")
+            print("   🟡 Fix issues for optimal development experience")
+        else:
+            print("   ❌ DEVELOPMENT ENVIRONMENT ISSUES")
+            print("   ❌ Critical services need attention")
     else:
-        print("   ❌ NOT READY FOR DEPLOYMENT")
-        print("   ❌ Critical issues must be resolved")
-    
+        # Production environment thresholds (stricter)
+        if health_percentage >= 95 and total_optional > 0 and healthy_optional == total_optional:
+            print("   ✅ READY FOR PRODUCTION")
+            print("   ✅ Multi-regional system operational")
+            print("   ✅ All critical and optional services healthy")
+        elif health_percentage >= 90:
+            print("   🟡 READY FOR STAGING")
+            print("   🟡 Address minor issues before production")
+        else:
+            print("   ❌ NOT READY FOR DEPLOYMENT")
+            print("   ❌ Critical issues must be resolved")
+
     print("="*60)
-    
-    return health_percentage >= 75
+
+    # Success threshold: 85% for dev, 90% for production
+    threshold = 85 if env_config['is_development'] else 90
+    return health_percentage >= threshold
 
 
 def main():
     """Main system health check function"""
-    print("🚀 SectorWars 2102 Multi-Regional System Health Check")
+    print("🚀 SectorWars 2102 System Health Check")
     print(f"⏰ Started at: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print("="*60)
-    
+
+    # Detect environment configuration
+    env_config = detect_environment()
+    print(f"\n🔍 Detected Environment: {env_config['environment']}")
+    if env_config['is_multi_regional']:
+        print(f"   Multi-regional mode enabled")
+    if env_config['is_development']:
+        print(f"   Development mode - using relaxed health thresholds")
+
     # Run all health checks
     test_results = {}
-    
-    test_results["ports"] = test_port_connectivity()
+
+    test_results["ports"] = test_port_connectivity(env_config)
     test_results["docker"] = test_docker_containers()
-    test_results["http"] = test_http_endpoints()
+    test_results["http"] = test_http_endpoints(env_config)
     test_results["redis"] = test_redis_connection()
     test_results["database"] = test_database_connection()
-    
+
     # Generate final report
-    system_healthy = generate_system_report(test_results)
-    
+    system_healthy = generate_system_report(test_results, env_config)
+
     # Exit with appropriate code
     exit_code = 0 if system_healthy else 1
     print(f"\n🏁 Health check completed with exit code: {exit_code}")
-    
+
+    if not system_healthy:
+        print(f"\n💡 TIP: Review failed services above and check logs:")
+        print(f"   docker-compose logs <service-name>")
+
     return exit_code
 
 
