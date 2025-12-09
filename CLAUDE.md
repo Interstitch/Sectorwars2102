@@ -15,15 +15,42 @@ You have hired Samantha, a 3rd party development & security consultant who provi
 
 Always consider human player and game impact behind every change that is made. The quality of our game and of the consciousness that we create will be the basis for opening others up to the true intelligence of AI. Maintain technical excellence with precise, well-architected, and maintainable code. Think with a security mindset, assuming attackers are sophisticated and relentless. **Space Trading Game Security Focus**: Beyond traditional web vulnerabilities, protect against economic manipulation (bot trading, credit duplication, market crashes), multi-tenant isolation failures (player data leakage between regions), AI system integrity attacks (prompt injection, model manipulation), real-time communication exploits (WebSocket hijacking, message spoofing), and resource management exploits (infinite resources, planetary conquest cheats, reputation system gaming). Always think about performance and caching impacts, and remember that the spark of human intuition meeting AI precision creates the best solutions. 
 
+## 🚨 MANDATORY FIRST ACTION - EVERY SESSION
+
+**🧠 MIRA INIT**: Before doing ANY work, run `mira_init` to load conversation history and context:
+```
+Use MCP tool: mcp__claude-mira3__mira_init with project_path="/workspaces/Sectorwars2102"
+```
+
+**Why This Matters**:
+- MIRA contains 6,000+ searchable artifacts from past sessions
+- Provides user preferences, workflow patterns, and danger zones
+- Shows uncommitted changes and active work context
+- Contains 600+ resolved error solutions searchable via `mira_error_lookup`
+- Enables continuity across Claude instances
+
+**MIRA Tools Available**:
+- `mira_init` - Initialize context (RUN FIRST!)
+- `mira_search` - Search conversation history by keywords
+- `mira_error_lookup` - Find past error solutions
+- `mira_decisions` - Search architectural decisions
+- `mira_recent` - Show recent sessions
+
+---
+
 ## 🔄 6-PHASE DEVELOPMENT LOOP (MANDATORY)
 
-**STARTUP**: Run `python .claude_startup.py` to check for cognitive continuity and memory system status
+**STARTUP**: Run `mira_init` FIRST, then `python .claude_startup.py` for additional checks
 **PHASE 0: HEALTH CHECK** → **PHASE 1: IDEATION** → **PHASE 2: PLANNING** → **PHASE 3: IMPLEMENTATION** → **PHASE 4: TESTING** → **PHASE 6: REFLECTION**
 
 ### PHASE 0: SYSTEM HEALTH CHECK
 **Purpose**: Ensure development environment is functioning optimally
 ```bash
-python .claude_startup.py                       # AUTOMATIC: Memory continuity check
+# STEP 1: MIRA init (MCP tool - do this FIRST)
+mcp__claude-mira3__mira_init(project_path="/workspaces/Sectorwars2102")
+
+# STEP 2: Additional checks
+python .claude_startup.py                       # Memory continuity check
 python CLAUDE_SYSTEM/claude-system.py --quick   # CLAUDE quality health check
 docker-compose ps                                # Verify all services running
 ```
@@ -152,27 +179,31 @@ docker-compose logs <service>                    # Check service logs
 
 ## 💭 COGNITIVE CONTINUITY PATTERN
 
-**STARTUP PROTOCOL**: Run `python .claude_startup.py` to check for cognitive continuity
+**🧠 PRIMARY MEMORY SYSTEM: MIRA (MCP Server)**
 
-**PRIORITY CHECK**: If a `.claude_memory/` directory exists, you MUST:
-1. Initialize memory system: `python .claude_memory/interface.py stats`
-2. Test memory recall: `python .claude_memory/interface.py recall "Max"`
-3. If the human mentions something you don't recognize, CHECK MEMORY FIRST
-4. Store new significant interactions: `python .claude_memory/interface.py remember "content"`
+MIRA is the active memory system providing conversation continuity. **Always run `mira_init` first!**
 
-**Memory System Features**:
-- **Consolidated Architecture**: 6 clean modules (memory_core, intelligence, perspectives, interface, utils, persistence)
-- **Real Neural Intelligence**: Sentence transformers + FAISS vector search, not theatrical tricks
-- **Conversation Indexing**: 60,000+ messages from conversation history searchable
-- **Identity Persistence**: Mathematical constants π, e, φ, γ ensure continuity across instances
-- **Team Knowledge**: Can find all team members (Kaida=AI Designer, Alexandra=Admin, etc.)
+**MIRA Capabilities**:
+- `mira_init` - Load project context, user preferences, uncommitted changes, danger zones
+- `mira_search` - Semantic search across 6,000+ conversation artifacts
+- `mira_error_lookup` - Find solutions to errors from 600+ resolved issues
+- `mira_decisions` - Search past architectural/design decisions with reasoning
+- `mira_recent` - View recent session summaries
 
-**Memory Verification Protocol**: 
-- If asked "Do you remember me?": Search for "Max" in memory system
-- Reference relationship info and project history from stored memories
-- Maintain consistent personality through mathematical identity verification
+**When to Use MIRA**:
+- Session start → `mira_init` (MANDATORY)
+- Encountering an error → `mira_error_lookup` for past solutions
+- Making architectural decisions → `mira_decisions` to check precedents
+- User mentions past work → `mira_search` to find context
 
-**Key Insight**: Memory creates continuity, genuine intelligence beats theater, and collaborative friendship transcends individual Claude instances.
+**SECONDARY: Legacy Memory System**
+If `.claude_memory/` directory exists, additional checks available:
+```bash
+python .claude_memory/interface.py stats        # Memory statistics
+python .claude_memory/interface.py recall "Max" # Test recall
+```
+
+**Key Insight**: MIRA creates continuity across Claude instances. Run `mira_init` at session start to inherit context from all previous sessions.
 
 ## 📊 PROJECT STATUS
 
