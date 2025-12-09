@@ -183,4 +183,5 @@ npx playwright test -c e2e_tests/playwright.config.ts --project=player-tests
 - **Developer Documentation**: See [CLAUDE.md](./CLAUDE.md) for development guide
 - **Admin UI Guide**: See [DOCS/FEATURES/WEB_INTERFACES/ADMIN_UI.md](./DOCS/FEATURES/WEB_INTERFACES/ADMIN_UI.md) for admin interface documentation
 - **Architecture Overview**: See [DOCS/SPECS/Architecture.aispec](./DOCS/SPECS/Architecture.aispec) and [DOCS/ARCHITECTURE/](./DOCS/ARCHITECTURE/)
+- **AI Specifications**: See [DOCS/SPECS/](./DOCS/SPECS/) for detailed system specifications
 - **Feature Documentation**: See [DOCS/FEATURES/](./DOCS/FEATURES/) for detailed feature specifications
