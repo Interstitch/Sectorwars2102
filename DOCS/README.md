@@ -135,9 +135,6 @@ DOCS/
 ├── STATUS/             # Live development tracking
 │   ├── DEVELOPMENT_STATE_2025-12-06.md
 │   └── ARIA_IMPLEMENTATION_AUDIT.md
-├── _REVIEW_NEEDED/     # Documentation pending consolidation
-│   ├── README.md
-│   └── status-tracking/    # Historical status files
 └── _TOOLS/             # Documentation utilities (Python scripts, JSON)
     ├── _discover_api_endpoints.py
     ├── _analyze_accuracy.py
@@ -188,7 +185,6 @@ EXAMPLES: Minimal working examples
 - **ARCHITECTURE/**: Updated during architectural reviews
 - **FEATURES/**: Updated during sprint planning
 - **STATUS/**: Updated with development milestones
-- **_REVIEW_NEEDED/**: Processed during documentation cleanup cycles
 
 ## ✅ Recent Organization Improvements
 
@@ -198,6 +194,12 @@ EXAMPLES: Minimal working examples
 - ✅ Organized utility scripts into `_TOOLS/` directory
 - ✅ Removed references to non-existent directories
 - ✅ Cleaned up empty directories and stale file references
+- ✅ Merged specification files into FEATURES/ documentation:
+  - combat-interface → COMBAT_MECHANICS.md
+  - ship-management → SHIP_MANAGEMENT.md
+  - team-systems → TEAM_SYSTEMS.md
+  - trading-system → PORT_TRADING.md
+- ✅ Removed _REVIEW_NEEDED/ directory (all content consolidated)
 
 **API Documentation Update (2025-11-16)**:
 - ✅ Complete API documentation rewrite with 355/358 endpoints documented
