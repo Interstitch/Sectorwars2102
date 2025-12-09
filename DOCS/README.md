@@ -89,68 +89,62 @@ FEATURES/ → GUIDES/ → STATUS/
       ARCHIVE/ (all decisions flow here)
 ```
 
-## 📋 Directory Structure (Updated 2025-06-07)
+## 📋 Directory Structure (Updated 2025-12-09)
 
 ```
 DOCS/
 ├── README.md (this file)
-├── SPECS/              # AISPEC format, AI-optimized
-│   ├── GameServer.aispec
-│   ├── Database.aispec
+├── SPECS/              # AISPEC format, AI-optimized (13 files)
+│   ├── README.md
 │   ├── Architecture.aispec
 │   ├── AuthSystem.aispec
-│   └── DesignSystem.aispec
+│   ├── Database.aispec
+│   ├── DevEnvironment.aispec
+│   ├── GameConcepts.aispec
+│   ├── GameMechanics.aispec
+│   ├── GameServer.aispec
+│   ├── Ranking.aispec
+│   ├── Resources.aispec
+│   ├── Ships.aispec
+│   ├── WebSocket.aispec
+│   └── AISpecificationDoc.aispec
 ├── API/                # Complete API documentation (99.2% coverage)
 │   ├── README.md           # API overview & navigation
-│   ├── v1/                 # API v1 documentation
-│   │   ├── README.md       # v1 quick start guide
-│   │   ├── auth.aispec     # Authentication & MFA (24 endpoints)
-│   │   ├── player.aispec   # Player state & first login (13 endpoints)
-│   │   ├── trading.aispec  # Trading & quantum AI (31 endpoints)
-│   │   ├── combat.aispec   # Combat systems (6 endpoints)
-│   │   ├── teams.aispec    # Teams & treasury (18 endpoints)
-│   │   ├── sectors-planets.aispec  # Sectors & planets (10 endpoints)
-│   │   ├── fleets-drones.aispec    # Fleets & drones (29 endpoints)
-│   │   ├── factions-messages.aispec # Factions & messages (15 endpoints)
-│   │   ├── admin.aispec    # Admin tools (123 endpoints)
-│   │   └── infrastructure.aispec   # Infrastructure (86 endpoints)
-│   ├── _discover_api_endpoints.py  # Auto-discovery tool
-│   ├── _API_ENDPOINT_INVENTORY.md  # Complete endpoint list
-│   └── _api_endpoints.json         # Machine-readable data
+│   └── v1/                 # API v1 documentation (10 AISPEC files)
+│       ├── README.md
+│       ├── auth.aispec, player.aispec, trading.aispec
+│       ├── combat.aispec, teams.aispec, sectors-planets.aispec
+│       ├── fleets-drones.aispec, factions-messages.aispec
+│       ├── admin.aispec, infrastructure.aispec
+│       └── comprehensive_api_specification.md
 ├── ARCHITECTURE/       # Technical system design
-│   ├── DOCKER_ARCHITECTURE.md
-│   ├── data-models/ (comprehensive entity definitions)
-│   └── diagrams/
-├── FEATURES/           # Business requirements & implementations
-│   ├── ADMIN_UI.md
-│   ├── AI_TRADING_INTELLIGENCE.md
-│   ├── MULTI_REGIONAL_RESTRUCTURING_IMPLEMENTATION.md
-│   ├── I18N_IMPLEMENTATION_COMPLETE.md
-│   └── [30+ feature specifications]
-├── GUIDES/             # Implementation tutorials
-│   ├── DOCKER_COMPOSE_GUIDE.md
-│   └── [deployment & setup guides]
+│   └── data-models/    # Comprehensive entity definitions (24 files)
+│       ├── combat/, economy/, entities/
+│       ├── galaxy/, gameplay/, player/, system/
+│       └── multi_regional_overview.md
+├── FEATURES/           # Business requirements & implementations (35 files)
+│   ├── README.md           # Feature index and navigation
+│   ├── DEFINITIONS/        # Core terminology, rules, resources, ships
+│   ├── GAMEPLAY/           # Combat, reputation, teams, first login
+│   ├── ECONOMY/            # Trading, ports, markets
+│   ├── GALAXY/             # Galaxy generation, warp gates, sectors
+│   ├── PLANETS/            # Colonization, defense, citadels
+│   ├── AI_SYSTEMS/         # ARIA AI, security systems
+│   ├── INFRASTRUCTURE/     # Multi-regional, i18n, real-time
+│   └── WEB_INTERFACES/     # Admin UI, Player UI
 ├── STATUS/             # Live development tracking
-│   ├── development/ (active development status)
-│   │   ├── multi-regional-restructuring/
-│   │   ├── design-system/
-│   │   └── enhanced-player-analytics/
-│   └── progress/ (milestone tracking)
-├── AUDIT/              # Security & quality audits
-│   ├── AUDIT_EXECUTIVE_SUMMARY.md
-│   ├── AUDIT_PLAN.md
-│   └── COMPREHENSIVE_AUDIT_REPORT.md
-└── ARCHIVE/            # Historical decisions & completed work
-    └── 2025/
-        └── 06/
-            ├── brainstorm.md
-            ├── ideas.md
-            ├── modern-patterns-research.md
-            ├── dev-journal/
-            ├── development-plans/
-            ├── implementations/
-            ├── retrospectives/
-            └── completed/
+│   ├── DEVELOPMENT_STATE_2025-12-06.md
+│   └── ARIA_IMPLEMENTATION_AUDIT.md
+├── _REVIEW_NEEDED/     # Documentation pending consolidation
+│   ├── README.md
+│   └── status-tracking/    # Historical status files
+└── _TOOLS/             # Documentation utilities (Python scripts, JSON)
+    ├── _discover_api_endpoints.py
+    ├── _analyze_accuracy.py
+    ├── _generate_inventory.py
+    ├── _api_endpoints.json
+    ├── _accuracy_report.json
+    └── _inventory.json
 ```
 
 ## 🎨 Document Templates
@@ -189,30 +183,29 @@ EXAMPLES: Minimal working examples
 
 ## 🔧 Maintenance Strategy
 
-- **SPECS/**: Auto-generated from code annotations
-- **API/**: Generated from OpenAPI specs
+- **SPECS/**: Updated when core systems change
+- **API/**: Generated from code discovery tools
 - **ARCHITECTURE/**: Updated during architectural reviews
 - **FEATURES/**: Updated during sprint planning
-- **GUIDES/**: Reviewed quarterly
-- **STATUS/**: Updated daily by development team
-- **ARCHIVE/**: Append-only, never modified
+- **STATUS/**: Updated with development milestones
+- **_REVIEW_NEEDED/**: Processed during documentation cleanup cycles
 
-## ✅ Recent Organization Improvements (2025-06-07)
+## ✅ Recent Organization Improvements
 
-**Root Directory Cleanup Completed**:
-- Moved `DOCKER_COMPOSE_GUIDE.md` to `GUIDES/`
-- Archived `ideas.md` and `modern-patterns-research.md` to `ARCHIVE/2025/06/`
-- Consolidated `development-plans/` into archive structure
-- Eliminated duplicate `ARCHIVE/archive/` directory
-- All loose files now properly categorized
+**Documentation Cleanup (2025-12-09)**:
+- ✅ Fixed broken file references in FEATURES/README.md and TURN_SYSTEM.md
+- ✅ Updated directory structure to reflect actual contents
+- ✅ Organized utility scripts into `_TOOLS/` directory
+- ✅ Removed references to non-existent directories
+- ✅ Cleaned up empty directories and stale file references
 
-**Current Status**: Documentation structure fully organized and maintained according to the 7-layer architecture.
-
-**Latest Updates (2025-11-16)**:
+**API Documentation Update (2025-11-16)**:
 - ✅ Complete API documentation rewrite with 355/358 endpoints documented
 - ✅ All AISPEC files validated against gameserver source code
 - ✅ Created auto-discovery tool for endpoint inventory
 - ✅ Organized API documentation into logical v1 structure
 
+**Note**: Target 7-layer architecture: SPECS → API → ARCHITECTURE → FEATURES → GUIDES → STATUS → ARCHIVE. Currently implemented: SPECS, API, ARCHITECTURE, FEATURES, STATUS. Future: GUIDES, ARCHIVE directories.
+
 ---
-*Documentation Architecture v1.2 - Updated: 2025-11-16*
+*Documentation Architecture v1.3 - Updated: 2025-12-09*

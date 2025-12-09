@@ -354,7 +354,7 @@ You'll have 34 turns left after docking."
 ## Related Documentation
 
 - [GAME_RULES.md](../DEFINITIONS/GAME_RULES.md) - Core gameplay mechanics
-- [ARIA_AI_QUANTUM_INTEGRATION.md](../AI_SYSTEMS/ARIA_AI_QUANTUM_INTEGRATION.md) - ARIA bonus system
+- [ARIA.md](../AI_SYSTEMS/ARIA.md) - ARIA bonus system
 - [SHIP_TYPES.md](../DEFINITIONS/SHIP_TYPES.md) - Ship speed and turn costs
 - [COMBAT_MECHANICS.md](./COMBAT_MECHANICS.md) - Combat turn costs
 

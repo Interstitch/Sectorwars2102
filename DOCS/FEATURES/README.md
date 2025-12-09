@@ -24,27 +24,32 @@ This directory contains the **core essence and vision** of SectorWars 2102. Ever
 - **[GAME_RULES.md](./DEFINITIONS/GAME_RULES.md)** - Core gameplay mechanics, turn system, player progression
 - **[RESOURCE_TYPES.md](./DEFINITIONS/RESOURCE_TYPES.md)** - Complete commodity and strategic resource catalog
 - **[SHIP_TYPES.md](./DEFINITIONS/SHIP_TYPES.md)** - All spacecraft specifications and capabilities
-- **[RANKING_SYSTEM.md](./DEFINITIONS/RANKING_SYSTEM.md)** - Military ranking progression from Recruit to Fleet Admiral
+- **[GALAXY_COMPONENTS.md](./DEFINITIONS/GALAXY_COMPONENTS.md)** - Galaxy structure components
 
 ### GAMEPLAY/ - Core Game Mechanics
 **How players interact with the game world**
 
 - **[COMBAT_MECHANICS.md](./GAMEPLAY/COMBAT_MECHANICS.md)** - Combat system, drones, shields, tactics
+- **[LARGE_SCALE_COMBAT.md](./GAMEPLAY/LARGE_SCALE_COMBAT.md)** - Fleet battles and large-scale warfare
 - **[REPUTATION_SYSTEM.md](./GAMEPLAY/REPUTATION_SYSTEM.md)** - Faction standing and diplomatic relations
+- **[FACTION_SYSTEM.md](./GAMEPLAY/FACTION_SYSTEM.md)** - Faction mechanics and diplomacy
 - **[TEAM_SYSTEMS.md](./GAMEPLAY/TEAM_SYSTEMS.md)** - Cooperative gameplay, teams, alliances
 - **[FIRST_LOGIN.md](./GAMEPLAY/FIRST_LOGIN.md)** - AI-powered onboarding experience with ARIA
 - **[SHIP_MAINTENANCE.md](./GAMEPLAY/SHIP_MAINTENANCE.md)** - Vehicle upkeep, repair, upgrades
+- **[RANKING_SYSTEM.md](./GAMEPLAY/RANKING_SYSTEM.md)** - Military ranking progression
+- **[TURN_SYSTEM.md](./GAMEPLAY/TURN_SYSTEM.md)** - Turn-based mechanics and regeneration
 
 ### ECONOMY/ - Trading & Markets
 **Economic systems and market mechanics**
 
 - **[PORT_TRADING.md](./ECONOMY/PORT_TRADING.md)** - Trading, ports, and commodities
+- **[TRADEDOCK_SHIPYARD.md](./ECONOMY/TRADEDOCK_SHIPYARD.md)** - Ship purchasing and upgrades
 
 ### GALAXY/ - Universe Structure & Navigation
 **The physical game universe and movement systems**
 
 - **[GALAXY_GENERATION.md](./GALAXY/GALAXY_GENERATION.md)** - Universe creation algorithms and structure
-- **[QUANTUM_WARP_TUNNELS.md](./GALAXY/QUANTUM_WARP_TUNNELS.md)** - FTL travel and navigation networks
+- **[WARP_GATES.md](./GALAXY/WARP_GATES.md)** - FTL travel and navigation networks
 - **[SECTOR_DEFENSE.md](./GALAXY/SECTOR_DEFENSE.md)** - Space-based defensive systems
 - **[GENESIS_DEVICES.md](./GALAXY/GENESIS_DEVICES.md)** - Planet creation and terraforming
 
@@ -52,18 +57,17 @@ This directory contains the **core essence and vision** of SectorWars 2102. Ever
 **Colonization, production, and planetary management**
 
 - **[PLANETARY_COLONIZATION.md](./PLANETS/PLANETARY_COLONIZATION.md)** - Planet settlement mechanics
-- **[PLANETARY_DEFENSE.md](./PLANETS/PLANETARY_DEFENSE.md)** - Citadels, turrets, shields, drones
+- **[PLANETARY_DEFENSE.md](./PLANETS/PLANETARY_DEFENSE.md)** - Defensive systems and shields
 - **[PLANETARY_PRODUCTION.md](./PLANETS/PLANETARY_PRODUCTION.md)** - Resource generation, infrastructure
-- **[PLANET_MANAGEMENT_UI.md](./PLANETS/PLANET_MANAGEMENT_UI.md)** - UI for planetary operations
-- **[COLONIES_UI_ENHANCEMENT.md](./PLANETS/COLONIES_UI_ENHANCEMENT.md)** - Enhanced colony management interface
+- **[CITADEL_SYSTEM.md](./PLANETS/CITADEL_SYSTEM.md)** - Planetary citadel mechanics
+- **[COLONY_MANAGEMENT.md](./PLANETS/COLONY_MANAGEMENT.md)** - Colony management interface
+- **[TERRAFORMING.md](./PLANETS/TERRAFORMING.md)** - Planet terraforming systems
 
 ### AI_SYSTEMS/ - Artificial Intelligence Features
 **AI consciousness, learning, and assistance systems**
 
-- **[ARIA_AI_QUANTUM_INTEGRATION.md](./AI_SYSTEMS/ARIA_AI_QUANTUM_INTEGRATION.md)** ⭐ - Complete ARIA AI specification
-- **[AI_TRADING_INTELLIGENCE.md](./AI_SYSTEMS/AI_TRADING_INTELLIGENCE.md)** - Intelligent trading recommendations
+- **[ARIA.md](./AI_SYSTEMS/ARIA.md)** ⭐ - Complete ARIA AI specification and implementation
 - **[AI_SECURITY_SYSTEM.md](./AI_SYSTEMS/AI_SECURITY_SYSTEM.md)** - AI-powered security and monitoring
-- **[ENHANCED_AI_ARIA_IMPLEMENTATION.md](./AI_SYSTEMS/ENHANCED_AI_ARIA_IMPLEMENTATION.md)** - Technical ARIA implementation details
 
 ### INFRASTRUCTURE/ - Technical Foundation
 **Systems that support the entire game**
@@ -76,7 +80,7 @@ This directory contains the **core essence and vision** of SectorWars 2102. Ever
 ### WEB_INTERFACES/ - User Interfaces
 **Frontend applications and user experience**
 
-- **[ADMIN_UI/ADMIN_UI.md](./WEB_INTERFACES/ADMIN_UI/ADMIN_UI.md)** - Administrative interface documentation
+- **[ADMIN_UI.md](./WEB_INTERFACES/ADMIN_UI.md)** - Administrative interface documentation
 - **[PLAYER_UI.md](./WEB_INTERFACES/PLAYER_UI.md)** - Player client interface documentation
 
 ---
@@ -90,7 +94,7 @@ This directory contains the **core essence and vision** of SectorWars 2102. Ever
 4. Explore [PORT_TRADING.md](./ECONOMY/PORT_TRADING.md) for trading mechanics
 
 ### For Developers
-1. Review [ARIA_AI_QUANTUM_INTEGRATION.md](./AI_SYSTEMS/ARIA_AI_QUANTUM_INTEGRATION.md) for AI systems
+1. Review [ARIA.md](./AI_SYSTEMS/ARIA.md) for AI systems
 2. Study [MULTI_REGIONAL_RESTRUCTURING_IMPLEMENTATION.md](./INFRASTRUCTURE/MULTI_REGIONAL_RESTRUCTURING_IMPLEMENTATION.md) for architecture
 3. See [I18N_IMPLEMENTATION_COMPLETE.md](./INFRASTRUCTURE/I18N_IMPLEMENTATION_COMPLETE.md) for internationalization
 4. Check API documentation in `/DOCS/API/` for endpoints
@@ -173,14 +177,14 @@ When adding new features:
 - **API Documentation**: `/DOCS/API/` - Complete API specifications
 - **Architecture**: `/DOCS/ARCHITECTURE/` - Technical system design
 - **Implementation Guides**: `/DOCS/GUIDES/` - How-to documentation
-- **Database Models**: `/DOCS/DATA_DEFS/` - Data structure definitions
+- **Database Models**: `/DOCS/ARCHITECTURE/data-models/` - Data structure definitions
 
 ---
 
 *This directory represents the heart and soul of SectorWars 2102. Every feature here is a step toward creating a revolutionary space trading experience powered by AI consciousness.*
 
 ---
-**Feature Documentation Index v2.0**
-**Reorganized**: 2025-11-16
-**Files**: 31 feature specifications across 8 categories
+**Feature Documentation Index v2.1**
+**Last Updated**: 2025-12-09
+**Files**: 34 feature specifications across 8 categories (excluding README)
 **Status**: Current and actively maintained
