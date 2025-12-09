@@ -42,15 +42,14 @@ All services can be deployed using Docker with Docker Compose.
 - **Authentication**: JWT-based
 - **Frontend**: React with TypeScript
 - **Visualization**: D3.js (Admin UI)
-- **Process Management**: PM2
-- **Testing**: Pytest (backend) and Cypress (frontend)
+- **Testing**: Pytest (backend) and Playwright (E2E)
 - **Containerization**: Docker with Docker Compose (optional)
 
 ## Multi-Environment Support
 
 The project is designed to work seamlessly across development environments:
 
-1. **Local Development**: Docker-based with separate or combined containers
+1. **Local Development**: Docker-based with Docker Compose
 2. **GitHub Codespaces**: Remote development with VS Code
 
 ## Quick Start
@@ -62,7 +61,7 @@ The project is designed to work seamlessly across development environments:
 - Docker and Docker Compose
 - Docker environment with PostgreSQL 15
 
-### Option 1: Using Docker Multi-Container (Local & GitHub Codespaces)
+### Using Docker Compose (Local & GitHub Codespaces)
 
 ```bash
 # Clone repository
@@ -75,21 +74,6 @@ cp .env.example .env
 
 # Start services using Docker Compose
 docker-compose up
-```
-
-### Option 2: Using Docker Combined Image (Local & GitHub Codespaces)
-
-```bash
-# Clone repository
-git clone https://github.com/yourusername/Sectorwars2102.git
-cd Sectorwars2102
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your database URL and settings
-
-# Start services using Docker Compose with combined image
-docker-compose -f docker-compose.combined.yml up
 ```
 
 ### Auto-detection
@@ -110,13 +94,6 @@ You can easily switch between development and production databases by using the 
 
 # Start with production database
 ./dev-scripts/start-unified.sh --production-db
-```
-
-The flag can be combined with other options:
-
-```bash
-# Start with production database and no host check
-./dev-scripts/start-unified.sh --production-db --no-host-check
 ```
 
 This approach keeps your environment configuration simple while providing control over which database to use.
@@ -151,26 +128,6 @@ This approach keeps your environment configuration simple while providing contro
   - **Team Management**: Faction administration and diplomatic relations
   - **Event Management**: Dynamic event creation and seasonal content
   - **Analytics & Reports**: Advanced reporting and predictive analytics
-
-## Process Management
-
-### PM2 Commands (Docker Combined Image)
-
-```bash
-# View logs
-pm2 logs
-
-# Monitor processes
-pm2 monit
-
-# Restart a specific service
-pm2 restart game-api-server
-pm2 restart player-client
-pm2 restart admin-ui
-
-# List running services
-pm2 list
-```
 
 ## Development
 
