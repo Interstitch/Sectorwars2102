@@ -170,21 +170,17 @@ E2E tests for both the admin UI and player client use Playwright:
 
 ```bash
 # Run all E2E tests
-cd tests/e2e_tests
+cd e2e_tests
 ./run_all_tests.sh
 
 # Or run specific test projects
-npx playwright test -c tests/e2e_tests/playwright.config.ts --project=admin-tests
-npx playwright test -c tests/e2e_tests/playwright.config.ts --project=player-tests
+npx playwright test -c e2e_tests/playwright.config.ts --project=admin-tests
+npx playwright test -c e2e_tests/playwright.config.ts --project=player-tests
 ```
-
-Detailed testing documentation can be found in [DOCS/STATUS/development/TESTING.md](./DOCS/STATUS/development/TESTING.md).
 
 ## Documentation
 
 - **Developer Documentation**: See [CLAUDE.md](./CLAUDE.md) for development guide
-- **Admin UI Guide**: See [DOCS/FEATURES/ADMIN_UI.md](./DOCS/FEATURES/ADMIN_UI.md) for comprehensive admin interface documentation
+- **Admin UI Guide**: See [DOCS/FEATURES/WEB_INTERFACES/ADMIN_UI.md](./DOCS/FEATURES/WEB_INTERFACES/ADMIN_UI.md) for admin interface documentation
 - **Architecture Overview**: See [DOCS/SPECS/Architecture.aispec](./DOCS/SPECS/Architecture.aispec) and [DOCS/ARCHITECTURE/](./DOCS/ARCHITECTURE/)
-- **Docker Guide**: See [DOCS/GUIDES/DOCKER_COMPOSE_GUIDE.md](./DOCS/GUIDES/DOCKER_COMPOSE_GUIDE.md) for deployment information
-- **AI Specification**: See [DOCS/AISPEC/](./DOCS/AISPEC/) for detailed architecture specifications
-- **Development Journal**: See [DEV_JOURNAL/](./DEV_JOURNAL/) for project evolution history
+- **Feature Documentation**: See [DOCS/FEATURES/](./DOCS/FEATURES/) for detailed feature specifications
