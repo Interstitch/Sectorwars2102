@@ -5,13 +5,9 @@ echo "Running Sector Wars 2102 E2E Tests"
 echo "=================================="
 
 # Determine environment type
-if [ -n "$CODESPACES" ]; then
+if [ -n "$CODESPACE_NAME" ]; then
   echo "Detected GitHub Codespaces environment"
   REPORT_URL="https://$CODESPACE_NAME-9323.app.github.dev"
-elif [ -n "$REPL_ID" ]; then
-  echo "Detected Replit environment"
-  REPL_SLUG=$(echo "$REPL_SLUG" | tr '[:upper:]' '[:lower:]')
-  REPORT_URL="https://$REPL_SLUG.$REPL_OWNER.repl.co"
 else
   echo "Detected local environment"
   REPORT_URL="http://localhost:9323"
