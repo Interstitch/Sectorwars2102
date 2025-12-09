@@ -1,8 +1,77 @@
 # Port Trading System — Sector Wars 2102
 
+**Last Updated**: 2025-12-09
+**Status**: Core mechanics implemented, advanced features planned
+
 ## Overview
 
 The port trading system forms the economic backbone of Sector Wars 2102. Each sector contains space ports where players can buy and sell commodities to earn credits. Mastering the trading system is essential for progression, as it provides the resources needed to upgrade ships, purchase equipment, and establish colonies.
+
+## Trading Interface
+
+### UI Structure
+
+```typescript
+interface TradingUI {
+  portInfo: {
+    name: string;
+    type: PortType;
+    faction: string;
+    techLevel: number;
+  };
+
+  commodities: {
+    available: Commodity[];
+    prices: PriceData[];
+    inventory: PlayerInventory;
+  };
+
+  controls: {
+    buyButton: ActionButton;
+    sellButton: ActionButton;
+    quantitySlider: RangeInput;
+    confirmDialog: Modal;
+  };
+}
+```
+
+### User Flow
+
+1. Player docks at port (automatic when entering port sector)
+2. Trading interface opens showing:
+   - Port information header
+   - Two columns: "Port Selling" | "You Have"
+   - Current prices with trend indicators
+   - Player credits and cargo space
+3. Player selects commodity and quantity
+4. Confirmation shows profit/loss calculation
+5. Transaction completes with animation
+6. Port prices update based on transaction
+
+### Desktop Layout
+
+```
+┌─────────────────────────────────────────┐
+│ [Port Name] - [Port Type] - [Tech Level]│
+├─────────────────┬───────────────────────┤
+│ PORT SELLING    │ YOUR CARGO            │
+├─────────────────┼───────────────────────┤
+│ Food      100cr │ Food      x50         │
+│ [Buy] ████░░░░  │ [Sell] ████░░░░       │
+│                 │                       │
+│ Metals    250cr │ Metals    x0          │
+│ [Buy] ████░░░░  │ [Sell] (disabled)     │
+├─────────────────┴───────────────────────┤
+│ Credits: 15,000  Cargo: 50/100          │
+└─────────────────────────────────────────┘
+```
+
+### Mobile Layout
+
+- Single column with tabs
+- Swipe between buy/sell views
+- Large touch targets for accessibility
+- Simplified quantity selection with +/- buttons
 
 ## Port Classes
 
@@ -27,17 +96,58 @@ Space ports are categorized into different classes, each with unique buying and 
 
 ### Commodities
 
-The primary tradable resources in the game are:
+```typescript
+enum CommodityType {
+  // Tier 1 - Basic Goods
+  FOOD = "food",
+  WATER = "water",
+  OXYGEN = "oxygen",
+  FUEL = "fuel",
 
-- **Ore**: Raw materials for construction and manufacturing
-- **Organics**: Food and biological products
-- **Equipment**: Manufactured goods and technology
+  // Tier 2 - Industrial
+  ORE = "ore",           // Raw materials for construction
+  ORGANICS = "organics", // Biological products
+  METALS = "metals",
+  ELECTRONICS = "electronics",
+  MACHINERY = "machinery",
+  CHEMICALS = "chemicals",
+
+  // Tier 3 - Advanced
+  EQUIPMENT = "equipment", // Manufactured goods and technology
+  COMPUTERS = "computers",
+  WEAPONS = "weapons",
+  LUXURIES = "luxuries",
+  MEDICINES = "medicines",
+
+  // Tier 4 - Rare
+  GOURMET_FOOD = "gourmet_food",
+  EXOTIC_TECH = "exotic_tech",
+  QUANTUM_CORES = "quantum_cores",
+  ALIEN_ARTIFACTS = "alien_artifacts",
+  DARK_MATTER = "dark_matter"
+}
+```
+
+The primary tradable resources by tier:
+
+**Tier 1 - Basic Goods**:
+- **Food/Water/Oxygen**: Essential survival supplies
 - **Fuel**: Energy for ships and stations
 
-Additional specialized commodities:
+**Tier 2 - Industrial**:
+- **Ore**: Raw materials for construction and manufacturing
+- **Organics**: Food and biological products
+- **Metals/Electronics/Machinery**: Manufacturing components
+
+**Tier 3 - Advanced**:
+- **Equipment**: Manufactured goods and technology
+- **Computers/Weapons**: High-tech goods
+- **Luxuries/Medicines**: High-value specialized items
+
+**Tier 4 - Rare**:
 - **Gourmet Food**: Premium food products
 - **Exotic Technology**: Advanced technological components
-- **Luxury Goods**: High-value items for wealthy markets
+- **Quantum Cores/Alien Artifacts/Dark Matter**: Extremely rare items
 
 ### Price Dynamics
 
@@ -49,9 +159,32 @@ Port prices are dynamic and influenced by several factors:
 - **Location**: Ports in dangerous sectors generally offer better prices
 - **Time**: Ports slowly regenerate inventory over time
 
-### Basic Price Formula
+### Price Calculation
 
-The price for a commodity is calculated using:
+```typescript
+function calculatePrice(
+  commodity: CommodityType,
+  port: Port,
+  supply: number,
+  demand: number,
+  techLevel: number,
+  events: MarketEvent[]
+): number {
+  const basePrice = COMMODITY_BASE_PRICES[commodity];
+  const supplyFactor = 2 - (supply / 100); // 0.0 to 2.0
+  const demandFactor = demand / 100; // 0.0 to 2.0
+  const techFactor = getTechMultiplier(commodity, techLevel);
+  const eventFactor = getEventMultiplier(events);
+
+  return Math.round(
+    basePrice * supplyFactor * demandFactor * techFactor * eventFactor
+  );
+}
+```
+
+#### Basic Price Formula
+
+The simplified price for a commodity is calculated using:
 ```
 Price = BasePrice × (1 - PriceVariance × CurrentQuantity / (ProductionRate × 1000))
 ```
@@ -61,6 +194,13 @@ Where:
 - **PriceVariance**: Port-specific modifier
 - **CurrentQuantity**: Available units at the port
 - **ProductionRate**: How quickly the port produces/consumes this commodity
+
+#### Advanced Factors
+
+- **Supply Factor**: Low supply increases prices (0.0 to 2.0 multiplier)
+- **Demand Factor**: High demand increases prices (0.0 to 2.0 multiplier)
+- **Tech Level**: Advanced ports affect pricing for tech goods
+- **Market Events**: Special events can temporarily affect all prices
 
 ## Trading Operations
 
@@ -308,6 +448,27 @@ Some ports have unique specializations:
 - **Research Stations**: Trade in specialized technological components
 - **Luxury Markets**: Deal in high-value, low-volume goods
 
+```typescript
+interface PortSpecialization {
+  agricultural: {
+    produces: ["food", "water", "oxygen"];
+    demands: ["machinery", "chemicals", "electronics"];
+  };
+  industrial: {
+    produces: ["metals", "machinery", "electronics"];
+    demands: ["food", "water", "luxuries"];
+  };
+  technological: {
+    produces: ["computers", "weapons", "quantum_cores"];
+    demands: ["metals", "chemicals", "alien_artifacts"];
+  };
+  luxury: {
+    produces: ["luxuries", "medicines"];
+    demands: ["food", "electronics", "alien_artifacts"];
+  };
+}
+```
+
 ## Economic Balance
 
 The port trading system maintains game balance through:
@@ -502,3 +663,119 @@ Multiple players can share ownership of larger ports:
 - **Team Coordination**: Sharing trading information with teammates provides advantages
 - **Port Network**: Establishing ownership of strategically located ports creates a trading empire
 - **Trade Route Control**: Owning ports along profitable trade routes maximizes revenue
+
+## Trade Routes
+
+### Route Planning Interface
+
+```typescript
+interface TradeRoute {
+  id: string;
+  name: string;
+  waypoints: {
+    portId: string;
+    action: "buy" | "sell";
+    commodity: CommodityType;
+    quantity: number;
+  }[];
+  estimatedProfit: number;
+  estimatedTime: number;
+  fuelCost: number;
+}
+```
+
+### Automated Trading Features
+
+- Players can save profitable routes for repeated use
+- AI suggests optimal routes based on:
+  - Current market prices
+  - Travel distance and fuel costs
+  - Ship cargo capacity
+  - Risk factors in route sectors
+- Route comparison shows profit per turn efficiency
+
+## Trade Contracts
+
+### Contract System
+
+```typescript
+interface TradeContract {
+  id: string;
+  client: string;
+  commodity: CommodityType;
+  quantity: number;
+  deliverTo: string;
+  deadline: Date;
+  payment: number;
+  penalty: number;
+  reputation: number;
+}
+```
+
+### Contract Features
+
+- NPCs and players can offer delivery contracts
+- Higher payments for difficult or dangerous deliveries
+- Reputation bonuses for timely completion
+- Penalties for late delivery or contract abandonment
+- Contract board at major ports shows available opportunities
+
+## Market Manipulation
+
+- Large trades affect entire regional markets
+- Players can attempt to corner markets on specific commodities
+- Price wars between competing traders create dynamic gameplay
+- Economic warfare options for team-based competition
+
+## Black Market
+
+- Illegal goods (weapons, contraband) offer higher profits
+- Higher risks including security scans and faction penalties
+- Requires reputation with smuggler factions
+- Avoid detection through stealth routes and timing
+
+## API Integration
+
+### Trading Endpoints
+
+- `GET /api/ports/{portId}/commodities` - Get available commodities and prices
+- `POST /api/trade/buy` - Execute purchase transaction
+- `POST /api/trade/sell` - Execute sale transaction
+- `GET /api/market/prices` - Get regional price data
+- `WS /api/market/updates` - Real-time price change notifications
+
+### Real-time Updates
+
+- Price changes broadcast via WebSocket
+- Other player trades affect visible market data
+- Event notifications for market-affecting events
+- Contract deadline warnings
+
+## Balancing Parameters
+
+```typescript
+const TRADING_CONFIG = {
+  maxPriceFluctuation: 0.5,    // ±50% from base price
+  marketRebalanceRate: 0.1,   // 10% recovery per hour
+  transactionFee: 0.02,       // 2% tax on all trades
+  bulkDiscount: 0.05,         // 5% discount for large trades
+  reputationBonus: 0.1,       // 10% better prices at high rep
+  blackMarketMultiplier: 2.5  // 250% profit on illegal goods
+};
+```
+
+## Success Metrics
+
+### Player Engagement Targets
+
+- Average session includes 5+ trading transactions
+- 80% of players understand trading within 5 minutes of play
+- Price arbitrage creates emergent gameplay and trade routes
+- Economy remains balanced over extended periods
+
+### System Health Indicators
+
+- Market prices remain within expected ranges
+- No single player dominates commodity markets
+- Trade volume distributed across galaxy regions
+- Contract completion rate > 70%
