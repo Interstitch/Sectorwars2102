@@ -1244,7 +1244,62 @@ Description: {ship_specs.get('description', 'N/A')}
             analysis["contradictions"] = contradictions
         
         return analysis
-    
+
+    async def auto_approve_escape_pod(self, session_id: uuid.UUID) -> Dict[str, Any]:
+        """
+        Auto-approve escape pod claims without interrogation.
+        Escape pods are low-value ships that don't warrant extensive questioning.
+        """
+        session = self.db.query(FirstLoginSession).filter_by(id=session_id).first()
+
+        if not session:
+            raise ValueError(f"Invalid session ID: {session_id}")
+
+        logger.info(f"Auto-approving escape pod for session {session_id}")
+
+        # Set outcome immediately - SUCCESS with escape pod
+        session.negotiation_skill = NegotiationSkillLevel.AVERAGE
+        session.final_persuasion_score = 0.5
+        session.outcome = DialogueOutcome.SUCCESS
+        session.awarded_ship = ShipChoice.ESCAPE_POD
+        session.starting_credits = 1000  # Standard escape pod starting credits
+        session.negotiation_bonus_flag = False
+        session.notoriety_penalty = False
+
+        # Mark dialogue as completed
+        if not session.completed_at:
+            session.completed_at = datetime.now()
+
+        # Update the player's first login state
+        state = self.get_player_first_login_state(session.player_id)
+        state.answered_questions = True
+
+        self.db.commit()
+        self.db.refresh(session)
+
+        # Generate guard response
+        guard_response = (
+            "An escape pod? *Guard looks sympathetic* "
+            "Rough journey, I'd guess. Yeah, you can have it - no questions asked. "
+            "Everyone deserves a second chance. Welcome to Callisto Colony, friend. "
+            "Good luck out there."
+        )
+
+        logger.info(f"Escape pod auto-approved - granted immediately")
+
+        return {
+            "outcome": {
+                "outcome": "SUCCESS",
+                "awarded_ship": "ESCAPE_POD",
+                "starting_credits": 1000,
+                "negotiation_skill": "AVERAGE",
+                "final_persuasion_score": 0.5,
+                "negotiation_bonus": False,
+                "notoriety_penalty": False
+            },
+            "guard_response": guard_response
+        }
+
     async def _evaluate_dialogue_outcome(self, session: FirstLoginSession) -> Dict[str, Any]:
         """Evaluate the dialogue outcome based on the player's performance"""
         logger.info(f"=" * 60)
@@ -1455,7 +1510,7 @@ Description: {ship_specs.get('description', 'N/A')}
                     })
 
             # Build the outcome generation prompt
-            prompts = self.ai_dialogue_service.build_outcome_generation_prompt(
+            prompts = self.ai_service.build_outcome_generation_prompt(
                 guard_name=session.guard_name,
                 guard_title=session.guard_title,
                 guard_trait=session.guard_trait,
@@ -1498,21 +1553,31 @@ Description: {ship_specs.get('description', 'N/A')}
     def complete_first_login(self, session_id: uuid.UUID) -> Dict[str, Any]:
         """Complete the first login process and grant the player their ship and credits"""
         session = self.db.query(FirstLoginSession).filter_by(id=session_id).first()
-        
+
         if not session:
             raise ValueError("Invalid session ID")
-        
-        if session.completed_at:
-            raise ValueError("Session already completed")
-        
-        # Mark the session as completed
-        session.completed_at = datetime.now()
-        
+
         # Get the player
         player = self.db.query(Player).filter_by(id=session.player_id).first()
-        
+
         if not player:
             raise ValueError(f"Player not found: {session.player_id}")
+
+        # SELF-HEALING: First Login should always give a clean slate
+        # If there's stale data from previous testing/sessions, clean it up
+        logger.info(f"Completing First Login for player {player.id} - cleaning up any stale data")
+
+        # Delete ALL existing ships (they shouldn't exist during First Login)
+        existing_ships = self.db.query(Ship).filter_by(owner_id=player.id).all()
+        if existing_ships:
+            logger.info(f"Deleting {len(existing_ships)} stale ships: {[s.name for s in existing_ships]}")
+            for ship in existing_ships:
+                self.db.delete(ship)
+            self.db.flush()  # Ensure ships are deleted before creating new one
+
+        # Mark the session as completed (if not already marked during dialogue evaluation)
+        if not session.completed_at:
+            session.completed_at = datetime.now()
         
         # Update the player with the awarded resources
         player.credits = session.starting_credits

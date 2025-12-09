@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
 
@@ -17,6 +17,8 @@ export interface Ship {
   is_flagship: boolean;
   purchase_value: number;
   current_value: number;
+  genesis_devices: number;
+  max_genesis_devices: number;
 }
 
 export interface Sector {
@@ -41,6 +43,8 @@ export interface Planet {
   type: string;
   status: string;
   sector_id: number;
+  owner_id?: string | null;
+  owner_name?: string | null;
   owner?: any;
   resources: Record<string, any>;
   population: number;
@@ -78,7 +82,7 @@ export interface MarketInfo {
     buy_price: number;
     sell_price: number;
   }>;
-  station: {
+  port: {
     id: string;
     name: string;
     type: string;
@@ -95,6 +99,8 @@ export interface PlayerState {
   current_sector_id: number;
   is_docked: boolean;
   is_landed: boolean;
+  current_port_id?: string;
+  current_planet_id?: string;
   defense_drones: number;
   attack_drones: number;
   current_ship_id?: string;
@@ -111,7 +117,9 @@ interface GameContextType {
   // Player info
   playerState: PlayerState | null;
   refreshPlayerState: () => Promise<void>;
-  
+  updatePlayerCredits: (newCredits: number) => void;
+  updateShipGenesis: (genesisDevices: number) => void;
+
   // First login status
   needsFirstLogin: boolean;
   checkFirstLoginStatus: () => Promise<boolean>;
@@ -138,14 +146,25 @@ interface GameContextType {
   
   // Station interactions
   dockAtStation: (stationId: string) => Promise<any>;
+  undockFromStation: () => Promise<any>;
   marketInfo: MarketInfo | null;
   getMarketInfo: (stationId: string) => Promise<void>;
   buyResource: (stationId: string, resourceType: string, quantity: number) => Promise<any>;
   sellResource: (stationId: string, resourceType: string, quantity: number) => Promise<any>;
   
   // Planet interactions
+  claimPlanet: (planetId: string) => Promise<any>;
   landOnPlanet: (planetId: string) => Promise<any>;
-  
+  leavePlanet: () => Promise<any>;
+  renamePlanet: (planetId: string, newName: string) => Promise<any>;
+  getPlanetDetails: (planetId: string) => Promise<any>;
+  updatePlanetAllocation: (planetId: string, allocations: { fuel: number; organics: number; equipment: number; ore?: number; terraform?: number }) => Promise<any>;
+  updatePlanetDefenses: (planetId: string, defenses: { turrets?: number; shields?: number; fighters?: number }) => Promise<any>;
+  upgradePlanetBuilding: (planetId: string, buildingType: string, targetLevel: number) => Promise<any>;
+  transferColonists: (planetId: string, action: 'embark' | 'disembark', quantity: number) => Promise<any>;
+  depositToSafe: (planetId: string, resourceType: string, amount: number) => Promise<any>;
+  withdrawFromSafe: (planetId: string, resourceType: string, amount: number) => Promise<any>;
+
   // Combat
   attackPlayer: (playerId: string) => Promise<any>;
   attackDrones: () => Promise<any>;
@@ -229,11 +248,22 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Track which user we've initialized for to prevent duplicate initialization
+  const initializedForUser = useRef<string | null>(null);
+
   // Initialize game state when user logs in
   useEffect(() => {
     console.log('GameContext: User changed:', user);
     if (user && isAuthenticated) {
+      // Prevent duplicate initialization for the same user
+      if (initializedForUser.current === user.id) {
+        console.log('GameContext: Already initialized for this user, skipping');
+        return;
+      }
+
       console.log('GameContext: Initializing for authenticated user:', user.username);
+      initializedForUser.current = user.id;
+
       checkFirstLoginStatus().then((needsFirst) => {
         console.log('GameContext: First login check result:', needsFirst);
         if (!needsFirst) {
@@ -251,6 +281,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
     } else {
       console.log('GameContext: No authenticated user, clearing state');
+      initializedForUser.current = null;
       setPlayerState(null);
       setCurrentShip(null);
       setShips([]);
@@ -266,16 +297,26 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [playerState?.current_sector_id]);
   
+  // Track if refresh is in progress to prevent duplicate calls
+  const refreshInProgress = useRef(false);
+
   // Refresh player state
   const refreshPlayerState = async () => {
     if (!user) {
       console.log('GameContext: No user for refreshPlayerState');
       return;
     }
-    
+
+    // Prevent duplicate concurrent calls
+    if (refreshInProgress.current) {
+      console.log('GameContext: Refresh already in progress, skipping');
+      return;
+    }
+
     console.log('GameContext: Refreshing player state for user:', user.username);
     console.log('GameContext: API base URL:', getApiUrl());
-    
+
+    refreshInProgress.current = true;
     setIsLoading(true);
     setError(null);
     
@@ -324,9 +365,10 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } finally {
       setIsLoading(false);
+      refreshInProgress.current = false;
     }
   };
-  
+
   // Load player's ships
   const loadShips = async () => {
     if (!user) return;
@@ -491,22 +533,41 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
     }
   };
-  
-  // Get market info for a port
-  const getMarketInfo = async (stationId: string) => {
-    if (!user) return;
-    
+
+  // Undock from current station
+  const undockFromStation = async () => {
+    if (!user || !playerState) return;
+
     setIsLoading(true);
     setError(null);
-    
+
+    try {
+      const response = await api.post('/api/v1/trading/undock');
+
+      // Update player state after undocking
+      await refreshPlayerState();
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error undocking from station:', error);
+      setError(error.response?.data?.message || 'Failed to undock from station');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Get market info for a port
+  // Note: This intentionally does NOT set global isLoading to avoid re-render cascades
+  const getMarketInfo = async (stationId: string) => {
+    if (!user) return;
+
     try {
       const response = await api.get(`/api/v1/trading/market/${stationId}`);
       setMarketInfo(response.data);
     } catch (error) {
       console.error('Error getting market info:', error);
-      setError('Failed to get market info');
-    } finally {
-      setIsLoading(false);
+      // Don't set global error state - let the component handle it
     }
   };
   
@@ -566,29 +627,257 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
   
-  // Land on a planet
-  const landOnPlanet = async (planetId: string) => {
+  // Claim an unclaimed planet (and automatically land on it)
+  const claimPlanet = async (planetId: string) => {
     if (!user || !playerState) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      const response = await api.post('/api/v1/planets/land', { planet_id: planetId });
-      
-      // Update player state after landing
+      const response = await api.post(`/api/v1/planets/${planetId}/claim`);
+
+      // Update player state after claiming (player is auto-landed)
       await refreshPlayerState();
-      
+
       return response.data;
     } catch (error: any) {
-      console.error('Error landing on planet:', error);
-      setError(error.response?.data?.message || 'Failed to land on planet');
+      console.error('Error claiming planet:', error);
+      setError(error.response?.data?.detail || error.response?.data?.message || 'Failed to claim planet');
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
-  
+
+  // Land on a planet (only works for owned planets)
+  const landOnPlanet = async (planetId: string) => {
+    if (!user || !playerState) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.post('/api/v1/planets/land', { planet_id: planetId });
+
+      // Update player state after landing
+      await refreshPlayerState();
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error landing on planet:', error);
+      setError(error.response?.data?.detail || error.response?.data?.message || 'Failed to land on planet');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Leave a planet
+  const leavePlanet = async () => {
+    if (!user || !playerState) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.post('/api/v1/planets/leave');
+
+      // Update player state after leaving
+      await refreshPlayerState();
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error leaving planet:', error);
+      setError(error.response?.data?.detail || error.response?.data?.message || 'Failed to leave planet');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Rename a planet you own
+  const renamePlanet = async (planetId: string, newName: string) => {
+    if (!user || !playerState) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.put(`/api/v1/planets/${planetId}/rename`, { name: newName });
+
+      // Refresh location data to show updated name
+      await exploreCurrentLocation();
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error renaming planet:', error);
+      setError(error.response?.data?.detail || error.response?.data?.message || 'Failed to rename planet');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Get planet details
+  const getPlanetDetails = async (planetId: string) => {
+    if (!user) return;
+
+    try {
+      const response = await api.get(`/api/v1/planets/${planetId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error getting planet details:', error);
+      throw error;
+    }
+  };
+
+  // Update planet production allocation
+  const updatePlanetAllocation = async (
+    planetId: string,
+    allocations: { fuel: number; organics: number; equipment: number; ore?: number; terraform?: number }
+  ) => {
+    if (!user || !playerState) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.put(`/api/v1/planets/${planetId}/allocate`, allocations);
+      await refreshPlayerState();
+      return response.data;
+    } catch (error: any) {
+      console.error('Error updating planet allocation:', error);
+      setError(error.response?.data?.detail || 'Failed to update allocation');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update planet defenses
+  const updatePlanetDefenses = async (
+    planetId: string,
+    defenses: { turrets?: number; shields?: number; fighters?: number }
+  ) => {
+    if (!user || !playerState) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.put(`/api/v1/planets/${planetId}/defenses`, defenses);
+      await refreshPlayerState();
+      await exploreCurrentLocation();
+      return response.data;
+    } catch (error: any) {
+      console.error('Error updating planet defenses:', error);
+      setError(error.response?.data?.detail || 'Failed to update defenses');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Upgrade planet building
+  const upgradePlanetBuilding = async (planetId: string, buildingType: string, targetLevel: number) => {
+    if (!user || !playerState) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.post(`/api/v1/planets/${planetId}/buildings/upgrade`, {
+        buildingType,
+        targetLevel
+      });
+      await refreshPlayerState();
+      await exploreCurrentLocation();
+      return response.data;
+    } catch (error: any) {
+      console.error('Error upgrading building:', error);
+      setError(error.response?.data?.detail || 'Failed to upgrade building');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Transfer colonists between ship and planet
+  const transferColonists = async (planetId: string, action: 'embark' | 'disembark', quantity: number) => {
+    if (!user || !playerState) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.post(`/api/v1/planets/${planetId}/colonists/transfer`, {
+        action,
+        quantity
+      });
+      await refreshPlayerState();
+      await loadShips();
+      await exploreCurrentLocation();
+      return response.data;
+    } catch (error: any) {
+      console.error('Error transferring colonists:', error);
+      setError(error.response?.data?.detail || 'Failed to transfer colonists');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Deposit resources to citadel safe
+  const depositToSafe = async (planetId: string, resourceType: string, amount: number) => {
+    if (!user || !playerState) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.post(`/api/v1/planets/${planetId}/safe/deposit`, {
+        resource_type: resourceType,
+        amount
+      });
+      await refreshPlayerState();
+      await loadShips();
+      await exploreCurrentLocation();
+      return response.data;
+    } catch (error: any) {
+      console.error('Error depositing to safe:', error);
+      setError(error.response?.data?.detail || 'Failed to deposit to safe');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Withdraw resources from citadel safe
+  const withdrawFromSafe = async (planetId: string, resourceType: string, amount: number) => {
+    if (!user || !playerState) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.post(`/api/v1/planets/${planetId}/safe/withdraw`, {
+        resource_type: resourceType,
+        amount
+      });
+      await refreshPlayerState();
+      await loadShips();
+      await exploreCurrentLocation();
+      return response.data;
+    } catch (error: any) {
+      console.error('Error withdrawing from safe:', error);
+      setError(error.response?.data?.detail || 'Failed to withdraw from safe');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Attack another player
   const attackPlayer = async (playerId: string) => {
     if (!user || !playerState) return;
@@ -646,11 +935,23 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       loadShips()
     ]);
   };
-  
+
+  // Update just the player credits without a full state refresh
+  // Used by gambling to update credits instantly without causing re-renders
+  const updatePlayerCredits = (newCredits: number) => {
+    setPlayerState(prev => prev ? { ...prev, credits: newCredits } : null);
+  };
+
+  const updateShipGenesis = (genesisDevices: number) => {
+    setCurrentShip(prev => prev ? { ...prev, genesis_devices: genesisDevices } : null);
+  };
+
   const value = {
     // Player info
     playerState,
     refreshPlayerState,
+    updatePlayerCredits,
+    updateShipGenesis,
     
     // First login status
     needsFirstLogin,
@@ -675,14 +976,25 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     // Station interactions
     dockAtStation,
+    undockFromStation,
     marketInfo,
     getMarketInfo,
     buyResource,
     sellResource,
     
     // Planet interactions
+    claimPlanet,
+    renamePlanet,
     landOnPlanet,
-    
+    leavePlanet,
+    getPlanetDetails,
+    updatePlanetAllocation,
+    updatePlanetDefenses,
+    upgradePlanetBuilding,
+    transferColonists,
+    depositToSafe,
+    withdrawFromSafe,
+
     // Combat
     attackPlayer,
     attackDrones,

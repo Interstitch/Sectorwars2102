@@ -25,6 +25,8 @@ class PlayerStateResponse(BaseModel):
     current_sector_id: int
     is_docked: bool
     is_landed: bool
+    current_port_id: str | None = None
+    current_planet_id: str | None = None
     defense_drones: int
     attack_drones: int
     current_ship_id: str = None
@@ -49,6 +51,8 @@ class ShipResponse(BaseModel):
     is_flagship: bool
     purchase_value: int
     current_value: int
+    genesis_devices: int = 0
+    max_genesis_devices: int = 0
 
 class SectorResponse(BaseModel):
     id: str
@@ -103,6 +107,8 @@ async def get_player_state(
         current_sector_id=player.current_sector_id,
         is_docked=player.is_docked,
         is_landed=player.is_landed,
+        current_port_id=str(player.current_port_id) if player.current_port_id else None,
+        current_planet_id=str(player.current_planet_id) if player.current_planet_id else None,
         defense_drones=player.defense_drones,
         attack_drones=player.attack_drones,
         current_ship_id=str(player.current_ship_id) if player.current_ship_id else None,
@@ -135,9 +141,11 @@ async def get_player_ships(
             maintenance=ship.maintenance or {},
             is_flagship=ship.is_flagship,
             purchase_value=ship.purchase_value,
-            current_value=ship.current_value
+            current_value=ship.current_value,
+            genesis_devices=ship.genesis_devices or 0,
+            max_genesis_devices=ship.max_genesis_devices or 0
         ))
-    
+
     return ship_responses
 
 @router.get("/current-ship", response_model=ShipResponse)
@@ -172,7 +180,9 @@ async def get_current_ship(
         maintenance=ship.maintenance or {},
         is_flagship=ship.is_flagship,
         purchase_value=ship.purchase_value,
-        current_value=ship.current_value
+        current_value=ship.current_value,
+        genesis_devices=ship.genesis_devices or 0,
+        max_genesis_devices=ship.max_genesis_devices or 0
     )
 
 @router.get("/current-sector", response_model=SectorResponse)
@@ -297,3 +307,109 @@ async def get_available_moves(
         ))
 
     return AvailableMovesResponse(warps=warps, tunnels=tunnels)
+
+
+# Genesis Device Purchase
+class GenesisPurchaseRequest(BaseModel):
+    tier: str  # "standard", "advanced", "experimental"
+
+class GenesisPurchaseResponse(BaseModel):
+    success: bool
+    message: str
+    genesis_devices: int
+    max_genesis_devices: int
+    new_credits: int
+    tier_purchased: str
+
+# Genesis device tiers with pricing
+GENESIS_TIERS = {
+    "standard": {
+        "price": 25000,
+        "name": "Standard Genesis Device",
+        "success_rate": 0.85,
+        "process_hours": 48
+    },
+    "advanced": {
+        "price": 50000,
+        "name": "Advanced Genesis Device",
+        "success_rate": 0.92,
+        "process_hours": 36
+    },
+    "experimental": {
+        "price": 100000,
+        "name": "Experimental Genesis Device",
+        "success_rate": 0.95,
+        "process_hours": 24
+    }
+}
+
+@router.post("/genesis/purchase", response_model=GenesisPurchaseResponse)
+async def purchase_genesis_device(
+    request: GenesisPurchaseRequest,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """Purchase a Genesis Device and add it to the player's ship"""
+
+    # Validate tier
+    tier = request.tier.lower()
+    if tier not in GENESIS_TIERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid genesis tier. Must be one of: {', '.join(GENESIS_TIERS.keys())}"
+        )
+
+    tier_info = GENESIS_TIERS[tier]
+    price = tier_info["price"]
+
+    # Check if player is docked (required to purchase)
+    if not player.is_docked:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must be docked at a SpaceDock to purchase Genesis Devices"
+        )
+
+    # Check credits
+    if player.credits < price:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Insufficient credits. Need {price:,}, have {player.credits:,}"
+        )
+
+    # Get current ship
+    ship = db.query(Ship).filter(Ship.id == player.current_ship_id).first()
+    if not ship:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active ship found"
+        )
+
+    # Check if ship can hold genesis devices
+    if ship.max_genesis_devices == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Your {ship.type.value} cannot carry Genesis Devices. You need a Cargo Hauler, Defender, Colony Ship, Carrier, or Warp Jumper."
+        )
+
+    # Check if ship has capacity
+    current_devices = ship.genesis_devices or 0
+    if current_devices >= ship.max_genesis_devices:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Your ship is at maximum Genesis Device capacity ({ship.max_genesis_devices})"
+        )
+
+    # Process purchase
+    player.credits -= price
+    ship.genesis_devices = current_devices + 1
+
+    db.commit()
+
+    return GenesisPurchaseResponse(
+        success=True,
+        message=f"Successfully purchased {tier_info['name']}!",
+        genesis_devices=ship.genesis_devices,
+        max_genesis_devices=ship.max_genesis_devices,
+        new_credits=player.credits,
+        tier_purchased=tier
+    )

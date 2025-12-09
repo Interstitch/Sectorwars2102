@@ -44,6 +44,7 @@ class FirstLoginSessionResponse(BaseModel):
     exchange_id: Optional[str] = None
     sequence_number: Optional[int] = None
     ship_claimed: Optional[str] = None
+    outcome: Optional[Dict[str, Any]] = None  # Only present for instant-approval ships (e.g., Escape Pod)
 
 class DialogueAnalysisResponse(BaseModel):
     exchange_id: str
@@ -192,8 +193,31 @@ async def claim_ship(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to record ship claim: {str(record_error)}"
             )
-        
-        # Generate the next dialogue question
+
+        # ESCAPE POD BYPASS: If claiming an escape pod, grant it immediately without interrogation
+        if ship_choice == ShipChoice.ESCAPE_POD:
+            logger.info(f"Escape pod claimed - bypassing interrogation, granting immediately")
+            try:
+                # Auto-approve with minimal questioning
+                outcome_data = await service.auto_approve_escape_pod(session.id)
+                logger.info(f"Escape pod auto-approved: {outcome_data}")
+
+                return {
+                    "session_id": str(session.id),
+                    "player_id": str(player.id),
+                    "available_ships": session.ship_options.available_ships if session.ship_options else ["ESCAPE_POD"],
+                    "current_step": "completion",
+                    "npc_prompt": outcome_data["guard_response"],
+                    "exchange_id": None,
+                    "sequence_number": 2,
+                    "ship_claimed": session.ship_claimed.name if session.ship_claimed else None,
+                    "outcome": outcome_data.get("outcome")
+                }
+            except Exception as auto_approve_error:
+                logger.error(f"Failed to auto-approve escape pod: {str(auto_approve_error)}", exc_info=True)
+                # Fall through to normal interrogation if auto-approval fails
+
+        # Generate the next dialogue question for other ships
         logger.info(f"Generating guard question for session: {session.id}")
         try:
             question_data = await service.generate_guard_question(session.id)
@@ -203,7 +227,7 @@ async def claim_ship(
             # Use fallback sync method
             question_data = service.generate_guard_question_sync(session.id)
             logger.info(f"Fallback question generated: {question_data}")
-        
+
         return {
             "session_id": str(session.id),
             "player_id": str(player.id),
@@ -295,10 +319,13 @@ async def answer_dialogue(
         question_data = await service.generate_guard_question(state.current_session_id)
         next_question = question_data["question"]
         next_exchange_id = str(question_data["exchange_id"])
-        
-        # SECURITY: Sanitize AI-generated response before returning
-        if next_question:
-            next_question = security_service.sanitize_output(next_question)
+
+        # NOTE: We do NOT sanitize AI-generated dialogue text here because:
+        # 1. React JSX automatically escapes content (XSS protection built-in)
+        # 2. HTML escaping causes &#x27; artifacts in apostrophes, breaking immersion
+        # 3. AI responses already go through prompt injection checks
+        # 4. We're not using dangerouslySetInnerHTML - no HTML injection risk
+        # Player INPUT is still sanitized, but AI OUTPUT stays natural.
     
     return {
         "exchange_id": str(result["exchange_id"]),

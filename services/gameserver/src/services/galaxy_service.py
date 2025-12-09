@@ -123,6 +123,9 @@ class GalaxyGenerator:
         # Ensure Sector 1 in each region has starter facilities
         self._ensure_region_starter_sector(region)
 
+        # Create SpaceDock in sector 10 (or nearby) for genesis devices and special equipment
+        self._create_spacedock_for_region(region)
+
         self.db.commit()
         logger.info(f"Region '{region.name}' content generation completed")
     
@@ -582,6 +585,13 @@ class GalaxyGenerator:
             habitability_score = self._get_habitability_score_for_planet_type(planet_type)
             status = PlanetStatus.HABITABLE if habitability_score > 50 else PlanetStatus.UNINHABITABLE
             
+            max_pop = self._get_max_population_for_planet_type(planet_type, habitability_score)
+            # Set initial population based on habitability (habitable planets start with some population)
+            initial_population = 0
+            if status == PlanetStatus.HABITABLE:
+                # Habitable planets start with 10-60% of max population
+                initial_population = int(max_pop * random.uniform(0.1, 0.6))
+
             planet = Planet(
                 name=planet_name,
                 sector_id=sector.sector_id,
@@ -596,7 +606,8 @@ class GalaxyGenerator:
                 habitability_score=habitability_score,
                 resource_richness=round(random.uniform(0.8, 2.0), 1),
                 resources=self._generate_planet_resources(planet_type),
-                max_population=self._get_max_population_for_planet_type(planet_type, habitability_score),
+                population=initial_population,
+                max_population=max_pop,
                 description=f"{planet_type.name} planet in Sector {sector_num}"
             )
             
@@ -707,6 +718,137 @@ class GalaxyGenerator:
         self.db.add(starter_planet)
         self.db.flush()
         logger.info("✅ Created starter planet 'New Earth' in sector with 8 billion population")
+
+    def _create_spacedock_for_region(self, region: Region) -> None:
+        """
+        Create a SpaceDock station in sector 10 of the region.
+        SpaceDock sells genesis devices, ships, drones, and mines.
+        """
+        from src.models.market_transaction import MarketPrice
+
+        logger.info(f"Creating SpaceDock for region '{region.name}'")
+
+        # Find sector 10 in this region
+        spacedock_sector = None
+        for sector in self.sectors_map.values():
+            if sector.region_id == region.id and sector.sector_number == 10:
+                spacedock_sector = sector
+                break
+
+        if not spacedock_sector:
+            # If sector 10 doesn't exist, use the 10th sector in the region
+            region_sectors = [s for s in self.sectors_map.values() if s.region_id == region.id]
+            region_sectors.sort(key=lambda s: s.sector_number)
+            if len(region_sectors) >= 10:
+                spacedock_sector = region_sectors[9]  # 10th sector (0-indexed)
+            elif region_sectors:
+                spacedock_sector = region_sectors[-1]  # Last sector if less than 10
+            else:
+                logger.warning(f"No sectors found for region {region.name}, skipping SpaceDock creation")
+                return
+
+        # Check if SpaceDock already exists in this sector
+        existing = self.db.query(Station).filter(
+            Station.sector_uuid == spacedock_sector.id,
+            Station.name.like('%SpaceDock%')
+        ).first()
+
+        if existing:
+            logger.info(f"SpaceDock already exists in sector {spacedock_sector.sector_number}")
+            return
+
+        # Create the SpaceDock
+        spacedock = Station(
+            name=f"{region.display_name} SpaceDock Alpha",
+            sector_id=spacedock_sector.sector_number,
+            sector_uuid=spacedock_sector.id,
+            station_class=StationClass.CLASS_11,  # Advanced Tech Hub
+            type=StationType.SHIPYARD,
+            status=StationStatus.OPERATIONAL,
+            size=10,  # Maximum size
+            faction_affiliation='Terran Federation',
+            trade_volume=500000,
+            market_volatility=20,
+            region_id=region.id,
+            services={
+                'ship_dealer': True,
+                'ship_repair': True,
+                'ship_maintenance': True,
+                'ship_upgrades': True,
+                'insurance': True,
+                'drone_shop': True,
+                'genesis_dealer': True,  # Genesis devices!
+                'mine_dealer': True,
+                'diplomatic_services': True,
+                'storage_rental': True,
+                'market_intelligence': True,
+                'refining_facility': True,
+                'luxury_amenities': True
+            },
+            service_prices={
+                'genesis_device_basic': 100000,
+                'genesis_device_advanced': 500000,
+                'combat_drone': 5000,
+                'defense_drone': 3000,
+                'mining_drone': 4000,
+                'limpet_mine': 2000,
+                'ship_repair_per_percent': 100,
+                'cargo_upgrade': 50000,
+                'weapon_upgrade': 75000
+            },
+            defenses={
+                'defense_drones': 100,
+                'max_defense_drones': 200,
+                'auto_turrets': True,
+                'defense_grid': True,
+                'shield_strength': 100,
+                'patrol_ships': 10,
+                'military_contract': True
+            },
+            is_quest_hub=True,
+            is_faction_headquarters=True,
+            is_player_ownable=False,
+            description=f'The premier {region.display_name} SpaceDock, offering the finest ships, equipment, and terraforming technology in the galaxy. Home to genesis device manufacturing.',
+            special_services=['genesis_device_manufacturing', 'ship_customization', 'military_contracts']
+        )
+
+        # Initialize commodities
+        spacedock.commodities = {
+            "ore": {"quantity": 100, "capacity": 5000, "base_price": 12, "current_price": 12, "buys": True, "sells": False},
+            "organics": {"quantity": 200, "capacity": 3000, "base_price": 18, "current_price": 18, "buys": True, "sells": False},
+            "equipment": {"quantity": 1000, "capacity": 5000, "base_price": 35, "current_price": 35, "buys": False, "sells": True},
+            "fuel": {"quantity": 2000, "capacity": 10000, "base_price": 8, "current_price": 8, "buys": False, "sells": True},
+            "colonists": {"quantity": 500, "capacity": 2000, "base_price": 60, "current_price": 60, "buys": False, "sells": True},
+            "luxury_goods": {"quantity": 100, "capacity": 500, "base_price": 120, "current_price": 120, "buys": True, "sells": False},
+            "exotic_technology": {"quantity": 50, "capacity": 200, "base_price": 400, "current_price": 400, "buys": False, "sells": True}
+        }
+
+        self.db.add(spacedock)
+        self.db.flush()
+
+        # Create market prices for trading
+        commodities = [
+            ('ore', 100, 12, 8),
+            ('organics', 200, 25, 18),
+            ('equipment', 1000, 50, 35),
+            ('fuel', 2000, 8, 5),
+            ('colonists', 500, 75, 60),
+            ('luxury_goods', 100, 150, 120),
+            ('exotic_technology', 50, 500, 400)
+        ]
+
+        for commodity, qty, buy_price, sell_price in commodities:
+            market_price = MarketPrice(
+                station_id=spacedock.id,
+                commodity=commodity,
+                quantity=qty,
+                buy_price=buy_price,
+                sell_price=sell_price
+            )
+            self.db.add(market_price)
+
+        self.db.flush()
+        logger.info(f"✅ Created SpaceDock in sector {spacedock_sector.sector_number} for {region.name}")
 
     def _ensure_region_starter_sector(self, region: Region) -> None:
         """

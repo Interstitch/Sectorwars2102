@@ -65,9 +65,9 @@ const NavigationMap: React.FC<NavigationMapProps> = ({
         };
       }
 
-      // Place connected sectors in a circle around current (ultra-zoomed)
+      // Place connected sectors in a circle around current (maximum spacing)
       const isConnected = availableMoves.includes(sector.id);
-      const radius = isConnected ? 60 : 110;
+      const radius = isConnected ? 350 : 450;  // Very wide spacing for clear readability
       const angle = (index / sectors.length) * Math.PI * 2;
 
       return {
@@ -105,13 +105,13 @@ const NavigationMap: React.FC<NavigationMapProps> = ({
           let fx = 0;
           let fy = 0;
 
-          // Repulsion from other nodes
+          // Repulsion from other nodes (strong force to keep nodes far apart)
           updatedNodes.forEach((other, j) => {
             if (i === j) return;
             const dx = node.x - other.x;
             const dy = node.y - other.y;
             const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            const force = 1000 / (dist * dist);
+            const force = 8000 / (dist * dist);  // Strong repulsion for maximum spacing
             fx += (dx / dist) * force;
             fy += (dy / dist) * force;
           });

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef, ReactNode } from 'react';
 import axios from 'axios';
 
 interface User {
@@ -57,23 +57,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
     return window.location.origin;  // Use current origin, which will use the proxy
   };
   
-  // Initialize axios with API URL
-  const apiUrl = getApiUrl();
-  
+  // Initialize axios with API URL - use useMemo-like pattern with ref to avoid recalculation
+  const apiUrlRef = useRef<string | null>(null);
+  if (apiUrlRef.current === null) {
+    apiUrlRef.current = getApiUrl();
+  }
+  const apiUrl = apiUrlRef.current;
+
+  // Track if auth check has been performed
+  const authCheckPerformed = useRef(false);
+
   // Setup axios interceptor for authentication
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
-        
+
         // If error is 401 and not already retrying, attempt to refresh token
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
-          
+
           try {
             await refreshToken();
-            
+
             // Re-attempt the original request with new token
             const accessToken = localStorage.getItem('accessToken');
             originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
@@ -84,13 +91,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
             return Promise.reject(refreshError);
           }
         }
-        
+
         return Promise.reject(error);
       }
     );
-    
-    // Check if user is already authenticated
+
+    // Check if user is already authenticated - only run once
     const checkAuth = async () => {
+      if (authCheckPerformed.current) {
+        console.log('Auth check already performed, skipping');
+        return;
+      }
+      authCheckPerformed.current = true;
       setIsLoading(true);
 
       const accessToken = localStorage.getItem('accessToken');
@@ -135,12 +147,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
     };
     
     checkAuth();
-    
+
     // Clean up interceptor
     return () => {
       axios.interceptors.response.eject(interceptor);
     };
-  }, [apiUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only on mount - apiUrl is stable via ref, authCheckPerformed prevents duplicates
   
   const login = async (username: string, password: string) => {
     setIsLoading(true);

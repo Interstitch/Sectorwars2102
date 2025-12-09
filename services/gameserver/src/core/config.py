@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     PAYPAL_WEBHOOK_ID: str = os.environ.get("PAYPAL_WEBHOOK_ID", "")
 
     # Development Environment Type
-    DEV_ENVIRONMENT: str = os.environ.get("DEV_ENVIRONMENT", "")  # local, replit, codespaces
+    DEV_ENVIRONMENT: str = os.environ.get("DEV_ENVIRONMENT", "")  # local, codespaces
     NODE_ENV: Optional[str] = os.environ.get("NODE_ENV")
     FRONTEND_URL: Optional[str] = os.environ.get("FRONTEND_URL")
     CODESPACE_NAME: Optional[str] = os.environ.get("CODESPACE_NAME")
@@ -109,10 +109,6 @@ class Settings(BaseSettings):
         if self.DEV_ENVIRONMENT:
             return self.DEV_ENVIRONMENT
 
-        # Check for Replit
-        if os.environ.get("REPL_ID") or os.environ.get("REPL_SLUG"):
-            return "replit"
-
         # Check for GitHub Codespaces
         if os.environ.get("CODESPACE_NAME") or os.environ.get("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"):
             return "codespaces"
@@ -135,13 +131,6 @@ class Settings(BaseSettings):
             if codespace_name:
                 # Include port in Codespaces URL as the port is embedded in the hostname
                 return f"https://{codespace_name}-8080.app.github.dev"
-
-        elif env_type == "replit":
-            # For Replit, use REPL_SLUG if available
-            repl_slug = os.environ.get("REPL_SLUG")
-            repl_owner = os.environ.get("REPL_OWNER")
-            if repl_slug and repl_owner:
-                return f"https://{repl_slug}.{repl_owner}.repl.co"
 
         # Default for local development
         return "http://localhost:8080"

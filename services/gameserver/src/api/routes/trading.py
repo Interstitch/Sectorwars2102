@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Dict, Any
 from datetime import datetime, UTC
 from pydantic import BaseModel
 
-from src.core.database import get_async_session
+from src.core.database import get_db
 from src.auth.dependencies import get_current_user, get_current_player
 from src.models.user import User
 from src.models.player import Player
@@ -29,13 +30,13 @@ class StationDockRequest(BaseModel):
 
 class MarketInfoResponse(BaseModel):
     resources: Dict[str, Dict[str, Any]]
-    station: Dict[str, Any]
+    port: Dict[str, Any]
 
 
 @router.post("/buy")
 async def buy_resource(
     trade_request: TradeRequest,
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
@@ -71,10 +72,10 @@ async def buy_resource(
         raise HTTPException(status_code=404, detail="Resource not available at this port")
     
     # Check if port has enough quantity
-    if market_price.quantity_available < trade_request.quantity:
+    if market_price.quantity < trade_request.quantity:
         raise HTTPException(
             status_code=400, 
-            detail=f"Station only has {market_price.quantity_available} units available"
+            detail=f"Station only has {market_price.quantity} units available"
         )
     
     # Calculate total cost
@@ -88,27 +89,34 @@ async def buy_resource(
         )
     
     # Check ship cargo capacity
-    current_cargo = sum(current_ship.cargo.values()) if current_ship.cargo else 0
-    if current_cargo + trade_request.quantity > current_ship.cargo_capacity:
+    # Cargo structure: {'used': X, 'capacity': Y, 'contents': {...}}
+    cargo = current_ship.cargo or {'used': 0, 'capacity': 50, 'contents': {}}
+    current_cargo_used = cargo.get('used', 0)
+    cargo_capacity = cargo.get('capacity', 50)
+
+    if current_cargo_used + trade_request.quantity > cargo_capacity:
         raise HTTPException(
             status_code=400,
-            detail="Insufficient cargo space"
+            detail=f"Insufficient cargo space. Have {cargo_capacity - current_cargo_used} free, need {trade_request.quantity}"
         )
-    
+
     # Execute the trade
     try:
         # Update player credits
         current_player.credits -= total_cost
-        
-        # Update ship cargo
+
+        # Update ship cargo (using proper structure)
         if not current_ship.cargo:
-            current_ship.cargo = {}
-        current_ship.cargo[trade_request.resource_type] = (
-            current_ship.cargo.get(trade_request.resource_type, 0) + trade_request.quantity
-        )
-        
+            current_ship.cargo = {'used': 0, 'capacity': 50, 'contents': {}}
+
+        contents = current_ship.cargo.get('contents', {})
+        contents[trade_request.resource_type] = contents.get(trade_request.resource_type, 0) + trade_request.quantity
+        current_ship.cargo['contents'] = contents
+        current_ship.cargo['used'] = current_ship.cargo.get('used', 0) + trade_request.quantity
+        flag_modified(current_ship, 'cargo')  # Mark JSONB as modified for SQLAlchemy
+
         # Update market quantity
-        market_price.quantity_available -= trade_request.quantity
+        market_price.quantity -= trade_request.quantity
         market_price.last_updated = datetime.now(UTC)
         
         # Create transaction record
@@ -134,7 +142,7 @@ async def buy_resource(
                 "unit_price": market_price.buy_price,
                 "total_cost": total_cost,
                 "remaining_credits": current_player.credits,
-                "remaining_cargo_space": current_ship.cargo_capacity - sum(current_ship.cargo.values())
+                "remaining_cargo_space": current_ship.cargo.get('capacity', 50) - current_ship.cargo.get('used', 0)
             }
         }
         
@@ -146,7 +154,7 @@ async def buy_resource(
 @router.post("/sell")
 async def sell_resource(
     trade_request: TradeRequest,
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
@@ -174,10 +182,15 @@ async def sell_resource(
         raise HTTPException(status_code=404, detail="No active ship found")
     
     # Check if player has the resource
-    if not current_ship.cargo or current_ship.cargo.get(trade_request.resource_type, 0) < trade_request.quantity:
+    # Cargo structure: {'used': X, 'capacity': Y, 'contents': {...}}
+    cargo = current_ship.cargo or {'used': 0, 'capacity': 50, 'contents': {}}
+    contents = cargo.get('contents', {})
+    player_has = contents.get(trade_request.resource_type, 0)
+
+    if player_has < trade_request.quantity:
         raise HTTPException(
             status_code=400,
-            detail=f"You don't have {trade_request.quantity} units of {trade_request.resource_type}"
+            detail=f"You don't have {trade_request.quantity} units of {trade_request.resource_type}. You have {player_has}."
         )
     
     # Get market price for this resource
@@ -195,16 +208,23 @@ async def sell_resource(
     try:
         # Update player credits
         current_player.credits += total_earnings
-        
-        # Update ship cargo
-        current_ship.cargo[trade_request.resource_type] -= trade_request.quantity
-        if current_ship.cargo[trade_request.resource_type] <= 0:
-            del current_ship.cargo[trade_request.resource_type]
-        
+
+        # Update ship cargo (using proper structure)
+        if not current_ship.cargo:
+            current_ship.cargo = {'used': 0, 'capacity': 50, 'contents': {}}
+
+        contents = current_ship.cargo.get('contents', {})
+        contents[trade_request.resource_type] = contents.get(trade_request.resource_type, 0) - trade_request.quantity
+        if contents[trade_request.resource_type] <= 0:
+            del contents[trade_request.resource_type]
+        current_ship.cargo['contents'] = contents
+        current_ship.cargo['used'] = max(0, current_ship.cargo.get('used', 0) - trade_request.quantity)
+        flag_modified(current_ship, 'cargo')  # Mark JSONB as modified for SQLAlchemy
+
         # Update market quantity
-        market_price.quantity_available += trade_request.quantity
+        market_price.quantity += trade_request.quantity
         market_price.last_updated = datetime.now(UTC)
-        
+
         # Create transaction record
         transaction = MarketTransaction(
             player_id=current_player.id,
@@ -217,9 +237,10 @@ async def sell_resource(
             timestamp=datetime.now(UTC)
         )
         db.add(transaction)
-        
+
         db.commit()
-        
+
+        remaining = current_ship.cargo.get('contents', {}).get(trade_request.resource_type, 0)
         return {
             "message": f"Successfully sold {trade_request.quantity} units of {trade_request.resource_type}",
             "transaction": {
@@ -228,7 +249,7 @@ async def sell_resource(
                 "unit_price": market_price.sell_price,
                 "total_earnings": total_earnings,
                 "new_credits": current_player.credits,
-                "remaining_cargo": current_ship.cargo.get(trade_request.resource_type, 0)
+                "remaining_cargo": remaining
             }
         }
         
@@ -240,7 +261,7 @@ async def sell_resource(
 @router.get("/market/{station_id}", response_model=MarketInfoResponse)
 async def get_market_info(
     station_id: str,
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
@@ -258,10 +279,10 @@ async def get_market_info(
     resources = {}
     for price in market_prices:
         resources[price.commodity] = {
-            "quantity": price.quantity_available,
+            "quantity": price.quantity,
             "buy_price": price.buy_price,
             "sell_price": price.sell_price,
-            "last_updated": price.last_updated.isoformat() if price.last_updated else None
+            "last_updated": price.updated_at.isoformat() if price.updated_at else None
         }
     
     return MarketInfoResponse(
@@ -271,7 +292,7 @@ async def get_market_info(
             "name": station.name,
             "type": station.type,
             "faction": station.faction_affiliation,
-            "tax_rate": getattr(port, 'tax_rate', 0.1)  # Default 10% tax if not set
+            "tax_rate": getattr(station, 'tax_rate', 0.1)  # Default 10% tax if not set
         }
     )
 
@@ -279,7 +300,7 @@ async def get_market_info(
 @router.post("/dock")
 async def dock_at_station(
     dock_request: StationDockRequest,
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
@@ -342,7 +363,7 @@ async def dock_at_station(
 
 @router.post("/undock")
 async def undock_from_port(
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
@@ -385,7 +406,7 @@ async def undock_from_port(
 @router.get("/history")
 async def get_trading_history(
     limit: int = 20,
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_player: Player = Depends(get_current_player)
 ):
@@ -409,7 +430,7 @@ async def get_trading_history(
             "total_value": tx.total_value,
             "profit_margin": tx.profit_margin,
             "timestamp": tx.timestamp.isoformat(),
-            "station_name": station.name if port else "Unknown Station"
+            "station_name": station.name if station else "Unknown Station"
         })
     
     return {

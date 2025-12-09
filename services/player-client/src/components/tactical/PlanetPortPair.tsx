@@ -33,9 +33,10 @@ interface Station {
 }
 
 interface PlanetPortPairProps {
-  planet: Planet;
+  planet: Planet | null;
   station?: Station | null;
   onLandOnPlanet: (planetId: string) => void;
+  onClaimPlanet?: (planetId: string) => void;
   onDockAtStation?: (stationId: string) => void;
   isLanded?: boolean;
   isDocked?: boolean;
@@ -45,6 +46,7 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
   planet,
   station,
   onLandOnPlanet,
+  onClaimPlanet,
   onDockAtStation,
   isLanded = false,
   isDocked = false
@@ -87,15 +89,28 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
     return pop.toString();
   };
 
-  const planetIcon = planetTypeIcons[planet.type?.toLowerCase()] || '🌍';
+  const planetIcon = planet ? (planetTypeIcons[planet.type?.toLowerCase()] || '🌍') : null;
 
   // Get station owner display name
   const stationOwnerDisplay = station?.owner_name || (station?.faction_affiliation ? `${station.faction_affiliation} Faction` : null);
 
+  // Determine if planet is unclaimed
+  const isPlanetUnclaimed = planet && !planet.owner_id && !planet.owner_name && planet.name !== 'New Earth';
+
   const handlePlanetClick = () => {
-    if (isLanded) return;
-    if (confirm(`Land on ${planet.name}?`)) {
-      onLandOnPlanet(planet.id);
+    if (!planet || isLanded) return;
+
+    if (isPlanetUnclaimed) {
+      // Planet is unclaimed - need to claim it first
+      if (!onClaimPlanet) return;
+      if (confirm(`Claim ${planet.name}?\n\nThis planet is unclaimed. Claiming it will make you the owner and automatically land your ship.`)) {
+        onClaimPlanet(planet.id);
+      }
+    } else {
+      // Planet is owned - just land
+      if (confirm(`Land on ${planet.name}?`)) {
+        onLandOnPlanet(planet.id);
+      }
     }
   };
 
@@ -107,34 +122,40 @@ const PlanetPortPair: React.FC<PlanetPortPairProps> = ({
     }
   };
 
-  const ownerDisplay = planet.owner_name || (planet.name === 'New Earth' ? 'Terran Federation' : null);
+  const ownerDisplay = planet ? (planet.owner_name || (planet.name === 'New Earth' ? 'Terran Federation' : null)) : null;
 
   return (
     <div className="planet-port-pair">
-      {/* Planet Section - Clickable */}
-      <div
-        className={`planet-section ${!isLanded ? 'clickable' : 'landed'}`}
-        onClick={handlePlanetClick}
-      >
-        <span className="planet-icon">{planetIcon}</span>
-        <div className="planet-details">
-          <div className="planet-name-line">
-            <span className="planet-name">{planet.name}</span>
-            {ownerDisplay && <span className="planet-owner">{ownerDisplay}</span>}
-          </div>
-          <div className="planet-stats">
-            {planet.habitability_score !== undefined && (
-              <span className="stat">🌡️ {planet.habitability_score}%</span>
-            )}
-            {planet.population !== undefined && (
-              <span className="stat">👥 {formatPopulation(planet.population)}</span>
-            )}
+      {/* Planet Section - Clickable (only show if planet exists) */}
+      {planet && (
+        <div
+          className={`planet-section ${!isLanded ? 'clickable' : 'landed'} ${isPlanetUnclaimed ? 'unclaimed' : ''}`}
+          onClick={handlePlanetClick}
+        >
+          <span className="planet-icon">{planetIcon}</span>
+          <div className="planet-details">
+            <div className="planet-name-line">
+              <span className="planet-name">{planet.name}</span>
+              {isPlanetUnclaimed && onClaimPlanet ? (
+                <span className="planet-claim-hint">Click to Claim</span>
+              ) : (
+                ownerDisplay && <span className="planet-owner">{ownerDisplay}</span>
+              )}
+            </div>
+            <div className="planet-stats">
+              {planet.habitability_score !== undefined && (
+                <span className="stat">🌡️ {planet.habitability_score}%</span>
+              )}
+              {planet.population !== undefined && (
+                <span className="stat">👥 {formatPopulation(planet.population)}</span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Orbital Connector */}
-      {station && <div className="orbital-connector">→</div>}
+      {/* Orbital Connector - only show if both planet and station exist */}
+      {planet && station && <div className="orbital-connector">→</div>}
 
       {/* Station Section - Clickable if exists */}
       {station && (

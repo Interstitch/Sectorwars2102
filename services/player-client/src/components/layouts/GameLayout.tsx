@@ -20,12 +20,19 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
   // Try to refresh player state on mount if we don't have it
+  const hasAttemptedRefresh = React.useRef(false);
   React.useEffect(() => {
-    if (user && !playerState && !isLoading) {
+    if (user && !playerState && !isLoading && !hasAttemptedRefresh.current) {
       console.log('GameLayout: No player state detected, refreshing...');
+      hasAttemptedRefresh.current = true;
       refreshPlayerState();
     }
-  }, [user, playerState, isLoading, refreshPlayerState]);
+    // Reset the ref if we get player state (allows retry on logout/login)
+    if (playerState) {
+      hasAttemptedRefresh.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, playerState, isLoading]); // Remove refreshPlayerState from deps to prevent loop
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -112,6 +119,40 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
                       <p className="empty-cargo">CARGO BAY EMPTY</p>
                     )}
                   </div>
+
+                  {/* Genesis Device Display - Special Items */}
+                  {(currentShip.max_genesis_devices ?? 0) > 0 && (
+                    <div className="ship-genesis">
+                      <h4 className="genesis-header">
+                        <span className="genesis-icon">🌍</span>
+                        GENESIS BAY
+                      </h4>
+                      <div className="genesis-status">
+                        <div className="genesis-slots">
+                          {Array.from({ length: currentShip.max_genesis_devices || 0 }, (_, i) => (
+                            <div
+                              key={i}
+                              className={`genesis-slot ${i < (currentShip.genesis_devices || 0) ? 'loaded' : 'empty'}`}
+                              title={i < (currentShip.genesis_devices || 0) ? 'Genesis Device Loaded' : 'Empty Slot'}
+                            >
+                              {i < (currentShip.genesis_devices || 0) ? '🌍' : '○'}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="genesis-count">
+                          <span className={`data-readout ${(currentShip.genesis_devices || 0) > 0 ? 'genesis-active' : ''}`}>
+                            {currentShip.genesis_devices || 0} / {currentShip.max_genesis_devices || 0}
+                          </span>
+                        </div>
+                      </div>
+                      {(currentShip.genesis_devices || 0) > 0 && (
+                        <div className="genesis-ready-indicator">
+                          <span className="pulse-dot"></span>
+                          TERRAFORM READY
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="no-ship">NO ACTIVE VESSEL</div>

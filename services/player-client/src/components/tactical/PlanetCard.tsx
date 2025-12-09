@@ -18,14 +18,29 @@ interface PlanetCardProps {
     habitability_score?: number;
   };
   onLand?: (planetId: string) => void;
+  onClaim?: (planetId: string) => void;
   isLanded?: boolean;
 }
 
-const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onLand, isLanded = false }) => {
+const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onLand, onClaim, isLanded = false }) => {
+  // Determine if planet is unclaimed
+  const isUnclaimed = !planet.owner_id && !planet.owner_name && planet.name !== 'New Earth';
+
   const handleClick = () => {
-    if (isLanded || !onLand) return;
-    if (confirm(`Land on ${planet.name}?`)) {
-      onLand(planet.id);
+    if (isLanded) return;
+
+    if (isUnclaimed) {
+      // Planet is unclaimed - need to claim it
+      if (!onClaim) return;
+      if (confirm(`Claim ${planet.name}?\n\nThis planet is unclaimed. Claiming it will make you the owner and automatically land your ship.`)) {
+        onClaim(planet.id);
+      }
+    } else {
+      // Planet is owned - just land
+      if (!onLand) return;
+      if (confirm(`Land on ${planet.name}?`)) {
+        onLand(planet.id);
+      }
     }
   };
   // Planet type configurations
@@ -89,9 +104,12 @@ const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onLand, isLanded = fals
         .map(([resource, _]) => resource)
     : [];
 
+  // Determine if card is clickable
+  const isClickable = !isLanded && ((isUnclaimed && onClaim) || (!isUnclaimed && onLand));
+
   return (
     <div
-      className={`planet-card ${onLand && !isLanded ? 'clickable' : ''}`}
+      className={`planet-card ${isClickable ? 'clickable' : ''} ${isUnclaimed ? 'unclaimed' : ''}`}
       onClick={handleClick}
     >
       {/* Planet Header */}
@@ -111,7 +129,9 @@ const PlanetCard: React.FC<PlanetCardProps> = ({ planet, onLand, isLanded = fals
               👤 {planet.owner_name || (planet.name === 'New Earth' ? 'Terran Federation' : 'Owned')}
             </span>
           ) : (
-            <span className="status-unclaimed">○ Unclaimed</span>
+            <span className="status-unclaimed claimable">
+              {onClaim ? '✋ Click to Claim' : '○ Unclaimed'}
+            </span>
           )}
         </div>
       </div>

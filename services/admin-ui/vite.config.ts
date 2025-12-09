@@ -20,15 +20,12 @@ export default defineConfig({
     // Direct configuration to allow any host
     cors: true,
 
-    // Add explicit wildcard for all hosts - most important setting
+    // Add explicit wildcard for all hosts
     allowedHosts: [
       'localhost',
       '127.0.0.1',
-      '.replit.dev',
-      '.repl.co',
       '0.0.0.0',
-      '*', // Wildcard to allow everything
-      'all' // Another way to allow everything
+      '*'
     ],
 
     // Don't check origin at all
@@ -37,10 +34,7 @@ export default defineConfig({
     // Add proxy for API server to bypass CORS issues across all environments
     proxy: {
       '/api': {
-        // Determine target dynamically based on environment
-        target: process.env.API_URL ||
-                (process.env.CODESPACE_NAME || process.env.REPL_ID ? 'http://localhost:8080' : 'http://gameserver:8080'),
-        // Do not rewrite paths - frontend already includes /v1
+        target: process.env.API_URL || 'http://gameserver:8080',
         changeOrigin: true,
         secure: false,
         ws: true,
@@ -50,13 +44,8 @@ export default defineConfig({
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
             console.log('Sending Request to the Target:', req.method, req.url);
-            console.log('Using API URL:', process.env.API_URL ||
-                       (process.env.CODESPACE_NAME || process.env.REPL_ID ? 'http://localhost:8080' : 'http://gameserver:8080'));
-
-            // For GitHub Codespaces, we need to handle the 443 port correctly
+            // For GitHub Codespaces, preserve the original host header
             if (process.env.CODESPACE_NAME || process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN) {
-              console.log('GitHub Codespaces environment detected, preserving host header');
-              // Preserve the original host from the request
               if (req.headers.host) {
                 proxyReq.setHeader('host', req.headers.host);
               }

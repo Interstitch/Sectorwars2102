@@ -112,6 +112,31 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
+.status-unclaimed.claimable {
+  color: #ffb000;
+  text-shadow: 0 0 8px rgba(255, 176, 0, 0.5);
+  animation: claimable-pulse 2s ease-in-out infinite;
+}
+
+@keyframes claimable-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Unclaimed planet card styling */
+.planet-card.unclaimed {
+  border-color: rgba(255, 176, 0, 0.3);
+}
+
+.planet-card.unclaimed.clickable:hover {
+  border-color: rgba(255, 176, 0, 0.8);
+  box-shadow: 0 0 25px rgba(255, 176, 0, 0.4);
+}
+
 /* Planet Body */
 .planet-card-body {
   display: flex;

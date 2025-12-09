@@ -106,6 +106,32 @@
   white-space: nowrap;
 }
 
+.planet-claim-hint {
+  font-size: 0.6rem;
+  color: #ffb000;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: claim-pulse 2s ease-in-out infinite;
+}
+
+@keyframes claim-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Unclaimed planet styling */
+.planet-section.unclaimed {
+  border-left: 2px solid rgba(255, 176, 0, 0.5);
+}
+
+.planet-section.unclaimed.clickable:hover {
+  background: rgba(255, 176, 0, 0.15);
+}
+
 .planet-stats {
   display: flex;
   gap: 0.5rem;

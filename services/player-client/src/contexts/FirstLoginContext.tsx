@@ -279,20 +279,42 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
 
       const result = await api.post('/api/v1/first-login/claim-ship', payload);
 
-      console.log('[FirstLogin:ShipClaim] Success | First Question Received');
+      console.log('[FirstLogin:ShipClaim] Response received:', result.data);
+      console.log('[FirstLogin:ShipClaim] current_step:', result.data.current_step);
+      console.log('[FirstLogin:ShipClaim] outcome:', result.data.outcome);
 
       setSession(result.data);
 
-      // Update dialogue history
-      setDialogueHistory(prev => [
-        ...prev,
-        { npc: '', player: response },
-        { npc: result.data.npc_prompt, player: '' }
-      ]);
+      // Check if this is an immediate outcome (e.g., Escape Pod auto-approval)
+      if (result.data.current_step === 'completion' && result.data.outcome) {
+        console.log('[FirstLogin:ShipClaim] Immediate approval - skipping interrogation');
 
-      // Set new prompt and exchange ID
-      setCurrentPrompt(result.data.npc_prompt);
-      setExchangeId(result.data.exchange_id || null);
+        // Set the outcome directly
+        setDialogueOutcome(result.data.outcome);
+
+        // Update dialogue history with approval message
+        setDialogueHistory(prev => [
+          ...prev,
+          { npc: '', player: response },
+          { npc: result.data.npc_prompt, player: '' }
+        ]);
+
+        setCurrentPrompt(result.data.npc_prompt);
+      } else {
+        // Normal flow: received a question for interrogation
+        console.log('[FirstLogin:ShipClaim] Success | First Question Received');
+
+        // Update dialogue history
+        setDialogueHistory(prev => [
+          ...prev,
+          { npc: '', player: response },
+          { npc: result.data.npc_prompt, player: '' }
+        ]);
+
+        // Set new prompt and exchange ID
+        setCurrentPrompt(result.data.npc_prompt);
+        setExchangeId(result.data.exchange_id || null);
+      }
     } catch (error: any) {
       console.error('❌ FirstLogin: Error claiming ship:', error);
       console.error('Error response:', error.response);

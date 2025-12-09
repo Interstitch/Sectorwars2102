@@ -45,7 +45,9 @@ class Player(Base):
     home_sector_id = Column(Integer, nullable=False, default=1)
     current_sector_id = Column(Integer, nullable=False, default=1)
     is_docked = Column(Boolean, nullable=False, default=False)
+    current_port_id = Column(UUID(as_uuid=True), ForeignKey("stations.id", ondelete="SET NULL"), nullable=True)  # Station player is docked at
     is_landed = Column(Boolean, nullable=False, default=False)
+    current_planet_id = Column(UUID(as_uuid=True), ForeignKey("planets.id", ondelete="SET NULL"), nullable=True)  # Planet player is landed on
     team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True)
     attack_drones = Column(Integer, nullable=False, default=0)
     defense_drones = Column(Integer, nullable=False, default=0)

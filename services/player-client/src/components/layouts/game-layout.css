@@ -239,6 +239,125 @@
   letter-spacing: 0.5px;
 }
 
+/* Genesis Device Display in Sidebar */
+.ship-genesis {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.genesis-header {
+  font-size: 0.9rem;
+  color: #4CAF50;
+  margin: 0 0 var(--space-sm) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  text-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+}
+
+.genesis-icon {
+  font-size: 1.1em;
+  filter: drop-shadow(0 0 4px rgba(76, 175, 80, 0.6));
+}
+
+.genesis-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm);
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 6px;
+}
+
+.genesis-slots {
+  display: flex;
+  gap: 6px;
+}
+
+.genesis-slot {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.genesis-slot.loaded {
+  background: radial-gradient(circle at 30% 30%, #4CAF50, #1B5E20);
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.6);
+  animation: genesis-glow 2s ease-in-out infinite;
+}
+
+.genesis-slot.empty {
+  background: rgba(30, 40, 50, 0.6);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.8rem;
+}
+
+@keyframes genesis-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.6);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(76, 175, 80, 0.8);
+    transform: scale(1.05);
+  }
+}
+
+.genesis-count .data-readout {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+}
+
+.genesis-count .data-readout.genesis-active {
+  color: #4CAF50;
+  text-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+  font-weight: bold;
+}
+
+.genesis-ready-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  background: rgba(76, 175, 80, 0.15);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #4CAF50;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: #4CAF50;
+  border-radius: 50%;
+  animation: pulse-beacon 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-beacon {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 4px #4CAF50;
+  }
+  50% {
+    opacity: 0.5;
+    box-shadow: 0 0 12px #4CAF50, 0 0 20px rgba(76, 175, 80, 0.5);
+  }
+}
+
 /* Location info section */
 .location-info {
   margin: 0;

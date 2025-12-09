@@ -205,7 +205,7 @@ function drawPlanetsEnhanced(
   planets: any[],
   width: number,
   height: number,
-  entityPositions: Array<{ type: 'port' | 'planet'; id: string; name: string; x: number; y: number; radius: number }>
+  entityPositions: Array<{ type: 'station' | 'planet'; id: string; name: string; x: number; y: number; radius: number }>
 ) {
   if (!planets || planets.length === 0) return;
 
@@ -289,7 +289,7 @@ function drawPlanetsEnhanced(
   });
 }
 
-// Draw stations orbiting their paired planets
+// Draw stations - orbiting planets if available, or standalone if no planets
 function drawStationsOrbiting(
   ctx: CanvasRenderingContext2D,
   stations: any[],
@@ -298,28 +298,50 @@ function drawStationsOrbiting(
   height: number,
   entityPositions: Array<{ type: 'station' | 'planet'; id: string; name: string; x: number; y: number; radius: number }>
 ) {
-  if (!stations || stations.length === 0 || !planets || planets.length === 0) return;
+  if (!stations || stations.length === 0) return;
 
-  const planetCount = planets.length;
-  const spacing = width / (planetCount + 1);
-  const planetRadius = 35;
-  const orbitRadius = 60; // Distance from planet center to station
-  const stationSize = 10; // Smaller than planets
+  const planetCount = planets?.length || 0;
+  const stationSize = 12;
 
   stations.forEach((station, index) => {
-    // Pair station with planet by index (same as PlanetPortPair component)
-    const planetIndex = index;
-    if (planetIndex >= planets.length) return;
+    let stationX: number;
+    let stationY: number;
+    let shouldDrawOrbit = false;
 
-    // Get planet position (must match drawPlanetsEnhanced calculation)
-    const planetX = spacing * (planetIndex + 1);
-    const planetY = height * 0.5;
+    if (planetCount > 0 && index < planetCount) {
+      // Station orbits a planet
+      const spacing = width / (planetCount + 1);
+      const orbitRadius = 60;
+      const planetX = spacing * (index + 1);
+      const planetY = height * 0.5;
 
-    // Calculate orbital position using time
-    const time = Date.now() * 0.0003; // Slow rotation
-    const orbitAngle = time + (index * Math.PI * 0.5); // Offset each station
-    const stationX = planetX + Math.cos(orbitAngle) * orbitRadius;
-    const stationY = planetY + Math.sin(orbitAngle) * orbitRadius;
+      // Calculate orbital position using time
+      const time = Date.now() * 0.0003;
+      const orbitAngle = time + (index * Math.PI * 0.5);
+      stationX = planetX + Math.cos(orbitAngle) * orbitRadius;
+      stationY = planetY + Math.sin(orbitAngle) * orbitRadius;
+      shouldDrawOrbit = true;
+
+      // Draw orbital path (faint circle)
+      ctx.strokeStyle = 'rgba(0, 217, 255, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.arc(planetX, planetY, orbitRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      // Standalone station - position in viewport without planet
+      const stationCount = stations.length - planetCount;
+      const stationIndex = index - planetCount;
+      const spacing = width / (stationCount + 1);
+      stationX = spacing * (stationIndex + 1);
+      stationY = height * 0.5;
+
+      // Gentle floating animation for standalone stations
+      const floatOffset = Math.sin(Date.now() * 0.001 + index) * 5;
+      stationY += floatOffset;
+    }
 
     // Track position for hit detection
     entityPositions.push({
@@ -328,22 +350,13 @@ function drawStationsOrbiting(
       name: station.name,
       x: stationX,
       y: stationY,
-      radius: stationSize + 6 // Hit area
+      radius: stationSize + 8 // Hit area
     });
 
-    // Draw orbital path (faint circle)
-    ctx.strokeStyle = 'rgba(0, 217, 255, 0.15)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath();
-    ctx.arc(planetX, planetY, orbitRadius, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Station structure - smaller hexagonal space station
+    // Station structure - hexagonal space station
     ctx.strokeStyle = '#00d9ff';
     ctx.fillStyle = 'rgba(0, 217, 255, 0.3)';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
 
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
@@ -371,20 +384,20 @@ function drawStationsOrbiting(
     if (blink) {
       ctx.fillStyle = '#00ff41';
       ctx.beginPath();
-      ctx.arc(stationX, stationY, 1.5, 0, Math.PI * 2);
+      ctx.arc(stationX, stationY, 2, 0, Math.PI * 2);
       ctx.fill();
     }
 
     // Draw label
-    ctx.font = '10px monospace';
+    ctx.font = '11px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
     // Label background
-    const labelY = stationY + stationSize + 6;
-    const labelWidth = ctx.measureText(station.name).width + 6;
+    const labelY = stationY + stationSize + 8;
+    const labelWidth = ctx.measureText(station.name).width + 8;
     ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.fillRect(stationX - labelWidth / 2, labelY, labelWidth, 14);
+    ctx.fillRect(stationX - labelWidth / 2, labelY, labelWidth, 16);
 
     // Label text
     ctx.fillStyle = '#00d9ff';

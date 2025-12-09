@@ -49,6 +49,9 @@ replit.nix
 nvm/
 .claude/
 
+# MIRA (Claude Code conversation memory)
+.mira/
+
 # Playwright
 playwright-report/
 playwright-reports/

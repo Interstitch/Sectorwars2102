@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useGame } from '../../contexts/GameContext';
 import { useWebSocket } from '../../contexts/WebSocketContext';
 import './trading-interface.css';
@@ -21,20 +22,24 @@ interface TradeCalculation {
 }
 
 const TradingInterface: React.FC = () => {
-  const { 
-    playerState, 
-    currentShip, 
-    marketInfo, 
-    getMarketInfo, 
-    buyResource, 
+  const {
+    playerState,
+    currentShip,
+    marketInfo,
+    getMarketInfo,
+    buyResource,
     sellResource,
-    portsInSector,
+    stationsInSector,
     isLoading,
-    error 
+    error
   } = useGame();
-  
+
+  // Use stationsInSector as ports (they're the same concept in this game)
+  const portsInSector = stationsInSector || [];
+
   const { addNotification, isConnected } = useWebSocket();
-  
+
+  // All hooks must be called before any early returns
   const [selectedPort, setSelectedPort] = useState<string>('');
   const [selectedResource, setSelectedResource] = useState<string>('');
   const [tradeQuantity, setTradeQuantity] = useState<number>(1);
@@ -42,19 +47,61 @@ const TradingInterface: React.FC = () => {
   const [tradeCalculation, setTradeCalculation] = useState<TradeCalculation | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  // Auto-select first port if only one available
-  useEffect(() => {
-    if (portsInSector.length === 1 && !selectedPort) {
-      setSelectedPort(portsInSector[0].id);
-    }
-  }, [portsInSector, selectedPort]);
+  // Track which port we've already fetched market info for
+  const lastFetchedPortId = useRef<string | null>(null);
 
-  // Load market info when port is selected
+  // Auto-select first port if only one available (run once on mount)
+  const firstPortId = portsInSector.length === 1 ? portsInSector[0].id : null;
   useEffect(() => {
-    if (selectedPort) {
+    if (firstPortId && !selectedPort) {
+      setSelectedPort(firstPortId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstPortId]); // Only react to actual port ID changes, not array reference changes
+
+  // Load market info when port is selected - with deduplication
+  useEffect(() => {
+    if (selectedPort && selectedPort !== lastFetchedPortId.current) {
+      lastFetchedPortId.current = selectedPort;
       getMarketInfo(selectedPort);
     }
-  }, [selectedPort, getMarketInfo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPort]); // Only trigger when selectedPort changes
+
+  // Helper to safely get cargo used space
+  const getCargoUsed = (): number => {
+    if (!currentShip?.cargo) return 0;
+    // Cargo can be {used, capacity, contents} OR {resource: amount}
+    if (typeof currentShip.cargo === 'object' && 'used' in currentShip.cargo) {
+      return Number(currentShip.cargo.used) || 0;
+    }
+    // Legacy format: sum up resource amounts, but only numbers
+    return Object.values(currentShip.cargo)
+      .filter((v): v is number => typeof v === 'number')
+      .reduce((a, b) => a + b, 0);
+  };
+
+  // Helper to safely get cargo capacity
+  const getCargoCapacity = (): number => {
+    if (!currentShip) return 0;
+    // Check cargo.capacity first, then cargo_capacity
+    if (currentShip.cargo && typeof currentShip.cargo === 'object' && 'capacity' in currentShip.cargo) {
+      return Number(currentShip.cargo.capacity) || 0;
+    }
+    return currentShip.cargo_capacity || 0;
+  };
+
+  // Helper to get player's quantity of a resource
+  const getPlayerResourceAmount = (resourceType: string): number => {
+    if (!currentShip?.cargo) return 0;
+    // Check contents field first (new format)
+    if (typeof currentShip.cargo === 'object' && 'contents' in currentShip.cargo) {
+      const contents = currentShip.cargo.contents as Record<string, number>;
+      return Number(contents[resourceType]) || 0;
+    }
+    // Legacy format
+    return Number((currentShip.cargo as Record<string, number>)[resourceType]) || 0;
+  };
 
   // Calculate trade costs when parameters change
   useEffect(() => {
@@ -63,15 +110,15 @@ const TradingInterface: React.FC = () => {
       if (resource) {
         const unitPrice = tradeMode === 'buy' ? resource.buy_price : resource.sell_price;
         const totalCost = unitPrice * tradeQuantity;
-        
+
         // Check affordability and cargo space
-        const isAffordable = tradeMode === 'buy' 
+        const isAffordable = tradeMode === 'buy'
           ? (playerState?.credits || 0) >= totalCost
           : true; // Can always sell if you have the resource
-        
-        const currentCargo = currentShip?.cargo ? Object.values(currentShip.cargo).reduce((a, b) => a + b, 0) : 0;
-        const cargoCapacity = currentShip?.cargo_capacity || 0;
-        const fitsInCargo = tradeMode === 'buy' 
+
+        const currentCargo = getCargoUsed();
+        const cargoCapacity = getCargoCapacity();
+        const fitsInCargo = tradeMode === 'buy'
           ? (currentCargo + tradeQuantity) <= cargoCapacity
           : true; // Selling always frees up cargo space
 
@@ -88,6 +135,22 @@ const TradingInterface: React.FC = () => {
       setTradeCalculation(null);
     }
   }, [selectedResource, marketInfo, tradeQuantity, tradeMode, playerState, currentShip]);
+
+  // Show loading state if player state isn't loaded yet
+  if (!playerState) {
+    return (
+      <div className="trading-interface">
+        <div className="trading-header">
+          <h2>Trading Interface</h2>
+        </div>
+        <div className="not-docked-message">
+          <div className="message-icon">⏳</div>
+          <h3>Loading...</h3>
+          <p>Initializing trading systems...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handlePortChange = (stationId: string) => {
     setSelectedPort(stationId);
@@ -114,14 +177,14 @@ const TradingInterface: React.FC = () => {
     if (tradeMode === 'buy') {
       // For buying: limited by credits, cargo space, and port inventory
       const affordableQuantity = Math.floor(playerState.credits / resource.buy_price);
-      const currentCargo = currentShip.cargo ? Object.values(currentShip.cargo).reduce((a, b) => a + b, 0) : 0;
-      const cargoSpace = currentShip.cargo_capacity - currentCargo;
+      const currentCargo = getCargoUsed();
+      const cargoSpace = getCargoCapacity() - currentCargo;
       const portInventory = resource.quantity;
-      
+
       return Math.min(affordableQuantity, cargoSpace, portInventory);
     } else {
       // For selling: limited by what player has
-      return currentShip.cargo?.[selectedResource] || 0;
+      return getPlayerResourceAmount(selectedResource);
     }
   };
 
@@ -131,12 +194,12 @@ const TradingInterface: React.FC = () => {
   };
 
   const canExecuteTrade = (): boolean => {
-    if (!tradeCalculation || !playerState?.is_ported) return false;
+    if (!tradeCalculation || !playerState?.is_docked) return false;
     
     if (tradeMode === 'buy') {
       return tradeCalculation.isAffordable && tradeCalculation.fitsInCargo && tradeQuantity <= (marketInfo?.resources[selectedResource]?.quantity || 0);
     } else {
-      const playerHas = currentShip?.cargo?.[selectedResource] || 0;
+      const playerHas = getPlayerResourceAmount(selectedResource);
       return tradeQuantity <= playerHas;
     }
   };
@@ -190,7 +253,7 @@ const TradingInterface: React.FC = () => {
     return icons[resourceType] || '📦';
   };
 
-  if (!playerState?.is_ported) {
+  if (!playerState?.is_docked) {
     return (
       <div className="trading-interface">
         <div className="trading-header">
@@ -284,12 +347,13 @@ const TradingInterface: React.FC = () => {
 
             <div className="resources-grid">
               {Object.entries(marketInfo.resources).map(([resourceType, resource]) => {
-                const canTrade = tradeMode === 'buy' 
-                  ? resource.quantity > 0 
-                  : (currentShip?.cargo?.[resourceType] || 0) > 0;
+                const playerAmount = getPlayerResourceAmount(resourceType);
+                const canTrade = tradeMode === 'buy'
+                  ? resource.quantity > 0
+                  : playerAmount > 0;
 
                 return (
-                  <div 
+                  <div
                     key={resourceType}
                     className={`resource-card ${!canTrade ? 'disabled' : ''} ${selectedResource === resourceType ? 'selected' : ''}`}
                     onClick={() => canTrade && handleResourceChange(resourceType)}
@@ -301,9 +365,9 @@ const TradingInterface: React.FC = () => {
                       <div className="sell-price">Sell: {formatCredits(resource.sell_price)}</div>
                     </div>
                     <div className="resource-quantity">
-                      {tradeMode === 'buy' 
+                      {tradeMode === 'buy'
                         ? `Available: ${resource.quantity}`
-                        : `You have: ${currentShip?.cargo?.[resourceType] || 0}`
+                        : `You have: ${playerAmount}`
                       }
                     </div>
                   </div>
@@ -313,115 +377,163 @@ const TradingInterface: React.FC = () => {
           </div>
         )}
 
-        {/* Trade Configuration */}
-        {selectedResource && (
-          <div className="trade-configuration">
-            <h3>{tradeMode === 'buy' ? 'Buy' : 'Sell'} {selectedResource}</h3>
-            
-            <div className="quantity-selector">
-              <label htmlFor="quantity">Quantity:</label>
-              <div className="quantity-controls">
-                <button 
-                  onClick={() => setTradeQuantity(Math.max(1, tradeQuantity - 1))}
-                  disabled={tradeQuantity <= 1}
-                >
-                  -
-                </button>
-                <input 
-                  id="quantity"
-                  type="number"
-                  min="1"
-                  max={getMaxQuantity()}
-                  value={tradeQuantity}
-                  onChange={(e) => setTradeQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                />
-                <button 
-                  onClick={() => setTradeQuantity(tradeQuantity + 1)}
-                  disabled={tradeQuantity >= getMaxQuantity()}
-                >
-                  +
-                </button>
-                <button 
-                  className="max-button"
-                  onClick={setMaxQuantity}
-                  disabled={getMaxQuantity() === 0}
-                >
-                  Max
-                </button>
+        {/* Trade Action Button - Opens Modal */}
+        {selectedResource && marketInfo && (
+          <div className="trade-action-bar">
+            <div className="selected-resource-info">
+              <span className="resource-icon-large">{getResourceIcon(selectedResource)}</span>
+              <div className="resource-details">
+                <span className="resource-name-large">{selectedResource}</span>
+                <span className="resource-price">
+                  {tradeMode === 'buy'
+                    ? `Buy @ ${formatCredits(marketInfo.resources[selectedResource]?.buy_price || 0)}/unit`
+                    : `Sell @ ${formatCredits(marketInfo.resources[selectedResource]?.sell_price || 0)}/unit`
+                  }
+                </span>
               </div>
             </div>
-
-            {/* Trade Calculation */}
-            {tradeCalculation && (
-              <div className="trade-calculation">
-                <div className="calculation-row">
-                  <span>Unit Price:</span>
-                  <span>{formatCredits(tradeCalculation.unitPrice)} credits</span>
-                </div>
-                <div className="calculation-row total">
-                  <span>Total {tradeMode === 'buy' ? 'Cost' : 'Earnings'}:</span>
-                  <span>{formatCredits(tradeCalculation.totalCost)} credits</span>
-                </div>
-                
-                {tradeMode === 'buy' && (
-                  <>
-                    <div className={`calculation-row ${!tradeCalculation.isAffordable ? 'error' : ''}`}>
-                      <span>Credits Available:</span>
-                      <span>{formatCredits(playerState?.credits || 0)}</span>
-                    </div>
-                    <div className={`calculation-row ${!tradeCalculation.fitsInCargo ? 'error' : ''}`}>
-                      <span>Cargo Space:</span>
-                      <span>
-                        {currentShip ? 
-                          `${Object.values(currentShip.cargo || {}).reduce((a, b) => a + b, 0) + tradeQuantity}/${currentShip.cargo_capacity}` 
-                          : 'No Ship'
-                        }
-                      </span>
-                    </div>
-                  </>
-                )}
-                
-                <button 
-                  className="execute-trade-button"
-                  onClick={() => setShowConfirmDialog(true)}
-                  disabled={!canExecuteTrade() || isLoading}
-                >
-                  {isLoading ? 'Processing...' : `${tradeMode === 'buy' ? 'Buy' : 'Sell'} ${selectedResource}`}
-                </button>
-              </div>
-            )}
+            <button
+              className="open-trade-modal-button"
+              onClick={() => setShowConfirmDialog(true)}
+            >
+              {tradeMode === 'buy' ? 'Buy' : 'Sell'} {selectedResource}
+            </button>
           </div>
         )}
       </div>
 
-      {/* Confirmation Dialog */}
-      {showConfirmDialog && tradeCalculation && (
-        <div className="modal-overlay">
-          <div className="confirmation-dialog">
-            <h3>Confirm Trade</h3>
-            <div className="trade-summary">
-              <p>
-                {tradeMode === 'buy' ? 'Buy' : 'Sell'} {tradeCalculation.quantity} units of {tradeCalculation.resourceType}
-              </p>
-              <p>
-                {tradeMode === 'buy' ? 'Total Cost' : 'Total Earnings'}: {formatCredits(tradeCalculation.totalCost)} credits
-              </p>
-              {tradeMode === 'buy' && (
-                <p>Credits after trade: {formatCredits((playerState?.credits || 0) - tradeCalculation.totalCost)}</p>
-              )}
+      {/* Trade Modal - Rendered via Portal to escape stacking context */}
+      {showConfirmDialog && selectedResource && marketInfo && createPortal(
+        <div className="modal-overlay" onClick={() => setShowConfirmDialog(false)}>
+          <div className="trade-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="trade-modal-header">
+              <div className="modal-resource-info">
+                <span className="modal-resource-icon">{getResourceIcon(selectedResource)}</span>
+                <h3>{tradeMode === 'buy' ? 'Buy' : 'Sell'} {selectedResource}</h3>
+              </div>
+              <button className="modal-close" onClick={() => setShowConfirmDialog(false)}>×</button>
             </div>
-            <div className="dialog-buttons">
-              <button onClick={() => setShowConfirmDialog(false)}>Cancel</button>
-              <button 
+
+            <div className="trade-modal-body">
+              {/* Quantity Slider */}
+              <div className="quantity-section">
+                <label>Quantity</label>
+                <div className="quantity-slider-container">
+                  <input
+                    type="range"
+                    min="1"
+                    max={Math.max(1, getMaxQuantity())}
+                    value={tradeQuantity}
+                    onChange={(e) => setTradeQuantity(parseInt(e.target.value))}
+                    className="quantity-slider"
+                  />
+                  <div className="quantity-input-group">
+                    <button
+                      className="qty-btn"
+                      onClick={() => setTradeQuantity(Math.max(1, tradeQuantity - 1))}
+                      disabled={tradeQuantity <= 1}
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      max={getMaxQuantity()}
+                      value={tradeQuantity}
+                      onChange={(e) => setTradeQuantity(Math.max(1, Math.min(getMaxQuantity(), parseInt(e.target.value) || 1)))}
+                      className="quantity-input"
+                    />
+                    <button
+                      className="qty-btn"
+                      onClick={() => setTradeQuantity(Math.min(getMaxQuantity(), tradeQuantity + 1))}
+                      disabled={tradeQuantity >= getMaxQuantity()}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <div className="quantity-presets">
+                  <button onClick={() => setTradeQuantity(1)}>1</button>
+                  <button onClick={() => setTradeQuantity(Math.floor(getMaxQuantity() * 0.25) || 1)}>25%</button>
+                  <button onClick={() => setTradeQuantity(Math.floor(getMaxQuantity() * 0.5) || 1)}>50%</button>
+                  <button onClick={() => setTradeQuantity(Math.floor(getMaxQuantity() * 0.75) || 1)}>75%</button>
+                  <button onClick={() => setTradeQuantity(getMaxQuantity() || 1)}>Max</button>
+                </div>
+              </div>
+
+              {/* Trade Summary */}
+              <div className="trade-summary-card">
+                <div className="summary-row">
+                  <span>Unit Price</span>
+                  <span className="value">{formatCredits(marketInfo.resources[selectedResource]?.[tradeMode === 'buy' ? 'buy_price' : 'sell_price'] || 0)}</span>
+                </div>
+                <div className="summary-row">
+                  <span>Quantity</span>
+                  <span className="value">× {tradeQuantity}</span>
+                </div>
+                <div className="summary-divider"></div>
+                <div className="summary-row total">
+                  <span>{tradeMode === 'buy' ? 'Total Cost' : 'Total Earnings'}</span>
+                  <span className="value highlight">
+                    {formatCredits((marketInfo.resources[selectedResource]?.[tradeMode === 'buy' ? 'buy_price' : 'sell_price'] || 0) * tradeQuantity)}
+                  </span>
+                </div>
+
+                {tradeMode === 'buy' && (
+                  <>
+                    <div className="summary-divider"></div>
+                    <div className="summary-row">
+                      <span>Your Credits</span>
+                      <span className="value">{formatCredits(playerState?.credits || 0)}</span>
+                    </div>
+                    <div className="summary-row">
+                      <span>After Purchase</span>
+                      <span className={`value ${((playerState?.credits || 0) - ((marketInfo.resources[selectedResource]?.buy_price || 0) * tradeQuantity)) < 0 ? 'error' : 'success'}`}>
+                        {formatCredits((playerState?.credits || 0) - ((marketInfo.resources[selectedResource]?.buy_price || 0) * tradeQuantity))}
+                      </span>
+                    </div>
+                    <div className="summary-row">
+                      <span>Cargo Space</span>
+                      <span className={`value ${(getCargoUsed() + tradeQuantity) > getCargoCapacity() ? 'error' : ''}`}>
+                        {getCargoUsed() + tradeQuantity} / {getCargoCapacity()}
+                      </span>
+                    </div>
+                  </>
+                )}
+
+                {tradeMode === 'sell' && (
+                  <>
+                    <div className="summary-divider"></div>
+                    <div className="summary-row">
+                      <span>Your Credits</span>
+                      <span className="value">{formatCredits(playerState?.credits || 0)}</span>
+                    </div>
+                    <div className="summary-row">
+                      <span>After Sale</span>
+                      <span className="value success">
+                        {formatCredits((playerState?.credits || 0) + ((marketInfo.resources[selectedResource]?.sell_price || 0) * tradeQuantity))}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="trade-modal-footer">
+              <button className="cancel-btn" onClick={() => setShowConfirmDialog(false)}>
+                Cancel
+              </button>
+              <button
+                className="confirm-trade-btn"
                 onClick={executeTrade}
                 disabled={!canExecuteTrade() || isLoading}
-                className="confirm-button"
               >
-                {isLoading ? 'Processing...' : 'Confirm Trade'}
+                {isLoading ? 'Processing...' : `Confirm ${tradeMode === 'buy' ? 'Purchase' : 'Sale'}`}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

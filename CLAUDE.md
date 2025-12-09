@@ -148,14 +148,13 @@ git push origin main                                  # Deploy changes
 - Game Server: http://localhost:8080 (FastAPI/Python backend)
 - Database: PostgreSQL 15 (postgres:15-alpine container on port 5433, persistent via docker volume)
 
-**DUAL ENVIRONMENTS**:
-- **Primary**: GitHub Codespaces (Docker + internal networking + port forwarding)
-- **Secondary**: Replit (PM2 process manager, no Docker, shared PostgreSQL database)
-- **Unified Scripts**: `./dev-scripts/start-unified.sh` auto-detects environment
+**ENVIRONMENT**:
+- GitHub Codespaces (Docker + internal networking + port forwarding)
+- `./dev-scripts/start-unified.sh` starts all services
 
 **DEVELOPMENT COMMANDS**:
 ```bash
-./dev-scripts/start-unified.sh                  # Start all services (auto-detects environment)
+./dev-scripts/start-unified.sh                  # Start all services
 docker-compose up <service-name>                 # Start individual service
 docker-compose exec <service> <command>          # Run commands inside containers
 docker-compose logs <service>                    # Check service logs

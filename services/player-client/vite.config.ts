@@ -24,15 +24,12 @@ export default defineConfig({
     // Direct configuration to allow any host
     cors: true,
 
-    // Add explicit wildcard for all hosts - most important setting
+    // Add explicit wildcard for all hosts
     allowedHosts: [
       'localhost',
       '127.0.0.1',
-      '.replit.dev',
-      '.repl.co',
       '0.0.0.0',
-      '*', // Wildcard to allow everything
-      'all' // Another way to allow everything
+      '*'
     ],
 
     // Don't check origin at all

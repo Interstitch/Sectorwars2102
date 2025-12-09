@@ -115,22 +115,55 @@ class MovementService:
                 "can_afford": player.turns >= warp_cost
             })
         
-        # Get warp tunnels
+        # Get warp tunnels - both outgoing and incoming (for bidirectional)
         warp_tunnels = []
-        tunnels = self.db.query(WarpTunnel).filter(
+
+        # Outgoing tunnels (origin is current sector)
+        outgoing_tunnels = self.db.query(WarpTunnel).filter(
             WarpTunnel.origin_sector_id == current_sector.id,
             WarpTunnel.status == WarpTunnelStatus.ACTIVE
         ).all()
-        
-        for tunnel in tunnels:
+
+        for tunnel in outgoing_tunnels:
             dest_sector = self.db.query(Sector).filter(Sector.id == tunnel.destination_sector_id).first()
             if dest_sector:
                 tunnel_cost = tunnel.turn_cost
-                
+
                 # Apply ship-specific adjustments
                 if ship and ship.warp_capable:
                     tunnel_cost = max(1, int(tunnel_cost * 0.8))  # 20% reduction for warp-capable ships
-                
+
+                warp_tunnels.append({
+                    "sector_id": dest_sector.sector_id,
+                    "name": dest_sector.name,
+                    "type": dest_sector.type.name,
+                    "turn_cost": tunnel_cost,
+                    "tunnel_type": tunnel.type.name,
+                    "stability": tunnel.stability,
+                    "can_afford": player.turns >= tunnel_cost
+                })
+
+        # Incoming bidirectional tunnels (destination is current sector, but tunnel is bidirectional)
+        incoming_bidirectional = self.db.query(WarpTunnel).filter(
+            WarpTunnel.destination_sector_id == current_sector.id,
+            WarpTunnel.is_bidirectional == True,
+            WarpTunnel.status == WarpTunnelStatus.ACTIVE
+        ).all()
+
+        for tunnel in incoming_bidirectional:
+            # The "destination" for travel is the tunnel's origin sector
+            dest_sector = self.db.query(Sector).filter(Sector.id == tunnel.origin_sector_id).first()
+            if dest_sector:
+                # Don't add duplicates (in case there's already a tunnel in the other direction)
+                if any(t["sector_id"] == dest_sector.sector_id for t in warp_tunnels):
+                    continue
+
+                tunnel_cost = tunnel.turn_cost
+
+                # Apply ship-specific adjustments
+                if ship and ship.warp_capable:
+                    tunnel_cost = max(1, int(tunnel_cost * 0.8))  # 20% reduction for warp-capable ships
+
                 warp_tunnels.append({
                     "sector_id": dest_sector.sector_id,
                     "name": dest_sector.name,
@@ -263,17 +296,26 @@ class MovementService:
         # Get sector objects
         current_sector = self.db.query(Sector).filter(Sector.sector_id == current_sector_id).first()
         destination_sector = self.db.query(Sector).filter(Sector.sector_id == destination_sector_id).first()
-        
+
         if not current_sector or not destination_sector:
             return False, 0, "Invalid sector IDs"
-        
-        # Check for active warp tunnel
+
+        # Check for active warp tunnel (outgoing direction)
         tunnel = self.db.query(WarpTunnel).filter(
             WarpTunnel.origin_sector_id == current_sector.id,
             WarpTunnel.destination_sector_id == destination_sector.id,
             WarpTunnel.status == WarpTunnelStatus.ACTIVE
         ).first()
-        
+
+        # If no outgoing tunnel, check for bidirectional tunnel in reverse direction
+        if not tunnel:
+            tunnel = self.db.query(WarpTunnel).filter(
+                WarpTunnel.origin_sector_id == destination_sector.id,
+                WarpTunnel.destination_sector_id == current_sector.id,
+                WarpTunnel.is_bidirectional == True,
+                WarpTunnel.status == WarpTunnelStatus.ACTIVE
+            ).first()
+
         if not tunnel:
             return False, 0, "No active warp tunnel found"
         
