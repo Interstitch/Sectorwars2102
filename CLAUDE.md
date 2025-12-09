@@ -100,9 +100,8 @@ git status                                       # Check for uncommitted changes
 
 **Quality Gates**:
 ```bash
-docker-compose exec player-client npm run typecheck  # TypeScript validation
 docker-compose exec player-client npm run lint       # Code style check
-docker-compose exec player-client npm run build      # Build verification
+docker-compose exec player-client npm run build      # Build (includes TypeScript check via tsc)
 ```
 
 ### PHASE 4: TESTING & VALIDATION
@@ -132,7 +131,7 @@ npx playwright test --reporter=html                          # Generate coverage
 ```bash
 git status && git diff                                # Review all changes
 git add -A && git commit -m "feat: descriptive msg"  # Commit with conventional format
-git push origin main                                  # Deploy changes
+git push origin master                                # Deploy changes
 ```
 
 **Reflection Requirements**:
