@@ -35,7 +35,7 @@ This directory contains the **core essence and vision** of SectorWars 2102. Ever
 - **[FACTION_SYSTEM.md](./GAMEPLAY/FACTION_SYSTEM.md)** - Faction mechanics and diplomacy
 - **[TEAM_SYSTEMS.md](./GAMEPLAY/TEAM_SYSTEMS.md)** - Cooperative gameplay, teams, alliances
 - **[FIRST_LOGIN.md](./GAMEPLAY/FIRST_LOGIN.md)** - AI-powered onboarding experience with ARIA
-- **[SHIP_MAINTENANCE.md](./GAMEPLAY/SHIP_MAINTENANCE.md)** - Vehicle upkeep, repair, upgrades
+- **[SHIP_MANAGEMENT.md](./GAMEPLAY/SHIP_MANAGEMENT.md)** - Ship dashboard, navigation, cargo, upgrades, maintenance
 - **[RANKING_SYSTEM.md](./GAMEPLAY/RANKING_SYSTEM.md)** - Military ranking progression
 - **[TURN_SYSTEM.md](./GAMEPLAY/TURN_SYSTEM.md)** - Turn-based mechanics and regeneration
 
