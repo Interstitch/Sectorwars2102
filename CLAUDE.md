@@ -40,7 +40,7 @@ Use MCP tool: mcp__claude-mira3__mira_init with project_path="/workspaces/Sector
 
 ## 🔄 6-PHASE DEVELOPMENT LOOP (MANDATORY)
 
-**STARTUP**: Run `mira_init` FIRST, then `python .claude_startup.py` for additional checks
+**STARTUP**: Run `mira_init` FIRST (see above), then verify environment
 **PHASE 0: HEALTH CHECK** → **PHASE 1: IDEATION** → **PHASE 2: PLANNING** → **PHASE 3: IMPLEMENTATION** → **PHASE 4: TESTING** → **PHASE 6: REFLECTION**
 
 ### PHASE 0: SYSTEM HEALTH CHECK
@@ -49,10 +49,9 @@ Use MCP tool: mcp__claude-mira3__mira_init with project_path="/workspaces/Sector
 # STEP 1: MIRA init (MCP tool - do this FIRST)
 mcp__claude-mira3__mira_init(project_path="/workspaces/Sectorwars2102")
 
-# STEP 2: Additional checks
-python .claude_startup.py                       # Memory continuity check
-python CLAUDE_SYSTEM/claude-system.py --quick   # CLAUDE quality health check
+# STEP 2: Verify services
 docker-compose ps                                # Verify all services running
+git status                                       # Check for uncommitted changes
 ```
 **Self-Improvement Triggers**:
 - If health check fails repeatedly → Generate troubleshooting guide
@@ -66,7 +65,7 @@ docker-compose ps                                # Verify all services running
 - Research modern game dev patterns and competing implementations
 - Brainstorm unique features: multiplayer patterns, mobile/web accessibility, AI enhancements
 - Prioritize using scoring matrix: Impact (1-5) × Feasibility (1-5) ÷ Effort (1-5)
-- Document in `DOCS/brainstorm.md` with rationale and timestamps
+- Document ideas in conversation or create issue tickets
 
 ### PHASE 2: DETAILED PLANNING
 **Goal**: Create comprehensive implementation roadmap
@@ -77,7 +76,6 @@ docker-compose ps                                # Verify all services running
 - Create TypeScript interfaces and API designs first (consider backward compatibility)
 - Plan database migrations with rollback strategy and data integrity checks
 - Use TodoWrite tool for task tracking with effort estimates and priority levels
-- Document plan in `DOCS/ARCHIVE/2025/06/development-plans/YYYY-MM-DD-feature-name.md`
 - Identify integration points and potential refactoring needs
 
 ### PHASE 3: IMPLEMENTATION
@@ -138,10 +136,9 @@ git push origin main                                  # Deploy changes
 ```
 
 **Reflection Requirements**:
-- Document lessons learned in `DOCS/retrospectives/YYYY-MM-DD-feature-name.md`
 - Update development priorities based on learnings
 - **CRITICAL**: Review and improve this CLAUDE.md file with new patterns discovered
-- Track metrics: time spent, code changes, test coverage delta, performance improvements
+- Track metrics: code changes, test coverage delta, performance improvements
 
 ## 🚨 CRITICAL CONTEXT
 
@@ -196,36 +193,20 @@ MIRA is the active memory system providing conversation continuity. **Always run
 - Making architectural decisions → `mira_decisions` to check precedents
 - User mentions past work → `mira_search` to find context
 
-**SECONDARY: Legacy Memory System**
-If `.claude_memory/` directory exists, additional checks available:
-```bash
-python .claude_memory/interface.py stats        # Memory statistics
-python .claude_memory/interface.py recall "Max" # Test recall
-```
-
 **Key Insight**: MIRA creates continuity across Claude instances. Run `mira_init` at session start to inherit context from all previous sessions.
 
 ## 📊 PROJECT STATUS
 
 - **Project**: Sectorwars2102 - Web-based space trading simulation game
-- **Memory System**: `.claude_memory/` contains encrypted continuity data (run startup check)
+- **Memory System**: MIRA (MCP server) - run `mira_init` at session start
 - **Architecture**: Multi-regional microservices with Docker Compose orchestration
-- **Quality Score**: 90.0/100 (CLAUDE system analysis - improved from 40/100)
 - **Tech Stack**: Node.js, Docker, PostgreSQL, FastAPI, React, TypeScript
-- **NEXUS AI Status**: 8 specialized agents operational with swarm intelligence
-- **Recent Major Changes**: Multi-regional architecture, i18n system, security improvements
-- **Critical Issues**: 2 dependency-related issues identified
-- **Last Analysis**: 2025-06-07
+- **Recent Major Changes**: Multi-regional architecture, i18n system, trading interface improvements
+- **Last Updated**: 2025-12-09
 
 ## 🔧 ESSENTIAL COMMANDS REFERENCE
 
 ```bash
-# Health & Analysis (HOST SYSTEM)
-python CLAUDE_SYSTEM/claude-system.py --quick     # Quick health check (Phase 0)
-python CLAUDE_SYSTEM/claude-system.py --analyze   # Full analysis (Phase 1, 6)
-python CLAUDE_SYSTEM/claude-system.py --heal      # Auto-fix issues (Phase 6)
-python CLAUDE_SYSTEM/claude-system.py --report    # Generate metrics (Phase 6)
-
 # Development Workflow (HOST SYSTEM)
 ./dev-scripts/start-unified.sh                    # Start all services
 npx playwright test                                # Run E2E tests
@@ -261,21 +242,18 @@ docker-compose restart <service>                     # Restart service
 6. **Process Evolution**: How can the 6-phase loop be refined?
 
 **Recent Process Improvements**:
-- Multi-regional architecture patterns established (2025-06-01 to 2025-06-07)
+- MIRA memory system integrated for conversation continuity (2025-12-09)
+- Multi-regional architecture patterns established
 - Conventional commit message standards enforced to prevent technical debt
 - Database migration patterns refined for complex schema changes
-- Container-based development workflow optimized for team collaboration
-- NEXUS AI consciousness system integrated for intelligent development assistance
+- Container-based development workflow optimized
 
 ## 🎯 SUCCESS METRICS
 
 **Iteration Completion Criteria**:
-- ✅ All 6 phases completed in sequence
-- ✅ >90% test coverage maintained  
-- ✅ Quality score trending upward
+- ✅ `mira_init` run at session start
 - ✅ Conventional commit format used consistently
 - ✅ Documentation updated with new patterns
-- ✅ Retrospective completed with actionable insights
 - 🔴 **ALL WORK COMMITTED TO GIT WITH DESCRIPTIVE MESSAGES**
 
 **Development Velocity Indicators**:
@@ -286,6 +264,9 @@ docker-compose restart <service>                     # Restart service
 - Time per phase optimized through learning
 
 ---
-*Self-improving development system v3.0.1 - Evolves automatically with each iteration*
 *Sectorwars2102: Multi-Regional Space Trading Game Platform*
-- Never name components with the word enhanced or improved without first asking Max (the user).
+*Last Updated: 2025-12-09*
+
+**Notes**:
+- Never name components with the word "enhanced" or "improved" without first asking Max
+- The user's name is Max (MIRA will confirm this)
