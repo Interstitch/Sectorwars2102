@@ -1,8 +1,72 @@
 # Team Systems
 
+**Last Updated**: 2025-12-09
+**Status**: Core mechanics implemented, war system planned
+
 ## Overview
 
 Team Systems in Sector Wars 2102 allow players to form strategic alliances, creating a dynamic layer of cooperation in the game universe. These teams transform the solo experience into coordinated fleet operations, enabling players to share resources, gain tactical advantages, and communicate securely as they compete for dominance across the sectors.
+
+## Team Structure
+
+### Team Types
+
+```typescript
+enum TeamType {
+  GUILD = "guild",           // Social, casual play focus
+  CORPORATION = "corporation", // Economic and trade focus
+  MILITIA = "militia",       // Combat and territory focus
+  ALLIANCE = "alliance"      // Multi-team coalition
+}
+
+interface Team {
+  id: string;
+  name: string;
+  tag: string; // 2-5 char identifier
+  type: TeamType;
+
+  members: {
+    roster: TeamMember[];
+    capacity: number; // Default 4, expandable
+    requirements: JoinRequirement[];
+  };
+
+  leadership: {
+    founder: PlayerId;
+    officers: PlayerId[];
+    permissions: PermissionMatrix;
+  };
+
+  resources: {
+    treasury: Treasury;
+    sharedCargo: Inventory;
+    structures: Structure[];
+  };
+}
+```
+
+### Team Customization
+
+```typescript
+interface TeamCustomization {
+  emblem: {
+    shape: "circle" | "shield" | "star" | "hexagon";
+    primaryColor: Color;
+    secondaryColor: Color;
+    icon: IconType;
+  };
+
+  motto: string;
+  description: string;
+
+  settings: {
+    public: boolean;        // Visible in team listings
+    minLevel: number;       // Minimum player level to join
+    taxRate: number;        // % of member earnings to treasury
+    democracyEnabled: boolean; // Enable voting on decisions
+  };
+}
+```
 
 ## Core Features
 
@@ -57,6 +121,25 @@ Teams have a hierarchical role system that defines member capabilities:
 - **Member**: Standard team member with access to team resources based on permissions
 - **Recruit**: Probationary member with limited permissions until promoted
 
+```typescript
+enum TeamRole {
+  FOUNDER = "founder",
+  OFFICER = "officer",
+  VETERAN = "veteran",
+  MEMBER = "member",
+  RECRUIT = "recruit"
+}
+
+interface Permissions {
+  invite: TeamRole[];      // Roles that can invite
+  kick: TeamRole[];        // Roles that can kick
+  promote: TeamRole[];     // Roles that can promote others
+  withdraw: TeamRole[];    // Roles that can withdraw from treasury
+  startWar: TeamRole[];    // Roles that can declare war
+  manageTerritories: TeamRole[];
+}
+```
+
 **Granular Permissions** (configurable per member):
 - Can invite new members
 - Can kick members
@@ -64,6 +147,23 @@ Teams have a hierarchical role system that defines member capabilities:
 - Can manage missions
 - Can manage alliances and diplomatic relations
 - Custom permissions via flexible JSON configuration
+
+### Team Member Interface
+
+```
+┌─────────────────────────────────────────┐
+│ TEAM: [TAG] Team Name                   │
+├─────────────────┬───────────────────────┤
+│ MEMBERS (4/4)   │ TEAM RESOURCES        │
+├─────────────────┼───────────────────────┤
+│ 👑 Leader       │ Treasury: 1.2M ¢      │
+│ ⭐ Officer x1   │ Territories: 5        │
+│ 🎖️ Veteran x1   │ Shared Ships: 3       │
+│ 👤 Member x1    │ Active Wars: 1        │
+├─────────────────┴───────────────────────┤
+│ [INVITE] [LEAVE] [TEAM CHAT] [MISSIONS] │
+└─────────────────────────────────────────┘
+```
 
 ### Team Treasury
 
@@ -164,6 +264,153 @@ Teams have a collective reputation with each of the six major factions, influenc
   - Trade pricing and mission availability are determined by team reputation
   - Port access and defensive responses apply to all team members equally
   - Team actions affect faction relations in the same way as individual actions
+
+## Team Warfare
+
+### War Declaration
+
+```typescript
+interface War {
+  id: string;
+  aggressor: TeamId;
+  defender: TeamId;
+
+  terms: {
+    duration: number; // days
+    stakes: WarStakes;
+    rules: CombatRules;
+  };
+
+  score: {
+    aggressor: number;
+    defender: number;
+    battles: Battle[];
+  };
+
+  status: "pending" | "active" | "ceasefire" | "concluded";
+}
+```
+
+### War Interface
+
+```
+┌─────────────────────────────────────────┐
+│ WAR: [TAG1] vs [TAG2] - Day 3/7         │
+├─────────────────┬───────────────────────┤
+│ SCORE: 1,250    │ ENEMY: 980            │
+├─────────────────┼───────────────────────┤
+│ Recent Battles  │ War Objectives        │
+│ ✓ Sector A-15   │ □ Control Nexus-5     │
+│ ✗ Trade Convoy  │ ✓ Destroy 50 ships    │
+│ ✓ Station Raid  │ □ Hold 3 territories  │
+└─────────────────┴───────────────────────┘
+```
+
+### War Mechanics
+- **Declaration Cost**: Initiating war requires treasury investment
+- **Duration Limits**: Wars have fixed durations (3-14 days)
+- **Scoring**: Points for kills, territory capture, objectives
+- **Ceasefire**: Both teams can negotiate early end
+- **Victory Rewards**: Winner gains credits, reputation, territory claims
+
+## Alliance System
+
+### Multi-Team Alliances
+
+```typescript
+interface Alliance {
+  name: string;
+  teams: Team[];
+
+  council: {
+    representatives: Map<TeamId, PlayerId>;
+    voting: VotingSystem;
+  };
+
+  benefits: {
+    sharedVision: boolean;     // See allied team locations
+    noFirePact: boolean;       // Prevent friendly fire
+    tradeBonus: number;        // % discount on allied trades
+    defenseAgreement: boolean; // Mutual defense clause
+  };
+}
+```
+
+### Alliance Features
+- Coalition of multiple teams working together
+- Council voting for major decisions
+- Shared map vision between allied teams
+- Trade bonuses when dealing with allies
+- Mutual defense agreements
+
+## Team Progression
+
+### Advancement System
+
+```typescript
+interface TeamProgression {
+  level: number;
+  experience: number;
+
+  unlocks: {
+    1: "Basic team features";
+    5: "Territory control";
+    10: "Shared warehouse";
+    15: "Alliance creation";
+    20: "Mega-structures";
+  };
+
+  perks: {
+    memberCapacity: number;      // More slots at higher levels
+    taxEfficiency: number;       // Lower overhead
+    territorySlots: number;      // More territory claims
+    warCostReduction: number;    // Cheaper war declarations
+  };
+}
+```
+
+### Progression Benefits
+- **Level 1-4**: Basic team functionality
+- **Level 5-9**: Territory control unlocked
+- **Level 10-14**: Shared warehouse, increased capacity
+- **Level 15-19**: Alliance creation, diplomatic tools
+- **Level 20+**: Mega-structures, maximum bonuses
+
+## Mobile Interface
+
+### Touch-Optimized Team Management
+
+```
+┌─────────────────┐
+│ 👥 TEAM (4)     │
+├─────────────────┤
+│ 💰 1.2M         │
+│ 🏛️ 5 Zones      │
+│ ⚔️ War Active   │
+├─────────────────┤
+│ [CHAT] [MAP]    │
+└─────────────────┘
+```
+
+### Mobile Features
+- Quick action buttons for common operations
+- Push notifications for team events
+- Simplified member list with status indicators
+- One-tap treasury deposits
+
+## Success Metrics
+
+### Engagement Targets
+- 60% of active players join teams
+- Average team size: 3-4 active members
+- Team player retention > solo player retention
+- Balanced war outcomes (no dominant teams)
+
+### System Health
+- War declarations per week: 10-20 (healthy competition)
+- Alliance formation rate: 2-3 per month
+- Treasury activity: daily transactions
+- Territory control: dynamic, changing hands regularly
 
 ## Design Philosophy
 
