@@ -122,16 +122,17 @@ This directory contains the **core essence and vision** of SectorWars 2102. Ever
 - Admin UI with comprehensive management tools
 
 ### 🚧 In Active Development
-- Enhanced 3D galaxy visualization
-- Mobile VR support
-- Additional AI features
-- Expanded quantum mechanics
+- Trading interface refinements
+- Planetary operations UI
+- Enhanced ship management
 
 ### 📋 Planned Features
+- Mobile application (future consideration)
 - Cross-regional diplomacy enhancements
 - Advanced fleet formations
 - Expanded event types
 - More ship varieties
+- 3D galaxy visualization
 
 ---
 

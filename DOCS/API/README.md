@@ -107,7 +107,6 @@
 Old API documentation moved to `DOCS/_REVIEW_NEEDED/old-api-docs/`:
 - ~~GameServer.aispec~~ (claimed 200+ endpoints, was outdated)
 - ~~MULTI_REGIONAL_API_SPECIFICATION.md~~ (outdated)
-- ~~QUANTUM_TRADING_API.md~~ (outdated)
 
 ---
 

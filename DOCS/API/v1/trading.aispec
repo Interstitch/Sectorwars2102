@@ -2,8 +2,6 @@
 
 OVERVIEW: Player trading operations and port-based commodity exchange.
 
-NOTE: Quantum Trading system archived for post-launch (see FUTURE_FEATURES/quantum_trading/README.md)
-
 BASE_PATH: /api/v1
 AUTH_REQUIRED: Yes (JWT Bearer token)
 DEPENDENCIES: Player must have active ship, some endpoints require being docked at port
@@ -191,6 +189,5 @@ curl -X GET http://localhost:8080/api/v1/trading/history?limit=50 \
 ---
 
 *Documentation Status: Complete (14 endpoints)*
-*Last Updated: 2025-11-16*
+*Last Updated: 2025-12-09*
 *Validated Against: services/gameserver/src/api/routes/trading.py, economy.py*
-*Note: Quantum Trading endpoints archived - see FUTURE_FEATURES/quantum_trading/README.md*

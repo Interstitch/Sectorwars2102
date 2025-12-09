@@ -705,33 +705,7 @@ class EnhancedWebSocketService:
             
             # Build conversation context with player's current state
             conversation_context = await self._build_aria_context(player_id, context_type, db)
-            
-            # Check if this is a quantum trading query
-            if any(keyword in user_input.lower() for keyword in ["quantum", "ghost", "superposition", "cascade"]):
-                # Enhance with quantum trading context
-                from src.services.quantum_trading_engine import get_quantum_trading_engine
-                quantum_engine = get_quantum_trading_engine()
-                
-                # Get player's quantum trades
-                player_quantum_trades = [
-                    trade for trade_id, trade in quantum_engine.quantum_trades.items()
-                    if trade.player_id == player_id
-                ]
-                
-                conversation_context["quantum_trading"] = {
-                    "active_trades": len(player_quantum_trades),
-                    "trades": [
-                        {
-                            "trade_id": t.trade_id,
-                            "commodity": t.commodity,
-                            "action": t.action,
-                            "probability": t.probability,
-                            "manipulation_warning": t.manipulation_probability > 0.5
-                        } for t in player_quantum_trades[:5]  # Limit to 5 most recent
-                    ],
-                    "quantum_state": quantum_engine.get_quantum_state()
-                }
-            
+
             # Check if this is a market intelligence query
             if any(keyword in user_input.lower() for keyword in ["market", "price", "commodity", "trade"]):
                 # Add real-time market data
@@ -954,110 +928,6 @@ class EnhancedWebSocketService:
                 
         except Exception as e:
             logger.error(f"Error broadcasting trade update: {e}")
-    
-    # =============================================================================
-    # QUANTUM TRADING INTEGRATION
-    # =============================================================================
-    
-    async def _handle_quantum_trading(self, player_id: str, message: Dict[str, Any], 
-                                    db: AsyncSession, session: WebSocketSession):
-        """Handle quantum trading operations via WebSocket"""
-        try:
-            from src.services.quantum_trading_engine import get_quantum_trading_engine
-            
-            action = message.get("action")
-            if not action:
-                await self.send_error(player_id, "Quantum trading action required")
-                return
-            
-            quantum_engine = get_quantum_trading_engine()
-            
-            if action == "create_quantum_trade":
-                # Create a quantum trade in superposition
-                trade_params = message.get("params", {})
-                quantum_trade = await quantum_engine.create_quantum_trade(
-                    player_id=player_id,
-                    trade_params=trade_params,
-                    db=db
-                )
-                
-                await self.send_message(player_id, {
-                    "type": "quantum_trade_created",
-                    "data": {
-                        "trade_id": quantum_trade.trade_id,
-                        "commodity": quantum_trade.commodity,
-                        "superposition_states": quantum_trade.superposition_states,
-                        "probability": quantum_trade.probability,
-                        "manipulation_warning": quantum_trade.manipulation_probability > 0.5
-                    }
-                })
-                
-            elif action == "execute_ghost_trade":
-                # Run a ghost trade simulation
-                trade_id = message.get("trade_id")
-                if not trade_id:
-                    await self.send_error(player_id, "Trade ID required for ghost simulation")
-                    return
-                
-                quantum_trade = quantum_engine.quantum_trades.get(trade_id)
-                if not quantum_trade or quantum_trade.player_id != player_id:
-                    await self.send_error(player_id, "Quantum trade not found")
-                    return
-                
-                ghost_result = await quantum_engine.execute_ghost_trade(quantum_trade, db)
-                
-                await self.send_message(player_id, {
-                    "type": "ghost_trade_result",
-                    "data": ghost_result
-                })
-                
-            elif action == "collapse_trade":
-                # Collapse quantum superposition and execute the trade
-                trade_id = message.get("trade_id")
-                if not trade_id:
-                    await self.send_error(player_id, "Trade ID required for collapse")
-                    return
-                
-                result = await quantum_engine.collapse_quantum_trade(trade_id, db)
-                
-                await self.send_message(player_id, {
-                    "type": "quantum_trade_collapsed",
-                    "data": result
-                })
-                
-                # Broadcast market update if trade succeeded
-                if result.get("status") == "success":
-                    await self._broadcast_trade_update(result, db)
-                    
-            elif action == "get_quantum_state":
-                # Get current quantum trading state
-                state = quantum_engine.get_quantum_state()
-                player_trades = [
-                    {
-                        "trade_id": trade_id,
-                        "commodity": trade.commodity,
-                        "action": trade.action,
-                        "quantity": trade.quantity,
-                        "probability": trade.probability
-                    }
-                    for trade_id, trade in quantum_engine.quantum_trades.items()
-                    if trade.player_id == player_id
-                ]
-                
-                await self.send_message(player_id, {
-                    "type": "quantum_state",
-                    "data": {
-                        "global_state": state,
-                        "my_trades": player_trades
-                    }
-                })
-                
-            else:
-                await self.send_error(player_id, f"Unknown quantum trading action: {action}")
-                
-        except Exception as e:
-            logger.error(f"Error handling quantum trading: {e}")
-            await self.send_error(player_id, "Quantum trading operation failed")
     
     # =============================================================================
     # ARIA HELPER METHODS
