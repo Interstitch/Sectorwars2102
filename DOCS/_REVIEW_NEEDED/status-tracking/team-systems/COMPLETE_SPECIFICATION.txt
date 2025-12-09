@@ -1,0 +1,62 @@
+REVIEW GUIDE: team-systems/COMPLETE_SPECIFICATION.md
+=====================================================
+
+SUMMARY: Team/guild system specification (368 lines)
+
+CONTENT OVERVIEW:
+- Team Structure (guild, corporation, militia, alliance types)
+- Team Creation (founding fee, customization, emblem design)
+- Membership System (roles: founder, officer, veteran, member, recruit)
+- Team Communication (chat channels, coordination tools)
+- Economic Systems (treasury, taxes, shared resources)
+- Territory Control (sector control, influence, structures)
+- Team Warfare (war declaration, scoring, objectives)
+- Alliance System (multi-team alliances, council voting)
+- Team Progression (levels, unlocks, perks)
+- Mobile UI considerations
+- Implementation timeline (Week 7-8)
+- Social features (events, leaderboards)
+
+QUALITY ASSESSMENT:
++ Comprehensive coverage of team mechanics
++ Well-defined TypeScript interfaces
++ Clear permission matrix system
++ Territory control mechanics detailed
++ War system with scoring
++ Member capacity limit (6) for balance
+
+NOTABLE DESIGN DECISIONS:
+- Team size limited to 6 members (prevents power concentration)
+- 50,000 credit founding fee
+- Tax system on member earnings
+- Democracy voting option
+- Territory benefits (tax revenue, trade bonuses)
+
+CONCERNS:
+- Week 7-8 timeline from old planning cycle
+- May overlap with DOCS/FEATURES/GAMEPLAY/TEAM_SYSTEMS.md
+- Member limit of 6 seems very small - intentional?
+- Alliance system quite complex
+
+DECISION NEEDED:
+
+Option A: MERGE into DOCS/FEATURES/GAMEPLAY/TEAM_SYSTEMS.md
+  - Existing file may be less detailed
+  - Add TypeScript interfaces and UI mockups
+
+Option B: REPLACE existing TEAM_SYSTEMS.md with this spec
+  - If this is more comprehensive
+  - Update to remove timeline references
+
+Option C: KEEP BOTH if they serve different purposes
+  - TEAM_SYSTEMS.md for high-level concepts
+  - This spec for implementation details
+
+VERIFICATION STEPS:
+1. Compare with DOCS/FEATURES/GAMEPLAY/TEAM_SYSTEMS.md
+2. Check if team system is implemented in gameserver
+3. Verify member limits and treasury in database schema
+4. Check if territory control exists
+
+MY RECOMMENDATION: Compare with existing TEAM_SYSTEMS.md - this appears
+more detailed and should likely replace or be merged with existing doc

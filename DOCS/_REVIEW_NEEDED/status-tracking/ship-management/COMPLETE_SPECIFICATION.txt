@@ -1,0 +1,57 @@
+REVIEW GUIDE: ship-management/COMPLETE_SPECIFICATION.md
+=========================================================
+
+SUMMARY: Ship management system specification (327 lines)
+
+CONTENT OVERVIEW:
+- Ship Dashboard (status, location, systems)
+- Navigation System (movement, pathfinding, autopilot)
+- Cargo Management (inventory, capacity, actions)
+- Ship Upgrades (propulsion, combat, utility, special)
+- Maintenance System (wear/tear, repair costs, failure risks)
+- Combat Interface (weapons, tactics, HUD)
+- Fleet Management (multi-ship control - marked "Future")
+- Emergency Systems (escape pods, insurance)
+- API endpoints specification
+- Real-time update requirements
+- Mobile touch controls
+- Performance requirements
+- Implementation timeline (Week 3-4)
+
+QUALITY ASSESSMENT:
++ Very detailed TypeScript interfaces
++ Clear ASCII UI mockups
++ Covers maintenance/degradation mechanics
++ Includes API endpoint list
++ Has performance requirements (60fps, <100ms)
++ Mobile considerations included
+
+CONCERNS:
+- Week 3-4 timeline references old planning cycle
+- May overlap with existing DOCS/FEATURES/GAMEPLAY/SHIP_MAINTENANCE.md
+- "Fleet Management (Future)" - is this still planned?
+- Insurance system - is this implemented?
+
+DECISION NEEDED:
+
+Option A: MERGE into existing ship-related docs
+  - DOCS/FEATURES/GAMEPLAY/SHIP_MAINTENANCE.md (maintenance parts)
+  - DOCS/FEATURES/DEFINITIONS/SHIP_TYPES.md (upgrade parts)
+  - Create new SHIP_DASHBOARD.md for UI specs
+
+Option B: MOVE to DOCS/FEATURES/GAMEPLAY/SHIP_MANAGEMENT_SPEC.md
+  - Keep as comprehensive implementation reference
+  - Update to remove outdated timeline references
+
+Option C: ARCHIVE as historical planning document
+  - If implementation diverged from this spec
+  - Keep for reference but mark as historical
+
+VERIFICATION STEPS:
+1. Check player-client for existing ship management UI
+2. Compare API endpoints with actual gameserver routes
+3. Verify if maintenance/degradation system exists
+4. Check if cargo management matches this spec
+
+MY RECOMMENDATION: This is HIGH VALUE content - move to FEATURES/GAMEPLAY/
+after verifying against implementation, remove timeline references

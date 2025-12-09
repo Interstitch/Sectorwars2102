@@ -1,0 +1,64 @@
+REVIEW GUIDE: trading-system/COMPLETE_SPECIFICATION.md
+=======================================================
+
+SUMMARY: Trading system specification (264 lines)
+
+CONTENT OVERVIEW:
+- Port Trading Interface (UI requirements, user flow)
+- Commodity System (4 tiers from basic to rare)
+- Price Calculation (supply/demand/tech/events formula)
+- Supply & Demand Mechanics (dynamic market, arbitrage)
+- Port Specialization (agricultural, industrial, tech, luxury)
+- Trading Routes (route planning, automated trading)
+- Advanced Features (contracts, market manipulation, black market)
+- UI/UX Design (desktop and mobile layouts)
+- Integration Points (API endpoints, WebSocket updates)
+- Balancing Parameters (config values)
+- Implementation priorities (core, market dynamics, advanced)
+- Success metrics
+
+QUALITY ASSESSMENT:
++ Clear price calculation formula
++ Well-defined commodity tiers
++ Port specialization creates gameplay depth
++ API endpoint list included
++ Balancing parameters documented
++ Success metrics defined
+
+KEY MECHANICS DOCUMENTED:
+- Price formula: base * supply * demand * tech * events
+- 2% transaction fee
+- 5% bulk discount
+- 10% reputation bonus
+- Market rebalances 10% per hour
+
+CONCERNS:
+- No timestamp - unclear when written
+- May overlap with DOCS/FEATURES/ECONOMY/PORT_TRADING.md
+- Black market system - is this implemented?
+- Contract system - is this implemented?
+
+DECISION NEEDED:
+
+Option A: MERGE into DOCS/FEATURES/ECONOMY/PORT_TRADING.md
+  - Add price formulas and TypeScript interfaces
+  - Consolidate all trading docs
+
+Option B: MOVE to DOCS/FEATURES/ECONOMY/TRADING_SPEC.md
+  - Keep as detailed implementation reference
+  - PORT_TRADING.md for high-level concepts
+
+Option C: EXTRACT useful parts only
+  - Price formulas -> PORT_TRADING.md
+  - API endpoints -> verify against actual code
+  - Delete rest if redundant
+
+VERIFICATION STEPS:
+1. Compare with DOCS/FEATURES/ECONOMY/PORT_TRADING.md
+2. Check gameserver trading routes for actual API
+3. Verify price calculation in trading service
+4. Check if commodities match RESOURCE_TYPES.md
+
+MY RECOMMENDATION: This has VALUABLE implementation details (formulas,
+config values). Merge into PORT_TRADING.md or keep alongside it as
+implementation spec. Do NOT delete without extracting the formulas.

@@ -1,0 +1,52 @@
+REVIEW GUIDE: combat-interface/COMPLETE_SPECIFICATION.md
+=========================================================
+
+SUMMARY: Comprehensive combat system specification (288 lines)
+
+CONTENT OVERVIEW:
+- Combat initiation types (ambush, mutual, pursuit, defense)
+- Combat HUD layout with ASCII mockups
+- Turn-based combat mechanics (planning, execution, resolution)
+- Weapon systems (energy, projectile, special)
+- Damage calculation formulas
+- Visual effects and camera system
+- AI behavior patterns (aggressive, defensive, tactical)
+- Combat rewards and loot system
+- Mobile touch controls adaptation
+- Multiplayer/PvP mechanics
+- Implementation timeline (Week 5-6 estimates)
+
+QUALITY ASSESSMENT:
++ Well-structured with TypeScript interfaces
++ Clear UI mockups in ASCII art
++ Covers mobile considerations
++ Has success metrics defined
++ Includes damage calculation formulas
+
+CONCERNS:
+- References "Week 5-6" timeline from old planning cycle
+- May overlap with existing DOCS/FEATURES/GAMEPLAY/COMBAT_MECHANICS.md
+- No date stamp - unclear when this was written
+
+DECISION NEEDED:
+
+Option A: MERGE into DOCS/FEATURES/GAMEPLAY/COMBAT_MECHANICS.md
+  - Check for duplicate content
+  - Add any unique TypeScript interfaces
+  - Consolidate into single authoritative source
+
+Option B: MOVE to DOCS/FEATURES/GAMEPLAY/COMBAT_INTERFACE_SPEC.md
+  - Keep as separate detailed implementation spec
+  - Reference from COMBAT_MECHANICS.md
+
+Option C: DELETE as redundant
+  - If COMBAT_MECHANICS.md already covers this
+  - Or if combat system is already implemented differently
+
+VERIFICATION STEPS:
+1. Compare with DOCS/FEATURES/GAMEPLAY/COMBAT_MECHANICS.md
+2. Check if TypeScript interfaces match actual implementation
+3. Verify if combat system in codebase follows this spec
+
+MY RECOMMENDATION: Compare with COMBAT_MECHANICS.md - likely should merge
+the TypeScript interfaces and delete the rest as potentially outdated
