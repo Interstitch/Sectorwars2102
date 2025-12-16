@@ -26,7 +26,6 @@ def get_status_response():
 
 # Status endpoint for health checks
 @router.get("/")
-@router.get("")  # Handle both with and without trailing slash
 async def status_root(request: Request):
     """
     Get the status of the API.
@@ -75,7 +74,6 @@ async def ping():
 
 # Version endpoint
 @router.get("/version")
-@router.get("/version/")  # Add version with trailing slash
 async def api_version():
     """
     Get the version of the API.
@@ -83,24 +81,8 @@ async def api_version():
     """
     return {"version": "0.1.0"}
 
-# Ping endpoint for simple connectivity testing
-@router.get("/ping")
-@router.get("/ping/")  # Add with trailing slash too
-async def api_ping():
-    """
-    Simple ping endpoint for connectivity testing.
-    This endpoint does not require authentication.
-    """
-    environment = os.environ.get("ENVIRONMENT", "development")
-    return {
-        "message": "pong",
-        "environment": environment,
-        "timestamp": datetime.datetime.now().isoformat()
-    }
-
 # Health check endpoint
 @router.get("/health")
-@router.get("/health/")
 async def health_check():
     """
     Health check endpoint for monitoring.
@@ -110,7 +92,6 @@ async def health_check():
 
 # AI Provider Health Check Endpoints
 @router.get("/ai/providers")
-@router.get("/ai/providers/")
 async def ai_providers_health():
     """
     Check health status of all AI providers.
@@ -236,7 +217,6 @@ async def ai_providers_health():
     }
 
 @router.get("/ai/openai")
-@router.get("/ai/openai/")
 async def openai_health():
     """
     Check OpenAI API health status.
@@ -277,7 +257,6 @@ async def openai_health():
     return result
 
 @router.get("/ai/anthropic")
-@router.get("/ai/anthropic/")
 async def anthropic_health():
     """
     Check Anthropic API health status.
@@ -323,7 +302,6 @@ async def anthropic_health():
 
 # Container Health Check Endpoint
 @router.get("/containers")
-@router.get("/containers/")
 async def containers_health():
     """
     Check Docker container health status.
@@ -455,7 +433,6 @@ async def containers_health():
 
 # Database Health Check Endpoint
 @router.get("/database")
-@router.get("/database/")
 async def database_health():
     """
     Check PostgreSQL database health status.

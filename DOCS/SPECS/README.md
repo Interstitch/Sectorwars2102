@@ -65,13 +65,8 @@ RELATED_SPECS:
 - **`Ships.aispec`** - Ship specifications, upgrades, insurance
 - **`Ranking.aispec`** - Military progression system (18 ranks)
 
-### Development Environment
-- **`DevEnvironment.aispec`** - GitHub Codespaces and Docker development setup
-- **`DesignSystem.aispec`** - UI component and styling specifications
-
-### AI & Intelligence Systems
-- **`AI_Specification_Doc.aispec`** - AI system interfaces and capabilities
-- **`AI_Contuation.md`** - AI continuation and enhancement patterns
+### Meta Documentation
+- **`AISpecificationDoc.aispec`** - How to write and use AISPEC files
 
 ## AISPEC Format
 ```
@@ -92,6 +87,6 @@ EXAMPLES: Minimal working examples
 - **Structure**: Consistent format for AI parsing optimization
 
 ---
-*AISPEC Documentation Index - Updated: 2025-11-16*
-*Files: 14 AISPEC documents across 4 categories*
+*AISPEC Documentation Index - Updated: 2025-12-16*
+*Files: 11 AISPEC documents across 3 categories*
 *Dual-layer documentation approach with FEATURES/ for detailed design*

@@ -32,32 +32,34 @@ TERMINOLOGY:
 FILES:
 - /services/gameserver/
   ├── src/
+  │   ├── api/routes/
+  │   │   └── auth.py             # Auth endpoints (21 routes)
   │   ├── auth/
   │   │   ├── __init__.py
-  │   │   ├── router.py           # FastAPI router for auth endpoints
-  │   │   ├── dependencies.py     # FastAPI dependencies for auth
-  │   │   ├── oauth.py            # OAuth provider integrations
+  │   │   ├── dependencies.py     # FastAPI dependencies (get_current_user, etc.)
+  │   │   ├── oauth.py            # OAuth provider integrations (GitHub, Google, Steam)
   │   │   ├── jwt.py              # JWT token generation and validation
-  │   │   ├── admin.py            # Admin user management
-  │   │   └── middleware.py       # Auth middleware for FastAPI
+  │   │   └── admin.py            # Admin user management
   │   ├── models/
   │   │   ├── user.py             # User model with auth properties
-  │   │   └── oauth_account.py    # OAuth account linking model
+  │   │   ├── oauth_account.py    # OAuth account linking model
+  │   │   ├── refresh_token.py    # JWT refresh tokens
+  │   │   └── admin_credentials.py # Admin password storage
   │   └── core/
   │       ├── config.py           # Auth settings and environment variables
   │       └── security.py         # Password handling for admin
 - /services/player-client/
   ├── src/
-  │   ├── auth/
-  │   │   ├── AuthContext.tsx     # React context for auth state
-  │   │   ├── LoginPage.tsx       # OAuth provider selection UI
-  │   │   └── AuthService.ts      # Token management client-side
+  │   ├── contexts/
+  │   │   └── AuthContext.tsx     # React context for auth state
+  │   └── components/auth/
+  │       └── LoginPage.tsx       # OAuth provider selection UI
 - /services/admin-ui/
   ├── src/
-  │   ├── auth/
-  │   │   ├── AdminAuthContext.tsx # React context for admin auth
-  │   │   ├── LoginPage.tsx        # Admin login form
-  │   │   └── AdminAuthService.ts  # Admin token management
+  │   ├── contexts/
+  │   │   └── AuthContext.tsx     # React context for admin auth
+  │   └── components/
+  │       └── LoginForm.tsx       # Admin login form
 
 SCHEMA:
 ```sql

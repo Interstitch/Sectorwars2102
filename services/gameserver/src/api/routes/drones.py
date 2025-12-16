@@ -394,7 +394,7 @@ async def initiate_combat(
         )
 
 
-@router.get("/deployments/", response_model=List[DroneDeploymentResponse])
+@router.get("/deployments", response_model=List[DroneDeploymentResponse])
 async def get_my_deployments(
     active_only: bool = True,
     current_player: Player = Depends(get_current_player),

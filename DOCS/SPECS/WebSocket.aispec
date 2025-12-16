@@ -130,10 +130,25 @@ ERROR_HANDLING:
 * Network issues: Automatic retry with exponential delay
 
 FILES:
-* services/gameserver/src/api/routes/websocket.py:1-150
-* services/gameserver/src/services/websocket_service.py:1-300
-* services/admin-ui/src/services/websocket.ts:1-200
-* services/player-client/src/services/websocket.ts:1-250
+Backend (Python/FastAPI):
+* services/gameserver/src/api/routes/websocket.py - Core WebSocket routes
+* services/gameserver/src/api/routes/enhanced_websocket.py - OWASP-hardened WebSocket routes
+* services/gameserver/src/services/websocket_service.py - Connection manager
+* services/gameserver/src/services/enhanced_websocket_service.py - Security-enhanced service
+
+Frontend (TypeScript):
+* services/player-client/src/services/websocket.ts - Player client WebSocket
+* services/admin-ui/src/services/websocket.ts - Admin dashboard WebSocket
+
+ENHANCED_WEBSOCKET_FEATURES:
+The enhanced_websocket module provides additional security and features:
+* OWASP A01: Proper access control with JWT validation
+* OWASP A03: Input validation and sanitization
+* OWASP A04: Rate limiting and business logic validation
+* OWASP A07: Strong authentication for WebSocket connections
+* OWASP A08: Message integrity with HMAC signatures
+* OWASP A09: Comprehensive audit logging
+* Redis pub/sub for cross-server message distribution
 
 EXAMPLES:
 ```javascript

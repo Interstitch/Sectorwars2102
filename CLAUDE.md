@@ -130,6 +130,21 @@ docker-compose exec <service> <command>          # Run commands inside container
 docker-compose logs <service>                    # Check service logs
 ```
 
+**DOCKER COMPOSE PROFILES**:
+```bash
+docker-compose up                                # Default: development profile
+docker-compose --profile multi-regional up       # Multi-regional with Redis, Nginx
+docker-compose --profile production up           # Production builds, resource limits
+docker-compose --profile monitoring up           # Add Prometheus + Grafana
+```
+
+**TROUBLESHOOTING**:
+```bash
+docker-compose down -v                           # Remove containers AND volumes
+docker-compose build --no-cache                  # Rebuild images from scratch
+docker-compose config                            # Show resolved configuration
+```
+
 **FILE SYSTEM BEHAVIOR**:
 - All edits are persistent across container restarts
 - Code changes hot-reload within containers
