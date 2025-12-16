@@ -209,15 +209,27 @@ CONSTRAINTS:
 
 RELATED_SPECS:
 * GameMechanics.aispec - Turn system, trading economy, combat
-* Resources.aispec - Resource types and strategic materials
 * Ships.aispec - Warp Jumper requirement for Captain rank
-* See FEATURES/DEFINITIONS/RANKING_SYSTEM.md for detailed rank documentation
+* See DOCS/FEATURES/GAMEPLAY/RANKING_SYSTEM.md for detailed rank documentation
+
+IMPLEMENTATION_STATUS: NOT IMPLEMENTED
+* See DOCS/STATUS/RANKING_STATUS.md for implementation gap analysis
+* Database fields exist in Player model (military_rank, rank_points)
+* No backend service, API endpoints, or frontend components implemented
+* Trading bonus integration not implemented
 
 FILES:
-- /DOCS/FEATURES/DEFINITIONS/RANKING_SYSTEM.md - Detailed ranking system and lore
-- /services/gameserver/src/game/ranking.py - Rank progression logic
-- /services/gameserver/src/models/player.py - Player rank tracking
-- /services/gameserver/src/game/achievements.py - Medal and achievement system
+Existing:
+- /DOCS/FEATURES/GAMEPLAY/RANKING_SYSTEM.md - Detailed ranking system and lore
+- /DOCS/STATUS/RANKING_STATUS.md - Implementation status and gap analysis
+- /services/gameserver/src/models/player.py - Player model with rank fields (lines 41-42)
+
+To Be Created (when implemented):
+- /services/gameserver/src/models/player_stats.py - Lifetime stat tracking
+- /services/gameserver/src/models/player_medal.py - Medal/achievement tracking
+- /services/gameserver/src/services/ranking_service.py - Rank progression logic
+- /services/gameserver/src/services/achievement_service.py - Medal and achievement system
+- /services/gameserver/src/api/routes/ranking.py - Rank API endpoints
 
 EXAMPLES:
 ```python

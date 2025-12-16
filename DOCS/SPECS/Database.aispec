@@ -41,6 +41,7 @@ FILES:
   │   │   ├── mfa.py                           # Multi-factor authentication
   │   │   ├── audit_log.py                     # Security and compliance tracking
   │   │   ├── player.py                        # Player game state
+  │   │   ├── player_analytics.py              # Player sessions and activity tracking
   │   │   ├── team.py                          # Player teams/alliances
   │   │   ├── team_member.py                   # Team membership with roles
   │   │   ├── reputation.py                    # Faction reputation system
@@ -68,10 +69,10 @@ FILES:
   │   │   ├── aria_personal_intelligence.py    # AI assistant memory system
   │   │   ├── enhanced_ai_models.py            # Comprehensive AI assistant
   │   │   └── translation.py                   # i18n translation system
-  │   ├── core/
-  │   │   └── database.py                      # Database connection and Base
-  │   └── migrations/                          # Alembic migration scripts
-  │       └── versions/                        # Timestamped migration files
+  │   └── core/
+  │       └── database.py                      # Database connection and Base
+  ├── alembic/                                 # Alembic migration directory
+  │   └── versions/                            # Timestamped migration files
   └── alembic.ini                              # Alembic configuration
 
 DATABASE SCHEMA BY DOMAIN:
@@ -207,6 +208,19 @@ Key Columns:
   - turn_reset_at (DateTime(timezone=True))
   - settings, first_login (JSONB)
   - is_active (Boolean, default=True) - player can be deactivated
+  - created_at (DateTime(timezone=True), server_default=now)
+Docking/Landing State:
+  - is_docked (Boolean, default=False) - whether player is docked at a station
+  - current_port_id (UUID, FK to stations.id, SET NULL) - station player is docked at
+  - is_landed (Boolean, default=False) - whether player is landed on a planet
+  - current_planet_id (UUID, FK to planets.id, SET NULL) - planet player is landed on
+Personal Reputation System (good vs evil alignment):
+  - personal_reputation (Integer, default=0) - range -1000 to +1000
+  - reputation_tier (String(50), default="Neutral") - cached tier name
+  - name_color (String(20), default="#FFFFFF") - cached color code for display
+Military Ranking System:
+  - military_rank (String(50), default="Recruit") - current rank title
+  - rank_points (Integer, default=0) - points toward next rank
 Multi-Regional Fields:
   - home_region_id, current_region_id (UUID, FK to regions.id)
   - is_galactic_citizen (Boolean, default=False) - unrestricted travel
@@ -329,6 +343,72 @@ Moderation:
   - moderated_at (DateTime), moderated_by (UUID, FK to users.id)
 Indexes:
   - (recipient_id, read_at), (team_id, sent_at), (thread_id, sent_at)
+
+═══════════════════════════════════════════════════════════════════════════════
+DOMAIN 2B: PLAYER ANALYTICS (player_analytics.py)
+═══════════════════════════════════════════════════════════════════════════════
+
+Table: player_sessions
+Purpose: Tracks individual player login sessions for analytics
+Primary Key: id (UUID)
+Key Columns:
+  - player_id (UUID, FK to players.id, CASCADE delete)
+  - start_time (DateTime(timezone=True), default=now)
+  - end_time (DateTime(timezone=True), nullable)
+  - duration_minutes (Integer, nullable) - calculated when session ends
+  - ip_address (String(45), nullable) - IPv4 or IPv6
+  - user_agent (String(500), nullable)
+  - actions_performed (Integer, default=0)
+  - sectors_visited (JSONB, default=[]) - array of visited sector IDs
+  - credits_earned (Integer, default=0)
+  - credits_spent (Integer, default=0)
+Relationships:
+  - many:1 → player
+
+Table: player_analytics_snapshots
+Purpose: Periodic snapshots of player analytics data for trend analysis
+Primary Key: id (UUID)
+Key Columns:
+  - snapshot_time (DateTime(timezone=True), default=now)
+  - snapshot_type (String(50)) - 'hourly', 'daily', 'weekly'
+Player Counts:
+  - total_players, active_players, online_players (Integer, default=0)
+  - new_players_today, new_players_week (Integer, default=0)
+Economic Metrics:
+  - total_credits_circulation, average_credits_per_player (Integer/Float)
+  - total_ships, total_planets, total_ports (Integer, default=0)
+Activity Metrics:
+  - average_session_time (Float, default=0.0)
+  - total_actions_today (Integer, default=0)
+  - player_retention_rate_7d, player_retention_rate_30d (Float, default=0.0)
+Security Metrics:
+  - suspicious_activity_alerts, failed_login_attempts (Integer, default=0)
+Detailed Breakdown (all JSONB, default={}):
+  - player_by_status, ships_by_type, planets_by_type, activity_by_hour
+
+Table: player_activities
+Purpose: Tracks detailed player actions for analytics and security monitoring
+Primary Key: id (UUID)
+Key Columns:
+  - player_id (UUID, FK to players.id, CASCADE delete)
+  - session_id (UUID, FK to player_sessions.id, CASCADE delete, nullable)
+  - timestamp (DateTime(timezone=True), default=now)
+Activity Details:
+  - activity_type (String(100)) - 'login', 'move', 'trade', 'attack', etc.
+  - description (String(500), nullable)
+  - sector_id (Integer, nullable)
+  - target_id (String(255), nullable) - ID of target (player, planet, port, etc.)
+Economic Impact:
+  - credits_involved (Integer, default=0)
+  - items_involved (JSONB, nullable) - goods, ships, etc.
+Risk Assessment:
+  - risk_score (Integer, default=0) - 0-100 scale
+  - flagged_for_review (Boolean, default=False)
+Metadata:
+  - activity_metadata (JSONB, nullable) - additional context data
+Relationships:
+  - many:1 → player
+  - many:1 → session (PlayerSession)
 
 ═══════════════════════════════════════════════════════════════════════════════
 DOMAIN 3: GALAXY STRUCTURE
@@ -1299,7 +1379,7 @@ Creating a Migration:
 ```bash
 cd services/gameserver
 poetry run alembic revision -m "description of change"
-# Edit generated migration file in src/migrations/versions/
+# Edit generated migration file in alembic/versions/
 poetry run alembic upgrade head
 ```
 

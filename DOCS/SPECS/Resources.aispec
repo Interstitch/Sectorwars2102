@@ -1,9 +1,9 @@
 OVERVIEW:
-SectorWars 2102 resource economy covering 7 core trading commodities, strategic resources (quantum shards, population), and rare materials with price ranges, acquisition methods, and strategic uses.
+SectorWars 2102 resource economy covering 7 core trading commodities, strategic resources (quantum shards, colonists), and rare materials with price ranges, acquisition methods, and strategic uses.
 
 FACTS:
-* 7 core trading commodities: Ore, Basic Food, Gourmet Food, Fuel, Technology, Exotic Technology, Luxury Goods
-* 4 strategic resources: Population, Quantum Shards, Quantum Crystals, Combat Drones
+* 7 core trading commodities: ore, organics, gourmet_food, fuel, equipment, exotic_technology, luxury_goods
+* 4 strategic resources: colonists, quantum_shards, quantum_crystals, combat_drones
 * 2 rare materials: Prismatic Ore, Photonic Crystals
 * Port classes (0-11) determine commodity buy/sell availability
 * Prices fluctuate based on supply/demand and regional variations
@@ -23,71 +23,75 @@ TERMINOLOGY:
 * Team Treasury: Shared resource storage for team members
 
 CORE_COMMODITIES:
-Ore:
+ore:
   price_range: 15-45 credits/unit
   usage: Construction, manufacturing, repairs
   value_pattern: Highest in industrial sectors, lowest near mining operations
   description: Universal currency of construction
 
-BasicFood:
+organics:
   price_range: 8-25 credits/unit
   usage: Population survival, colonization requirement
   value_pattern: Highest in overcrowded sectors, lowest near agricultural worlds
-  description: Minimum requirement for colonization
+  description: Basic food and organic materials for colonization
+  legacy_note: Also known as "Basic Food" in some documentation
 
-GourmetFood:
+gourmet_food:
   price_range: 30-70 credits/unit
   usage: Enhanced colony development, production efficiency boost
   value_pattern: Highest in wealthy sectors, rarely found in frontier
   description: Luxury foodstuffs and exotic ingredients
 
-Fuel:
+fuel:
   price_range: 20-60 credits/unit
   usage: Ship propulsion, station operations
   value_pattern: Highest in remote sectors, lowest near refining operations
   consumption: Increases with ship size and travel distance
 
-Technology:
+equipment:
   price_range: 50-120 credits/unit
   usage: Ship upgrades, advanced infrastructure
   value_pattern: Highest in frontier sectors, lowest near industrial hubs
-  description: Advanced components and equipment
+  description: Advanced components and specialized equipment
+  legacy_note: Also known as "Technology" in some documentation
 
-ExoticTechnology:
+exotic_technology:
   price_range: 150-300 credits/unit
   usage: Cutting-edge modifications, specialized facilities
   value_pattern: Highest in research sectors/military outposts
   description: Rare prototypes and experimental devices
 
-LuxuryGoods:
+luxury_goods:
   price_range: 75-200 credits/unit
   usage: High-end merchandise demand satisfaction
   value_pattern: Highest in wealthy central sectors, lowest in production zones
   profit: Highest margins but volatile markets
 
 STRATEGIC_RESOURCES:
-Population:
+colonists:
   cost: 50 credits/unit
   source: Region's Sector 1 population hub
-  cargo_space: 1 unit per population
+  cargo_space: 1 unit per colonist
   colonization_requirement: 10,000 units minimum
   growth: Natural expansion after planet establishment
   usage: Required for planet colonization and population growth
+  legacy_note: Also known as "Population" in some documentation
+  database_field: planet.colonists, planet.max_colonists
 
-QuantumShards:
+quantum_shards:
   rarity: Very rare
   acquisition: Found in nebulae and anomalies
-  usage: 5 shards → 1 Quantum Crystal
+  usage: 5 shards → 1 quantum_crystal
   locations: Dangerous unexplored regions
   description: Crystalline fragments with exotic energy
 
-QuantumCrystals:
+quantum_crystals:
   rarity: Extremely rare
-  creation: Assemble 5 Quantum Shards at specialized facilities
+  creation: Assemble 5 quantum_shards at specialized facilities
   usage: Essential for player-created warp gates
   strategic_value: Enables custom navigation networks
 
-CombatDrones:
+combat_drones:
   cost: 1000 credits/unit fixed price
   usage: Automated ship defense, offensive combat support
   capacity: Ship-type dependent (0-50+ drones)
@@ -95,44 +99,47 @@ CombatDrones:
   description: Autonomous combat units for ship-to-ship warfare
 
 RARE_MATERIALS:
-PrismaticOre:
+prismatic_ore:
   rarity: Extremely rare (1 in 10,000 asteroids)
   usage: Ultra-lightweight hull reinforcement, superior ship construction
   acquisition: Extensive asteroid field exploration and mining
 
-PhotonicCrystals:
+photonic_crystals:
   rarity: Very rare (specific nebula types only)
   usage: Advanced sensors, energy weapon enhancement
   acquisition: Navigate through dangerous nebula clouds
 
 PORT_CLASS_INVENTORY:
-Class0_SolStation: buys=ALL, sells=ALL
-Class1: buys=[Ore], sells=[BasicFood,Fuel,Technology]
-Class2: buys=[BasicFood], sells=[Ore,Fuel,Technology]
-Class3: buys=[Fuel], sells=[Ore,BasicFood,Technology]
-Class4: buys=[Technology], sells=[Ore,BasicFood,Fuel]
-Class5: buys=[LuxuryGoods], sells=[Ore,BasicFood,Fuel,Technology]
-Class6: buys=[Ore,BasicFood], sells=[Fuel,Technology]
-Class7: buys=[Fuel,Technology], sells=[Ore,BasicFood]
-Class8_BlackHole: buys=ALL, sells=NONE
-Class9_Nova: buys=NONE, sells=ALL
-Class10: buys=[GourmetFood], sells=[Technology,LuxuryGoods]
-Class11: buys=[ExoticTechnology], sells=[AdvancedComponents]
+# Aligned with station.py:get_trading_pattern() implementation
+Class0_SolStation: buys=[special_goods], sells=[special_goods, colonists]
+Class1: buys=[ore], sells=[organics, equipment]
+Class2: buys=[organics], sells=[ore, equipment]
+Class3: buys=[equipment], sells=[ore, organics]
+Class4_Distribution: buys=[], sells=[ore, organics, equipment, fuel]
+Class5_Collection: buys=[ore, organics, equipment, fuel], sells=[]
+Class6: buys=[ore, organics], sells=[equipment, fuel]
+Class7: buys=[equipment, fuel], sells=[ore, organics]
+Class8_BlackHole: buys=[ore, organics, equipment, fuel], sells=[]
+Class9_Nova: buys=[], sells=[ore, organics, equipment, fuel]
+Class10: buys=[gourmet_food], sells=[luxury_goods, exotic_technology]
+Class11: buys=[exotic_technology], sells=[advanced_components]
 
 TEAM_TREASURY_RESOURCES:
-* Ore
-* Basic Food
-* Gourmet Food
-* Fuel
-* Technology
-* Exotic Technology
-* Luxury Goods
-* Population
-* Quantum Shards
-* Quantum Crystals
-* Combat Drones
-* Prismatic Ore
-* Photonic Crystals
+# Aligned with team.py treasury columns
+* ore (treasury_fuel uses fuel_ore in some contexts)
+* organics (treasury_organics)
+* gourmet_food
+* fuel (treasury_fuel)
+* equipment (treasury_equipment)
+* technology (treasury_technology - note: different from equipment)
+* exotic_technology
+* luxury_goods (treasury_luxury_items)
+* colonists
+* quantum_shards
+* quantum_crystals (treasury_quantum_crystals)
+* combat_drones
+* prismatic_ore (treasury_precious_metals)
+* photonic_crystals
 
 MARKET_DYNAMICS:
 * Supply/demand: Prices adjust based on local availability
@@ -179,42 +186,53 @@ RELATED_SPECS:
 * See FEATURES/DEFINITIONS/RESOURCE_TYPES.md for detailed design documentation
 
 FILES:
+Existing:
 - /DOCS/FEATURES/DEFINITIONS/RESOURCE_TYPES.md - Detailed resource documentation
-- /services/gameserver/src/game/resources.py - Resource management logic
-- /services/gameserver/src/game/trading.py - Trading and pricing algorithms
-- /services/gameserver/src/game/ports.py - Port class inventory management
-- /services/gameserver/src/models/commodity.py - Commodity data models
+- /services/gameserver/src/models/station.py - Station/port model with get_trading_pattern()
+- /services/gameserver/src/models/planet.py - Planet model with resource columns (organics, equipment, colonists)
+- /services/gameserver/src/models/team.py - Team treasury columns
+- /services/gameserver/src/models/resource.py - ResourceType enum (NOTE: largely unused, see NAMING_CONVENTION below)
+- /services/gameserver/src/services/trading_service.py - Trading operations
+- /services/gameserver/src/services/galaxy_service.py - Station commodity initialization
+
+NAMING_CONVENTION:
+The codebase uses lowercase_underscore naming for commodities:
+- organics (not BASIC_FOOD) - Database columns, all services, all frontend
+- equipment (not TECHNOLOGY) - Database columns, all services, all frontend
+- colonists (not POPULATION) - Database columns, all services, all frontend
+The ResourceType enum in resource.py uses UPPER_CASE names but is largely unused in trading flows.
+See /DOCS/STATUS/COMMODITY_NAMING_ANALYSIS.md for detailed analysis.
 
 EXAMPLES:
 ```python
 # Trading example - buy low, sell high
-port_a = Port(class_type=1)  # Buys Ore
-port_b = Port(class_type=2)  # Sells Ore at different price
+port_a = Port(class_type=1)  # Buys ore
+port_b = Port(class_type=2)  # Sells ore at different price
 
 # Buy at Port A (mining operation, low price)
-player.buy("ORE", quantity=100, price=20)  # Total: 2000 credits
+player.buy("ore", quantity=100, price=20)  # Total: 2000 credits
 
 # Travel to Port B (industrial sector, high price)
-player.sell("ORE", quantity=100, price=40)  # Total: 4000 credits
+player.sell("ore", quantity=100, price=40)  # Total: 4000 credits
 # Profit: 2000 credits (minus travel costs)
 
 # Quantum Crystal creation
 player.quantum_shards = 5
 facility.combine_shards()
-# Result: 1 Quantum Crystal
+# Result: 1 quantum_crystal
 player.quantum_shards = 0
 player.quantum_crystals = 1
 
-# Team treasury deposit
-team.treasury.deposit("ORE", quantity=500, from_player=player)
-team.treasury.withdraw("FUEL", quantity=100, to_player=teammate)
+# Team treasury deposit (using actual column names)
+team.treasury_fuel += 500  # Direct column access
+team.treasury_organics -= 100
 
-# Population transport for colonization
+# Colonist transport for colonization
 terran_sector_1 = get_sector(region="Terran Space", sector_number=1)
 player.dock(terran_sector_1.port)  # Sol Station
-player.buy("POPULATION", quantity=10000, price=50)  # Cost: 500,000 credits
+player.buy("colonists", quantity=10000, price=50)  # Cost: 500,000 credits
 # Cargo space used: 10,000 units
 player.travel_to(target_planet_sector)
-player.colonize(planet, population=10000, credits=10000)
-# Planet now owned and generating income
+player.colonize(planet, colonists=10000, credits=10000)
+# Planet now owned, planet.colonists = 10000
 ```

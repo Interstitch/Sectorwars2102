@@ -11,30 +11,54 @@ from src.core.database import Base
 
 class ResourceType(enum.Enum):
     """
-    Canonical resource types based on FEATURES/DEFINITIONS/RESOURCE_TYPES.md
+    Resource type enumeration for database models.
+
+    IMPORTANT NAMING CONVENTION NOTE:
+    ================================
+    This enum uses UPPER_CASE names (BASIC_FOOD, TECHNOLOGY, POPULATION) which
+    differ from the lowercase_underscore names used throughout the rest of the
+    codebase (organics, equipment, colonists).
+
+    The actual codebase standard is:
+    - Database columns: planet.organics, planet.equipment, team.treasury_organics
+    - Services: Use string literals like "organics", "equipment", "colonists"
+    - Frontend: Uses lowercase_underscore names throughout
+
+    Name Mapping:
+    - BASIC_FOOD -> organics (in actual code)
+    - TECHNOLOGY -> equipment (in actual code)
+    - POPULATION -> colonists (in actual code)
+
+    This enum is primarily used by the Resource and MarketTransaction models.
+    Most trading flows use string-based commodity names directly.
+
+    See /DOCS/STATUS/COMMODITY_NAMING_ANALYSIS.md for detailed analysis.
 
     Categories:
     - Core Commodities (7): Basic trading resources
     - Strategic Resources (4): Advanced gameplay materials
-    - Rare Materials (4): Endgame high-value materials
+    - Rare Materials (2): Endgame high-value materials
     """
 
     # Core Commodities (7)
+    # NOTE: BASIC_FOOD maps to "organics" in actual trading code
+    # NOTE: TECHNOLOGY maps to "equipment" in actual trading code
     ORE = "ORE"
-    BASIC_FOOD = "BASIC_FOOD"
+    BASIC_FOOD = "BASIC_FOOD"  # Actual codebase uses: "organics"
     GOURMET_FOOD = "GOURMET_FOOD"
     FUEL = "FUEL"
-    TECHNOLOGY = "TECHNOLOGY"
+    TECHNOLOGY = "TECHNOLOGY"  # Actual codebase uses: "equipment"
     EXOTIC_TECHNOLOGY = "EXOTIC_TECHNOLOGY"
     LUXURY_GOODS = "LUXURY_GOODS"
 
     # Strategic Resources (4)
-    POPULATION = "POPULATION"
+    # NOTE: POPULATION maps to "colonists" in actual trading code
+    POPULATION = "POPULATION"  # Actual codebase uses: "colonists"
     QUANTUM_SHARDS = "QUANTUM_SHARDS"
     QUANTUM_CRYSTALS = "QUANTUM_CRYSTALS"
     COMBAT_DRONES = "COMBAT_DRONES"
 
-    # Rare Materials (4)
+    # Rare Materials (2)
     PRISMATIC_ORE = "PRISMATIC_ORE"
     PHOTONIC_CRYSTALS = "PHOTONIC_CRYSTALS"
 

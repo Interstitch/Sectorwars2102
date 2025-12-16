@@ -52,7 +52,7 @@ FILES:
   ├── src/
   │   ├── contexts/
   │   │   └── AuthContext.tsx     # React context for auth state
-  │   └── components/auth/
+  │   └── components/pages/
   │       └── LoginPage.tsx       # OAuth provider selection UI
 - /services/admin-ui/
   ├── src/

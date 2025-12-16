@@ -1,178 +1,353 @@
-OVERVIEW: Real-time WebSocket infrastructure for SectorWars 2102 supporting player gameplay, admin monitoring, team communication, and live game events with automatic reconnection and sector-based broadcasting.
+OVERVIEW: Real-time WebSocket infrastructure for SectorWars 2102 supporting player gameplay, admin monitoring, team communication, ARIA AI assistant, and live game events with automatic reconnection and sector-based broadcasting.
 
 FACTS:
 * Protocol: Raw WebSocket (not Socket.IO) for performance and consistency
 * Authentication: JWT token via query parameter (?token={jwt})
+* Base URL prefix: /api/v1/ws/ (all WebSocket endpoints)
 * Dual connections: Separate player and admin WebSocket endpoints
 * Connection management: Automatic cleanup, heartbeat monitoring, exponential backoff
-* Broadcasting: Sector-based, team-based, and global message routing
-* Event types: 15+ event types for gameplay, admin, and system notifications
+* Broadcasting: Sector-based, team-based, global, and direct message routing
+* Event types: 25+ event types for gameplay, admin, ARIA AI, and system notifications
 * Security: Token-based authentication with role separation
 * Scalability: Connection manager supports thousands of concurrent connections
-* Reliability: Automatic reconnection with connection health monitoring
+* Reliability: Automatic reconnection with 5 retries and exponential backoff
+* Heartbeat: 30-second interval for connection health monitoring
 
 PLAYER_WEBSOCKET:
-* Endpoint: WS /ws/connect?token={jwt}
-* Purpose: Real-time gameplay events and communication
+* Endpoint: WS /api/v1/ws/connect?token={jwt}
+* Purpose: Real-time gameplay events, chat, and ARIA AI communication
 * Authentication: Player JWT token required
-* Events received: player_entered_sector, player_left_sector, chat_message, combat_update, market_update, heartbeat_ack
-* Events sent: chat_message, heartbeat, sector_query, team_message
-* Auto-reconnect: 5 retry attempts with exponential backoff
+* Events received: player_entered_sector, player_left_sector, sector_entered, sector_players, team_players, chat_message, combat_update, market_update, fleet_update, planetary_update, ship_status_change, new_message, notification, heartbeat_ack, aria_response, error
+* Events sent: chat_message, heartbeat, request_sector_players, request_team_players, aria_chat
+* Auto-reconnect: 5 retry attempts with exponential backoff (1s initial, 30s max)
 * Heartbeat: 30-second interval with timeout detection
 
 ADMIN_WEBSOCKET:
-* Endpoint: WS /ws/admin?token={jwt}
-* Purpose: Administrative monitoring and control
-* Authentication: Admin JWT token required
-* Events received: connection:established, system:stats, economy:alert, combat:new-event, system:announcement
-* Events sent: heartbeat, broadcast_request, stats_request, admin_intervention
+* Endpoint: WS /api/v1/ws/admin?token={jwt}
+* Purpose: Administrative monitoring, broadcasting, and control
+* Authentication: Admin JWT token required (user.is_admin must be true)
+* Events received: connection_established, system:stats, economy:alert, pong, broadcast_sent, subscription_confirmed
+* Events sent: heartbeat, broadcast, request_stats, subscribe
 * Features: Global broadcasting, system monitoring, real-time admin dashboard updates
-* Statistics: Connection counts, sector populations, system health metrics
+* Statistics: Connection counts, sector populations, team populations
+
+HTTP_ENDPOINTS:
+The WebSocket router also provides REST endpoints for admin operations:
+* GET  /api/v1/ws/stats - Get WebSocket connection statistics (admin only)
+* POST /api/v1/ws/broadcast - Broadcast message to users (admin only)
+* GET  /api/v1/ws/sector/{sector_id}/players - Get players in sector (admin only)
+* GET  /api/v1/ws/team/{team_id}/players - Get online team members (admin only)
 
 EVENT_TYPES:
-* heartbeat - Connection health check (bidirectional)
-* heartbeat_ack - Heartbeat acknowledgment from server
-* player_entered_sector - Player movement notification
-* player_left_sector - Player departure notification  
-* chat_message - Chat communication (global, team, sector)
+Connection Events:
+* heartbeat - Connection health check sent by client
+* heartbeat_ack - Server acknowledgment to player heartbeat
+* pong - Server acknowledgment to admin heartbeat
+* connection_established - Admin initial connection confirmation with stats
+* connection_status - Client-side connection state change (frontend-generated)
+* error - Error response from server
+
+Player Movement Events:
+* player_entered_sector - Broadcast when player enters a sector
+* player_left_sector - Broadcast when player leaves a sector
+* sector_entered - Sent to moving player with other players in new sector
+
+Player Info Events:
+* request_sector_players - Client requests list of players in current sector
+* sector_players - Server response with sector player list
+* request_team_players - Client requests list of online team members
+* team_players - Server response with online team member list
+
+Chat Events:
+* chat_message - Chat communication (global, team, or sector scope)
+
+Game Events:
 * combat_update - Real-time combat events and results
 * market_update - Trading and economy changes
-* connection:established - Initial connection confirmation
+* fleet_update - Fleet status changes
+* planetary_update - Planet status changes
+* ship_status_change - Ship status updates
+* new_message - Personal message notification
+* notification - General notification to player
+
+Admin Events:
 * system:stats - Real-time system statistics
 * economy:alert - Economic system alerts and warnings
-* combat:new-event - New combat encounters
 * system:announcement - Server-wide announcements
-* team_message - Team-specific communication
-* sector_query - Request sector player information
-* admin_intervention - Administrative actions
+* admin_intervention - Administrative action notifications
+* broadcast - Admin broadcast request
+* broadcast_sent - Confirmation of broadcast delivery
+* subscribe - Admin subscribes to specific event types
+* subscription_confirmed - Confirmation of subscription
+
+ARIA AI Events:
+* aria_chat - Player sends message to ARIA AI assistant
+* aria_response - ARIA AI response with message and actions
 
 MESSAGE_SCHEMA:
+Messages use a flat JSON structure with type at root level:
 ```json
 {
   "type": "event_type",
-  "data": {
-    "timestamp": "ISO8601",
-    "payload": "event_specific_data"
-  },
-  "metadata": {
-    "sender_id": "optional",
-    "target": "sector|team|global",
-    "priority": "normal|high|urgent"
-  }
+  "timestamp": "ISO8601",
+  "...additional_fields": "event_specific"
 }
 ```
 
+Note: Earlier documentation showed nested data/metadata wrappers, but the
+actual implementation uses flat structures for simplicity and performance.
+
 PLAYER_EVENTS:
-* chat_message: {type: "chat_message", content: "text", target_type: "global|team|sector", target_id: "optional"}
+Outbound (client to server):
+* chat_message: {type: "chat_message", content: "text", target_type: "sector|team|global", timestamp: "ISO8601"}
 * heartbeat: {type: "heartbeat", timestamp: "ISO8601"}
-* sector_query: {type: "sector_query", sector_id: "uuid"}
-* team_message: {type: "team_message", content: "text", team_id: "uuid"}
+* request_sector_players: {type: "request_sector_players", timestamp: "ISO8601"}
+* request_team_players: {type: "request_team_players", timestamp: "ISO8601"}
+* aria_chat: {type: "aria_chat", content: "text", conversation_id?: "uuid", context?: "string", session_id: "string", timestamp: "ISO8601", signature?: "string"}
+
+Inbound (server to client):
+* heartbeat_ack: {type: "heartbeat_ack", timestamp: "ISO8601"}
+* player_entered_sector: {type: "player_entered_sector", user_id: "uuid", username: "string", sector_id: int, timestamp: "ISO8601"}
+* player_left_sector: {type: "player_left_sector", user_id: "uuid", username: "string", sector_id: int, timestamp: "ISO8601"}
+* sector_entered: {type: "sector_entered", sector_id: int, other_players: [{user_id, username, connected_at}], timestamp: "ISO8601"}
+* sector_players: {type: "sector_players", sector_id: int, players: [{user_id, username, connected_at, last_heartbeat, personal_reputation, reputation_tier, name_color, military_rank}], timestamp: "ISO8601"}
+* team_players: {type: "team_players", team_id: "uuid", players: [{user_id, username, current_sector, connected_at, last_heartbeat}], timestamp: "ISO8601"}
+* chat_message: {type: "chat_message", from_user_id: "uuid", from_username: "string", content: "text", target_type: "sector|team|global", timestamp: "ISO8601", sector_id?: int, team_id?: "uuid"}
+* market_update: {type: "market_update", timestamp: "ISO8601", ...market_data}
+* combat_update: {type: "combat_update", combat_id: "uuid", timestamp: "ISO8601", ...combat_data}
+* notification: {type: "notification", title: "string", content: "string", level: "info|success|warning|error", timestamp: "ISO8601"}
+* error: {type: "error", message: "string", timestamp?: "ISO8601"}
+
+ARIA_EVENTS:
+ARIA AI integration for in-game assistant communication:
+
+Client sends aria_chat:
+```json
+{
+  "type": "aria_chat",
+  "content": "What's the best trade route from here?",
+  "conversation_id": "uuid-optional",
+  "context": "trading|combat|exploration|general",
+  "session_id": "session_12345",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "signature": "client_signature_for_validation"
+}
+```
+
+Server responds with aria_response:
+```json
+{
+  "type": "aria_response",
+  "conversation_id": "uuid",
+  "data": {
+    "message": "Based on current market conditions...",
+    "confidence": 0.85,
+    "context_used": "trading",
+    "actions": [
+      {"type": "suggest_route", "from_sector": 1, "to_sector": 42}
+    ],
+    "suggestions": ["Check fuel prices", "Consider equipment upgrades"],
+    "learning_note": "Player interested in trade optimization"
+  },
+  "timestamp": "2024-01-15T10:30:01Z",
+  "server_version": "1.0.0",
+  "signature": "server_signature"
+}
+```
 
 ADMIN_EVENTS:
-* broadcast_request: {type: "broadcast", message: "text", target: "all|sector|team", target_id: "optional"}
-* stats_request: {type: "stats_request"}
-* admin_intervention: {type: "intervention", action: "string", target_id: "uuid", params: {}}
+Outbound (admin client to server):
+* heartbeat: {type: "heartbeat", timestamp: "ISO8601"}
+* request_stats: {type: "request_stats"}
+* broadcast: {type: "broadcast", content: "text", target: "global|sector|team", target_id?: "uuid"}
+* subscribe: {type: "subscribe", events: ["economy:alert", "combat:new-event", ...]}
+
+Inbound (server to admin client):
+* connection_established: {type: "connection_established", stats: {...}, timestamp: "ISO8601"}
+* pong: {type: "pong", timestamp: "ISO8601"}
+* system:stats: {type: "system:stats", data: {total_connections, total_admin_connections, sectors_with_players, teams_with_players, connections_by_sector, connections_by_team}, timestamp: "ISO8601"}
+* broadcast_sent: {type: "broadcast_sent", target: "string", timestamp: "ISO8601"}
+* subscription_confirmed: {type: "subscription_confirmed", events: [...], timestamp: "ISO8601"}
+* economy:alert: {type: "economy:alert", timestamp: "ISO8601", ...alert_data}
+* system:announcement: {type: "system:announcement", content: "text", from: "System Administrator", timestamp: "ISO8601"}
 
 CONNECTION_LIFECYCLE:
-* Connect: WebSocket handshake with JWT validation
-* Authenticate: Token verification and role assignment
-* Register: Connection added to appropriate manager (player/admin)
-* Heartbeat: Regular ping/pong for connection health
-* Event handling: Message routing based on type and target
-* Disconnect: Automatic cleanup and notification
-* Reconnect: Exponential backoff retry mechanism
+1. Connect: Client opens WebSocket with JWT in query parameter
+2. Authenticate: Server validates token, extracts user/player data
+3. Register: Connection added to manager with sector/team tracking
+4. Welcome: Server sends initial data (stats for admin, sector info for player)
+5. Heartbeat: Client sends heartbeat every 30 seconds
+6. Event handling: Messages routed based on type and target
+7. Location updates: Player movement triggers sector broadcasts
+8. Disconnect: Automatic cleanup, notify other players in sector
+9. Reconnect: Client retries with exponential backoff (1s, 2s, 4s, 8s, 16s, max 30s)
 
 BROADCASTING_MODES:
-* Global: All connected players receive message
-* Sector: Only players in specific sector receive message
-* Team: Only team members receive message
-* Admin: Only admin connections receive message
-* Direct: Point-to-point message to specific user
+* Global: All connected players receive message (broadcast_global)
+* Sector: Only players in specific sector receive message (broadcast_to_sector)
+* Team: Only team members receive message (broadcast_to_team)
+* Admin: Only admin connections receive message (broadcast_to_admins)
+* Direct: Point-to-point message to specific user (send_personal_message)
 
 SECURITY_FEATURES:
 * JWT token validation on connection
 * Role-based message filtering (admin vs player)
-* Rate limiting on message sending
-* Connection source tracking
+* Rate limiting on message sending (enhanced_websocket_service)
+* Connection source tracking (IP, user agent)
 * Audit logging for admin actions
-* Automatic disconnection on token expiry
+* Automatic disconnection on invalid/expired token
+* HMAC message signatures for ARIA communication
+* OWASP-compliant security measures in enhanced module
 
 PERFORMANCE_CHARACTERISTICS:
 * Connection overhead: ~2KB per connection
-* Message latency: <50ms local, <200ms cross-region  
+* Message latency: <50ms local, <200ms cross-region
 * Throughput: 1000+ messages/second per server
 * Concurrent connections: 5000+ supported
 * Memory usage: ~1MB per 1000 connections
 * CPU usage: <5% for typical game load
+* Heartbeat interval: 30000ms (30 seconds)
+* Reconnect max delay: 30000ms (30 seconds)
 
 INTEGRATION_POINTS:
-* Player movement: Automatic sector notifications
-* Combat system: Real-time battle updates
+* Player movement: Automatic sector entry/exit notifications
+* Combat system: Real-time battle updates to participants
 * Trading: Market price change notifications
-* Team system: Team chat and coordination
+* Team system: Team chat and member status
 * Admin dashboard: Live system monitoring
 * Economy: Price alerts and market events
+* ARIA AI: Conversational assistant for player guidance
+* Planetary: Planet status and production updates
+* Fleet: Fleet coordination and status updates
 
 RELIABILITY_FEATURES:
 * Automatic reconnection with exponential backoff
-* Message queuing during disconnection
-* Duplicate message detection and filtering
-* Connection health monitoring
-* Graceful degradation on server overload
-* Failover support for high availability
+* Connection health monitoring via heartbeat
+* Graceful handling of stale connections
+* Duplicate connection prevention (closes old connection)
+* Page visibility handling (reconnect when tab becomes visible)
+* Online/offline event handling in browser
 
 ERROR_HANDLING:
-* Connection timeout: 60 seconds
-* Reconnection attempts: 5 with backoff
-* Invalid token: Immediate disconnection
+* Connection timeout: Handled by browser WebSocket implementation
+* Reconnection attempts: 5 with exponential backoff
+* Invalid token (4001): Immediate disconnection, no reconnect
+* Player not found (4002): Immediate disconnection, no reconnect
+* Server error (4000/4003): Attempt reconnection
 * Rate limit exceeded: Temporary message blocking
-* Server overload: Queue messages with timeout
-* Network issues: Automatic retry with exponential delay
+* Invalid JSON: Error response sent to client
+
+ERROR_CODES:
+* 4000 - General connection error
+* 4001 - Authentication token required or invalid
+* 4002 - Player profile not found
+* 4003 - Admin authentication required
 
 FILES:
 Backend (Python/FastAPI):
-* services/gameserver/src/api/routes/websocket.py - Core WebSocket routes
-* services/gameserver/src/api/routes/enhanced_websocket.py - OWASP-hardened WebSocket routes
-* services/gameserver/src/services/websocket_service.py - Connection manager
-* services/gameserver/src/services/enhanced_websocket_service.py - Security-enhanced service
+* /services/gameserver/src/api/routes/websocket.py - Core WebSocket routes and HTTP endpoints
+* /services/gameserver/src/api/routes/enhanced_websocket.py - OWASP-hardened WebSocket routes
+* /services/gameserver/src/services/websocket_service.py - ConnectionManager and message handlers
+* /services/gameserver/src/services/enhanced_websocket_service.py - Security-enhanced service with rate limiting
 
 Frontend (TypeScript):
-* services/player-client/src/services/websocket.ts - Player client WebSocket
-* services/admin-ui/src/services/websocket.ts - Admin dashboard WebSocket
+* /services/player-client/src/services/websocket.ts - Player WebSocket client with ARIA support
+* /services/admin-ui/src/services/websocket.ts - Admin WebSocket client with event subscriptions
 
 ENHANCED_WEBSOCKET_FEATURES:
 The enhanced_websocket module provides additional security and features:
 * OWASP A01: Proper access control with JWT validation
 * OWASP A03: Input validation and sanitization
-* OWASP A04: Rate limiting and business logic validation
+* OWASP A04: Rate limiting (100 msg/s, 30 trades/min, 60 AI requests/min)
 * OWASP A07: Strong authentication for WebSocket connections
 * OWASP A08: Message integrity with HMAC signatures
 * OWASP A09: Comprehensive audit logging
 * Redis pub/sub for cross-server message distribution
+* Session management with security context
+* Market data subscriptions per player
 
 EXAMPLES:
 ```javascript
-// Player connection
-const ws = new WebSocket('ws://localhost:8000/api/v1/ws/connect?token=jwt_token');
+// Player connection (note: /api/v1/ prefix required)
+const token = 'your_jwt_token';
+const ws = new WebSocket(`ws://localhost:8080/api/v1/ws/connect?token=${token}`);
+
+ws.onopen = () => {
+  console.log('Connected to game server');
+  // Start heartbeat
+  setInterval(() => {
+    ws.send(JSON.stringify({
+      type: 'heartbeat',
+      timestamp: new Date().toISOString()
+    }));
+  }, 30000);
+};
+
 ws.onmessage = (event) => {
   const msg = JSON.parse(event.data);
-  if (msg.type === 'player_entered_sector') {
-    console.log('Player entered:', msg.data.player_name);
+
+  switch (msg.type) {
+    case 'heartbeat_ack':
+      // Connection healthy
+      break;
+    case 'player_entered_sector':
+      console.log(`${msg.username} entered sector ${msg.sector_id}`);
+      break;
+    case 'chat_message':
+      console.log(`[${msg.target_type}] ${msg.from_username}: ${msg.content}`);
+      break;
+    case 'sector_players':
+      console.log(`Players in sector: ${msg.players.map(p => p.username).join(', ')}`);
+      break;
+    case 'aria_response':
+      console.log(`ARIA: ${msg.data.message}`);
+      break;
   }
 };
 
 // Send chat message
 ws.send(JSON.stringify({
   type: 'chat_message',
-  content: 'Hello everyone!',
-  target_type: 'global'
+  content: 'Hello sector!',
+  target_type: 'sector',
+  timestamp: new Date().toISOString()
+}));
+
+// Request players in current sector
+ws.send(JSON.stringify({
+  type: 'request_sector_players',
+  timestamp: new Date().toISOString()
+}));
+
+// Send ARIA AI message
+ws.send(JSON.stringify({
+  type: 'aria_chat',
+  content: 'What should I trade?',
+  context: 'trading',
+  session_id: 'session_' + Date.now(),
+  timestamp: new Date().toISOString()
 }));
 
 // Admin connection
-const adminWs = new WebSocket('ws://localhost:8000/api/v1/ws/admin?token=admin_jwt');
+const adminWs = new WebSocket(`ws://localhost:8080/api/v1/ws/admin?token=${adminToken}`);
+
+adminWs.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+  if (msg.type === 'connection_established') {
+    console.log('Admin connected, current stats:', msg.stats);
+  }
+};
+
+// Admin broadcast
 adminWs.send(JSON.stringify({
   type: 'broadcast',
-  message: 'Server maintenance in 5 minutes',
-  target: 'all'
+  content: 'Server maintenance in 5 minutes',
+  target: 'global',
+  timestamp: new Date().toISOString()
+}));
+
+// Admin request stats
+adminWs.send(JSON.stringify({
+  type: 'request_stats'
 }));
 ```

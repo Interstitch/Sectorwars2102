@@ -4,53 +4,64 @@
 
 The economy of Sector Wars 2102 revolves around a carefully balanced set of resources that players can acquire, transport, and utilize. This resource system is designed to be accessible for new players while still offering strategic depth for veterans. Each resource type serves a specific purpose in the game ecosystem and creates distinct gameplay opportunities.
 
+## Naming Convention
+
+The codebase uses **lowercase_underscore** naming for all commodities:
+- `ore`, `organics`, `equipment`, `fuel`, `gourmet_food`, `exotic_technology`, `luxury_goods`
+- `colonists` (for population)
+
+This convention is used consistently across database schema, all backend services, and all frontend components.
+
 ## Core Trading Commodities
 
-Six primary commodities form the backbone of interstellar trade:
+Seven primary commodities form the backbone of interstellar trade:
 
-### Ore
+### ore
 - **Description**: Raw materials extracted from planets and asteroids
 - **Usage**: Essential for construction and manufacturing
 - **Price Range**: 15-45 credits per unit
 - **Value Pattern**: Highest in industrial sectors, lowest near mining operations
 - **Special Note**: The universal currency of construction and repair
 
-### Basic Food
-- **Description**: Standard nutritional products and synthesized provisions
-- **Usage**: Maintains basic population survival on planets and stations
+### organics
+- **Description**: Standard nutritional products, synthesized provisions, and organic materials
+- **Usage**: Maintains basic population survival on planets and stations; essential for colonization
 - **Price Range**: 8-25 credits per unit
 - **Value Pattern**: Highest in overcrowded sectors, lowest near agricultural worlds
 - **Special Note**: The minimum requirement for any colonization effort
+- **Database Fields**: `planet.organics`, `planet.organics_allocation`, `team.treasury_organics`
 
-### Gourmet Food
+### gourmet_food
 - **Description**: Premium foodstuffs, exotic ingredients, and specialized agricultural products
 - **Usage**: Enhances population growth and satisfaction on developed colonies
 - **Price Range**: 30-70 credits per unit
 - **Value Pattern**: Highest in wealthy sectors and luxury markets, rarely found in frontier regions
 - **Special Note**: Increases colony development speed and production efficiency
 
-### Fuel
+### fuel
 - **Description**: Refined energy sources for ships and stations
 - **Usage**: Powers propulsion systems and station operations
 - **Price Range**: 20-60 credits per unit
 - **Value Pattern**: Highest in remote sectors, lowest near refining operations
 - **Special Note**: Consumption increases with ship size and travel distance
+- **Database Fields**: `planet.fuel_ore`, `planet.fuel_allocation`, `team.treasury_fuel`
 
-### Technology
+### equipment
 - **Description**: Advanced components and specialized equipment
 - **Usage**: Enables ship upgrades and advanced infrastructure
 - **Price Range**: 50-120 credits per unit
 - **Value Pattern**: Highest in frontier sectors, lowest near industrial hubs
 - **Special Note**: Represents a wide category of manufactured goods
+- **Database Fields**: `planet.equipment`, `planet.equipment_allocation`, `team.treasury_equipment`
 
-### Exotic Technology
+### exotic_technology
 - **Description**: Rare prototypes, experimental devices, and recovered artifacts
 - **Usage**: Powers cutting-edge ship modifications and specialized facilities
 - **Price Range**: 150-300 credits per unit
 - **Value Pattern**: Highest in research sectors and military outposts, rarely found in common markets
 - **Special Note**: Essential for accessing the most advanced gameplay capabilities
 
-### Luxury Goods
+### luxury_goods
 - **Description**: Rare and desirable items sought throughout the galaxy
 - **Usage**: Satisfies demand for high-end merchandise
 - **Price Range**: 75-200 credits per unit
@@ -61,47 +72,48 @@ Six primary commodities form the backbone of interstellar trade:
 
 Beyond basic commodities, several specialized resources provide unique strategic advantages:
 
-### Combat Drones
+### combat_drones
 - **Description**: Small automated combat craft carried aboard larger ships
 - **Acquisition**: Purchased at military outposts (1,000 credits each)
 - **Usage**: Deployed automatically during combat encounters
 - **Capacity**: Limited by ship type (0-12 drones depending on vessel)
 - **Strategic Value**: Essential for both offensive and defensive operations
 
-### Population
-- **Description**: Colonists seeking new opportunities across the galaxy
-- **Acquisition**: Purchased from Earth (Sector 1) for 50 credits per unit
+### colonists
+- **Description**: Population units seeking new opportunities across the galaxy
+- **Acquisition**: Purchased from region's Sector 1 population hub for 50 credits per unit
 - **Usage**: Required for establishing and growing planetary colonies
-- **Transport**: Each population unit occupies one cargo space
+- **Transport**: Each colonist unit occupies one cargo space
 - **Strategic Value**: The foundation of territorial expansion and passive income
+- **Database Fields**: `planet.colonists`, `planet.max_colonists`
 
-### Quantum Shards
+### quantum_shards
 - **Description**: Crystalline fragments containing exotic energy patterns
 - **Acquisition**: Found in nebula regions and anomalies throughout the frontier
-- **Usage**: Component for creating Quantum Crystals when combined
+- **Usage**: Component for creating quantum_crystals when combined
 - **Rarity**: Very rare, primarily in unexplored or dangerous regions
-- **Strategic Value**: Five shards can be assembled into a single Quantum Crystal
+- **Strategic Value**: Five shards can be assembled into a single quantum_crystal
 
-### Quantum Crystals
-- **Description**: Powerful energy matrices formed by combining Quantum Shards
-- **Acquisition**: Created by assembling five Quantum Shards at specialized facilities
+### quantum_crystals
+- **Description**: Powerful energy matrices formed by combining quantum_shards
+- **Acquisition**: Created by assembling five quantum_shards at specialized facilities
 - **Usage**: Essential component for warp gate construction and advanced propulsion
 - **Rarity**: Extremely rare due to the difficulty of collecting sufficient shards
 - **Strategic Value**: Enables players to construct warp gates between distant sectors
+- **Database Fields**: `team.treasury_quantum_crystals`
 
 ## Rare Materials
 
 A limited set of extremely valuable materials exist for advanced players to seek:
 
-
-### Prismatic Ore
+### prismatic_ore
 - **Description**: Mineral with unique molecular structure found in specific asteroid fields
 - **Rarity Level**: Extremely rare (found in approximately 1 in 10,000 asteroids)
 - **Primary Use**: Ultra-lightweight hull reinforcement and advanced ship construction
 - **Strategic Value**: Allows construction of superior ships with exceptional durability
 - **Acquisition Challenge**: Requires extensive asteroid field exploration and mining
 
-### Photonic Crystals
+### photonic_crystals
 - **Description**: Naturally occurring crystals that form only in certain nebula conditions
 - **Rarity Level**: Very rare (found only in specific types of nebulae)
 - **Primary Use**: Advanced sensors and energy weapon enhancement
@@ -112,20 +124,20 @@ A limited set of extremely valuable materials exist for advanced players to seek
 
 ### Port System
 
-The galactic economy operates through specialized ports:
+The galactic economy operates through specialized ports. Trading patterns are defined in `station.py:get_trading_pattern()`:
 
-- **Class 0** (Sol Station): Sells all commodities, buys all commodities
-- **Class 1**: Buys Ore, sells Basic Food, Fuel, Technology
-- **Class 2**: Buys Basic Food, sells Ore, Fuel, Technology
-- **Class 3**: Buys Fuel, sells Ore, Basic Food, Technology
-- **Class 4**: Buys Technology, sells Ore, Basic Food, Fuel
-- **Class 5**: Buys Luxury Goods, sells Ore, Basic Food, Fuel, Technology
-- **Class 6**: Buys Ore and Basic Food, sells Fuel and Technology
-- **Class 7**: Buys Fuel and Technology, sells Ore and Basic Food
-- **Class 8**: Buys all commodities, sells nothing (Black Hole)
-- **Class 9**: Sells all commodities, buys nothing (Nova)
-- **Class 10**: Buys Gourmet Food, sells Technology and Luxury Goods
-- **Class 11**: Buys Exotic Technology, sells advanced ship components and specialized equipment
+- **Class 0** (Sol Station): buys=[special_goods], sells=[special_goods, colonists]
+- **Class 1**: buys=[ore], sells=[organics, equipment]
+- **Class 2**: buys=[organics], sells=[ore, equipment]
+- **Class 3**: buys=[equipment], sells=[ore, organics]
+- **Class 4** (Distribution): buys=[], sells=[ore, organics, equipment, fuel]
+- **Class 5** (Collection): buys=[ore, organics, equipment, fuel], sells=[]
+- **Class 6**: buys=[ore, organics], sells=[equipment, fuel]
+- **Class 7**: buys=[equipment, fuel], sells=[ore, organics]
+- **Class 8** (Black Hole): buys=[ore, organics, equipment, fuel], sells=[]
+- **Class 9** (Nova): buys=[], sells=[ore, organics, equipment, fuel]
+- **Class 10**: buys=[gourmet_food], sells=[luxury_goods, exotic_technology]
+- **Class 11**: buys=[exotic_technology], sells=[advanced_components]
 
 ### Market Dynamics
 

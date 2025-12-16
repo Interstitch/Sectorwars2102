@@ -100,19 +100,19 @@ class RealTimeMarketService:
         self.cache_hits = 0
         self.cache_misses = 0
         
-        # Commodity configuration (aligned with canonical RESOURCE_TYPES.md)
-        # Core Commodities (7)
+        # Commodity configuration (aligned with actual codebase implementation)
+        # Core Commodities (7) - using lowercase_underscore convention
         self.valid_commodities = [
-            "ORE", "BASIC_FOOD", "GOURMET_FOOD", "FUEL",
-            "TECHNOLOGY", "EXOTIC_TECHNOLOGY", "LUXURY_GOODS"
+            "ore", "organics", "gourmet_food", "fuel",
+            "equipment", "exotic_technology", "luxury_goods"
         ]
         # Strategic Resources (not typically traded on open market)
         self.strategic_resources = [
-            "POPULATION", "QUANTUM_SHARDS", "QUANTUM_CRYSTALS", "COMBAT_DRONES"
+            "colonists", "quantum_shards", "quantum_crystals", "combat_drones"
         ]
         # Rare Materials
         self.rare_materials = [
-            "PRISMATIC_ORE", "PHOTONIC_CRYSTALS"
+            "prismatic_ore", "photonic_crystals"
         ]
         
         # Market analysis thresholds
