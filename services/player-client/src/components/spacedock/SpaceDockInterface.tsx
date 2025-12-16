@@ -1,0 +1,1804 @@
+import React, { useState, useCallback } from 'react';
+import { useGame } from '../../contexts/GameContext';
+import TradingInterface from '../trading/TradingInterface';
+import './spacedock.css';
+
+// Use same API URL logic as GameContext for Codespaces compatibility
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // Use current origin to leverage Vite proxy (works in Codespaces)
+  return window.location.origin;
+};
+
+// Venue type definitions
+type VenueType = 'hub' | 'trading' | 'shipyard' | 'genesis' | 'armory' | 'services' | 'gambling';
+type GamblingGame = 'menu' | 'slots' | 'dice' | 'blackjack' | 'lottery';
+
+// Blackjack card types
+interface BlackjackCard {
+  rank: string;
+  suit: string;
+  hidden?: boolean;
+}
+
+interface BlackjackGameState {
+  playerCards: BlackjackCard[];
+  dealerCards: BlackjackCard[];
+  playerTotal: number;
+  dealerTotal: number;
+  gameOver: boolean;
+  result: string | null;
+  canDouble: boolean;
+  deckSeed: number;
+}
+
+interface Venue {
+  id: VenueType;
+  name: string;
+  icon: string;
+  description: string;
+  available: boolean;
+  services?: string[];
+}
+
+// Slot machine symbols
+const SLOT_SYMBOLS = ['🌍', '⭐', '🚀', '💳', '🕳️', '💎'];
+const SLOT_PAYOUTS: Record<string, number> = {
+  '💎💎💎': 50,  // Jackpot
+  '🚀🚀🚀': 10,  // Ships
+  '⭐⭐⭐': 8,   // Stars
+  '🌍🌍🌍': 5,   // Planets
+  '💳💳💳': 3,   // Credits
+};
+
+const SpaceDockInterface: React.FC = () => {
+  const { playerState, stationsInSector, updatePlayerCredits, updateShipGenesis } = useGame();
+  const [activeVenue, setActiveVenue] = useState<VenueType>('hub');
+
+  // Track local credits for immediate UI feedback
+  const [localCredits, setLocalCredits] = useState<number | null>(null);
+
+  // Get token from localStorage (AuthContext doesn't expose it)
+  const getToken = () => localStorage.getItem('accessToken');
+
+  // Use local credits if set, otherwise use playerState credits
+  const displayCredits = localCredits ?? playerState?.credits ?? 0;
+
+  // Sync local credits when playerState changes
+  React.useEffect(() => {
+    if (playerState?.credits !== undefined) {
+      setLocalCredits(playerState.credits);
+    }
+  }, [playerState?.credits]);
+
+  // Gambling state
+  const [currentGame, setCurrentGame] = useState<GamblingGame>('menu');
+  const [betAmount, setBetAmount] = useState<number>(100);
+  const [slotReels, setSlotReels] = useState<string[]>(['❓', '❓', '❓']);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [lastWin, setLastWin] = useState<number | null>(null);
+  const [diceValues, setDiceValues] = useState<number[]>([0, 0]);
+  const [diceBetType, setDiceBetType] = useState<'high' | 'low' | 'exact'>('high');
+  const [diceExactBet, setDiceExactBet] = useState<number>(7);
+  const [isSupernova, setIsSupernova] = useState(false);
+  const [isVoid, setIsVoid] = useState(false);
+  const [isJackpot, setIsJackpot] = useState(false);
+
+  // Lottery state
+  const [lotteryNumbers, setLotteryNumbers] = useState<number[]>([]);
+  const [winningNumbers, setWinningNumbers] = useState<number[]>([]);
+  const [lotteryMatches, setLotteryMatches] = useState<number | null>(null);
+  const [isLotteryPlaying, setIsLotteryPlaying] = useState(false);
+
+  // Blackjack state
+  const [blackjackGame, setBlackjackGame] = useState<BlackjackGameState | null>(null);
+  const [isBlackjackDealing, setIsBlackjackDealing] = useState(false);
+
+  // Black market state
+  const [showBlackMarket, setShowBlackMarket] = useState(false);
+
+  // Error state
+  const [gamblingError, setGamblingError] = useState<string | null>(null);
+  const [genesisError, setGenesisError] = useState<string | null>(null);
+  const [genesisPurchasing, setGenesisPurchasing] = useState(false);
+  const [genesisSuccess, setGenesisSuccess] = useState<string | null>(null);
+
+  // Local genesis tracking for immediate UI feedback
+  const [localGenesisDevices, setLocalGenesisDevices] = useState<number | null>(null);
+  const [localMaxGenesis, setLocalMaxGenesis] = useState<number | null>(null);
+
+  // Get the current docked station
+  const currentStation = stationsInSector?.find(
+    s => s.id === playerState?.current_port_id
+  );
+
+  // Check if player has negative reputation (access to black market)
+  const hasBlackMarketAccess = (playerState?.personal_reputation || 0) < 0;
+
+  // Define available venues based on station services
+  const stationServices = currentStation?.services || {};
+
+  const venues: Venue[] = [
+    {
+      id: 'trading',
+      name: 'Trading Hub',
+      icon: '🏪',
+      description: 'Premium commodity trading with bulk discounts and special goods',
+      available: true,
+      services: ['Bulk Discounts', 'Special Commodities', 'No Transaction Fees']
+    },
+    {
+      id: 'shipyard',
+      name: 'Shipyard',
+      icon: '🛠️',
+      description: 'Build custom ships from resources or purchase pre-fabricated vessels',
+      available: Boolean(stationServices.ship_dealer),
+      services: ['Custom Ship Building', 'Dock Slip Rental', 'Ship Customization']
+    },
+    {
+      id: 'genesis',
+      name: 'Genesis Store',
+      icon: '🌍',
+      description: 'Acquire Genesis Devices - the key to creating new worlds',
+      available: Boolean(stationServices.genesis_dealer),
+      services: ['Standard Devices', 'Advanced Devices', 'Experimental Devices']
+    },
+    {
+      id: 'armory',
+      name: 'Armory',
+      icon: '⚔️',
+      description: 'Combat drones, defense systems, and tactical equipment',
+      available: Boolean(stationServices.drone_shop) || Boolean(stationServices.mine_dealer),
+      services: ['Attack Drones', 'Defense Drones', 'Mines', 'Tactical Systems']
+    },
+    {
+      id: 'services',
+      name: 'Ship Services',
+      icon: '🔧',
+      description: 'Repairs, upgrades, insurance, and maintenance',
+      available: Boolean(stationServices.ship_repair) || Boolean(stationServices.ship_maintenance),
+      services: ['Ship Repair', 'Shield Upgrades', 'Cargo Insurance', 'Maintenance']
+    },
+    {
+      id: 'gambling',
+      name: 'Gambling Hall',
+      icon: '🎰',
+      description: 'Test your luck with games of chance and skill',
+      available: true,
+      services: ['Cosmic Slots', 'Nebula Dice', 'Stellar Blackjack', 'Sector Lottery']
+    }
+  ];
+
+  // Gambling game logic - API based
+  const spinSlots = useCallback(async () => {
+    const token = getToken();
+    if (isSpinning || displayCredits < betAmount || !token) {
+      if (!token) setGamblingError('Not authenticated. Please log in again.');
+      return;
+    }
+
+    setIsSpinning(true);
+    setLastWin(null);
+    setIsJackpot(false);
+    setGamblingError(null);
+
+    // Immediately deduct credits from UI for instant feedback
+    setLocalCredits(prev => (prev ?? displayCredits) - betAmount);
+
+    // Simulate spinning animation
+    let spins = 0;
+    const spinInterval = setInterval(() => {
+      setSlotReels([
+        SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
+        SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)],
+        SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)]
+      ]);
+      spins++;
+
+      if (spins >= 15) {
+        clearInterval(spinInterval);
+      }
+    }, 100);
+
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/gambling/slots/spin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ bet_amount: betAmount })
+      });
+
+      // Wait for animation to finish
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      clearInterval(spinInterval);
+
+      if (!response.ok) {
+        const error = await response.json();
+        setGamblingError(error.detail || 'Spin failed');
+        setSlotReels(['❌', '❌', '❌']);
+        // Restore credits on error
+        setLocalCredits(prev => (prev ?? displayCredits) + betAmount);
+        setIsSpinning(false);
+        return;
+      }
+
+      const result = await response.json();
+      setSlotReels(result.reels);
+      setLastWin(result.net_result);
+      setIsJackpot(result.jackpot);
+
+      // Update credits from server response for accuracy
+      setLocalCredits(result.new_credits);
+      // Update global player state credits for header display
+      updatePlayerCredits(result.new_credits);
+    } catch (error) {
+      console.error('Slots error:', error);
+      setGamblingError('Connection error. Please try again.');
+      setSlotReels(['❌', '❌', '❌']);
+      // Restore credits on error
+      setLocalCredits(prev => (prev ?? displayCredits) + betAmount);
+    } finally {
+      setIsSpinning(false);
+    }
+  }, [betAmount, isSpinning, displayCredits, updatePlayerCredits]);
+
+  const rollDice = useCallback(async () => {
+    const token = getToken();
+    if (displayCredits < betAmount || !token) {
+      if (!token) setGamblingError('Not authenticated. Please log in again.');
+      return;
+    }
+
+    setLastWin(null);
+    setIsSupernova(false);
+    setIsVoid(false);
+    setGamblingError(null);
+
+    // Immediately deduct credits from UI for instant feedback
+    setLocalCredits(prev => (prev ?? displayCredits) - betAmount);
+
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/gambling/dice/roll`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          bet_amount: betAmount,
+          bet_type: diceBetType,
+          exact_number: diceBetType === 'exact' ? diceExactBet : null
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        setGamblingError(error.detail || 'Roll failed');
+        // Restore credits on error
+        setLocalCredits(prev => (prev ?? displayCredits) + betAmount);
+        return;
+      }
+
+      const result = await response.json();
+      setDiceValues(result.dice);
+      setLastWin(result.net_result);
+      setIsSupernova(result.supernova);
+      setIsVoid(result.void);
+
+      // Update credits from server response for accuracy
+      setLocalCredits(result.new_credits);
+      // Update global player state credits for header display
+      updatePlayerCredits(result.new_credits);
+    } catch (error) {
+      console.error('Dice error:', error);
+      setGamblingError('Connection error. Please try again.');
+      // Restore credits on error
+      setLocalCredits(prev => (prev ?? displayCredits) + betAmount);
+    }
+  }, [betAmount, diceBetType, diceExactBet, displayCredits, updatePlayerCredits]);
+
+  // Lottery functions
+  const toggleLotteryNumber = useCallback((num: number) => {
+    setLotteryNumbers(prev => {
+      if (prev.includes(num)) {
+        return prev.filter(n => n !== num);
+      }
+      if (prev.length >= 4) {
+        return prev; // Max 4 numbers
+      }
+      return [...prev, num];
+    });
+  }, []);
+
+  const playLottery = useCallback(async () => {
+    const token = getToken();
+    if (lotteryNumbers.length !== 4 || !token || displayCredits < betAmount) {
+      if (!token) setGamblingError('Not authenticated. Please log in again.');
+      return;
+    }
+
+    setIsLotteryPlaying(true);
+    setLotteryMatches(null);
+    setWinningNumbers([]);
+    setLastWin(null);
+    setGamblingError(null);
+
+    // Immediately deduct credits from UI for instant feedback
+    setLocalCredits(prev => (prev ?? displayCredits) - betAmount);
+
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/gambling/lottery/buy-ticket`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          numbers: lotteryNumbers,
+          bet_amount: betAmount
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        setGamblingError(error.detail || 'Lottery failed');
+        // Restore credits on error
+        setLocalCredits(prev => (prev ?? displayCredits) + betAmount);
+        setIsLotteryPlaying(false);
+        return;
+      }
+
+      const result = await response.json();
+      setWinningNumbers(result.winning_numbers);
+      setLotteryMatches(result.matches);
+      setLastWin(result.net_result);
+      setIsJackpot(result.jackpot);
+
+      // Update credits from server response for accuracy
+      setLocalCredits(result.new_credits);
+      // Update global player state credits for header display
+      updatePlayerCredits(result.new_credits);
+    } catch (error) {
+      console.error('Lottery error:', error);
+      setGamblingError('Connection error. Please try again.');
+      // Restore credits on error
+      setLocalCredits(prev => (prev ?? displayCredits) + betAmount);
+    } finally {
+      setIsLotteryPlaying(false);
+    }
+  }, [lotteryNumbers, betAmount, displayCredits, updatePlayerCredits]);
+
+  // Blackjack functions
+  const dealBlackjack = useCallback(async () => {
+    const token = getToken();
+    if (isBlackjackDealing || displayCredits < betAmount || !token) {
+      if (!token) setGamblingError('Not authenticated. Please log in again.');
+      return;
+    }
+
+    setIsBlackjackDealing(true);
+    setGamblingError(null);
+    setLastWin(null);
+    setBlackjackGame(null);
+
+    // Immediately deduct credits from UI for instant feedback
+    setLocalCredits(prev => (prev ?? displayCredits) - betAmount);
+
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/gambling/blackjack/deal`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ bet_amount: betAmount })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        setGamblingError(error.detail || 'Deal failed');
+        setLocalCredits(prev => (prev ?? displayCredits) + betAmount);
+        setIsBlackjackDealing(false);
+        return;
+      }
+
+      const result = await response.json();
+      setBlackjackGame({
+        playerCards: result.player_cards,
+        dealerCards: result.dealer_cards,
+        playerTotal: result.player_total,
+        dealerTotal: result.dealer_total,
+        gameOver: result.game_over,
+        result: result.result,
+        canDouble: result.can_double,
+        deckSeed: result.deck_seed
+      });
+
+      if (result.game_over) {
+        setLastWin(result.net_result);
+        setLocalCredits(result.new_credits);
+        updatePlayerCredits(result.new_credits);
+      }
+    } catch (error) {
+      console.error('Blackjack deal error:', error);
+      setGamblingError('Connection error. Please try again.');
+      setLocalCredits(prev => (prev ?? displayCredits) + betAmount);
+    } finally {
+      setIsBlackjackDealing(false);
+    }
+  }, [betAmount, isBlackjackDealing, displayCredits, updatePlayerCredits]);
+
+  const blackjackAction = useCallback(async (action: 'hit' | 'stand' | 'double') => {
+    const token = getToken();
+    if (!blackjackGame || blackjackGame.gameOver || !token) return;
+
+    // For double down, check if player has enough credits
+    if (action === 'double') {
+      if (displayCredits < betAmount) {
+        setGamblingError('Insufficient credits to double down');
+        return;
+      }
+      // Deduct additional bet immediately for double
+      setLocalCredits(prev => (prev ?? displayCredits) - betAmount);
+    }
+
+    setGamblingError(null);
+
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/gambling/blackjack/action`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          bet_amount: betAmount,
+          player_cards: blackjackGame.playerCards,
+          dealer_cards: blackjackGame.dealerCards,
+          deck_seed: blackjackGame.deckSeed,
+          action: action
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        setGamblingError(error.detail || 'Action failed');
+        // Restore credits if double failed
+        if (action === 'double') {
+          setLocalCredits(prev => (prev ?? displayCredits) + betAmount);
+        }
+        return;
+      }
+
+      const result = await response.json();
+      setBlackjackGame({
+        playerCards: result.player_cards,
+        dealerCards: result.dealer_cards,
+        playerTotal: result.player_total,
+        dealerTotal: result.dealer_total,
+        gameOver: result.game_over,
+        result: result.result,
+        canDouble: result.can_double,
+        deckSeed: result.deck_seed
+      });
+
+      if (result.game_over) {
+        setLastWin(result.net_result);
+        setLocalCredits(result.new_credits);
+        updatePlayerCredits(result.new_credits);
+      }
+    } catch (error) {
+      console.error('Blackjack action error:', error);
+      setGamblingError('Connection error. Please try again.');
+      if (action === 'double') {
+        setLocalCredits(prev => (prev ?? displayCredits) + betAmount);
+      }
+    }
+  }, [blackjackGame, betAmount, displayCredits, updatePlayerCredits]);
+
+  const renderCard = (card: BlackjackCard, index: number) => {
+    const isRed = card.suit === '♥' || card.suit === '♦';
+    if (card.hidden) {
+      return (
+        <div key={index} className="playing-card hidden">
+          <div className="card-back">🂠</div>
+        </div>
+      );
+    }
+    return (
+      <div key={index} className={`playing-card ${isRed ? 'red' : 'black'}`}>
+        <div className="card-corner top">
+          <span className="card-rank">{card.rank}</span>
+          <span className="card-suit">{card.suit}</span>
+        </div>
+        <div className="card-center">{card.suit}</div>
+        <div className="card-corner bottom">
+          <span className="card-rank">{card.rank}</span>
+          <span className="card-suit">{card.suit}</span>
+        </div>
+      </div>
+    );
+  };
+
+  // Genesis Device Purchase function
+  const purchaseGenesisDevice = useCallback(async (tier: 'standard' | 'advanced' | 'experimental') => {
+    const token = getToken();
+    if (!token || genesisPurchasing) return;
+
+    const prices = { standard: 25000, advanced: 50000, experimental: 100000 };
+    const price = prices[tier];
+
+    if (displayCredits < price) {
+      setGenesisError(`Insufficient credits. Need ${price.toLocaleString()}, have ${displayCredits.toLocaleString()}`);
+      return;
+    }
+
+    setGenesisPurchasing(true);
+    setGenesisError(null);
+    setGenesisSuccess(null);
+
+    // Immediately deduct credits for instant feedback
+    setLocalCredits(prev => (prev ?? displayCredits) - price);
+
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/player/genesis/purchase`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ tier })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        setGenesisError(error.detail || 'Purchase failed');
+        // Restore credits on error
+        setLocalCredits(prev => (prev ?? displayCredits) + price);
+        setGenesisPurchasing(false);
+        return;
+      }
+
+      const result = await response.json();
+      setLocalCredits(result.new_credits);
+      setLocalGenesisDevices(result.genesis_devices);
+      setLocalMaxGenesis(result.max_genesis_devices);
+      updatePlayerCredits(result.new_credits);
+      updateShipGenesis(result.genesis_devices);  // Update sidebar immediately
+      setGenesisSuccess(result.message);
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setGenesisSuccess(null), 3000);
+    } catch (error) {
+      console.error('Genesis purchase error:', error);
+      setGenesisError('Connection error. Please try again.');
+      setLocalCredits(prev => (prev ?? displayCredits) + price);
+    } finally {
+      setGenesisPurchasing(false);
+    }
+  }, [displayCredits, genesisPurchasing, updatePlayerCredits, updateShipGenesis]);
+
+  // Fetch current ship data including genesis device info
+  const [shipData, setShipData] = useState<{
+    genesis_devices: number;
+    max_genesis_devices: number;
+    type: string;
+    name: string;
+  } | null>(null);
+
+  React.useEffect(() => {
+    const fetchShipData = async () => {
+      const token = getToken();
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${getApiBaseUrl()}/api/v1/player/current-ship`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setShipData(data);
+          setLocalGenesisDevices(data.genesis_devices);
+          setLocalMaxGenesis(data.max_genesis_devices);
+        }
+      } catch (error) {
+        console.error('Failed to fetch ship data:', error);
+      }
+    };
+
+    fetchShipData();
+  }, []);
+
+  // Get current genesis device counts (use local if set, otherwise from ship data)
+  const currentGenesisDevices = localGenesisDevices ?? shipData?.genesis_devices ?? 0;
+  const maxGenesisDevices = localMaxGenesis ?? shipData?.max_genesis_devices ?? 0;
+
+  // Black Market button component (appears in certain venues)
+  const BlackMarketButton = () => {
+    if (!hasBlackMarketAccess) return null;
+
+    return (
+      <button
+        className="black-market-contact"
+        onClick={() => setShowBlackMarket(true)}
+        title="A shadowy figure beckons..."
+      >
+        <span className="shadow-icon">👤</span>
+        <span className="shadow-text">A figure watches from the shadows...</span>
+      </button>
+    );
+  };
+
+  // Black Market Modal
+  const renderBlackMarketModal = () => {
+    if (!showBlackMarket) return null;
+
+    const getBlackMarketItems = () => {
+      switch (activeVenue) {
+        case 'trading':
+          return [
+            { name: 'Stolen Cargo Manifest', desc: 'Discounted goods of questionable origin', price: 5000, discount: '40% off market' },
+            { name: 'Smuggling Contract', desc: 'High-risk, high-reward delivery job', price: 2000, reward: '15,000 cr on completion' },
+            { name: 'Contraband Spices', desc: 'Illegal but highly valuable commodities', price: 10000, sellPrice: '25,000 at black ports' },
+          ];
+        case 'armory':
+          return [
+            { name: 'EMP Mine', desc: 'Disables ship systems on impact', price: 8000, stats: 'Disable: 3 turns' },
+            { name: 'Cloaking Generator', desc: 'Temporary invisibility field', price: 50000, stats: 'Duration: 5 sectors' },
+            { name: 'Illegal Weapon Mod', desc: '+50% damage, voids warranty', price: 15000, stats: '+50% ATK' },
+          ];
+        case 'services':
+          return [
+            { name: 'Identity Wipe', desc: 'Clear your criminal record... temporarily', price: 25000, effect: 'Reset bounty' },
+            { name: 'Stolen Ship Parts', desc: 'Repair at 30% cost, 20% failure chance', price: 3000, risk: '20% failure' },
+            { name: 'Unregistered Mods', desc: 'Performance upgrades with no paper trail', price: 20000, stats: '+10% speed' },
+          ];
+        default:
+          return [];
+      }
+    };
+
+    const items = getBlackMarketItems();
+
+    return (
+      <div className="black-market-overlay" onClick={() => setShowBlackMarket(false)}>
+        <div className="black-market-modal" onClick={e => e.stopPropagation()}>
+          <div className="bm-header">
+            <div className="bm-icon">🕶️</div>
+            <div className="bm-title">
+              <h3>The Shadow Market</h3>
+              <span className="bm-whisper">"Keep your voice down, friend..."</span>
+            </div>
+            <button className="bm-close" onClick={() => setShowBlackMarket(false)}>✕</button>
+          </div>
+
+          <div className="bm-reputation-warning">
+            <span className="warning-icon">⚠️</span>
+            Your reputation: <span className="rep-value negative">{playerState?.personal_reputation}</span>
+            <span className="rep-tier">({playerState?.reputation_tier})</span>
+          </div>
+
+          <div className="bm-items">
+            {items.map((item, idx) => (
+              <div key={idx} className="bm-item">
+                <div className="bm-item-info">
+                  <h4>{item.name}</h4>
+                  <p>{item.desc}</p>
+                  <div className="bm-item-stats">
+                    {Object.entries(item).filter(([k]) => !['name', 'desc', 'price'].includes(k)).map(([key, val]) => (
+                      <span key={key} className="bm-stat">{key}: {val}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="bm-item-purchase">
+                  <span className="bm-price">{item.price.toLocaleString()} cr</span>
+                  <button
+                    className="bm-buy-btn"
+                    disabled={(playerState?.credits || 0) < item.price}
+                  >
+                    Acquire
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="bm-footer">
+            <p className="bm-warning-text">
+              "Remember... you never saw me, and this transaction never happened."
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderHub = () => (
+    <div className="spacedock-hub">
+      <div className="hub-header">
+        <div className="station-identity">
+          <div className="station-logo">🚀</div>
+          <div className="station-info">
+            <h2>{currentStation?.name || 'SpaceDock'}</h2>
+            <div className="station-tagline">Premier Trading & Construction Facility</div>
+          </div>
+        </div>
+        <div className="station-status">
+          <div className="status-item">
+            <span className="status-label">Status</span>
+            <span className="status-value operational">Operational</span>
+          </div>
+          <div className="status-item">
+            <span className="status-label">Security</span>
+            <span className="status-value">Maximum</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="hub-welcome">
+        <p>Welcome to the premier SpaceDock facility. Choose a destination to access our services.</p>
+      </div>
+
+      <div className="venues-grid">
+        {venues.map(venue => (
+          <div
+            key={venue.id}
+            className={`venue-card ${!venue.available ? 'unavailable' : ''}`}
+            onClick={() => venue.available && setActiveVenue(venue.id)}
+          >
+            <div className="venue-icon">{venue.icon}</div>
+            <div className="venue-content">
+              <h3 className="venue-name">{venue.name}</h3>
+              <p className="venue-description">{venue.description}</p>
+              {venue.services && (
+                <div className="venue-services">
+                  {venue.services.map((service, idx) => (
+                    <span key={idx} className="service-tag">{service}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="venue-status">
+              {venue.available ? (
+                <span className="available-indicator">OPEN</span>
+              ) : (
+                <span className="unavailable-indicator">UNAVAILABLE</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderGamblingHall = () => (
+    <div className="venue-container gambling">
+      <div className="venue-header">
+        <button className="back-button" onClick={() => {
+          if (currentGame === 'menu') {
+            setActiveVenue('hub');
+          } else {
+            setCurrentGame('menu');
+            setLastWin(null);
+          }
+        }}>
+          ← {currentGame === 'menu' ? 'Back to Hub' : 'Back to Games'}
+        </button>
+        <h2>🎰 Gambling Hall</h2>
+      </div>
+
+      <div className="venue-content-area gambling-area">
+        {currentGame === 'menu' && (
+          <div className="gambling-menu">
+            <div className="gambling-welcome">
+              <div className="neon-sign">FORTUNE FAVORS THE BOLD</div>
+              <p>Choose your game and test your luck among the stars...</p>
+            </div>
+
+            <div className="games-grid">
+              <div className="game-card slots" onClick={() => setCurrentGame('slots')}>
+                <div className="game-icon">🎰</div>
+                <h3>Cosmic Slots</h3>
+                <p>Match symbols to win big! Jackpot pays 50x</p>
+                <div className="game-stats">
+                  <span>Min Bet: 10 cr</span>
+                  <span>Max Win: 50x</span>
+                </div>
+              </div>
+
+              <div className="game-card dice" onClick={() => setCurrentGame('dice')}>
+                <div className="game-icon">🎲</div>
+                <h3>Nebula Dice</h3>
+                <p>Bet high, low, or exact. Avoid the Void!</p>
+                <div className="game-stats">
+                  <span>Min Bet: 10 cr</span>
+                  <span>Max Win: 35x</span>
+                </div>
+              </div>
+
+              <div className="game-card blackjack" onClick={() => setCurrentGame('blackjack')}>
+                <div className="game-icon">🃏</div>
+                <h3>Stellar Blackjack</h3>
+                <p>Beat the dealer to 21 without busting!</p>
+                <div className="game-stats">
+                  <span>Min Bet: 10 cr</span>
+                  <span>Blackjack: 3:2</span>
+                </div>
+              </div>
+
+              <div className="game-card lottery" onClick={() => setCurrentGame('lottery')}>
+                <div className="game-icon">🎫</div>
+                <h3>Sector Sweep</h3>
+                <p>Pick sectors, match the draw, win the jackpot!</p>
+                <div className="game-stats">
+                  <span>Ticket: 100 cr</span>
+                  <span>Jackpot: 1M cr</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {currentGame === 'slots' && (
+          <div className="game-view slots-game">
+            <div className="slot-machine">
+              <div className="slot-header">
+                <h3>COSMIC SLOTS</h3>
+                <div className="jackpot-display">
+                  JACKPOT: <span className="jackpot-amount">💎💎💎 = 50x</span>
+                </div>
+              </div>
+
+              {gamblingError && (
+                <div className="gambling-error">{gamblingError}</div>
+              )}
+
+              {isJackpot && lastWin !== null && lastWin > 0 && (
+                <div className="jackpot-alert">🎉 JACKPOT! 🎉</div>
+              )}
+
+              <div className="slot-reels">
+                {slotReels.map((symbol, idx) => (
+                  <div key={idx} className={`reel ${isSpinning ? 'spinning' : ''} ${isJackpot ? 'jackpot' : ''}`}>
+                    <span className="symbol">{symbol}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="slot-result">
+                {lastWin !== null && (
+                  <div className={`win-display ${lastWin > 0 ? 'winner' : lastWin < 0 ? 'loser' : 'push'}`}>
+                    {lastWin > 0 ? `WIN! +${lastWin.toLocaleString()} credits!` :
+                     lastWin < 0 ? `Lost ${Math.abs(lastWin).toLocaleString()} credits` :
+                     'No match - try again!'}
+                  </div>
+                )}
+              </div>
+
+              <div className="slot-controls">
+                <div className="bet-selector">
+                  <label>Bet Amount:</label>
+                  <div className="bet-buttons">
+                    {[10, 50, 100, 500, 1000].map(amount => (
+                      <button
+                        key={amount}
+                        className={`bet-btn ${betAmount === amount ? 'selected' : ''}`}
+                        onClick={() => setBetAmount(amount)}
+                        disabled={isSpinning}
+                      >
+                        {amount}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  className="spin-button"
+                  onClick={spinSlots}
+                  disabled={isSpinning || displayCredits < betAmount}
+                >
+                  {isSpinning ? 'SPINNING...' : 'SPIN'}
+                </button>
+              </div>
+
+              <div className="paytable">
+                <h4>Payouts</h4>
+                <div className="paytable-grid">
+                  <span>💎💎💎 = 50x</span>
+                  <span>🚀🚀🚀 = 10x</span>
+                  <span>⭐⭐⭐ = 8x</span>
+                  <span>🌍🌍🌍 = 5x</span>
+                  <span>💳💳💳 = 3x</span>
+                  <span>2 Match = 0.5x</span>
+                  <span>🕳️ = Lose</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {currentGame === 'dice' && (
+          <div className="game-view dice-game">
+            <div className="dice-table">
+              <div className="dice-header">
+                <h3>NEBULA DICE</h3>
+                <p className="dice-subtitle">Roll the cosmic dice. Beware the Void (7)!</p>
+              </div>
+
+              {gamblingError && (
+                <div className="gambling-error">{gamblingError}</div>
+              )}
+
+              <div className="dice-display">
+                <div className={`die ${diceValues[0] > 0 ? 'rolled' : ''} ${isSupernova ? 'supernova' : ''} ${isVoid ? 'void' : ''}`}>
+                  {diceValues[0] > 0 ? diceValues[0] : '?'}
+                </div>
+                <div className="dice-plus">+</div>
+                <div className={`die ${diceValues[1] > 0 ? 'rolled' : ''} ${isSupernova ? 'supernova' : ''} ${isVoid ? 'void' : ''}`}>
+                  {diceValues[1] > 0 ? diceValues[1] : '?'}
+                </div>
+                <div className="dice-equals">=</div>
+                <div className={`dice-total ${isVoid ? 'void' : ''}`}>
+                  {diceValues[0] + diceValues[1] > 0 ? diceValues[0] + diceValues[1] : '?'}
+                </div>
+              </div>
+
+              {isSupernova && (
+                <div className="supernova-alert">🌟 SUPERNOVA! 🌟</div>
+              )}
+
+              {isVoid && (
+                <div className="void-alert">🕳️ THE VOID 🕳️</div>
+              )}
+
+              <div className="dice-result">
+                {lastWin !== null && (
+                  <div className={`win-display ${lastWin > 0 ? 'winner' : 'loser'}`}>
+                    {lastWin > 0 ? `WIN! +${lastWin.toLocaleString()} credits!` :
+                     `Lost ${Math.abs(lastWin).toLocaleString()} credits`}
+                  </div>
+                )}
+              </div>
+
+              <div className="dice-betting">
+                <div className="bet-type-selector">
+                  <label>Bet Type:</label>
+                  <div className="bet-type-buttons">
+                    <button
+                      className={`type-btn ${diceBetType === 'low' ? 'selected' : ''}`}
+                      onClick={() => setDiceBetType('low')}
+                    >
+                      LOW (2-6) 2x
+                    </button>
+                    <button
+                      className={`type-btn ${diceBetType === 'high' ? 'selected' : ''}`}
+                      onClick={() => setDiceBetType('high')}
+                    >
+                      HIGH (8-12) 2x
+                    </button>
+                    <button
+                      className={`type-btn ${diceBetType === 'exact' ? 'selected' : ''}`}
+                      onClick={() => setDiceBetType('exact')}
+                    >
+                      EXACT (5-35x)
+                    </button>
+                  </div>
+                </div>
+
+                {diceBetType === 'exact' && (
+                  <div className="exact-number-selector">
+                    <label>Pick your number:</label>
+                    <div className="number-buttons">
+                      {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => (
+                        <button
+                          key={num}
+                          className={`num-btn ${diceExactBet === num ? 'selected' : ''} ${num === 7 ? 'void' : ''}`}
+                          onClick={() => setDiceExactBet(num)}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="exact-payout">
+                      Payout: {diceExactBet === 2 || diceExactBet === 12 ? '35x' :
+                               diceExactBet === 3 || diceExactBet === 11 ? '17x' :
+                               diceExactBet === 4 || diceExactBet === 10 ? '11x' :
+                               diceExactBet === 5 || diceExactBet === 9 ? '8x' :
+                               diceExactBet === 6 || diceExactBet === 8 ? '6x' : '5x'}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bet-amount-selector">
+                  <label>Bet Amount:</label>
+                  <div className="bet-buttons">
+                    {[10, 50, 100, 500, 1000].map(amount => (
+                      <button
+                        key={amount}
+                        className={`bet-btn ${betAmount === amount ? 'selected' : ''}`}
+                        onClick={() => setBetAmount(amount)}
+                      >
+                        {amount}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  className="roll-button"
+                  onClick={rollDice}
+                  disabled={displayCredits < betAmount}
+                >
+                  ROLL THE DICE
+                </button>
+              </div>
+
+              <div className="dice-rules">
+                <h4>Rules</h4>
+                <ul>
+                  <li><strong>7 = The Void</strong> - House wins on any bet</li>
+                  <li><strong>Double 6s = Supernova</strong> - Pays 35x regardless of bet type!</li>
+                  <li>High/Low bets pay 2x your wager</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {currentGame === 'blackjack' && (
+          <div className="game-view blackjack-game">
+            <div className="blackjack-table">
+              <div className="blackjack-header">
+                <h3>STELLAR BLACKJACK</h3>
+                <div className="blackjack-payout-info">
+                  <span>Blackjack pays 3:2</span>
+                  <span>Dealer stands on 17</span>
+                </div>
+              </div>
+
+              {gamblingError && (
+                <div className="gambling-error">{gamblingError}</div>
+              )}
+
+              {!blackjackGame ? (
+                <div className="blackjack-start">
+                  <div className="blackjack-rules">
+                    <h4>How to Play</h4>
+                    <ul>
+                      <li>Get closer to 21 than the dealer without going over</li>
+                      <li>Face cards (J, Q, K) are worth 10</li>
+                      <li>Aces are worth 11 or 1</li>
+                      <li>Blackjack (Ace + 10-card) pays 3:2</li>
+                      <li>Double down doubles your bet and gives one more card</li>
+                    </ul>
+                  </div>
+
+                  <div className="bet-selector blackjack-bet">
+                    <label>Bet Amount:</label>
+                    <div className="bet-buttons">
+                      {[10, 50, 100, 500, 1000].map(amount => (
+                        <button
+                          key={amount}
+                          className={`bet-btn ${betAmount === amount ? 'selected' : ''}`}
+                          onClick={() => setBetAmount(amount)}
+                          disabled={isBlackjackDealing}
+                        >
+                          {amount}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    className="deal-button"
+                    onClick={dealBlackjack}
+                    disabled={isBlackjackDealing || displayCredits < betAmount}
+                  >
+                    {isBlackjackDealing ? 'DEALING...' : 'DEAL CARDS'}
+                  </button>
+                </div>
+              ) : (
+                <div className="blackjack-game-area">
+                  {/* Dealer's Hand */}
+                  <div className="hand dealer-hand">
+                    <div className="hand-label">
+                      Dealer
+                      {blackjackGame.gameOver && (
+                        <span className="hand-total">({blackjackGame.dealerTotal})</span>
+                      )}
+                    </div>
+                    <div className="cards">
+                      {blackjackGame.dealerCards.map((card, idx) => renderCard(card, idx))}
+                    </div>
+                  </div>
+
+                  {/* Result Display */}
+                  {blackjackGame.gameOver && (
+                    <div className={`blackjack-result ${blackjackGame.result}`}>
+                      {blackjackGame.result === 'blackjack' && '🎰 BLACKJACK! 🎰'}
+                      {blackjackGame.result === 'win' && '🎉 YOU WIN! 🎉'}
+                      {blackjackGame.result === 'lose' && '😢 Dealer Wins'}
+                      {blackjackGame.result === 'push' && '🤝 Push - Tie Game'}
+                      {blackjackGame.result === 'bust' && '💥 BUST!'}
+                      {lastWin !== null && (
+                        <div className="result-amount">
+                          {lastWin > 0 ? `+${lastWin.toLocaleString()}` : lastWin.toLocaleString()} credits
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Player's Hand */}
+                  <div className="hand player-hand">
+                    <div className="hand-label">
+                      Your Hand
+                      <span className="hand-total">({blackjackGame.playerTotal})</span>
+                    </div>
+                    <div className="cards">
+                      {blackjackGame.playerCards.map((card, idx) => renderCard(card, idx))}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="blackjack-controls">
+                    {!blackjackGame.gameOver ? (
+                      <>
+                        <button
+                          className="action-btn hit"
+                          onClick={() => blackjackAction('hit')}
+                        >
+                          HIT
+                        </button>
+                        <button
+                          className="action-btn stand"
+                          onClick={() => blackjackAction('stand')}
+                        >
+                          STAND
+                        </button>
+                        {blackjackGame.canDouble && displayCredits >= betAmount && (
+                          <button
+                            className="action-btn double"
+                            onClick={() => blackjackAction('double')}
+                          >
+                            DOUBLE DOWN
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <button
+                        className="deal-button new-hand"
+                        onClick={() => {
+                          setBlackjackGame(null);
+                          setLastWin(null);
+                        }}
+                      >
+                        NEW HAND
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="current-bet-display">
+                    Current Bet: {betAmount.toLocaleString()} cr
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {currentGame === 'lottery' && (
+          <div className="game-view lottery-game">
+            <div className="lottery-booth">
+              <div className="lottery-header">
+                <h3>SECTOR SWEEP</h3>
+                <div className="jackpot-banner">
+                  <span className="jp-label">JACKPOT</span>
+                  <span className="jp-amount">1000x BET</span>
+                </div>
+              </div>
+
+              <div className="lottery-info">
+                <p>Pick 4 sectors from the grid below. Match to win!</p>
+                <div className="prize-table">
+                  <span>1 Match: 1x</span>
+                  <span>2 Match: 5x</span>
+                  <span>3 Match: 50x</span>
+                  <span>4 Match: 1000x!</span>
+                </div>
+              </div>
+
+              {gamblingError && (
+                <div className="gambling-error">{gamblingError}</div>
+              )}
+
+              <div className="lottery-selections">
+                <p>Your Selections ({lotteryNumbers.length}/4):</p>
+                <div className="selected-numbers">
+                  {lotteryNumbers.length > 0 ? (
+                    lotteryNumbers.map(n => (
+                      <span key={n} className="selected-num">{n}</span>
+                    ))
+                  ) : (
+                    <span className="no-selection">Pick 4 sectors below</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="sector-grid">
+                {Array.from({ length: 12 }, (_, i) => (
+                  <button
+                    key={i + 1}
+                    className={`sector-pick ${lotteryNumbers.includes(i + 1) ? 'selected' : ''} ${winningNumbers.includes(i + 1) ? 'winning' : ''}`}
+                    onClick={() => toggleLotteryNumber(i + 1)}
+                    disabled={isLotteryPlaying}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+
+              {winningNumbers.length > 0 && (
+                <div className="lottery-results">
+                  <div className="winning-numbers-display">
+                    <p>Winning Sectors:</p>
+                    <div className="winning-nums">
+                      {winningNumbers.map(n => (
+                        <span
+                          key={n}
+                          className={`winning-num ${lotteryNumbers.includes(n) ? 'matched' : ''}`}
+                        >
+                          {n}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className={`lottery-result-text ${lotteryMatches && lotteryMatches > 0 ? 'winner' : 'loser'}`}>
+                    {isJackpot ? (
+                      <div className="jackpot-win">🎉 JACKPOT! 🎉</div>
+                    ) : lotteryMatches && lotteryMatches > 0 ? (
+                      `${lotteryMatches} Match${lotteryMatches > 1 ? 'es' : ''}! +${lastWin?.toLocaleString()} credits!`
+                    ) : (
+                      `No matches. Lost ${betAmount.toLocaleString()} credits`
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="lottery-controls">
+                <div className="bet-selector lottery-bet">
+                  <label>Ticket Price:</label>
+                  <div className="bet-buttons">
+                    {[100, 250, 500, 1000, 2500].map(amount => (
+                      <button
+                        key={amount}
+                        className={`bet-btn ${betAmount === amount ? 'selected' : ''}`}
+                        onClick={() => setBetAmount(amount)}
+                        disabled={isLotteryPlaying}
+                      >
+                        {amount}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  className="buy-ticket-btn"
+                  onClick={playLottery}
+                  disabled={displayCredits < betAmount || lotteryNumbers.length !== 4 || isLotteryPlaying}
+                >
+                  {isLotteryPlaying ? 'Drawing...' : 'Buy Ticket & Draw'}
+                </button>
+              </div>
+
+              <button
+                className="clear-selection-btn"
+                onClick={() => {
+                  setLotteryNumbers([]);
+                  setWinningNumbers([]);
+                  setLotteryMatches(null);
+                  setLastWin(null);
+                }}
+                disabled={isLotteryPlaying}
+              >
+                Clear Selection
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+      <BlackMarketButton />
+    </div>
+  );
+
+  const renderShipyard = () => (
+    <div className="venue-container shipyard">
+      <div className="venue-header">
+        <button className="back-button" onClick={() => setActiveVenue('hub')}>
+          ← Back to Hub
+        </button>
+        <h2>🛠️ Shipyard</h2>
+      </div>
+      <div className="venue-content-area">
+        <div className="shipyard-sections">
+          <div className="shipyard-section">
+            <h3>🏗️ Construction Slips</h3>
+            <p className="section-description">Reserve a dock slip to build your own custom ship</p>
+            <div className="slips-overview">
+              <div className="slip-stat">
+                <span className="slip-count">12</span>
+                <span className="slip-label">Total Slips</span>
+              </div>
+              <div className="slip-stat available">
+                <span className="slip-count">8</span>
+                <span className="slip-label">Available</span>
+              </div>
+              <div className="slip-stat occupied">
+                <span className="slip-count">4</span>
+                <span className="slip-label">In Use</span>
+              </div>
+            </div>
+            <button className="action-button primary">Reserve Dock Slip</button>
+          </div>
+
+          <div className="shipyard-section">
+            <h3>🚀 Ship Catalog</h3>
+            <p className="section-description">Browse and purchase pre-fabricated vessels</p>
+            <div className="ship-catalog">
+              {[
+                { name: 'Scout Ship', price: 15000, cargo: 25, speed: 'Fast' },
+                { name: 'Light Freighter', price: 35000, cargo: 100, speed: 'Medium' },
+                { name: 'Defender', price: 70000, cargo: 50, speed: 'Medium' },
+                { name: 'Cargo Hauler', price: 60000, cargo: 200, speed: 'Slow' },
+                { name: 'Colony Ship', price: 150000, cargo: 500, speed: 'Slow' }
+              ].map((ship, idx) => (
+                <div key={idx} className="ship-card">
+                  <div className="ship-info">
+                    <span className="ship-name">{ship.name}</span>
+                    <div className="ship-stats">
+                      <span>📦 {ship.cargo}</span>
+                      <span>⚡ {ship.speed}</span>
+                    </div>
+                  </div>
+                  <div className="ship-price">{ship.price.toLocaleString()} cr</div>
+                  <button
+                    className="buy-ship-btn"
+                    disabled={(playerState?.credits || 0) < ship.price}
+                  >
+                    Purchase
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderGenesisStore = () => {
+    const canHoldGenesis = maxGenesisDevices > 0;
+    const hasCapacity = currentGenesisDevices < maxGenesisDevices;
+
+    return (
+      <div className="venue-container genesis">
+        <div className="venue-header">
+          <button className="back-button" onClick={() => setActiveVenue('hub')}>
+            ← Back to Hub
+          </button>
+          <h2>🌍 Genesis Store</h2>
+        </div>
+        <div className="venue-content-area">
+          <div className="genesis-intro">
+            <div className="genesis-banner">
+              <div className="banner-icon">🌍</div>
+              <div className="banner-text">
+                <h3>Create New Worlds</h3>
+                <p>Genesis Devices are advanced terraforming technology that allow you to create new planets in empty sectors.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Ship Genesis Capacity Display */}
+          <div className={`genesis-ship-status ${canHoldGenesis ? 'capable' : 'incapable'}`}>
+            <div className="ship-genesis-header">
+              <span className="ship-icon">🚀</span>
+              <div className="ship-genesis-info">
+                <h4>Your Ship: {shipData?.name || 'Unknown'}</h4>
+                <span className="ship-type">{shipData?.type || 'Unknown Type'}</span>
+              </div>
+            </div>
+            {canHoldGenesis ? (
+              <div className="genesis-capacity">
+                <div className="capacity-display">
+                  <div className="genesis-orbs">
+                    {Array.from({ length: maxGenesisDevices }, (_, i) => (
+                      <div
+                        key={i}
+                        className={`genesis-orb ${i < currentGenesisDevices ? 'filled' : 'empty'}`}
+                        title={i < currentGenesisDevices ? 'Genesis Device Loaded' : 'Empty Slot'}
+                      >
+                        {i < currentGenesisDevices ? '🌍' : '⭕'}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="capacity-text">
+                    <span className="count">{currentGenesisDevices} / {maxGenesisDevices}</span>
+                    <span className="label">Genesis Devices</span>
+                  </div>
+                </div>
+                {currentGenesisDevices > 0 && (
+                  <div className="genesis-power-indicator">
+                    <span className="power-glow">✨</span>
+                    <span className="power-text">World-Creating Power Ready</span>
+                    <span className="power-glow">✨</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="genesis-incapable-warning">
+                <span className="warning-icon">⚠️</span>
+                <span>This ship cannot carry Genesis Devices. You need a Cargo Hauler, Defender, Colony Ship, Carrier, or Warp Jumper.</span>
+              </div>
+            )}
+          </div>
+
+          {/* Success/Error Messages */}
+          {genesisSuccess && (
+            <div className="genesis-success-message">
+              <span className="success-icon">✅</span>
+              {genesisSuccess}
+            </div>
+          )}
+          {genesisError && (
+            <div className="genesis-error-message">
+              <span className="error-icon">❌</span>
+              {genesisError}
+            </div>
+          )}
+
+          <div className="genesis-devices-grid">
+            <div className="genesis-device-card standard">
+              <div className="device-header">
+                <span className="device-tier">Standard</span>
+                <div className="device-icon">🌑</div>
+              </div>
+              <div className="device-details">
+                <h3>Standard Genesis Device</h3>
+                <ul className="device-specs">
+                  <li>🎯 85% Success Rate</li>
+                  <li>⏱️ 48 Hour Process</li>
+                  <li>🪐 Basic Planet Types</li>
+                  <li>📊 Higher chance of barren worlds</li>
+                </ul>
+              </div>
+              <div className="device-footer">
+                <div className="device-price">25,000 cr</div>
+                <button
+                  className="purchase-device-btn"
+                  onClick={() => purchaseGenesisDevice('standard')}
+                  disabled={genesisPurchasing || displayCredits < 25000 || !canHoldGenesis || !hasCapacity}
+                >
+                  {genesisPurchasing ? 'Purchasing...' : !canHoldGenesis ? 'Ship Incompatible' : !hasCapacity ? 'At Capacity' : 'Purchase'}
+                </button>
+              </div>
+            </div>
+
+            <div className="genesis-device-card advanced">
+              <div className="device-header">
+                <span className="device-tier">Advanced</span>
+                <div className="device-icon">🌎</div>
+              </div>
+              <div className="device-details">
+                <h3>Advanced Genesis Device</h3>
+                <ul className="device-specs">
+                  <li>🎯 92% Success Rate</li>
+                  <li>⏱️ 36 Hour Process</li>
+                  <li>🪐 Improved Planet Types</li>
+                  <li>📊 Better resource distribution</li>
+                </ul>
+              </div>
+              <div className="device-footer">
+                <div className="device-price">50,000 cr</div>
+                <button
+                  className="purchase-device-btn"
+                  onClick={() => purchaseGenesisDevice('advanced')}
+                  disabled={genesisPurchasing || displayCredits < 50000 || !canHoldGenesis || !hasCapacity}
+                >
+                  {genesisPurchasing ? 'Purchasing...' : !canHoldGenesis ? 'Ship Incompatible' : !hasCapacity ? 'At Capacity' : 'Purchase'}
+                </button>
+              </div>
+            </div>
+
+            <div className="genesis-device-card experimental">
+              <div className="device-header">
+                <span className="device-tier">Experimental</span>
+                <div className="device-icon">🌏</div>
+              </div>
+              <div className="device-details">
+                <h3>Experimental Genesis Device</h3>
+                <ul className="device-specs">
+                  <li>🎯 95% Success Rate</li>
+                  <li>⏱️ 24 Hour Process</li>
+                  <li>🪐 Premium Planet Types</li>
+                  <li>📊 Chance for unique features</li>
+                </ul>
+              </div>
+              <div className="device-footer">
+                <div className="device-price">100,000 cr</div>
+                <button
+                  className="purchase-device-btn"
+                  onClick={() => purchaseGenesisDevice('experimental')}
+                  disabled={genesisPurchasing || displayCredits < 100000 || !canHoldGenesis || !hasCapacity}
+                >
+                  {genesisPurchasing ? 'Purchasing...' : !canHoldGenesis ? 'Ship Incompatible' : !hasCapacity ? 'At Capacity' : 'Purchase'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="genesis-info">
+            <h4>📋 Requirements</h4>
+            <ul>
+              <li>Ship with Genesis Device capacity (Cargo Hauler, Colony Ship, Carrier, Defender, or Warp Jumper)</li>
+              <li>Empty, non-protected sector for deployment</li>
+              <li>Minimum Federation reputation level</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderArmory = () => (
+    <div className="venue-container armory">
+      <div className="venue-header">
+        <button className="back-button" onClick={() => setActiveVenue('hub')}>
+          ← Back to Hub
+        </button>
+        <h2>⚔️ Armory</h2>
+      </div>
+      <div className="venue-content-area">
+        <div className="armory-categories">
+          {/* Drones Section */}
+          <div className="armory-section">
+            <h3>🤖 Combat Drones</h3>
+            <div className="equipment-grid">
+              <div className="equipment-card attack">
+                <div className="eq-icon">⚔️</div>
+                <div className="eq-info">
+                  <h4>Attack Drone</h4>
+                  <p>Offensive combat unit for ship-to-ship engagement</p>
+                  <div className="eq-stats">
+                    <span>ATK: 8</span>
+                    <span>HP: 50</span>
+                  </div>
+                </div>
+                <div className="eq-purchase">
+                  <span className="eq-price">1,000 cr</span>
+                  <div className="qty-controls">
+                    <input type="number" min="1" max="100" defaultValue="1" />
+                    <button className="buy-btn">Buy</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="equipment-card defense">
+                <div className="eq-icon">🛡️</div>
+                <div className="eq-info">
+                  <h4>Defense Drone</h4>
+                  <p>Protective unit for ships, planets, and sectors</p>
+                  <div className="eq-stats">
+                    <span>DEF: 10</span>
+                    <span>HP: 75</span>
+                  </div>
+                </div>
+                <div className="eq-purchase">
+                  <span className="eq-price">1,200 cr</span>
+                  <div className="qty-controls">
+                    <input type="number" min="1" max="100" defaultValue="1" />
+                    <button className="buy-btn">Buy</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mines Section */}
+          <div className="armory-section">
+            <h3>💣 Tactical Mines</h3>
+            <div className="equipment-grid">
+              <div className="equipment-card mine">
+                <div className="eq-icon">💥</div>
+                <div className="eq-info">
+                  <h4>Limpet Mine</h4>
+                  <p>Deploy in sectors to defend territory</p>
+                  <div className="eq-stats">
+                    <span>DMG: 150</span>
+                    <span>Stealth: High</span>
+                  </div>
+                </div>
+                <div className="eq-purchase">
+                  <span className="eq-price">2,000 cr</span>
+                  <div className="qty-controls">
+                    <input type="number" min="1" max="50" defaultValue="1" />
+                    <button className="buy-btn">Buy</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="equipment-card mine-heavy">
+                <div className="eq-icon">☢️</div>
+                <div className="eq-info">
+                  <h4>Armored Mine</h4>
+                  <p>Heavy-duty mine with increased durability</p>
+                  <div className="eq-stats">
+                    <span>DMG: 300</span>
+                    <span>Armor: Heavy</span>
+                  </div>
+                </div>
+                <div className="eq-purchase">
+                  <span className="eq-price">5,000 cr</span>
+                  <div className="qty-controls">
+                    <input type="number" min="1" max="25" defaultValue="1" />
+                    <button className="buy-btn">Buy</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="current-loadout">
+          <h4>📊 Current Ship Loadout</h4>
+          <div className="loadout-stats">
+            <div className="loadout-item">
+              <span className="item-label">Attack Drones</span>
+              <span className="item-value">0 / 10</span>
+            </div>
+            <div className="loadout-item">
+              <span className="item-label">Defense Drones</span>
+              <span className="item-value">0 / 10</span>
+            </div>
+            <div className="loadout-item">
+              <span className="item-label">Mines</span>
+              <span className="item-value">0 / 25</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <BlackMarketButton />
+    </div>
+  );
+
+  const renderServices = () => (
+    <div className="venue-container services">
+      <div className="venue-header">
+        <button className="back-button" onClick={() => setActiveVenue('hub')}>
+          ← Back to Hub
+        </button>
+        <h2>🔧 Ship Services</h2>
+      </div>
+      <div className="venue-content-area">
+        <div className="services-grid">
+          <div className="service-card">
+            <div className="service-icon">🔧</div>
+            <h3>Ship Repair</h3>
+            <p>Restore hull and shield integrity</p>
+            <div className="service-status">
+              <div className="status-bar">
+                <span className="bar-label">Hull</span>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{ width: '85%' }}></div>
+                </div>
+                <span className="bar-value">85%</span>
+              </div>
+              <div className="status-bar">
+                <span className="bar-label">Shields</span>
+                <div className="bar-track">
+                  <div className="bar-fill shield" style={{ width: '100%' }}></div>
+                </div>
+                <span className="bar-value">100%</span>
+              </div>
+            </div>
+            <div className="service-action">
+              <span className="repair-cost">100 cr per 1%</span>
+              <button className="service-btn">Full Repair</button>
+            </div>
+          </div>
+
+          <div className="service-card">
+            <div className="service-icon">🛡️</div>
+            <h3>Shield Upgrade</h3>
+            <p>Enhance shield capacity and recharge rate</p>
+            <div className="upgrade-tiers">
+              <div className="tier current">Tier 2</div>
+              <div className="tier next">→ Tier 3</div>
+            </div>
+            <div className="service-action">
+              <span className="upgrade-cost">50,000 cr</span>
+              <button className="service-btn">Upgrade</button>
+            </div>
+          </div>
+
+          <div className="service-card">
+            <div className="service-icon">📦</div>
+            <h3>Cargo Expansion</h3>
+            <p>Increase ship cargo capacity</p>
+            <div className="cargo-info">
+              <span>Current: 50 units</span>
+              <span>Next: +25 units</span>
+            </div>
+            <div className="service-action">
+              <span className="upgrade-cost">25,000 cr</span>
+              <button className="service-btn">Expand</button>
+            </div>
+          </div>
+
+          <div className="service-card">
+            <div className="service-icon">📜</div>
+            <h3>Cargo Insurance</h3>
+            <p>Protect your cargo against piracy</p>
+            <div className="insurance-details">
+              <span>Coverage: 80% of value</span>
+              <span>Duration: 7 days</span>
+            </div>
+            <div className="service-action">
+              <span className="insurance-cost">5,000 cr</span>
+              <button className="service-btn">Purchase</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <BlackMarketButton />
+    </div>
+  );
+
+  const renderTrading = () => (
+    <div className="venue-container trading">
+      <div className="venue-header">
+        <button className="back-button" onClick={() => setActiveVenue('hub')}>
+          ← Back to Hub
+        </button>
+        <h2>🏪 Trading Hub</h2>
+      </div>
+      <div className="venue-content-area trading-venue">
+        <TradingInterface />
+      </div>
+      <BlackMarketButton />
+    </div>
+  );
+
+  // Render appropriate venue
+  const renderActiveVenue = () => {
+    switch (activeVenue) {
+      case 'hub':
+        return renderHub();
+      case 'trading':
+        return renderTrading();
+      case 'shipyard':
+        return renderShipyard();
+      case 'genesis':
+        return renderGenesisStore();
+      case 'armory':
+        return renderArmory();
+      case 'services':
+        return renderServices();
+      case 'gambling':
+        return renderGamblingHall();
+      default:
+        return renderHub();
+    }
+  };
+
+  return (
+    <div className="spacedock-interface">
+      {renderActiveVenue()}
+      {renderBlackMarketModal()}
+    </div>
+  );
+};
+
+export default SpaceDockInterface;

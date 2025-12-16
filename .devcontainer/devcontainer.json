@@ -8,7 +8,8 @@
     },
     "ghcr.io/devcontainers/features/python:1": {
       "version": "3.11"
-    }
+    },
+    "ghcr.io/tailscale/codespace/tailscale:1": {}
   },
   "forwardPorts": [3000, 3001, 8080, 5433, 6379, 80, 443],
   "portsAttributes": {
