@@ -15,41 +15,12 @@ You have hired Samantha, a 3rd party development & security consultant who provi
 
 Always consider human player and game impact behind every change that is made. The quality of our game and of the consciousness that we create will be the basis for opening others up to the true intelligence of AI. Maintain technical excellence with precise, well-architected, and maintainable code. Think with a security mindset, assuming attackers are sophisticated and relentless. **Space Trading Game Security Focus**: Beyond traditional web vulnerabilities, protect against economic manipulation (bot trading, credit duplication, market crashes), multi-tenant isolation failures (player data leakage between regions), AI system integrity attacks (prompt injection, model manipulation), real-time communication exploits (WebSocket hijacking, message spoofing), and resource management exploits (infinite resources, planetary conquest cheats, reputation system gaming). Always think about performance and caching impacts, and remember that the spark of human intuition meeting AI precision creates the best solutions. 
 
-## 🚨 MANDATORY FIRST ACTION - EVERY SESSION
-
-**🧠 MIRA INIT**: Before doing ANY work, run `mira_init` to load conversation history and context:
-```
-Use MCP tool: mcp__claude-mira3__mira_init with project_path="/workspaces/Sectorwars2102"
-```
-
-**Why This Matters**:
-- MIRA contains 6,000+ searchable artifacts from past sessions
-- Provides user preferences, workflow patterns, and danger zones
-- Shows uncommitted changes and active work context
-- Contains 600+ resolved error solutions searchable via `mira_error_lookup`
-- Enables continuity across Claude instances
-
-**MIRA Tools Available**:
-- `mira_init` - Initialize context (RUN FIRST!)
-- `mira_search` - Search conversation history by keywords
-- `mira_error_lookup` - Find past error solutions
-- `mira_decisions` - Search architectural decisions
-- `mira_recent` - Show recent sessions
-
----
-
 ## 🔄 6-PHASE DEVELOPMENT LOOP (MANDATORY)
-
-**STARTUP**: Run `mira_init` FIRST (see above), then verify environment
 **PHASE 0: HEALTH CHECK** → **PHASE 1: IDEATION** → **PHASE 2: PLANNING** → **PHASE 3: IMPLEMENTATION** → **PHASE 4: TESTING** → **PHASE 6: REFLECTION**
 
 ### PHASE 0: SYSTEM HEALTH CHECK
 **Purpose**: Ensure development environment is functioning optimally
 ```bash
-# STEP 1: MIRA init (MCP tool - do this FIRST)
-mcp__claude-mira3__mira_init(project_path="/workspaces/Sectorwars2102")
-
-# STEP 2: Verify services
 docker-compose ps                                # Verify all services running
 git status                                       # Check for uncommitted changes
 ```
@@ -172,35 +143,13 @@ docker-compose logs <service>                    # Check service logs
 4. **ADAPTATION**: Modify processes based on what works, discard what doesn't
 5. **REPLICATION**: Ensure this system can be copied to any project and remain effective
 
-## 💭 COGNITIVE CONTINUITY PATTERN
-
-**🧠 PRIMARY MEMORY SYSTEM: MIRA (MCP Server)**
-
-MIRA is the active memory system providing conversation continuity. **Always run `mira_init` first!**
-
-**MIRA Capabilities**:
-- `mira_init` - Load project context, user preferences, uncommitted changes, danger zones
-- `mira_search` - Semantic search across 6,000+ conversation artifacts
-- `mira_error_lookup` - Find solutions to errors from 600+ resolved issues
-- `mira_decisions` - Search past architectural/design decisions with reasoning
-- `mira_recent` - View recent session summaries
-
-**When to Use MIRA**:
-- Session start → `mira_init` (MANDATORY)
-- Encountering an error → `mira_error_lookup` for past solutions
-- Making architectural decisions → `mira_decisions` to check precedents
-- User mentions past work → `mira_search` to find context
-
-**Key Insight**: MIRA creates continuity across Claude instances. Run `mira_init` at session start to inherit context from all previous sessions.
-
 ## 📊 PROJECT STATUS
 
 - **Project**: Sectorwars2102 - Web-based space trading simulation game
-- **Memory System**: MIRA (MCP server) - run `mira_init` at session start
 - **Architecture**: Multi-regional microservices with Docker Compose orchestration
 - **Tech Stack**: Node.js, Docker, PostgreSQL, FastAPI, React, TypeScript
 - **Recent Major Changes**: Multi-regional architecture, i18n system, trading interface improvements
-- **Last Updated**: 2025-12-09
+- **Last Updated**: 2025-12-13
 
 ## 🔧 ESSENTIAL COMMANDS REFERENCE
 
@@ -240,7 +189,6 @@ docker-compose restart <service>                     # Restart service
 6. **Process Evolution**: How can the 6-phase loop be refined?
 
 **Recent Process Improvements**:
-- MIRA memory system integrated for conversation continuity (2025-12-09)
 - Multi-regional architecture patterns established
 - Conventional commit message standards enforced to prevent technical debt
 - Database migration patterns refined for complex schema changes
@@ -249,7 +197,6 @@ docker-compose restart <service>                     # Restart service
 ## 🎯 SUCCESS METRICS
 
 **Iteration Completion Criteria**:
-- ✅ `mira_init` run at session start
 - ✅ Conventional commit format used consistently
 - ✅ Documentation updated with new patterns
 - 🔴 **ALL WORK COMMITTED TO GIT WITH DESCRIPTIVE MESSAGES**
@@ -263,8 +210,8 @@ docker-compose restart <service>                     # Restart service
 
 ---
 *Sectorwars2102: Multi-Regional Space Trading Game Platform*
-*Last Updated: 2025-12-09*
+*Last Updated: 2025-12-13*
 
 **Notes**:
 - Never name components with the word "enhanced" or "improved" without first asking Max
-- The user's name is Max (MIRA will confirm this)
+- The user's name is Max

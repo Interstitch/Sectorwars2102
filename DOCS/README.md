@@ -74,11 +74,6 @@ This documentation system uses a **multi-layer architecture** designed for diffe
 **Format**: Real-time status boards
 **Maintenance**: Updated daily/weekly
 
-### Layer 7: ARCHIVE/ (Historical)
-**Target**: Decision archaeology, learning from past
-**Format**: Timestamped decision records
-**Maintenance**: Append-only
-
 ## 🔄 Information Flow
 
 ```
