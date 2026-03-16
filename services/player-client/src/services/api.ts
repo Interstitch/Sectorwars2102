@@ -35,113 +35,139 @@ async function apiRequest(
 // Combat APIs
 export const combatAPI = {
   engage: (targetType: 'ship' | 'planet' | 'port', targetId: string) =>
-    apiRequest('/api/combat/engage', {
+    apiRequest('/api/v1/combat/engage', {
       method: 'POST',
       body: JSON.stringify({ targetType, targetId })
     }),
 
   getStatus: (combatId: string) =>
-    apiRequest(`/api/combat/${combatId}/status`),
+    apiRequest(`/api/v1/combat/${combatId}/status`),
 
   // Drone management
   deployDrones: (sectorId: string, droneCount: number) =>
-    apiRequest('/api/drones/deploy', {
+    apiRequest('/api/v1/drones/deploy', {
       method: 'POST',
       body: JSON.stringify({ sectorId, droneCount })
     }),
 
   getDeployedDrones: () =>
-    apiRequest('/api/drones/deployed'),
+    apiRequest('/api/v1/drones/deployed'),
 
   recallDrones: (deploymentId: string) =>
-    apiRequest(`/api/drones/${deploymentId}/recall`, {
+    apiRequest(`/api/v1/drones/${deploymentId}/recall`, {
       method: 'DELETE'
     })
 };
 
+// Helper to normalize planet data from backend (maps fighters -> drones)
+function normalizePlanetDefenses(planet: any): any {
+  if (planet && planet.defenses) {
+    return {
+      ...planet,
+      defenses: {
+        turrets: planet.defenses.turrets ?? 0,
+        shields: planet.defenses.shields ?? 0,
+        drones: planet.defenses.fighters ?? planet.defenses.drones ?? 0
+      }
+    };
+  }
+  return planet;
+}
+
 // Planetary Management APIs
 export const planetaryAPI = {
-  getOwnedPlanets: () =>
-    apiRequest('/api/planets/owned'),
+  getOwnedPlanets: async () => {
+    const response = await apiRequest('/api/v1/planets/owned');
+    return {
+      ...response,
+      planets: (response.planets || []).map(normalizePlanetDefenses)
+    };
+  },
 
-  getPlanet: (planetId: string) =>
-    apiRequest(`/api/planets/${planetId}`),
+  getPlanet: async (planetId: string) => {
+    const response = await apiRequest(`/api/v1/planets/${planetId}`);
+    return normalizePlanetDefenses(response);
+  },
 
   allocateColonists: (planetId: string, allocations: { fuel: number, organics: number, equipment: number }) =>
-    apiRequest(`/api/planets/${planetId}/allocate`, {
+    apiRequest(`/api/v1/planets/${planetId}/allocate`, {
       method: 'PUT',
       body: JSON.stringify(allocations)
     }),
 
   upgradeBuilding: (planetId: string, buildingType: string, targetLevel: number) =>
-    apiRequest(`/api/planets/${planetId}/buildings/upgrade`, {
+    apiRequest(`/api/v1/planets/${planetId}/buildings/upgrade`, {
       method: 'POST',
       body: JSON.stringify({ buildingType, targetLevel })
     }),
 
   updateDefenses: (planetId: string, defenses: { turrets?: number, shields?: number, drones?: number }) =>
-    apiRequest(`/api/planets/${planetId}/defenses`, {
+    apiRequest(`/api/v1/planets/${planetId}/defenses`, {
       method: 'PUT',
-      body: JSON.stringify(defenses)
+      body: JSON.stringify({
+        turrets: defenses.turrets,
+        shields: defenses.shields,
+        fighters: defenses.drones
+      })
     }),
 
   deployGenesis: (sectorId: string, planetName: string, planetType: string) =>
-    apiRequest('/api/planets/genesis/deploy', {
+    apiRequest('/api/v1/planets/genesis/deploy', {
       method: 'POST',
       body: JSON.stringify({ sectorId, planetName, planetType })
     }),
 
   specializePlanet: (planetId: string, specialization: string) =>
-    apiRequest(`/api/planets/${planetId}/specialize`, {
+    apiRequest(`/api/v1/planets/${planetId}/specialize`, {
       method: 'PUT',
       body: JSON.stringify({ specialization })
     }),
 
   getSiegeStatus: (planetId: string) =>
-    apiRequest(`/api/planets/${planetId}/siege-status`)
+    apiRequest(`/api/v1/planets/${planetId}/siege-status`)
 };
 
 // Team Management APIs
 export const teamAPI = {
   // Team operations
   getTeam: (teamId: string) =>
-    apiRequest(`/api/teams/${teamId}`),
+    apiRequest(`/api/v1/teams/${teamId}`),
 
   createTeam: (data: { name: string, tag: string, description: string, isPublic: boolean, recruitmentStatus: string }) =>
-    apiRequest('/api/teams/create', {
+    apiRequest('/api/v1/teams/create', {
       method: 'POST',
       body: JSON.stringify(data)
     }),
 
   updateTeam: (teamId: string, updates: any) =>
-    apiRequest(`/api/teams/${teamId}`, {
+    apiRequest(`/api/v1/teams/${teamId}`, {
       method: 'PUT',
       body: JSON.stringify(updates)
     }),
 
   disbandTeam: (teamId: string) =>
-    apiRequest(`/api/teams/${teamId}`, {
+    apiRequest(`/api/v1/teams/${teamId}`, {
       method: 'DELETE'
     }),
 
   // Member management
   getMembers: (teamId: string) =>
-    apiRequest(`/api/teams/${teamId}/members`),
+    apiRequest(`/api/v1/teams/${teamId}/members`),
 
   inviteMember: (teamId: string, playerId: string, message?: string) =>
-    apiRequest(`/api/teams/${teamId}/invite`, {
+    apiRequest(`/api/v1/teams/${teamId}/invite`, {
       method: 'POST',
       body: JSON.stringify({ playerId, message })
     }),
 
   kickMember: (teamId: string, memberId: string, reason?: string) =>
-    apiRequest(`/api/teams/${teamId}/members/${memberId}`, {
+    apiRequest(`/api/v1/teams/${teamId}/members/${memberId}`, {
       method: 'DELETE',
       body: JSON.stringify({ reason })
     }),
 
   promoteMember: (teamId: string, memberId: string, role: 'officer' | 'member') =>
-    apiRequest(`/api/teams/${teamId}/members/${memberId}/role`, {
+    apiRequest(`/api/v1/teams/${teamId}/members/${memberId}/role`, {
       method: 'PUT',
       body: JSON.stringify({ role })
     }),
@@ -151,182 +177,182 @@ export const teamAPI = {
     const params = new URLSearchParams();
     if (limit) params.append('limit', limit.toString());
     if (before) params.append('before', before);
-    return apiRequest(`/api/teams/${teamId}/messages?${params}`);
+    return apiRequest(`/api/v1/teams/${teamId}/messages?${params}`);
   },
 
   sendMessage: (teamId: string, content: string) =>
-    apiRequest(`/api/teams/${teamId}/messages`, {
+    apiRequest(`/api/v1/teams/${teamId}/messages`, {
       method: 'POST',
       body: JSON.stringify({ content })
     }),
 
   // Resource management
   depositToTreasury: (teamId: string, resources: any) =>
-    apiRequest(`/api/teams/${teamId}/treasury/deposit`, {
+    apiRequest(`/api/v1/teams/${teamId}/treasury/deposit`, {
       method: 'POST',
       body: JSON.stringify(resources)
     }),
 
   withdrawFromTreasury: (teamId: string, resources: any) =>
-    apiRequest(`/api/teams/${teamId}/treasury/withdraw`, {
+    apiRequest(`/api/v1/teams/${teamId}/treasury/withdraw`, {
       method: 'POST',
       body: JSON.stringify(resources)
     }),
 
   transferResources: (teamId: string, transfer: any) =>
-    apiRequest(`/api/teams/${teamId}/transfer`, {
+    apiRequest(`/api/v1/teams/${teamId}/transfer`, {
       method: 'POST',
       body: JSON.stringify(transfer)
     }),
 
   // Mission management
   getMissions: (teamId: string) =>
-    apiRequest(`/api/teams/${teamId}/missions`),
+    apiRequest(`/api/v1/teams/${teamId}/missions`),
 
   createMission: (teamId: string, mission: any) =>
-    apiRequest(`/api/teams/${teamId}/missions`, {
+    apiRequest(`/api/v1/teams/${teamId}/missions`, {
       method: 'POST',
       body: JSON.stringify(mission)
     }),
 
   updateMission: (teamId: string, missionId: string, updates: any) =>
-    apiRequest(`/api/teams/${teamId}/missions/${missionId}`, {
+    apiRequest(`/api/v1/teams/${teamId}/missions/${missionId}`, {
       method: 'PUT',
       body: JSON.stringify(updates)
     }),
 
   joinMission: (teamId: string, missionId: string) =>
-    apiRequest(`/api/teams/${teamId}/missions/${missionId}/join`, {
+    apiRequest(`/api/v1/teams/${teamId}/missions/${missionId}/join`, {
       method: 'POST'
     }),
 
   leaveMission: (teamId: string, missionId: string) =>
-    apiRequest(`/api/teams/${teamId}/missions/${missionId}/leave`, {
+    apiRequest(`/api/v1/teams/${teamId}/missions/${missionId}/leave`, {
       method: 'DELETE'
     }),
 
   // Alliance & Diplomacy (Phase 3 - may not be implemented yet)
   getAlliances: (teamId: string) =>
-    apiRequest(`/api/teams/${teamId}/alliances`),
+    apiRequest(`/api/v1/teams/${teamId}/alliances`),
 
   getDiplomaticRelations: (teamId: string) =>
-    apiRequest(`/api/teams/${teamId}/relations`),
+    apiRequest(`/api/v1/teams/${teamId}/relations`),
 
   proposeAlliance: (teamId: string, data: any) =>
-    apiRequest(`/api/teams/${teamId}/alliances/propose`, {
+    apiRequest(`/api/v1/teams/${teamId}/alliances/propose`, {
       method: 'POST',
       body: JSON.stringify(data)
     }),
 
   proposeTreaty: (teamId: string, data: any) =>
-    apiRequest(`/api/teams/${teamId}/treaties/propose`, {
+    apiRequest(`/api/v1/teams/${teamId}/treaties/propose`, {
       method: 'POST',
       body: JSON.stringify(data)
     }),
 
   changeDiplomaticRelation: (teamId: string, targetTeamId: string, type: string) =>
-    apiRequest(`/api/teams/${teamId}/relations/${targetTeamId}`, {
+    apiRequest(`/api/v1/teams/${teamId}/relations/${targetTeamId}`, {
       method: 'PUT',
       body: JSON.stringify({ type })
     }),
 
   leaveAlliance: (teamId: string, allianceId: string) =>
-    apiRequest(`/api/teams/${teamId}/alliances/${allianceId}`, {
+    apiRequest(`/api/v1/teams/${teamId}/alliances/${allianceId}`, {
       method: 'DELETE'
     }),
 
   // Analytics
   getTeamAnalytics: (teamId: string, period: 'day' | 'week' | 'month' | 'all-time') =>
-    apiRequest(`/api/teams/${teamId}/analytics?period=${period}`),
+    apiRequest(`/api/v1/teams/${teamId}/analytics?period=${period}`),
 
   // Permissions
   getPermissions: (teamId: string) =>
-    apiRequest(`/api/teams/${teamId}/permissions`),
+    apiRequest(`/api/v1/teams/${teamId}/permissions`),
 
   // Utility function to get available teams (may need a different endpoint)
   getAvailableTeams: () =>
-    apiRequest('/api/teams') // This endpoint might need to be implemented
+    apiRequest('/api/v1/teams') // This endpoint might need to be implemented
 };
 
 // Fleet Management APIs
 export const fleetAPI = {
   createFleet: (name: string, formation?: string, commanderId?: string) =>
-    apiRequest('/api/fleets', {
+    apiRequest('/api/v1/fleets', {
       method: 'POST',
       body: JSON.stringify({ name, formation, commander_id: commanderId })
     }),
 
   getFleets: () =>
-    apiRequest('/api/fleets'),
+    apiRequest('/api/v1/fleets'),
 
   getFleet: (fleetId: string) =>
-    apiRequest(`/api/fleets/${fleetId}`),
+    apiRequest(`/api/v1/fleets/${fleetId}`),
 
   addShipToFleet: (fleetId: string, shipId: string, role?: string) =>
-    apiRequest(`/api/fleets/${fleetId}/add-ship`, {
+    apiRequest(`/api/v1/fleets/${fleetId}/add-ship`, {
       method: 'POST',
       body: JSON.stringify({ ship_id: shipId, role })
     }),
 
   removeShipFromFleet: (fleetId: string, shipId: string) =>
-    apiRequest(`/api/fleets/${fleetId}/remove-ship/${shipId}`, {
+    apiRequest(`/api/v1/fleets/${fleetId}/remove-ship/${shipId}`, {
       method: 'DELETE'
     }),
 
   updateFormation: (fleetId: string, formation: string) =>
-    apiRequest(`/api/fleets/${fleetId}/formation?formation=${formation}`, {
+    apiRequest(`/api/v1/fleets/${fleetId}/formation?formation=${formation}`, {
       method: 'PATCH'
     }),
 
   disbandFleet: (fleetId: string) =>
-    apiRequest(`/api/fleets/${fleetId}`, {
+    apiRequest(`/api/v1/fleets/${fleetId}`, {
       method: 'DELETE'
     }),
 
   initiateBattle: (fleetId: string, defenderFleetId: string) =>
-    apiRequest(`/api/fleets/${fleetId}/initiate-battle`, {
+    apiRequest(`/api/v1/fleets/${fleetId}/initiate-battle`, {
       method: 'POST',
       body: JSON.stringify({ defender_fleet_id: defenderFleetId })
     }),
 
   simulateBattleRound: (battleId: string) =>
-    apiRequest(`/api/fleets/battles/${battleId}/simulate-round`, {
+    apiRequest(`/api/v1/fleets/battles/${battleId}/simulate-round`, {
       method: 'POST'
     }),
 
   getBattles: (activeOnly?: boolean) => {
     const params = activeOnly ? '?active_only=true' : '';
-    return apiRequest(`/api/fleets/battles${params}`);
+    return apiRequest(`/api/v1/fleets/battles${params}`);
   }
 };
 
 // Faction APIs
 export const factionAPI = {
   getFactions: () =>
-    apiRequest('/api/factions/'),
+    apiRequest('/api/v1/factions/'),
 
   getReputation: () =>
-    apiRequest('/api/factions/reputation'),
+    apiRequest('/api/v1/factions/reputation'),
 
   getFactionReputation: (factionId: string) =>
-    apiRequest(`/api/factions/${factionId}/reputation`),
+    apiRequest(`/api/v1/factions/${factionId}/reputation`),
 
   getMissions: (factionId?: string) => {
     const params = factionId ? `?faction_id=${factionId}` : '';
-    return apiRequest(`/api/factions/missions${params}`);
+    return apiRequest(`/api/v1/factions/missions${params}`);
   },
 
   getTerritory: (factionId: string) =>
-    apiRequest(`/api/factions/${factionId}/territory`),
+    apiRequest(`/api/v1/factions/${factionId}/territory`),
 
   getPricingModifier: (factionId: string) =>
-    apiRequest(`/api/factions/${factionId}/pricing-modifier`)
+    apiRequest(`/api/v1/factions/${factionId}/pricing-modifier`)
 };
 
 // Message APIs
 export const messageAPI = {
   sendMessage: (recipientId: string, content: string, subject?: string) =>
-    apiRequest('/api/messages/send', {
+    apiRequest('/api/v1/messages/send', {
       method: 'POST',
       body: JSON.stringify({ recipientId, subject, content })
     }),
@@ -334,67 +360,67 @@ export const messageAPI = {
   getInbox: (page: number = 1, unreadOnly?: boolean) => {
     const params = new URLSearchParams({ page: page.toString() });
     if (unreadOnly) params.append('unreadOnly', 'true');
-    return apiRequest(`/api/messages/inbox?${params}`);
+    return apiRequest(`/api/v1/messages/inbox?${params}`);
   },
 
   markAsRead: (messageId: string) =>
-    apiRequest(`/api/messages/${messageId}/read`, {
+    apiRequest(`/api/v1/messages/${messageId}/read`, {
       method: 'PUT'
     }),
 
   deleteMessage: (messageId: string) =>
-    apiRequest(`/api/messages/${messageId}`, {
+    apiRequest(`/api/v1/messages/${messageId}`, {
       method: 'DELETE'
     }),
 
   getTeamMessages: (teamId: string, page: number = 1) =>
-    apiRequest(`/api/messages/team/${teamId}?page=${page}`)
+    apiRequest(`/api/v1/messages/team/${teamId}?page=${page}`)
 };
 
 // Ship APIs (partial - may need enhancement)
 export const shipAPI = {
   getShips: () =>
-    apiRequest('/api/ships'), // Endpoint may vary
+    apiRequest('/api/v1/ships'), // Endpoint may vary
 
   getShip: (shipId: string) =>
-    apiRequest(`/api/ships/${shipId}`),
+    apiRequest(`/api/v1/ships/${shipId}`),
 
   updateShip: (shipId: string, updates: any) =>
-    apiRequest(`/api/ships/${shipId}`, {
+    apiRequest(`/api/v1/ships/${shipId}`, {
       method: 'PUT',
       body: JSON.stringify(updates)
     }),
 
   // These may need different endpoints
   getMaintenanceStatus: (shipId: string) =>
-    apiRequest(`/api/ships/${shipId}/maintenance`),
+    apiRequest(`/api/v1/ships/${shipId}/maintenance`),
 
   scheduleMainenance: (shipId: string, components: any[]) =>
-    apiRequest(`/api/ships/${shipId}/maintenance`, {
+    apiRequest(`/api/v1/ships/${shipId}/maintenance`, {
       method: 'POST',
       body: JSON.stringify({ components })
     }),
 
   getInsurance: (shipId: string) =>
-    apiRequest(`/api/ships/${shipId}/insurance`),
+    apiRequest(`/api/v1/ships/${shipId}/insurance`),
 
   purchaseInsurance: (shipId: string, coverage: string) =>
-    apiRequest(`/api/ships/${shipId}/insurance`, {
+    apiRequest(`/api/v1/ships/${shipId}/insurance`, {
       method: 'POST',
       body: JSON.stringify({ coverage })
     }),
 
   fileInsuranceClaim: (shipId: string, details: any) =>
-    apiRequest(`/api/ships/${shipId}/insurance/claim`, {
+    apiRequest(`/api/v1/ships/${shipId}/insurance/claim`, {
       method: 'POST',
       body: JSON.stringify(details)
     }),
 
   getUpgrades: (shipId: string) =>
-    apiRequest(`/api/ships/${shipId}/upgrades`),
+    apiRequest(`/api/v1/ships/${shipId}/upgrades`),
 
   installUpgrade: (shipId: string, upgradeId: string) =>
-    apiRequest(`/api/ships/${shipId}/upgrades`, {
+    apiRequest(`/api/v1/ships/${shipId}/upgrades`, {
       method: 'POST',
       body: JSON.stringify({ upgradeId })
     })
@@ -403,25 +429,25 @@ export const shipAPI = {
 // Trading Intelligence APIs
 export const tradingAPI = {
   getMarketData: (sectorId: number | null, range: number) =>
-    apiRequest('/api/trading/market-data', {
+    apiRequest('/api/v1/trading/market-data', {
       method: 'POST',
       body: JSON.stringify({ sectorId, range })
     }),
 
   getPricePredictions: (params: any) =>
-    apiRequest('/api/trading/predictions', {
+    apiRequest('/api/v1/trading/predictions', {
       method: 'POST',
       body: JSON.stringify(params)
     }),
 
   optimizeRoutes: (params: any) =>
-    apiRequest('/api/trading/optimize-routes', {
+    apiRequest('/api/v1/trading/optimize-routes', {
       method: 'POST',
       body: JSON.stringify(params)
     }),
 
   getCompetitionAnalysis: (params: any) =>
-    apiRequest('/api/trading/competition', {
+    apiRequest('/api/v1/trading/competition', {
       method: 'POST',
       body: JSON.stringify(params)
     })
@@ -430,37 +456,37 @@ export const tradingAPI = {
 // Player Analytics APIs
 export const playerAPI = {
   getAnalytics: (playerId: string, params: any) =>
-    apiRequest(`/api/players/${playerId}/analytics`, {
+    apiRequest(`/api/v1/players/${playerId}/analytics`, {
       method: 'POST',
       body: JSON.stringify(params)
     }),
 
   getAchievements: (playerId: string) =>
-    apiRequest(`/api/players/${playerId}/achievements`),
+    apiRequest(`/api/v1/players/${playerId}/achievements`),
 
   getProgressData: (playerId: string, timeRange: string) =>
-    apiRequest(`/api/players/${playerId}/progress?timeRange=${timeRange}`),
+    apiRequest(`/api/v1/players/${playerId}/progress?timeRange=${timeRange}`),
 
   getGoals: (playerId: string) =>
-    apiRequest(`/api/players/${playerId}/goals`),
+    apiRequest(`/api/v1/players/${playerId}/goals`),
 
   getGoalTemplates: () =>
-    apiRequest('/api/players/goal-templates'),
+    apiRequest('/api/v1/players/goal-templates'),
 
   createGoal: (playerId: string, goal: any) =>
-    apiRequest(`/api/players/${playerId}/goals`, {
+    apiRequest(`/api/v1/players/${playerId}/goals`, {
       method: 'POST',
       body: JSON.stringify(goal)
     }),
 
   updateGoal: (playerId: string, goalId: string, updates: any) =>
-    apiRequest(`/api/players/${playerId}/goals/${goalId}`, {
+    apiRequest(`/api/v1/players/${playerId}/goals/${goalId}`, {
       method: 'PUT',
       body: JSON.stringify(updates)
     }),
 
   deleteGoal: (playerId: string, goalId: string) =>
-    apiRequest(`/api/players/${playerId}/goals/${goalId}`, {
+    apiRequest(`/api/v1/players/${playerId}/goals/${goalId}`, {
       method: 'DELETE'
     }),
 
@@ -473,7 +499,7 @@ export const playerAPI = {
         if (value) queryParams.append(key, String(value));
       });
     }
-    return apiRequest(`/api/leaderboards/${category}?${queryParams}`);
+    return apiRequest(`/api/v1/leaderboards/${category}?${queryParams}`);
   }
 };
 
