@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import axios from 'axios';
 import { useAuth } from './AuthContext';
+import apiClient from '../services/apiClient';
 
 // Types for game state
 export interface Ship {
@@ -204,31 +204,8 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Market
   const [marketInfo, setMarketInfo] = useState<MarketInfo | null>(null);
   
-  // Use Vite proxy for all API requests to avoid CORS issues
-  const getApiUrl = () => {
-    // If an environment variable is explicitly set, use it
-    if (import.meta.env.VITE_API_URL) {
-      return import.meta.env.VITE_API_URL;
-    }
-
-    // Always use the current origin to leverage Vite proxy in Docker environments
-    // This ensures all API calls go through the Vite dev server proxy
-    return window.location.origin;  // Use current origin, which will use the proxy
-  };
-
-  // Set up axios with authorization header
-  const api = axios.create({
-    baseURL: getApiUrl(),
-  });
-  
-  // Use token from localStorage directly instead of from context
-  api.interceptors.request.use(config => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  });
+  // Use the shared apiClient which handles token refresh automatically
+  const api = apiClient;
   
   // Check first login status
   const checkFirstLoginStatus = async (): Promise<boolean> => {
@@ -314,7 +291,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     console.log('GameContext: Refreshing player state for user:', user.username);
-    console.log('GameContext: API base URL:', getApiUrl());
+    console.log('GameContext: Refreshing player state');
 
     refreshInProgress.current = true;
     setIsLoading(true);

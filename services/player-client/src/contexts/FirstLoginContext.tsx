@@ -1,67 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import axios from 'axios';
 import { useAuth } from './AuthContext';
+import apiClient from '../services/apiClient';
 
-// Create an axios instance that uses the Vite proxy
-const api = axios.create({
-  baseURL: '', // Empty baseURL to use current origin and proxy
-  withCredentials: false
-});
-
-// Add interceptor to include auth token
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Add response interceptor for automatic token refresh on 401
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    // If error is 401 and not already retrying, attempt to refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        // Get the refresh token from localStorage
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-
-        // Call refresh endpoint
-        const response = await axios.post('/api/v1/auth/refresh', {
-          refresh_token: refreshToken
-        }, {
-          headers: { Authorization: '' } // Don't send current auth header
-        });
-
-        const { access_token, refresh_token } = response.data;
-
-        // Update tokens in localStorage
-        localStorage.setItem('accessToken', access_token);
-        localStorage.setItem('refreshToken', refresh_token);
-
-        // Update the failed request's auth header and retry
-        originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        // If refresh fails, clear tokens and redirect to login
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
+// Use the shared apiClient which handles token attachment and 401 refresh
+const api = apiClient;
 
 // Types for first login state
 export interface FirstLoginSession {
