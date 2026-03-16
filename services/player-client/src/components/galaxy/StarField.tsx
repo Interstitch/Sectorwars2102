@@ -1,6 +1,5 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Points, PointMaterial } from '@react-three/drei';
 import * as THREE from 'three';
 
 interface StarFieldProps {
@@ -10,24 +9,25 @@ interface StarFieldProps {
 
 export default function StarField({ count = 5000, radius = 300 }: StarFieldProps) {
   const pointsRef = useRef<THREE.Points>(null);
-  
-  // Generate star positions
-  const [positions, colors] = useMemo(() => {
+
+  // Generate star positions and colors
+  const geometry = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
-    
+
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
-      
+
       // Generate random positions in a sphere
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(Math.random() * 2 - 1);
       const r = Math.random() * radius;
-      
+
       positions[i3] = r * Math.sin(phi) * Math.cos(theta);
       positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
       positions[i3 + 2] = r * Math.cos(phi);
-      
+
       // Generate star colors (mostly white with some blue and yellow stars)
       const colorType = Math.random();
       if (colorType < 0.7) {
@@ -47,8 +47,11 @@ export default function StarField({ count = 5000, radius = 300 }: StarFieldProps
         colors[i3 + 2] = 0.6;
       }
     }
-    
-    return [positions, colors];
+
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    return geo;
   }, [count, radius]);
 
   // Subtle rotation animation
@@ -60,8 +63,8 @@ export default function StarField({ count = 5000, radius = 300 }: StarFieldProps
   });
 
   return (
-    <Points ref={pointsRef} positions={positions}>
-      <PointMaterial
+    <points ref={pointsRef} geometry={geometry}>
+      <pointsMaterial
         transparent
         vertexColors
         size={0.5}
@@ -69,10 +72,6 @@ export default function StarField({ count = 5000, radius = 300 }: StarFieldProps
         depthWrite={false}
         blending={THREE.AdditiveBlending}
       />
-      <bufferAttribute
-        attach="attributes-color"
-        args={[colors, 3]}
-      />
-    </Points>
+    </points>
   );
 }
