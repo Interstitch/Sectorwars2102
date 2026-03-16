@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useGame } from '../../contexts/GameContext';
 import { useFirstLogin } from '../../contexts/FirstLoginContext';
 import { useWebSocket } from '../../contexts/WebSocketContext';
@@ -124,7 +124,36 @@ const GameDashboard: React.FC = () => {
     setLandingResult(null);
   }, [currentSector?.id]);
 
-  
+  // Auto-dismiss cockpit alerts after 5 seconds
+  const movementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dockingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const landingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (movementTimerRef.current) clearTimeout(movementTimerRef.current);
+    if (movementResult) {
+      movementTimerRef.current = setTimeout(() => setMovementResult(null), 5000);
+    }
+    return () => { if (movementTimerRef.current) clearTimeout(movementTimerRef.current); };
+  }, [movementResult]);
+
+  useEffect(() => {
+    if (dockingTimerRef.current) clearTimeout(dockingTimerRef.current);
+    if (dockingResult) {
+      dockingTimerRef.current = setTimeout(() => setDockingResult(null), 5000);
+    }
+    return () => { if (dockingTimerRef.current) clearTimeout(dockingTimerRef.current); };
+  }, [dockingResult]);
+
+  useEffect(() => {
+    if (landingTimerRef.current) clearTimeout(landingTimerRef.current);
+    if (landingResult) {
+      landingTimerRef.current = setTimeout(() => setLandingResult(null), 5000);
+    }
+    return () => { if (landingTimerRef.current) clearTimeout(landingTimerRef.current); };
+  }, [landingResult]);
+
+
   const handleMove = async (sectorId: number) => {
     try {
       const result = await moveToSector(sectorId);

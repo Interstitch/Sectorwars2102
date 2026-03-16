@@ -21,6 +21,8 @@ interface TradeCalculation {
   fitsInCargo: boolean;
 }
 
+const formatName = (name: string) => name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
 const TradingInterface: React.FC = () => {
   const {
     playerState,
@@ -405,7 +407,7 @@ const TradingInterface: React.FC = () => {
                     }}
                   >
                     <div className="resource-icon">{getResourceIcon(resourceType)}</div>
-                    <div className="resource-name">{resourceType}</div>
+                    <div className="resource-name">{formatName(resourceType)}</div>
                     <div className="resource-prices">
                       <div className="buy-price">Buy: {formatCredits(resource.buy_price)}</div>
                       <div className="sell-price">Sell: {formatCredits(resource.sell_price)}</div>
@@ -434,7 +436,7 @@ const TradingInterface: React.FC = () => {
             <div className="selected-resource-info">
               <span className="resource-icon-large">{getResourceIcon(selectedResource)}</span>
               <div className="resource-details">
-                <span className="resource-name-large">{selectedResource}</span>
+                <span className="resource-name-large">{formatName(selectedResource)}</span>
                 <span className="resource-price">
                   {tradeMode === 'buy'
                     ? `Buy @ ${formatCredits(marketInfo.resources[selectedResource]?.buy_price || 0)}/unit`
@@ -447,7 +449,7 @@ const TradingInterface: React.FC = () => {
               className="open-trade-modal-button"
               onClick={() => setShowConfirmDialog(true)}
             >
-              {tradeMode === 'buy' ? 'Buy' : 'Sell'} {selectedResource}
+              {tradeMode === 'buy' ? 'Buy' : 'Sell'} {formatName(selectedResource)}
             </button>
           </div>
         )}
@@ -460,7 +462,7 @@ const TradingInterface: React.FC = () => {
             <div className="trade-modal-header">
               <div className="modal-resource-info">
                 <span className="modal-resource-icon">{getResourceIcon(selectedResource)}</span>
-                <h3>{tradeMode === 'buy' ? 'Buy' : 'Sell'} {selectedResource}</h3>
+                <h3>{tradeMode === 'buy' ? 'Buy' : 'Sell'} {formatName(selectedResource)}</h3>
               </div>
               <button className="modal-close" onClick={() => setShowConfirmDialog(false)}>×</button>
             </div>
