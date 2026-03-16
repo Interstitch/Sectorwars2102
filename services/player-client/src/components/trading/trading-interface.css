@@ -336,6 +336,24 @@
   opacity: 0.8;
 }
 
+.resource-trade-hint {
+  text-align: center;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-color);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border-color);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.resource-card:hover:not(.disabled) .resource-trade-hint {
+  opacity: 1;
+}
+
 /* Trade Configuration */
 .trade-configuration {
   background: var(--bg-color);

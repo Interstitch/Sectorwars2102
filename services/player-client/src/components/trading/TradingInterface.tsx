@@ -185,6 +185,8 @@ const TradingInterface: React.FC = () => {
   const handleResourceChange = (resourceType: string) => {
     setSelectedResource(resourceType);
     setTradeQuantity(1);
+    // Directly open the trade modal so the player can immediately buy/sell
+    setShowConfirmDialog(true);
   };
 
   const handleTradeModeChange = (mode: 'buy' | 'sell') => {
@@ -240,9 +242,12 @@ const TradingInterface: React.FC = () => {
       }
 
       // Show success notification
+      const defaultMsg = tradeMode === 'buy'
+        ? `Bought ${tradeQuantity} ${selectedResource}`
+        : `Sold ${tradeQuantity} ${selectedResource}`;
       addNotification({
         title: 'Trade Successful',
-        content: result.message,
+        content: result?.message || defaultMsg,
         level: 'success'
       });
 
@@ -253,7 +258,7 @@ const TradingInterface: React.FC = () => {
     } catch (error: any) {
       addNotification({
         title: 'Trade Failed',
-        content: error.response?.data?.message || 'Failed to execute trade',
+        content: error.response?.data?.detail || error.response?.data?.message || 'Failed to execute trade',
         level: 'error'
       });
     }
@@ -390,6 +395,14 @@ const TradingInterface: React.FC = () => {
                     key={resourceType}
                     className={`resource-card ${!canTrade ? 'disabled' : ''} ${selectedResource === resourceType ? 'selected' : ''}`}
                     onClick={() => canTrade && handleResourceChange(resourceType)}
+                    role="button"
+                    tabIndex={canTrade ? 0 : -1}
+                    onKeyDown={(e) => {
+                      if (canTrade && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        handleResourceChange(resourceType);
+                      }
+                    }}
                   >
                     <div className="resource-icon">{getResourceIcon(resourceType)}</div>
                     <div className="resource-name">{resourceType}</div>
@@ -403,6 +416,11 @@ const TradingInterface: React.FC = () => {
                         : `You have: ${playerAmount}`
                       }
                     </div>
+                    {canTrade && (
+                      <div className="resource-trade-hint">
+                        Click to {tradeMode}
+                      </div>
+                    )}
                   </div>
                 );
               })}
