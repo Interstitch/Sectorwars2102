@@ -43,9 +43,9 @@ const GalaxyMap: React.FC = () => {
       setLocalSectors([]);
       setConnections([]);
       
-      // Add current sector
+      // Add current sector (use sector_id for the numeric display ID, not id which is UUID)
       const currentSectorObj: MapSector = {
-        id: currentSector.id,
+        id: currentSector.sector_id,
         name: currentSector.name,
         type: currentSector.type,
         x: 0,
@@ -79,7 +79,7 @@ const GalaxyMap: React.FC = () => {
           });
           
           newConnections.push({
-            from: currentSector.id,
+            from: currentSector.sector_id,
             to: warp.sector_id,
             isTunnel: false,
             isOneWay: false // Assuming bidirectional by default
@@ -108,7 +108,7 @@ const GalaxyMap: React.FC = () => {
           });
           
           newConnections.push({
-            from: currentSector.id,
+            from: currentSector.sector_id,
             to: tunnel.sector_id,
             isTunnel: true,
             isOneWay: false // Could use tunnel.tunnel_type to determine this
@@ -164,7 +164,7 @@ const GalaxyMap: React.FC = () => {
   };
   
   const handleTravelClick = () => {
-    if (selectedSector && selectedSector.id !== currentSector?.id) {
+    if (selectedSector && selectedSector.id !== currentSector?.sector_id) {
       moveToSector(selectedSector.id);
     }
   };
@@ -233,14 +233,14 @@ const GalaxyMap: React.FC = () => {
                 onSectorSelect={(sector) => {
                   // Convert from full Sector to MapSector for compatibility
                   const mapSector: MapSector = {
-                    id: sector.id,
+                    id: sector.sector_id,
                     name: sector.name,
                     type: (sector as any).sector_type || 'normal',
                     x: 0, // Position handled by 3D renderer
                     y: 0,
                     isConnected: true,
                     isDiscovered: true,
-                    isCurrent: sector.id === currentSector?.id
+                    isCurrent: sector.sector_id === currentSector?.sector_id
                   };
                   setSelectedSector(mapSector);
                 }}

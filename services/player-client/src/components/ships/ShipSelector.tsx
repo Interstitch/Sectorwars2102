@@ -197,8 +197,23 @@ export const ShipSelector: React.FC<ShipSelectorProps> = ({
   
   // Calculate cargo usage percentage
   const getCargoUsage = (ship: Ship): number => {
-    const used = Object.values(ship.cargo || {}).reduce((sum, val) => sum + (typeof val === 'number' ? val : 0), 0);
-    return ship.cargo_capacity > 0 ? (used / ship.cargo_capacity * 100) : 0;
+    const cargo = ship.cargo || {};
+    // The API cargo format is {"capacity": N, "used": N, "contents": {...}}
+    // If "used" field exists, use it directly; otherwise sum numeric values
+    // excluding metadata fields like "capacity"
+    let used: number;
+    if (typeof cargo.used === 'number') {
+      used = cargo.used;
+    } else {
+      // Fallback for mock data or alternative cargo formats: sum commodity values
+      // but exclude metadata keys like "capacity", "used", "contents"
+      const metadataKeys = ['capacity', 'used', 'contents'];
+      used = Object.entries(cargo)
+        .filter(([key, val]) => !metadataKeys.includes(key) && typeof val === 'number')
+        .reduce((sum, [, val]) => sum + (val as number), 0);
+    }
+    const capacity = ship.cargo_capacity > 0 ? ship.cargo_capacity : (typeof cargo.capacity === 'number' ? cargo.capacity : 0);
+    return capacity > 0 ? (used / capacity * 100) : 0;
   };
   
   // Get ship condition color
@@ -299,7 +314,7 @@ export const ShipSelector: React.FC<ShipSelectorProps> = ({
                 <div className="stat">
                   <span className="label">Combat:</span>
                   <span className="value">
-                    ⚔️ {ship.combat?.attack_rating || 0} / 🛡️ {ship.combat?.defense_rating || 0}
+                    Atk {ship.combat?.attack_rating ?? ship.combat?.weapons ?? 'N/A'} / Def {ship.combat?.defense_rating ?? 'N/A'}
                   </span>
                 </div>
                 <div className="stat">
@@ -347,17 +362,31 @@ export const ShipSelector: React.FC<ShipSelectorProps> = ({
               </div>
             </div>
             
-            {ship.combat?.shields && (
+            {ship.combat?.shields != null && (
               <div className="shields-section">
                 <div className="shields-label">Shields:</div>
                 <div className="shields-bar">
-                  <div 
-                    className="shields-fill"
-                    style={{ width: `${(ship.combat.shields.current / ship.combat.shields.max) * 100}%` }}
-                  />
-                  <span className="shields-text">
-                    {ship.combat.shields.current}/{ship.combat.shields.max}
-                  </span>
+                  {typeof ship.combat.shields === 'object' && ship.combat.shields !== null ? (
+                    <>
+                      <div
+                        className="shields-fill"
+                        style={{ width: `${ship.combat.shields.max > 0 ? (ship.combat.shields.current / ship.combat.shields.max) * 100 : 0}%` }}
+                      />
+                      <span className="shields-text">
+                        {ship.combat.shields.current}/{ship.combat.shields.max}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        className="shields-fill"
+                        style={{ width: `${ship.combat.max_shields > 0 ? (ship.combat.shields / ship.combat.max_shields) * 100 : 100}%` }}
+                      />
+                      <span className="shields-text">
+                        {ship.combat.shields}{ship.combat.max_shields ? `/${ship.combat.max_shields}` : ''}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             )}
