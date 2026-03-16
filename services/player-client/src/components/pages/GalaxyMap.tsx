@@ -58,15 +58,21 @@ const GalaxyMap: React.FC = () => {
       const newSectors: MapSector[] = [currentSectorObj];
       const newConnections: MapConnection[] = [];
       
-      // Add directly connected sectors (warps)
+      // Track sector IDs already added to avoid duplicate React keys
+      const addedSectorIds = new Set<number>([currentSector.sector_id]);
+
+      // Add directly connected sectors (warps), skipping duplicates of current sector
       if (availableMoves.warps && availableMoves.warps.length) {
-        availableMoves.warps.forEach((warp, index) => {
+        const filteredWarps = availableMoves.warps.filter(
+          warp => !addedSectorIds.has(warp.sector_id)
+        );
+        filteredWarps.forEach((warp, index) => {
           // Layout in a circle around current sector
-          const angle = (2 * Math.PI * index) / availableMoves.warps.length;
+          const angle = (2 * Math.PI * index) / filteredWarps.length;
           const radius = 150;
           const x = Math.cos(angle) * radius;
           const y = Math.sin(angle) * radius;
-          
+
           newSectors.push({
             id: warp.sector_id,
             name: warp.name,
@@ -77,7 +83,9 @@ const GalaxyMap: React.FC = () => {
             isDiscovered: true,
             isCurrent: false
           });
-          
+
+          addedSectorIds.add(warp.sector_id);
+
           newConnections.push({
             from: currentSector.sector_id,
             to: warp.sector_id,
@@ -86,16 +94,19 @@ const GalaxyMap: React.FC = () => {
           });
         });
       }
-      
-      // Add warp tunnel connections
+
+      // Add warp tunnel connections, skipping duplicates of current sector or warps
       if (availableMoves.tunnels && availableMoves.tunnels.length) {
-        availableMoves.tunnels.forEach((tunnel, index) => {
+        const filteredTunnels = availableMoves.tunnels.filter(
+          tunnel => !addedSectorIds.has(tunnel.sector_id)
+        );
+        filteredTunnels.forEach((tunnel, index) => {
           // Layout tunnels further out
-          const angle = (2 * Math.PI * index) / availableMoves.tunnels.length;
+          const angle = (2 * Math.PI * index) / filteredTunnels.length;
           const radius = 300;
           const x = Math.cos(angle) * radius;
           const y = Math.sin(angle) * radius;
-          
+
           newSectors.push({
             id: tunnel.sector_id,
             name: tunnel.name,
@@ -106,7 +117,9 @@ const GalaxyMap: React.FC = () => {
             isDiscovered: true,
             isCurrent: false
           });
-          
+
+          addedSectorIds.add(tunnel.sector_id);
+
           newConnections.push({
             from: currentSector.sector_id,
             to: tunnel.sector_id,
@@ -166,6 +179,7 @@ const GalaxyMap: React.FC = () => {
   const handleTravelClick = () => {
     if (selectedSector && selectedSector.id !== currentSector?.sector_id) {
       moveToSector(selectedSector.id);
+      setSelectedSector(null);
     }
   };
   
