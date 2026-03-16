@@ -29,6 +29,7 @@ const TradingInterface: React.FC = () => {
     getMarketInfo,
     buyResource,
     sellResource,
+    dockAtStation,
     stationsInSector,
     isLoading,
     error
@@ -46,6 +47,7 @@ const TradingInterface: React.FC = () => {
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
   const [tradeCalculation, setTradeCalculation] = useState<TradeCalculation | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [dockingStationId, setDockingStationId] = useState<string | null>(null);
 
   // Track which port we've already fetched market info for
   const lastFetchedPortId = useRef<string | null>(null);
@@ -151,6 +153,28 @@ const TradingInterface: React.FC = () => {
       </div>
     );
   }
+
+  const handleDock = async (stationId: string) => {
+    setDockingStationId(stationId);
+    try {
+      await dockAtStation(stationId);
+      // After successful dock, select this port for trading
+      setSelectedPort(stationId);
+      addNotification({
+        title: 'Docked',
+        content: 'Successfully docked at station.',
+        level: 'success'
+      });
+    } catch (err: any) {
+      addNotification({
+        title: 'Docking Failed',
+        content: err.response?.data?.detail || err.response?.data?.message || 'Failed to dock at station.',
+        level: 'error'
+      });
+    } finally {
+      setDockingStationId(null);
+    }
+  };
 
   const handlePortChange = (stationId: string) => {
     setSelectedPort(stationId);
@@ -270,8 +294,17 @@ const TradingInterface: React.FC = () => {
               <ul>
                 {portsInSector.map(port => (
                   <li key={port.id} className="port-item">
-                    <span className="port-name">{port.name}</span>
-                    <span className="port-type">{port.type}</span>
+                    <div className="port-info">
+                      <span className="port-name">{port.name}</span>
+                      <span className="port-type">{port.type}</span>
+                    </div>
+                    <button
+                      className="dock-button"
+                      onClick={() => handleDock(port.id)}
+                      disabled={dockingStationId !== null}
+                    >
+                      {dockingStationId === port.id ? 'Docking...' : 'Dock'}
+                    </button>
                   </li>
                 ))}
               </ul>
