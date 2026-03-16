@@ -144,8 +144,14 @@ Docker containers run on a remote GCP VM, accessed securely via Tailscale. Max d
 ```bash
 ./dev-scripts/vm-start.sh                        # Start VM, wait for Tailscale
 ./dev-scripts/vm-stop.sh                         # Stop VM (saves cost)
-./dev-scripts/vm-sync.sh                         # Rsync code to VM (excludes node_modules, .git)
+./dev-scripts/vm-sync.sh                         # Push dev branch + git pull on VM
 ```
+
+**Git Workflow**:
+- **`dev` branch**: All development work. Commit freely, push to sync to VM.
+- **`master` branch**: Tested, validated code only. Merge from dev when ready.
+- VM tracks `origin/dev` — `vm-sync.sh` pushes and pulls automatically.
+- Containers volume-mount source from VM repo, so changes hot-reload on pull.
 
 **VM SSH & Docker Commands**:
 ```bash
