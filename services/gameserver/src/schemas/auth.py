@@ -20,6 +20,12 @@ class LoginForm(BaseModel):
     mfa_code: Optional[str] = Field(None, description="MFA code (required if MFA is enabled)")
 
 
+class RegisterForm(BaseModel):
+    username: str = Field(..., description="Username (3-30 chars, alphanumeric + underscores)")
+    email: str = Field(..., description="Valid email address")
+    password: str = Field(..., description="Password (minimum 8 characters)")
+
+
 class RefreshToken(BaseModel):
     refresh_token: str = Field(..., description="Refresh token to get new access token")
 

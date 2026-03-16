@@ -48,12 +48,18 @@ async def status_root(request: Request):
     
     # Include request debugging information in development
     if settings.DEBUG:
+        # Strip sensitive headers to prevent credential leakage (BETA-011)
+        SENSITIVE_HEADERS = {"authorization", "cookie", "set-cookie", "proxy-authorization", "x-api-key"}
+        safe_headers = {
+            k: v for k, v in request.headers.items()
+            if k.lower() not in SENSITIVE_HEADERS
+        }
         response["debug"] = {
             "host": host,
             "origin": origin,
             "x-forwarded-host": forwarded_host,
             "x-forwarded-proto": forwarded_proto,
-            "headers": dict(request.headers),
+            "headers": safe_headers,
             "url": str(request.url),
             "base_url": str(request.base_url),
             "method": request.method,

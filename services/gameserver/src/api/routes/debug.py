@@ -1,11 +1,12 @@
-"""Debug endpoints for troubleshooting authentication and player issues"""
+"""Debug endpoints for troubleshooting authentication and player issues.
+All debug endpoints require admin authentication."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from src.core.database import get_db
-from src.auth.dependencies import get_current_user, get_current_player
+from src.auth.dependencies import get_current_user, get_current_player, get_current_admin_user
 from src.models.user import User
 from src.models.player import Player
 from src.models.ship import Ship
@@ -16,10 +17,10 @@ router = APIRouter()
 
 @router.get("/debug/user-state")
 async def get_user_state(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Get complete user and player state for debugging"""
+    """Get complete user and player state for debugging. Requires admin authentication."""
     
     # Get player record
     player = db.query(Player).filter(Player.user_id == current_user.id).first()
@@ -101,8 +102,11 @@ async def get_user_state(
 
 
 @router.get("/debug/sector-check")
-async def check_sectors(db: Session = Depends(get_db)):
-    """Check if sectors exist in the database"""
+async def check_sectors(
+    current_admin: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Check if sectors exist in the database. Requires admin authentication."""
     sectors = db.query(Sector).limit(5).all()
     
     return {

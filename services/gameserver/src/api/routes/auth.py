@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Body
 from fastapi.security import OAuth2PasswordRequestForm
@@ -14,7 +15,7 @@ from src.auth.oauth import GitHubOAuth, GoogleOAuth, SteamAuth, get_oauth_user, 
 from src.core.database import get_db
 from src.core.config import settings
 from src.models.refresh_token import RefreshToken
-from src.schemas.auth import Token, RefreshToken as RefreshTokenSchema, AuthResponse, LoginForm
+from src.schemas.auth import Token, RefreshToken as RefreshTokenSchema, AuthResponse, LoginForm, RegisterForm
 from src.services.user_service import authenticate_admin, authenticate_player, update_user_last_login
 from src.services.mfa_service import MFAService
 
@@ -306,14 +307,34 @@ async def options_player_login():
 
 @router.post("/register", response_model=dict)
 async def register_user(
-    username: str = Body(...),
-    email: str = Body(...),
-    password: str = Body(...),
+    form_data: RegisterForm,
     db: Session = Depends(get_db)
 ):
     """
     Register a new user with username, email, and password.
+    Validates: username (3-30 chars, alphanumeric+underscores), email format, password (min 8 chars).
     """
+    username = form_data.username.strip()
+    email = form_data.email.strip().lower()
+    password = form_data.password
+
+    # --- Input validation (GAMMA-001, GAMMA-002) ---
+    errors = []
+    if not re.match(r"^[a-zA-Z0-9_]{3,30}$", username):
+        errors.append(
+            "Username must be 3-30 characters and contain only letters, numbers, and underscores"
+        )
+    email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    if not re.match(email_regex, email):
+        errors.append("Invalid email format")
+    if len(password) < 8:
+        errors.append("Password must be at least 8 characters")
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=errors
+        )
+
     # Check if username or email already exists
     existing_user = db.query(User).filter(
         (User.username == username) | (User.email == email),

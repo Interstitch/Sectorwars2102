@@ -6,7 +6,7 @@ from sqlalchemy import select, func
 from typing import Dict, List, Any, Optional
 from pydantic import BaseModel
 
-from src.auth.dependencies import get_current_user, get_current_player
+from src.auth.dependencies import get_current_user, get_current_player, get_current_admin_user
 from src.core.database import get_async_session
 from src.models.user import User
 from src.models.player import Player
@@ -61,21 +61,11 @@ class ClusterInfoResponse(BaseModel):
 async def generate_central_nexus(
     request: NexusGenerationRequest,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
-    current_player: Player = Depends(get_current_player),
+    current_admin: User = Depends(get_current_admin_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    """Generate the Central Nexus galaxy (Admin only)"""
+    """Generate the Central Nexus galaxy (Admin only). Requires admin authentication."""
     try:
-        # Check admin permissions
-        has_permission = await regional_auth.check_regional_permission(
-            str(current_user.id),
-            "central-nexus",
-            RegionalPermission.GALAXY_ADMIN_FULL
-        )
-        
-        if not has_permission:
-            raise HTTPException(status_code=403, detail="Admin access required")
         
         # Check if nexus already exists
         existing_nexus = await session.execute(

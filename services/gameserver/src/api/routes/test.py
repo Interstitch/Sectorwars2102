@@ -1,6 +1,7 @@
 """
 Test routes for use in e2e testing.
-These endpoints should only be accessible in test/dev environments.
+These endpoints should only be accessible in test/dev environments
+and require admin authentication.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel
@@ -12,6 +13,7 @@ from src.core.config import settings
 from src.models.user import User
 from src.models.admin_credentials import AdminCredentials
 from src.core.security import get_password_hash
+from src.auth.dependencies import get_current_admin_user
 
 router = APIRouter()
 
@@ -25,18 +27,19 @@ class CreateAdminRequest(BaseModel):
 @router.get("/check-admin-exists")
 async def check_admin_exists(
     username: str = Query(..., description="Username to check"),
+    current_admin: User = Depends(get_current_admin_user),
     db: Session = Depends(get_async_session)
 ):
     """
     Check if an admin user with the given username exists.
-    This endpoint is for testing purposes only.
+    This endpoint is for testing purposes only. Requires admin authentication.
     """
     if not settings.TESTING and not settings.DEVELOPMENT_MODE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This endpoint is only available in test environments"
         )
-    
+
     user = db.query(User).filter(User.username == username, User.is_admin == True).first()
     return {"exists": user is not None}
 
@@ -44,23 +47,24 @@ async def check_admin_exists(
 @router.post("/create-admin", status_code=status.HTTP_201_CREATED)
 async def create_admin(
     request: CreateAdminRequest,
+    current_admin: User = Depends(get_current_admin_user),
     db: Session = Depends(get_async_session)
 ):
     """
     Create an admin user for testing purposes.
-    This endpoint is for testing purposes only.
+    This endpoint is for testing purposes only. Requires admin authentication.
     """
     if not settings.TESTING and not settings.DEVELOPMENT_MODE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This endpoint is only available in test environments"
         )
-    
+
     # Check if user already exists
     existing_user = db.query(User).filter(User.username == request.username).first()
     if existing_user:
         return {"message": "User already exists", "user_id": str(existing_user.id)}
-    
+
     # Create the user
     user = User(
         id=uuid4(),
@@ -71,7 +75,7 @@ async def create_admin(
     )
     db.add(user)
     db.flush()  # Flush to get the ID
-    
+
     # Create admin credentials
     admin_creds = AdminCredentials(
         id=uuid4(),
@@ -79,8 +83,8 @@ async def create_admin(
         password_hash=get_password_hash(request.password)
     )
     db.add(admin_creds)
-    
+
     # Commit the transaction
     db.commit()
-    
+
     return {"message": "Admin user created successfully", "user_id": str(user.id)}
