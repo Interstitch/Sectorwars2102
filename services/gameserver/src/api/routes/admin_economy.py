@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
-from src.core.database import get_async_session
+from src.core.database import get_async_session, get_db
 from src.auth.dependencies import require_admin
 from src.models.user import User
 from src.services.economy_analytics_service import EconomyAnalyticsService
@@ -268,4 +268,35 @@ async def get_dashboard_summary(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate dashboard summary: {str(e)}"
+        )
+
+
+@router.post("/backfill-market-prices")
+async def backfill_market_prices(
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Backfill MarketPrice entries for all stations that are missing them.
+
+    This repairs the trading system for stations that were created before
+    MarketPrice generation was added to the galaxy generation pipeline.
+    Stations that already have MarketPrice entries are skipped.
+
+    **Required permissions**: Admin access
+    """
+    try:
+        from src.services.galaxy_service import GalaxyGenerator
+        stats = GalaxyGenerator.backfill_market_prices(db)
+        return {
+            "status": "success",
+            "message": f"Backfill complete: processed {stats['stations_processed']} stations, "
+                       f"created {stats['prices_created']} market prices, "
+                       f"skipped {stats['stations_skipped']} stations (already had prices)",
+            "stats": stats
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Market price backfill failed: {str(e)}"
         )
