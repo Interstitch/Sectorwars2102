@@ -22,7 +22,7 @@ from src.models.player import Player
 from src.services.fleet_service import FleetService
 from src.services.audit_service import AuditService, AuditAction
 
-router = APIRouter(prefix="/api/admin/fleets", tags=["admin", "fleets"])
+router = APIRouter(prefix="/admin/fleets", tags=["admin", "fleets"])
 
 
 # Response Models

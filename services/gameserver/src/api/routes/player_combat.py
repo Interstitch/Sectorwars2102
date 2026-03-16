@@ -15,7 +15,7 @@ from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.services.player_combat_service import PlayerCombatService
 
-router = APIRouter(prefix="/api/combat", tags=["player-combat"])
+router = APIRouter(prefix="/combat", tags=["player-combat"])
 
 
 # Request/Response Models

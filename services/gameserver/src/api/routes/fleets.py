@@ -16,7 +16,7 @@ from src.models.player import Player
 from src.models.fleet import FleetRole, FleetStatus
 from src.services.fleet_service import FleetService
 
-router = APIRouter(prefix="/api/fleets", tags=["fleets"])
+router = APIRouter(prefix="/fleets", tags=["fleets"])
 
 
 # Request/Response Models

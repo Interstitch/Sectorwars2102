@@ -35,7 +35,7 @@ from src.utils.validation import validate_uuid
 from src.middleware.rate_limit import RateLimitMiddleware
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/v1/ai", tags=["Enhanced AI"])
+router = APIRouter(prefix="/ai", tags=["Enhanced AI"])
 security = HTTPBearer()
 
 # =============================================================================
