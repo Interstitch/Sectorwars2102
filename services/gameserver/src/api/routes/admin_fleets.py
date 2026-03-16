@@ -3,6 +3,10 @@ Admin fleet management API endpoints.
 
 Provides administrative controls for fleet operations, battles,
 and monitoring across the entire game.
+
+IMPORTANT: Named routes (e.g., /battles, /stats) must be defined
+BEFORE parameterized routes (e.g., /{fleet_id}) to avoid FastAPI
+treating the named path segment as a path parameter.
 """
 
 from typing import List, Optional, Dict, Any
@@ -49,7 +53,7 @@ class AdminFleetResponse(BaseModel):
     member_count: int
     created_at: datetime
     last_battle: Optional[datetime]
-    
+
     class Config:
         from_attributes = True
 
@@ -78,7 +82,7 @@ class AdminBattleResponse(BaseModel):
     winner: Optional[str]
     credits_looted: int
     duration: Optional[str]
-    
+
     class Config:
         from_attributes = True
 
@@ -109,6 +113,11 @@ class InterveneBattleRequest(BaseModel):
     reason: str = Field(..., min_length=10, max_length=500)
 
 
+# =============================================================================
+# Collection-level endpoints (no path parameters)
+# These MUST be defined before /{fleet_id} to prevent route conflicts
+# =============================================================================
+
 # Fleet Management Endpoints
 
 @router.get("/", response_model=List[AdminFleetResponse])
@@ -124,7 +133,7 @@ async def get_all_fleets(
 ):
     """Get all fleets with optional filters."""
     query = db.query(Fleet)
-    
+
     if status:
         query = query.filter(Fleet.status == status)
     if team_id:
@@ -136,9 +145,9 @@ async def get_all_fleets(
             query = query.filter(Fleet.status == FleetStatus.IN_BATTLE.value)
         else:
             query = query.filter(Fleet.status != FleetStatus.IN_BATTLE.value)
-            
+
     fleets = query.offset(skip).limit(limit).all()
-    
+
     return [
         AdminFleetResponse(
             id=fleet.id,
@@ -174,52 +183,52 @@ async def get_fleet_statistics(
     """Get fleet statistics summary."""
     # Total fleets
     total_fleets = db.query(func.count(Fleet.id)).scalar()
-    
+
     # Active fleets (not disbanded)
     active_fleets = db.query(func.count(Fleet.id)).filter(
         Fleet.status != FleetStatus.DISBANDED.value
     ).scalar()
-    
+
     # Fleets in battle
     fleets_in_battle = db.query(func.count(Fleet.id)).filter(
         Fleet.status == FleetStatus.IN_BATTLE.value
     ).scalar()
-    
+
     # Total ships in fleets
     total_ships = db.query(func.sum(Fleet.total_ships)).filter(
         Fleet.status != FleetStatus.DISBANDED.value
     ).scalar() or 0
-    
+
     # Total firepower
     total_firepower = db.query(func.sum(Fleet.total_firepower)).filter(
         Fleet.status != FleetStatus.DISBANDED.value
     ).scalar() or 0
-    
+
     # Average fleet size
     avg_size = total_ships / active_fleets if active_fleets > 0 else 0
-    
+
     # Battles today
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     battles_today = db.query(func.count(FleetBattle.id)).filter(
         FleetBattle.started_at >= today_start
     ).scalar()
-    
+
     # Battles this week
     week_start = today_start.replace(day=today_start.day - today_start.weekday())
     battles_week = db.query(func.count(FleetBattle.id)).filter(
         FleetBattle.started_at >= week_start
     ).scalar()
-    
+
     # Most powerful fleet
     powerful_fleet = db.query(Fleet).filter(
         Fleet.status != FleetStatus.DISBANDED.value
     ).order_by(Fleet.total_firepower.desc()).first()
-    
+
     # Largest fleet
     largest_fleet = db.query(Fleet).filter(
         Fleet.status != FleetStatus.DISBANDED.value
     ).order_by(Fleet.total_ships.desc()).first()
-    
+
     return FleetStatsResponse(
         total_fleets=total_fleets,
         active_fleets=active_fleets,
@@ -244,164 +253,7 @@ async def get_fleet_statistics(
     )
 
 
-@router.get("/{fleet_id}", response_model=AdminFleetResponse)
-async def get_fleet_details(
-    fleet_id: UUID,
-    admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
-):
-    """Get detailed information about a specific fleet."""
-    fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
-    if not fleet:
-        raise HTTPException(status_code=404, detail="Fleet not found")
-        
-    return AdminFleetResponse(
-        id=fleet.id,
-        team_id=fleet.team_id,
-        team_name=fleet.team.name if fleet.team else "Unknown",
-        name=fleet.name,
-        status=fleet.status,
-        formation=fleet.formation,
-        total_ships=fleet.total_ships,
-        total_firepower=fleet.total_firepower,
-        total_shields=fleet.total_shields,
-        total_hull=fleet.total_hull,
-        average_speed=fleet.average_speed,
-        morale=fleet.morale,
-        supply_level=fleet.supply_level,
-        commander_id=fleet.commander_id,
-        commander_name=fleet.commander.name if fleet.commander else None,
-        sector_id=fleet.sector_id,
-        sector_name=fleet.sector.name if fleet.sector else None,
-        member_count=len(fleet.members),
-        created_at=fleet.created_at,
-        last_battle=fleet.last_battle
-    )
-
-
-@router.get("/{fleet_id}/members")
-async def get_fleet_members(
-    fleet_id: UUID,
-    admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
-):
-    """Get all members of a fleet with detailed ship information."""
-    fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
-    if not fleet:
-        raise HTTPException(status_code=404, detail="Fleet not found")
-        
-    members = []
-    for member in fleet.members:
-        ship = member.ship
-        members.append({
-            "member_id": str(member.id),
-            "ship_id": str(member.ship_id),
-            "ship_name": ship.name if ship else "Unknown",
-            "ship_type": ship.type if ship else "Unknown",
-            "player_id": str(member.player_id),
-            "player_name": member.player.name if member.player else "Unknown",
-            "role": member.role,
-            "position": member.position,
-            "ready_status": member.ready_status,
-            "ship_health": {
-                "armor": ship.armor if ship else 0,
-                "max_armor": ship.max_armor if ship else 0,
-                "shields": ship.shields if ship else 0,
-                "max_shields": ship.max_shields if ship else 0
-            } if ship else None
-        })
-        
-    return {"fleet_id": str(fleet_id), "members": members}
-
-
-@router.patch("/{fleet_id}/morale")
-async def adjust_fleet_morale(
-    fleet_id: UUID,
-    morale: int = Query(..., ge=0, le=100),
-    reason: str = Query(..., min_length=10),
-    admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
-):
-    """Adjust fleet morale administratively."""
-    fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
-    if not fleet:
-        raise HTTPException(status_code=404, detail="Fleet not found")
-        
-    old_morale = fleet.morale
-    fleet.morale = morale
-    
-    # Log action
-    audit_service = AuditService(db)
-    audit_service.log_action(
-        user_id=admin.id,
-        action=AuditAction.UPDATE,
-        resource_type="fleet",
-        resource_id=str(fleet_id),
-        details={
-            "field": "morale",
-            "old_value": old_morale,
-            "new_value": morale,
-            "reason": reason
-        }
-    )
-    
-    db.commit()
-    
-    return {"message": f"Fleet morale adjusted from {old_morale} to {morale}"}
-
-
-@router.delete("/{fleet_id}/force-dissolve")
-async def force_dissolve_fleet(
-    fleet_id: UUID,
-    request: ForceDissolveRequest,
-    admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
-):
-    """Force dissolve a fleet administratively."""
-    fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
-    if not fleet:
-        raise HTTPException(status_code=404, detail="Fleet not found")
-        
-    service = FleetService(db)
-    
-    # Log action
-    audit_service = AuditService(db)
-    audit_service.log_action(
-        user_id=admin.id,
-        action=AuditAction.DELETE,
-        resource_type="fleet",
-        resource_id=str(fleet_id),
-        details={
-            "fleet_name": fleet.name,
-            "team": fleet.team.name if fleet.team else "Unknown",
-            "ships": fleet.total_ships,
-            "reason": request.reason
-        }
-    )
-    
-    # Force end any active battles
-    if fleet.status == FleetStatus.IN_BATTLE.value:
-        active_battle = db.query(FleetBattle).filter(
-            and_(
-                or_(
-                    FleetBattle.attacker_fleet_id == fleet_id,
-                    FleetBattle.defender_fleet_id == fleet_id
-                ),
-                FleetBattle.ended_at.is_(None)
-            )
-        ).first()
-        
-        if active_battle:
-            active_battle.ended_at = datetime.utcnow()
-            active_battle.winner = "draw"
-            
-    # Dissolve fleet
-    service.disband_fleet(fleet_id)
-    
-    return {"message": "Fleet forcefully dissolved"}
-
-
-# Battle Management Endpoints
+# Battle Management Endpoints (named routes before /{fleet_id})
 
 @router.get("/battles", response_model=List[AdminBattleResponse])
 async def get_all_battles(
@@ -415,12 +267,12 @@ async def get_all_battles(
 ):
     """Get all fleet battles with optional filters."""
     query = db.query(FleetBattle)
-    
+
     if active_only:
         query = query.filter(FleetBattle.ended_at.is_(None))
     if sector_id:
         query = query.filter(FleetBattle.sector_id == sector_id)
-        
+
     if team_id:
         # Filter by team involvement
         query = query.join(
@@ -430,16 +282,16 @@ async def get_all_battles(
                 Fleet.id == FleetBattle.defender_fleet_id
             )
         ).filter(Fleet.team_id == team_id)
-        
+
     battles = query.order_by(FleetBattle.started_at.desc()).offset(skip).limit(limit).all()
-    
+
     results = []
     for battle in battles:
         duration = None
         if battle.ended_at:
             delta = battle.ended_at - battle.started_at
             duration = str(delta)
-            
+
         results.append(AdminBattleResponse(
             id=battle.id,
             phase=battle.phase,
@@ -464,7 +316,7 @@ async def get_all_battles(
             credits_looted=battle.credits_looted,
             duration=duration
         ))
-        
+
     return results
 
 
@@ -478,17 +330,17 @@ async def get_battle_details(
     battle = db.query(FleetBattle).filter(FleetBattle.id == battle_id).first()
     if not battle:
         raise HTTPException(status_code=404, detail="Battle not found")
-        
+
     # Get casualty information
     casualties = db.query(FleetBattleCasualty).filter(
         FleetBattleCasualty.battle_id == battle_id
     ).all()
-    
+
     casualty_summary = {
         "attacker_casualties": [],
         "defender_casualties": []
     }
-    
+
     for casualty in casualties:
         casualty_data = {
             "ship_name": casualty.ship_name,
@@ -500,12 +352,12 @@ async def get_battle_details(
             "damage_dealt": casualty.damage_dealt,
             "kills": casualty.kills
         }
-        
+
         if casualty.was_attacker:
             casualty_summary["attacker_casualties"].append(casualty_data)
         else:
             casualty_summary["defender_casualties"].append(casualty_data)
-            
+
     return {
         "battle": AdminBattleResponse(
             id=battle.id,
@@ -547,12 +399,12 @@ async def intervene_in_battle(
     battle = db.query(FleetBattle).filter(FleetBattle.id == battle_id).first()
     if not battle:
         raise HTTPException(status_code=404, detail="Battle not found")
-        
+
     if battle.ended_at:
         raise HTTPException(status_code=400, detail="Battle has already ended")
-        
+
     service = FleetService(db)
-    
+
     # Log intervention
     audit_service = AuditService(db)
     audit_service.log_action(
@@ -566,14 +418,14 @@ async def intervene_in_battle(
             "reason": request.reason
         }
     )
-    
+
     if request.action == "end_battle":
         # End battle immediately
         if request.winner:
             battle.winner = request.winner
         result = service._end_battle(battle)
         return {"message": "Battle ended", "result": result}
-        
+
     elif request.action == "pause_battle":
         # Pause battle by setting fleets to ready
         if battle.attacker_fleet:
@@ -582,12 +434,174 @@ async def intervene_in_battle(
             battle.defender_fleet.status = FleetStatus.READY.value
         db.commit()
         return {"message": "Battle paused"}
-        
+
     elif request.action == "force_winner":
         if not request.winner:
             raise HTTPException(status_code=400, detail="Winner must be specified")
         battle.winner = request.winner
         result = service._end_battle(battle)
         return {"message": f"Battle ended with {request.winner} as winner", "result": result}
-        
+
     return {"message": "Intervention completed"}
+
+
+# =============================================================================
+# Parameterized routes - /{fleet_id} and sub-routes
+# These MUST come after all named routes above
+# =============================================================================
+
+@router.get("/{fleet_id}", response_model=AdminFleetResponse)
+async def get_fleet_details(
+    fleet_id: UUID,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_async_session)
+):
+    """Get detailed information about a specific fleet."""
+    fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
+    if not fleet:
+        raise HTTPException(status_code=404, detail="Fleet not found")
+
+    return AdminFleetResponse(
+        id=fleet.id,
+        team_id=fleet.team_id,
+        team_name=fleet.team.name if fleet.team else "Unknown",
+        name=fleet.name,
+        status=fleet.status,
+        formation=fleet.formation,
+        total_ships=fleet.total_ships,
+        total_firepower=fleet.total_firepower,
+        total_shields=fleet.total_shields,
+        total_hull=fleet.total_hull,
+        average_speed=fleet.average_speed,
+        morale=fleet.morale,
+        supply_level=fleet.supply_level,
+        commander_id=fleet.commander_id,
+        commander_name=fleet.commander.name if fleet.commander else None,
+        sector_id=fleet.sector_id,
+        sector_name=fleet.sector.name if fleet.sector else None,
+        member_count=len(fleet.members),
+        created_at=fleet.created_at,
+        last_battle=fleet.last_battle
+    )
+
+
+@router.get("/{fleet_id}/members")
+async def get_fleet_members(
+    fleet_id: UUID,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_async_session)
+):
+    """Get all members of a fleet with detailed ship information."""
+    fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
+    if not fleet:
+        raise HTTPException(status_code=404, detail="Fleet not found")
+
+    members = []
+    for member in fleet.members:
+        ship = member.ship
+        members.append({
+            "member_id": str(member.id),
+            "ship_id": str(member.ship_id),
+            "ship_name": ship.name if ship else "Unknown",
+            "ship_type": ship.type if ship else "Unknown",
+            "player_id": str(member.player_id),
+            "player_name": member.player.name if member.player else "Unknown",
+            "role": member.role,
+            "position": member.position,
+            "ready_status": member.ready_status,
+            "ship_health": {
+                "armor": ship.armor if ship else 0,
+                "max_armor": ship.max_armor if ship else 0,
+                "shields": ship.shields if ship else 0,
+                "max_shields": ship.max_shields if ship else 0
+            } if ship else None
+        })
+
+    return {"fleet_id": str(fleet_id), "members": members}
+
+
+@router.patch("/{fleet_id}/morale")
+async def adjust_fleet_morale(
+    fleet_id: UUID,
+    morale: int = Query(..., ge=0, le=100),
+    reason: str = Query(..., min_length=10),
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_async_session)
+):
+    """Adjust fleet morale administratively."""
+    fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
+    if not fleet:
+        raise HTTPException(status_code=404, detail="Fleet not found")
+
+    old_morale = fleet.morale
+    fleet.morale = morale
+
+    # Log action
+    audit_service = AuditService(db)
+    audit_service.log_action(
+        user_id=admin.id,
+        action=AuditAction.UPDATE,
+        resource_type="fleet",
+        resource_id=str(fleet_id),
+        details={
+            "field": "morale",
+            "old_value": old_morale,
+            "new_value": morale,
+            "reason": reason
+        }
+    )
+
+    db.commit()
+
+    return {"message": f"Fleet morale adjusted from {old_morale} to {morale}"}
+
+
+@router.delete("/{fleet_id}/force-dissolve")
+async def force_dissolve_fleet(
+    fleet_id: UUID,
+    request: ForceDissolveRequest,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_async_session)
+):
+    """Force dissolve a fleet administratively."""
+    fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
+    if not fleet:
+        raise HTTPException(status_code=404, detail="Fleet not found")
+
+    service = FleetService(db)
+
+    # Log action
+    audit_service = AuditService(db)
+    audit_service.log_action(
+        user_id=admin.id,
+        action=AuditAction.DELETE,
+        resource_type="fleet",
+        resource_id=str(fleet_id),
+        details={
+            "fleet_name": fleet.name,
+            "team": fleet.team.name if fleet.team else "Unknown",
+            "ships": fleet.total_ships,
+            "reason": request.reason
+        }
+    )
+
+    # Force end any active battles
+    if fleet.status == FleetStatus.IN_BATTLE.value:
+        active_battle = db.query(FleetBattle).filter(
+            and_(
+                or_(
+                    FleetBattle.attacker_fleet_id == fleet_id,
+                    FleetBattle.defender_fleet_id == fleet_id
+                ),
+                FleetBattle.ended_at.is_(None)
+            )
+        ).first()
+
+        if active_battle:
+            active_battle.ended_at = datetime.utcnow()
+            active_battle.winner = "draw"
+
+    # Dissolve fleet
+    service.disband_fleet(fleet_id)
+
+    return {"message": "Fleet forcefully dissolved"}

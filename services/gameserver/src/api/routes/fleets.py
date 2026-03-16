@@ -2,6 +2,10 @@
 Fleet management API endpoints for players.
 
 Handles fleet creation, management, and battle operations.
+
+IMPORTANT: Named routes (e.g., /battles, /my-fleets) must be defined
+BEFORE parameterized routes (e.g., /{fleet_id}) to avoid FastAPI
+treating the named path segment as a path parameter.
 """
 
 from typing import List, Optional
@@ -53,7 +57,7 @@ class FleetResponse(BaseModel):
     sector_id: Optional[UUID]
     sector_name: Optional[str]
     member_count: int
-    
+
     class Config:
         from_attributes = True
 
@@ -69,7 +73,7 @@ class FleetMemberResponse(BaseModel):
     role: str
     position: int
     ready_status: bool
-    
+
     class Config:
         from_attributes = True
 
@@ -92,10 +96,20 @@ class BattleResponse(BaseModel):
     defender_remaining: Optional[int]
     battle_ongoing: bool
     winner: Optional[str]
-    
+
     class Config:
         from_attributes = True
 
+
+# Import required models
+from src.models.fleet import Fleet, FleetBattle
+from src.models.ship import Ship
+
+
+# =============================================================================
+# Collection-level endpoints (no path parameters)
+# These MUST be defined before /{fleet_id} to prevent route conflicts
+# =============================================================================
 
 # Fleet Management Endpoints
 
@@ -108,9 +122,9 @@ async def create_fleet(
     """Create a new fleet for the player's team."""
     if not player.team_id:
         raise HTTPException(status_code=400, detail="Player must be in a team to create fleets")
-        
+
     service = FleetService(db)
-    
+
     try:
         fleet = service.create_fleet(
             team_id=player.team_id,
@@ -118,7 +132,7 @@ async def create_fleet(
             commander_id=request.commander_id,
             formation=request.formation
         )
-        
+
         return FleetResponse(
             id=fleet.id,
             team_id=fleet.team_id,
@@ -150,10 +164,10 @@ async def get_team_fleets(
     """Get all fleets for the player's team."""
     if not player.team_id:
         return []
-        
+
     service = FleetService(db)
     fleets = service.get_team_fleets(player.team_id)
-    
+
     return [
         FleetResponse(
             id=fleet.id,
@@ -186,7 +200,7 @@ async def get_my_fleets(
     """Get all fleets where the player has ships."""
     service = FleetService(db)
     fleets = service.get_player_fleets(player.id)
-    
+
     return [
         FleetResponse(
             id=fleet.id,
@@ -211,6 +225,75 @@ async def get_my_fleets(
     ]
 
 
+# Fleet Battle Endpoints (named routes before /{fleet_id})
+
+@router.get("/battles", response_model=List[BattleResponse])
+async def get_team_battles(
+    active_only: bool = Query(False),
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_async_session)
+):
+    """Get all battles involving the player's team."""
+    if not player.team_id:
+        return []
+
+    service = FleetService(db)
+    battles = service.get_fleet_battles(team_id=player.team_id, active_only=active_only)
+
+    return [
+        BattleResponse(
+            battle_id=battle.id,
+            phase=battle.phase,
+            attacker_fleet_id=battle.attacker_fleet_id,
+            attacker_fleet_name=battle.attacker_fleet.name if battle.attacker_fleet else "Unknown",
+            defender_fleet_id=battle.defender_fleet_id,
+            defender_fleet_name=battle.defender_fleet.name if battle.defender_fleet else "Unknown",
+            round=len(battle.battle_log),
+            attacker_remaining=battle.attacker_fleet.total_ships if battle.attacker_fleet else 0,
+            defender_remaining=battle.defender_fleet.total_ships if battle.defender_fleet else 0,
+            battle_ongoing=battle.ended_at is None,
+            winner=battle.winner
+        )
+        for battle in battles
+    ]
+
+
+@router.post("/battles/{battle_id}/simulate-round")
+async def simulate_battle_round(
+    battle_id: UUID,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_async_session)
+):
+    """Simulate one round of fleet battle."""
+    # Verify player is involved in the battle
+    battle = db.query(FleetBattle).filter(FleetBattle.id == battle_id).first()
+    if not battle:
+        raise HTTPException(status_code=404, detail="Battle not found")
+
+    # Check if player is in either fleet
+    attacker = battle.attacker_fleet
+    defender = battle.defender_fleet
+
+    player_in_attacker = attacker and attacker.team_id == player.team_id
+    player_in_defender = defender and defender.team_id == player.team_id
+
+    if not (player_in_attacker or player_in_defender):
+        raise HTTPException(status_code=403, detail="You are not involved in this battle")
+
+    service = FleetService(db)
+
+    try:
+        result = service.simulate_battle_round(battle_id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# =============================================================================
+# Parameterized routes - /{fleet_id} and sub-routes
+# These MUST come after all named routes above
+# =============================================================================
+
 @router.get("/{fleet_id}", response_model=FleetResponse)
 async def get_fleet(
     fleet_id: UUID,
@@ -219,18 +302,18 @@ async def get_fleet(
 ):
     """Get details of a specific fleet."""
     service = FleetService(db)
-    
+
     fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
     if not fleet:
         raise HTTPException(status_code=404, detail="Fleet not found")
-        
+
     # Check if player can view this fleet
     if fleet.team_id != player.team_id:
         # Check if player has ships in this fleet
         player_fleets = service.get_player_fleets(player.id)
         if fleet not in player_fleets:
             raise HTTPException(status_code=403, detail="Cannot view this fleet")
-            
+
     return FleetResponse(
         id=fleet.id,
         team_id=fleet.team_id,
@@ -262,14 +345,14 @@ async def get_fleet_members(
     fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
     if not fleet:
         raise HTTPException(status_code=404, detail="Fleet not found")
-        
+
     # Check permissions
     if fleet.team_id != player.team_id:
         service = FleetService(db)
         player_fleets = service.get_player_fleets(player.id)
         if fleet not in player_fleets:
             raise HTTPException(status_code=403, detail="Cannot view this fleet")
-            
+
     return [
         FleetMemberResponse(
             id=member.id,
@@ -297,25 +380,25 @@ async def add_ship_to_fleet(
     fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
     if not fleet:
         raise HTTPException(status_code=404, detail="Fleet not found")
-        
+
     if fleet.team_id != player.team_id:
         raise HTTPException(status_code=403, detail="Cannot modify this fleet")
-        
+
     # Verify ship ownership
     ship = db.query(Ship).filter(Ship.id == request.ship_id).first()
     if not ship:
         raise HTTPException(status_code=404, detail="Ship not found")
-        
+
     if ship.player_id != player.id:
         raise HTTPException(status_code=403, detail="You don't own this ship")
-        
+
     service = FleetService(db)
-    
+
     try:
         # Convert string role to enum
         role = FleetRole(request.role)
         member = service.add_ship_to_fleet(fleet_id, request.ship_id, role)
-        
+
         return FleetMemberResponse(
             id=member.id,
             ship_id=member.ship_id,
@@ -342,21 +425,21 @@ async def remove_ship_from_fleet(
     fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
     if not fleet:
         raise HTTPException(status_code=404, detail="Fleet not found")
-        
+
     # Check permissions - team member or ship owner
     ship = db.query(Ship).filter(Ship.id == ship_id).first()
     if not ship:
         raise HTTPException(status_code=404, detail="Ship not found")
-        
+
     if fleet.team_id != player.team_id and ship.player_id != player.id:
         raise HTTPException(status_code=403, detail="Cannot remove this ship")
-        
+
     service = FleetService(db)
     success = service.remove_ship_from_fleet(fleet_id, ship_id)
-    
+
     if not success:
         raise HTTPException(status_code=400, detail="Ship not in fleet")
-        
+
     return {"message": "Ship removed from fleet"}
 
 
@@ -371,15 +454,15 @@ async def update_fleet_formation(
     fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
     if not fleet:
         raise HTTPException(status_code=404, detail="Fleet not found")
-        
+
     # Only commander or team leader can change formation
     if fleet.commander_id != player.id:
         if fleet.team_id != player.team_id or not player.team.leader_id == player.id:
             raise HTTPException(status_code=403, detail="Only fleet commander can change formation")
-            
+
     service = FleetService(db)
     fleet = service.set_fleet_formation(fleet_id, formation)
-    
+
     return {"message": f"Formation changed to {formation}"}
 
 
@@ -394,13 +477,13 @@ async def update_fleet_commander(
     fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
     if not fleet:
         raise HTTPException(status_code=404, detail="Fleet not found")
-        
+
     # Only team leader can change commander
     if fleet.team_id != player.team_id or player.team.leader_id != player.id:
         raise HTTPException(status_code=403, detail="Only team leader can assign commanders")
-        
+
     service = FleetService(db)
-    
+
     try:
         fleet = service.set_fleet_commander(fleet_id, commander_id)
         return {"message": "Commander updated"}
@@ -418,14 +501,14 @@ async def disband_fleet(
     fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
     if not fleet:
         raise HTTPException(status_code=404, detail="Fleet not found")
-        
+
     # Only commander or team leader can disband
     if fleet.commander_id != player.id:
         if fleet.team_id != player.team_id or player.team.leader_id != player.id:
             raise HTTPException(status_code=403, detail="Cannot disband this fleet")
-            
+
     service = FleetService(db)
-    
+
     try:
         success = service.disband_fleet(fleet_id)
         if success:
@@ -435,8 +518,6 @@ async def disband_fleet(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
-# Fleet Battle Endpoints
 
 @router.post("/{fleet_id}/initiate-battle", response_model=BattleResponse)
 async def initiate_battle(
@@ -449,16 +530,16 @@ async def initiate_battle(
     fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
     if not fleet:
         raise HTTPException(status_code=404, detail="Fleet not found")
-        
+
     # Only commander can initiate battles
     if fleet.commander_id != player.id:
         raise HTTPException(status_code=403, detail="Only fleet commander can initiate battles")
-        
+
     service = FleetService(db)
-    
+
     try:
         battle = service.initiate_battle(fleet_id, request.defender_fleet_id)
-        
+
         return BattleResponse(
             battle_id=battle.id,
             phase=battle.phase,
@@ -474,70 +555,3 @@ async def initiate_battle(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.post("/battles/{battle_id}/simulate-round")
-async def simulate_battle_round(
-    battle_id: UUID,
-    player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
-):
-    """Simulate one round of fleet battle."""
-    # Verify player is involved in the battle
-    battle = db.query(FleetBattle).filter(FleetBattle.id == battle_id).first()
-    if not battle:
-        raise HTTPException(status_code=404, detail="Battle not found")
-        
-    # Check if player is in either fleet
-    attacker = battle.attacker_fleet
-    defender = battle.defender_fleet
-    
-    player_in_attacker = attacker and attacker.team_id == player.team_id
-    player_in_defender = defender and defender.team_id == player.team_id
-    
-    if not (player_in_attacker or player_in_defender):
-        raise HTTPException(status_code=403, detail="You are not involved in this battle")
-        
-    service = FleetService(db)
-    
-    try:
-        result = service.simulate_battle_round(battle_id)
-        return result
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.get("/battles", response_model=List[BattleResponse])
-async def get_team_battles(
-    active_only: bool = Query(False),
-    player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
-):
-    """Get all battles involving the player's team."""
-    if not player.team_id:
-        return []
-        
-    service = FleetService(db)
-    battles = service.get_fleet_battles(team_id=player.team_id, active_only=active_only)
-    
-    return [
-        BattleResponse(
-            battle_id=battle.id,
-            phase=battle.phase,
-            attacker_fleet_id=battle.attacker_fleet_id,
-            attacker_fleet_name=battle.attacker_fleet.name if battle.attacker_fleet else "Unknown",
-            defender_fleet_id=battle.defender_fleet_id,
-            defender_fleet_name=battle.defender_fleet.name if battle.defender_fleet else "Unknown",
-            round=len(battle.battle_log),
-            attacker_remaining=battle.attacker_fleet.total_ships if battle.attacker_fleet else 0,
-            defender_remaining=battle.defender_fleet.total_ships if battle.defender_fleet else 0,
-            battle_ongoing=battle.ended_at is None,
-            winner=battle.winner
-        )
-        for battle in battles
-    ]
-
-
-# Import required models
-from src.models.fleet import Fleet, FleetBattle
-from src.models.ship import Ship
