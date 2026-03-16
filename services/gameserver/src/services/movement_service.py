@@ -29,7 +29,13 @@ class MovementService:
         player = self.db.query(Player).filter(Player.id == player_id).first()
         if not player:
             return {"success": False, "message": "Player not found", "turn_cost": 0}
-        
+
+        # Block movement if player is docked at a port or landed on a planet
+        if player.is_docked:
+            return {"success": False, "message": "You must undock before moving to another sector", "turn_cost": 0}
+        if player.is_landed:
+            return {"success": False, "message": "You must leave the planet before moving to another sector", "turn_cost": 0}
+
         # Ensure player has an active ship
         if not player.current_ship:
             return {"success": False, "message": "No active ship selected", "turn_cost": 0}
@@ -370,10 +376,12 @@ class MovementService:
         """Execute a player's movement to a destination sector."""
         old_sector_id = player.current_sector_id
         
-        # Update player position
+        # Update player position and clear all location state
         player.current_sector_id = destination_sector_id
         player.is_docked = False  # Player is no longer docked at a port
         player.is_landed = False  # Player is no longer landed on a planet
+        player.current_port_id = None  # Clear dangling port reference
+        player.current_planet_id = None  # Clear dangling planet reference
         
         # Update ship position
         if player.current_ship:
