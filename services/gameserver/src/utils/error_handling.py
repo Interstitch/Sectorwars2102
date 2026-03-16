@@ -63,7 +63,11 @@ def sanitize_error_message(error: Exception, show_details: bool = False) -> str:
     
     if isinstance(error, SQLAlchemyError):
         return "Database operation failed"
-    
+
+    # HTTP exceptions should return their detail message
+    if isinstance(error, (HTTPException, StarletteHTTPException)):
+        return str(error.detail) if error.detail else "An error occurred"
+
     # Get safe message or use generic fallback
     error_type = type(error)
     safe_message = safe_messages.get(error_type, "An unexpected error occurred")
@@ -166,7 +170,7 @@ def create_error_response(
     error_id = log_error_securely(error, request, user_id)
     
     # Determine status code
-    if isinstance(error, HTTPException):
+    if isinstance(error, (HTTPException, StarletteHTTPException)):
         status_code = error.status_code
     elif isinstance(error, ValidationError):
         status_code = 422

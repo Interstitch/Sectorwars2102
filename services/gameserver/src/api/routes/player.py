@@ -128,13 +128,15 @@ async def get_player_ships(
     
     ship_responses = []
     for ship in ships:
+        cargo_data = ship.cargo or {}
+        cargo_capacity = cargo_data.get('capacity', 50)
         ship_responses.append(ShipResponse(
             id=str(ship.id),
             name=ship.name,
             type=ship.type.value if hasattr(ship.type, 'value') else str(ship.type),
             sector_id=ship.sector_id,
-            cargo=ship.cargo or {},
-            cargo_capacity=getattr(ship, 'cargo_capacity', 1000),  # Default if missing
+            cargo=cargo_data,
+            cargo_capacity=cargo_capacity,
             current_speed=ship.current_speed,
             base_speed=ship.base_speed,
             combat=ship.combat or {},
@@ -167,13 +169,15 @@ async def get_current_ship(
             detail="Current ship not found"
         )
     
+    cargo_data = ship.cargo or {}
+    cargo_capacity = cargo_data.get('capacity', 50)
     return ShipResponse(
         id=str(ship.id),
         name=ship.name,
         type=ship.type.value if hasattr(ship.type, 'value') else str(ship.type),
         sector_id=ship.sector_id,
-        cargo=ship.cargo or {},
-        cargo_capacity=getattr(ship, 'cargo_capacity', 1000),
+        cargo=cargo_data,
+        cargo_capacity=cargo_capacity,
         current_speed=ship.current_speed,
         base_speed=ship.base_speed,
         combat=ship.combat or {},

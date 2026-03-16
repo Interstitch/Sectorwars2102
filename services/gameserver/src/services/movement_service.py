@@ -11,6 +11,7 @@ from src.models.sector import Sector, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelStatus
 from src.models.combat import CombatResult
 from src.models.combat_log import CombatLog
+from sqlalchemy.orm.attributes import flag_modified
 
 logger = logging.getLogger(__name__)
 
@@ -422,15 +423,16 @@ class MovementService:
         
         if old_sector:
             # Remove player from old sector's players_present
-            players_present = old_sector.players_present
+            players_present = list(old_sector.players_present or [])
             player_entry = next((p for p in players_present if p.get("player_id") == str(player.id)), None)
             if player_entry:
                 players_present.remove(player_entry)
-                old_sector.players_present = players_present
-        
+            old_sector.players_present = players_present
+            flag_modified(old_sector, 'players_present')
+
         if new_sector:
             # Add player to new sector's players_present
-            players_present = new_sector.players_present
+            players_present = list(new_sector.players_present or [])
             player_entry = {
                 "player_id": str(player.id),
                 "username": player.username,
@@ -440,14 +442,15 @@ class MovementService:
                 "team_id": str(player.team_id) if player.team_id else None,
                 "arrived_at": datetime.now().isoformat()
             }
-            
+
             # Check if player is already in the list (shouldn't be, but safety check)
             existing = next((p for p in players_present if p.get("player_id") == str(player.id)), None)
             if existing:
                 players_present.remove(existing)
-            
+
             players_present.append(player_entry)
             new_sector.players_present = players_present
+            flag_modified(new_sector, 'players_present')
     
     def _check_for_encounters(self, player: Player, sector_id: int) -> List[Dict[str, Any]]:
         """Check for encounters upon entering a sector."""
