@@ -112,42 +112,87 @@ git push origin master                                # Deploy changes
 
 ## 🚨 CRITICAL CONTEXT
 
-**DOCKER ENVIRONMENT**: All services run in containers via docker-compose
-- Player Client: http://localhost:3000 (React/TypeScript frontend)
-- Admin UI: http://localhost:3001 (React/TypeScript admin interface)
-- Game Server: http://localhost:8080 (FastAPI/Python backend)
-- Database: PostgreSQL 15 (postgres:15-alpine container on port 5433, persistent via docker volume)
+### GCP Development VM (Primary Environment)
 
-**ENVIRONMENT**:
-- GitHub Codespaces (Docker + internal networking + port forwarding)
-- `./dev-scripts/start-unified.sh` starts all services
+Docker containers run on a remote GCP VM, accessed securely via Tailscale. Max develops locally on his MacBook with Claude Code + Chrome browser automation.
 
-**DEVELOPMENT COMMANDS**:
+**GCP Instance Details**:
+- **VM Name**: `sectorwars-dev`
+- **Project**: `sectorwars2102`
+- **Zone**: `us-central1-a`
+- **Machine Type**: `e2-standard-4` (4 vCPU, 16GB RAM, spot/preemptible)
+- **Disk**: 50GB pd-balanced, Debian 12
+- **Tailscale IP**: `100.64.208.28` (no public IP exposed for service ports)
+- **SSH**: `ssh mrathbone@100.64.208.28`
+- **Auto-Shutdown**: 11 PM CT daily via GCP instance schedule (`sectorwars-auto-stop`)
+- **Firewall**: `deny-sectorwars-services` blocks public access to ports 3000/3001/8080/5433
+- **Cost**: ~$0.04/hr (spot), roughly $80/month at 8hrs/day
+
+**Services Running on VM** (via `docker compose --profile development`):
+- Player Client: http://100.64.208.28:3000 (React/TypeScript frontend)
+- Admin UI: http://100.64.208.28:3001 (React/TypeScript admin interface)
+- Game Server: http://100.64.208.28:8080 (FastAPI/Python backend)
+- Database: PostgreSQL 15 (postgres:15-alpine, internal port 5432)
+- Redis Cache: Redis 7 (internal port 6379)
+- Nginx Gateway: Reverse proxy (healthy)
+- Region Manager: Regional coordination service
+
+**Repo on VM**: `/home/mrathbone/sectorwars2102/`
+**VM .env**: Copied from local, URLs adjusted to Tailscale IP
+
+**VM Management Scripts** (run from MacBook):
 ```bash
-./dev-scripts/start-unified.sh                  # Start all services
-docker-compose up <service-name>                 # Start individual service
-docker-compose exec <service> <command>          # Run commands inside containers
-docker-compose logs <service>                    # Check service logs
+./dev-scripts/vm-start.sh                        # Start VM, wait for Tailscale
+./dev-scripts/vm-stop.sh                         # Stop VM (saves cost)
+./dev-scripts/vm-sync.sh                         # Rsync code to VM (excludes node_modules, .git)
 ```
+
+**VM SSH & Docker Commands**:
+```bash
+ssh mrathbone@100.64.208.28                      # SSH into VM via Tailscale
+docker compose --profile development up -d       # Start all containers
+docker compose --profile development logs -f     # Follow logs
+docker compose --profile development down        # Stop containers
+```
+
+**GCloud Commands** (from MacBook):
+```bash
+gcloud compute instances start sectorwars-dev --project=sectorwars2102 --zone=us-central1-a
+gcloud compute instances stop sectorwars-dev --project=sectorwars2102 --zone=us-central1-a
+gcloud compute ssh sectorwars-dev --project=sectorwars2102 --zone=us-central1-a  # Fallback SSH
+```
+
+**Important Notes**:
+- Tailscale must be running on MacBook to access VM services
+- MacBook Tailscale device: `shoudens-mbpro` (100.118.237.67)
+- VM has public IP for outbound internet (Docker pulls, Tailscale DERP) but service ports are firewalled
+- Spot VM may be preempted with 30s notice — data persists on disk
+- After VM restart: Tailscale auto-starts, but `docker compose up -d` must be run manually
+
+### Legacy Environment (Codespaces)
+
+Previously ran on GitHub Codespaces with port forwarding. The `.env.example` still references Codespaces URLs. When using Codespaces instead of GCP:
+- `./dev-scripts/start-unified.sh` starts all services
+- URLs use Codespaces port forwarding pattern
 
 **DOCKER COMPOSE PROFILES**:
 ```bash
-docker-compose up                                # Default: development profile
-docker-compose --profile multi-regional up       # Multi-regional with Redis, Nginx
-docker-compose --profile production up           # Production builds, resource limits
-docker-compose --profile monitoring up           # Add Prometheus + Grafana
+docker compose --profile development up          # Default: development profile
+docker compose --profile multi-regional up       # Multi-regional with Redis, Nginx
+docker compose --profile production up           # Production builds, resource limits
+docker compose --profile monitoring up           # Add Prometheus + Grafana
 ```
 
 **TROUBLESHOOTING**:
 ```bash
-docker-compose down -v                           # Remove containers AND volumes
-docker-compose build --no-cache                  # Rebuild images from scratch
-docker-compose config                            # Show resolved configuration
+docker compose down -v                           # Remove containers AND volumes
+docker compose build --no-cache                  # Rebuild images from scratch
+docker compose config                            # Show resolved configuration
 ```
 
 **FILE SYSTEM BEHAVIOR**:
 - All edits are persistent across container restarts
-- Code changes hot-reload within containers
+- Code changes hot-reload within containers (if volume-mounted)
 - Database persists via Docker volume (postgres_data)
 
 ## 🧬 CORE PRINCIPLES (IMMUTABLE)
@@ -163,34 +208,45 @@ docker-compose config                            # Show resolved configuration
 - **Project**: Sectorwars2102 - Web-based space trading simulation game
 - **Architecture**: Multi-regional microservices with Docker Compose orchestration
 - **Tech Stack**: Node.js, Docker, PostgreSQL, FastAPI, React, TypeScript
-- **Recent Major Changes**: Multi-regional architecture, i18n system, trading interface improvements
-- **Last Updated**: 2025-12-13
+- **Recent Major Changes**: Multi-regional architecture, i18n system, trading interface improvements, GCP dev VM with Tailscale
+- **Last Updated**: 2026-03-15
 
 ## 🔧 ESSENTIAL COMMANDS REFERENCE
 
 ```bash
-# Development Workflow (HOST SYSTEM)
-./dev-scripts/start-unified.sh                    # Start all services
-npx playwright test                                # Run E2E tests
-git add -A && git commit -m "feat: description"   # Proper commit format
+# VM Lifecycle (from MacBook)
+./dev-scripts/vm-start.sh                            # Start GCP VM + wait for Tailscale
+./dev-scripts/vm-stop.sh                             # Stop GCP VM
+./dev-scripts/vm-sync.sh                             # Rsync code changes to VM
 
-# Database Operations (IN CONTAINERS)
-docker-compose exec gameserver poetry run alembic upgrade head           # Apply migrations
-docker-compose exec gameserver poetry run alembic revision -m "desc"     # Create migration
-docker-compose exec gameserver poetry run alembic current                # Check status
-docker-compose exec gameserver poetry run alembic downgrade -1           # Rollback
+# SSH into VM
+ssh mrathbone@100.64.208.28                          # Via Tailscale
 
-# Quality Gates (IN CONTAINERS)
-docker-compose exec player-client npm run lint      # Frontend code style
-docker-compose exec player-client npm run build     # Frontend build + typecheck
-docker-compose exec admin-ui npm run lint           # Admin UI code style
-docker-compose exec gameserver poetry run pytest    # Backend tests
-docker-compose exec gameserver poetry run ruff check .  # Backend linting
+# Development Workflow (ON VM via SSH)
+docker compose --profile development up -d           # Start all services
+docker compose --profile development down            # Stop all services
+docker compose --profile development logs -f         # Follow all logs
 
-# Container Management (HOST SYSTEM)
-docker-compose ps                                    # Service status
-docker-compose logs <service>                        # Service logs
-docker-compose restart <service>                     # Restart service
+# Database Operations (ON VM)
+docker compose exec gameserver poetry run alembic upgrade head           # Apply migrations
+docker compose exec gameserver poetry run alembic revision -m "desc"     # Create migration
+docker compose exec gameserver poetry run alembic current                # Check status
+docker compose exec gameserver poetry run alembic downgrade -1           # Rollback
+
+# Quality Gates (ON VM)
+docker compose exec player-client npm run lint       # Frontend code style
+docker compose exec player-client npm run build      # Frontend build + typecheck
+docker compose exec admin-ui npm run lint            # Admin UI code style
+docker compose exec gameserver poetry run pytest     # Backend tests
+docker compose exec gameserver poetry run ruff check .  # Backend linting
+
+# Container Management (ON VM)
+docker compose ps                                    # Service status
+docker compose logs <service>                        # Service logs
+docker compose restart <service>                     # Restart service
+
+# E2E Tests (from MacBook, pointing at Tailscale IP)
+npx playwright test -c e2e_tests/playwright.config.ts
 ```
 
 ## 🔄 SELF-IMPROVEMENT PROTOCOL
@@ -225,7 +281,7 @@ docker-compose restart <service>                     # Restart service
 
 ---
 *Sectorwars2102: Multi-Regional Space Trading Game Platform*
-*Last Updated: 2025-12-13*
+*Last Updated: 2026-03-15*
 
 **Notes**:
 - Never name components with the word "enhanced" or "improved" without first asking Max

@@ -318,16 +318,14 @@ class MovementService:
 
         if not tunnel:
             return False, 0, "No active warp tunnel found"
-        
-        # Check if ship is warp-capable for tunnel types that require it
-        if tunnel.type.name in ["QUANTUM", "UNSTABLE"] and ship and not ship.warp_capable:
-            return False, 0, f"Ship not capable of using {tunnel.type.name} tunnel"
-        
+
         # Get base turn cost
         turn_cost = tunnel.turn_cost
-        
-        # Apply ship-specific adjustments
-        if ship and ship.warp_capable:
+
+        # Non-warp-capable ships pay a higher cost for advanced tunnel types
+        if tunnel.type.name in ["QUANTUM", "UNSTABLE"] and ship and not getattr(ship, 'warp_capable', False):
+            turn_cost = max(1, int(turn_cost * 1.5))  # 50% surcharge for non-warp-capable ships
+        elif ship and getattr(ship, 'warp_capable', False):
             turn_cost = max(1, int(turn_cost * 0.8))  # 20% reduction for warp-capable ships
         
         return True, turn_cost, "Warp tunnel available"

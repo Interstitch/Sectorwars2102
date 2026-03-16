@@ -32,6 +32,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, switchToRegister,
       if (onLoginSuccess) {
         onLoginSuccess();
       }
+      // Navigate to game - use window.location to ensure MainApp re-checks auth state
+      window.location.href = '/game';
     } catch (err) {
       console.error('Login failed:', err);
       setError('Invalid username or password');

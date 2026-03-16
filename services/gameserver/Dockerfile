@@ -21,11 +21,14 @@ RUN pip install poetry
 # Configure Poetry: Don't create virtual environment, install dependencies globally
 RUN poetry config virtualenvs.create false
 
-# Copy project files first
-COPY . /app/
+# Copy dependency files first for better caching
+COPY pyproject.toml poetry.lock* /app/
 
-# Generate lock file and install dependencies
-RUN poetry lock && poetry install --no-root
+# Install dependencies (generate lock if missing, but don't update existing)
+RUN poetry lock --no-update 2>/dev/null || poetry lock && poetry install --no-root
+
+# Copy the rest of the project
+COPY . /app/
 
 # Add executable permission to the scripts
 RUN chmod +x /app/start.sh
