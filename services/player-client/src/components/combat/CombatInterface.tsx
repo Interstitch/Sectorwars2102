@@ -71,7 +71,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
   onCombatEnd,
   onClose
 }) => {
-  const { playerState, currentShip, refreshPlayerState } = useGame();
+  const { playerState, currentShip, currentSector, refreshPlayerState } = useGame();
   
   // Combat state
   const [combatId, setCombatId] = useState<string | null>(null);
@@ -207,14 +207,112 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
   const targetHealth = latestRound?.targetHealth ?? 100;
   
   if (!target) {
+    const sectorHazard = currentSector?.hazard_level ?? 0;
+    const playersInSector = (currentSector?.players_present || []).filter(
+      (p: any) => p.id !== playerState?.id && p.player_id !== playerState?.id
+    );
+    const hasThreats = playersInSector.length > 0 || sectorHazard > 5;
+
     return (
-      <div className="combat-interface no-target">
-        <p>No combat target selected</p>
-        {onClose && (
-          <button className="cockpit-btn secondary" onClick={onClose}>
-            Close
-          </button>
-        )}
+      <div className="combat-interface no-target-detailed">
+        <div className="combat-header">
+          <h2>COMBAT & WEAPONS</h2>
+          {onClose && (
+            <button className="close-btn" onClick={onClose}>×</button>
+          )}
+        </div>
+
+        {/* Sector Threat Assessment */}
+        <div className="threat-assessment">
+          <div className={`threat-status ${hasThreats ? 'alert' : 'clear'}`}>
+            <div className="threat-icon">{hasThreats ? '!' : '\u2713'}</div>
+            <div className="threat-text">
+              <h3>{hasThreats ? 'CONTACTS DETECTED' : 'SECTOR CLEAR'}</h3>
+              <p>{hasThreats
+                ? `${playersInSector.length} vessel${playersInSector.length !== 1 ? 's' : ''} detected in sector. Stay alert.`
+                : 'No hostile contacts detected. All systems nominal.'
+              }</p>
+            </div>
+          </div>
+          {currentSector && (
+            <div className="sector-threat-level">
+              <span className="threat-label">SECTOR THREAT LEVEL</span>
+              <div className="threat-bar">
+                <div
+                  className={`threat-bar-fill ${sectorHazard > 7 ? 'critical' : sectorHazard > 4 ? 'elevated' : 'low'}`}
+                  style={{ width: `${sectorHazard * 10}%` }}
+                />
+              </div>
+              <span className="threat-value">{sectorHazard}/10</span>
+            </div>
+          )}
+        </div>
+
+        <div className="readiness-grid">
+          {/* Ship Combat Readiness */}
+          <div className="readiness-panel">
+            <h4>SHIP COMBAT READINESS</h4>
+            {currentShip ? (
+              <div className="readiness-stats">
+                <div className="stat-row">
+                  <span className="stat-label">Vessel</span>
+                  <span className="stat-value">{currentShip.name}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Class</span>
+                  <span className="stat-value">{currentShip.type}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Attack Rating</span>
+                  <span className="stat-value highlight">{currentShip.combat?.attack_rating ?? 0}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Defense Rating</span>
+                  <span className="stat-value highlight">{currentShip.combat?.defense_rating ?? 0}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Shield Strength</span>
+                  <span className="stat-value">{currentShip.combat?.shields ?? currentShip.combat?.shield_points ?? 'N/A'}</span>
+                </div>
+                <div className="stat-row">
+                  <span className="stat-label">Hull Integrity</span>
+                  <span className="stat-value">{currentShip.combat?.hull ?? currentShip.combat?.hull_points ?? 'N/A'}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="no-data">No ship data available</p>
+            )}
+          </div>
+
+          {/* Drone Status */}
+          <div className="readiness-panel">
+            <h4>DRONE STATUS</h4>
+            <div className="readiness-stats">
+              <div className="stat-row">
+                <span className="stat-label">Attack Drones</span>
+                <span className="stat-value highlight">{currentShip?.combat?.attack_drones ?? playerState?.attack_drones ?? 0}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Defense Drones</span>
+                <span className="stat-value highlight">{currentShip?.combat?.defense_drones ?? playerState?.defense_drones ?? 0}</span>
+              </div>
+            </div>
+
+            <h4 style={{ marginTop: '20px' }}>SECTOR CONTACTS</h4>
+            {playersInSector.length > 0 ? (
+              <div className="contacts-list">
+                {playersInSector.map((player: any, index: number) => (
+                  <div key={player.id || player.player_id || index} className="contact-entry">
+                    <span className="contact-name">{player.name || player.username || 'Unknown Vessel'}</span>
+                    <span className="contact-type">{player.ship_type || 'Ship'}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="no-data">No other vessels in sector</p>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
