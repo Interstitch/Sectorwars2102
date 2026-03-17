@@ -30,9 +30,9 @@ class CombatService:
     
     def attack_player(self, attacker_id: uuid.UUID, defender_id: uuid.UUID) -> Dict[str, Any]:
         """Initiate ship-to-ship combat between two players."""
-        # Get players
-        attacker = self.db.query(Player).filter(Player.id == attacker_id).first()
-        defender = self.db.query(Player).filter(Player.id == defender_id).first()
+        # Get players with row locks to prevent concurrent combat race conditions
+        attacker = self.db.query(Player).filter(Player.id == attacker_id).with_for_update().first()
+        defender = self.db.query(Player).filter(Player.id == defender_id).with_for_update().first()
         
         if not attacker or not defender:
             return {"success": False, "message": "Player not found"}

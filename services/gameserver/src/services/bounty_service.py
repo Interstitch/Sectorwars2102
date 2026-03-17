@@ -54,7 +54,8 @@ class BountyService:
                 "message": f"Minimum bounty is {BOUNTY_MIN_AMOUNT} credits",
             }
 
-        placer = self.db.query(Player).filter(Player.id == placer_id).first()
+        # Lock placer row to prevent concurrent bounty placement race conditions
+        placer = self.db.query(Player).filter(Player.id == placer_id).with_for_update().first()
         target = self.db.query(Player).filter(Player.id == target_id).first()
 
         if not placer or not target:

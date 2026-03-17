@@ -8,7 +8,7 @@ import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.core.database import get_db
 from src.auth.dependencies import get_current_player, get_current_admin
@@ -172,7 +172,7 @@ async def get_player_reputation(
 
 class PlaceBountyRequest(BaseModel):
     target_id: str
-    amount: int
+    amount: int = Field(..., gt=0, le=1000000, description="Bounty amount (1 to 1,000,000 credits)")
 
 
 @router.post("/bounties/place")

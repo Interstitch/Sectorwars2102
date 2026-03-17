@@ -115,12 +115,13 @@ class ShipUpgradeService:
         self.db = db
 
     def _get_ship_and_player(self, ship_id: uuid.UUID, player_id: uuid.UUID) -> tuple:
-        """Fetch and validate ship ownership. Returns (ship, player, error_dict)."""
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+        """Fetch and validate ship ownership. Returns (ship, player, error_dict).
+        Locks the player row to prevent concurrent purchase race conditions."""
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             return None, None, {"success": False, "message": "Player not found"}
 
-        ship = self.db.query(Ship).filter(Ship.id == ship_id).first()
+        ship = self.db.query(Ship).filter(Ship.id == ship_id).with_for_update().first()
         if not ship:
             return None, None, {"success": False, "message": "Ship not found"}
 

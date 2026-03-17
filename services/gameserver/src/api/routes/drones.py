@@ -458,8 +458,10 @@ async def get_team_drones(
     db: AsyncSession = Depends(get_async_session)
 ):
     """Get all drones assigned to a team."""
-    # TODO: Verify player is member of the team
-    
+    # Verify player is a member of the team
+    if not current_player.team_id or str(current_player.team_id) != str(team_id):
+        raise HTTPException(status_code=403, detail="You are not a member of this team")
+
     service = DroneService(db)
     drones = await service.get_team_drones(
         team_id=team_id,

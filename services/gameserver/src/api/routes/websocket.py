@@ -8,11 +8,17 @@ from sqlalchemy.orm import Session
 from typing import Optional, Dict
 import logging
 
+from pydantic import BaseModel, Field as PydanticField
 from src.core.database import get_db
 from src.auth.dependencies import get_current_user_from_token, get_current_admin_user
 from src.models.user import User
 from src.models.player import Player
 from src.services.websocket_service import connection_manager, handle_websocket_message, handle_admin_websocket_message
+
+
+class BroadcastRequest(BaseModel):
+    content: str = PydanticField(..., max_length=5000, description="Broadcast message content")
+    priority: str = PydanticField(default="normal", description="Message priority")
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +195,10 @@ async def admin_websocket_endpoint(
                 
     except Exception as e:
         logger.error(f"Admin WebSocket connection error: {str(e)}")
-        await websocket.close(code=4003, reason=str(e))
+        try:
+            await websocket.close(code=4003, reason="Connection initialization failed")
+        except Exception:
+            pass
 
 
 
@@ -204,19 +213,19 @@ async def get_websocket_stats(
 
 @router.post("/broadcast")
 async def broadcast_message(
-    message_data: dict,
+    request: BroadcastRequest,
     target_type: str = "global",  # global, sector, team
     target_id: Optional[str] = None,
     current_user: User = Depends(get_current_admin_user)
 ) -> dict:
     """Broadcast a message to connected users (admin only)"""
-    
+
     message = {
         "type": "admin_broadcast",
-        "content": message_data.get("content", ""),
+        "content": request.content,
         "from": "System Administrator",
-        "timestamp": message_data.get("timestamp", ""),
-        **message_data
+        "priority": request.priority,
+        "timestamp": datetime.utcnow().isoformat(),
     }
     
     if target_type == "global":

@@ -120,8 +120,8 @@ class GenesisService:
 
         tier_config = GENESIS_TIERS[tier]
 
-        # --- Load player ---
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+        # --- Load player with lock to prevent concurrent purchase race ---
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             raise ValueError("Player not found")
 

@@ -27,7 +27,8 @@ class MovementService:
         Move a player to a destination sector.
         Returns a dict with success status, message, and turn cost.
         """
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+        # Lock player row to prevent concurrent movement race conditions
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             return {"success": False, "message": "Player not found", "turn_cost": 0}
 

@@ -2,11 +2,14 @@
 Team management API routes
 """
 
+import logging
 from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 from src.core.database import get_db
 from src.auth.dependencies import get_current_player
@@ -558,17 +561,23 @@ async def transfer_to_player(
 @router.get("/{team_id}/treasury", response_model=TreasuryBalanceResponse)
 async def get_treasury_balance(
     team_id: UUID,
+    current_player: Player = Depends(get_current_player),
     db: Session = Depends(get_db)
 ):
-    """Get team treasury balance"""
+    """Get team treasury balance (requires team membership)"""
+    # Verify player is a member of this team
+    if not current_player.team_id or str(current_player.team_id) != str(team_id):
+        raise HTTPException(status_code=403, detail="You are not a member of this team")
+
     try:
         team_service = TeamService(db)
         balance = team_service.get_treasury_balance(team_id)
         return TreasuryBalanceResponse(**balance)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Team not found")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get treasury balance: {str(e)}")
+        logger.error(f"Failed to get treasury balance: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get treasury balance")
 
 
 # Team Communication Endpoints
