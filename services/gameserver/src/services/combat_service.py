@@ -23,7 +23,22 @@ logger = logging.getLogger(__name__)
 
 class CombatService:
     """Service for managing combat in the game."""
-    
+
+    # Weapon effectiveness multipliers based on ship type matchups
+    SHIP_COMBAT_MODIFIERS = {
+        # (attacker_type, defender_type): damage_multiplier
+        (ShipType.DEFENDER, ShipType.CARGO_HAULER): 1.5,      # Military vs trade
+        (ShipType.DEFENDER, ShipType.LIGHT_FREIGHTER): 1.3,   # Military vs light trade
+        (ShipType.FAST_COURIER, ShipType.CARRIER): 0.7,       # Light vs heavy
+        (ShipType.SCOUT_SHIP, ShipType.CARRIER): 0.5,         # Scout vs capital
+        (ShipType.CARRIER, ShipType.SCOUT_SHIP): 1.8,         # Capital vs scout
+        (ShipType.CARRIER, ShipType.FAST_COURIER): 1.5,       # Capital vs light
+        (ShipType.COLONY_SHIP, ShipType.DEFENDER): 0.5,       # Colony ship weak in combat
+    }
+
+    # Ship types that get a bonus to escape chance due to speed/agility
+    FAST_ESCAPE_SHIP_TYPES = {ShipType.FAST_COURIER, ShipType.SCOUT_SHIP}
+
     def __init__(self, db: Session):
         self.db = db
         self.ship_service = ShipService(db)
@@ -891,6 +906,7 @@ class CombatService:
         defender_drones_lost = 0
         attacker_ship_destroyed = False
         defender_ship_destroyed = False
+        fled_result = None  # Set to CombatResult.ATTACKER_FLED or DEFENDER_FLED if someone escapes
         combat_details = []
         
         # Combat continues until one side is defeated or retreats
@@ -925,9 +941,12 @@ class CombatService:
                             "drones_destroyed": drones_destroyed
                         })
                     else:
-                        # Attack ship - calculate ship damage with rank bonus
+                        # Attack ship - calculate ship damage with rank bonus and weapon type modifier
                         base_damage = random.randint(1, 10)
-                        damage = int(base_damage * attacker_damage_mult)
+                        type_modifier = self.SHIP_COMBAT_MODIFIERS.get(
+                            (attacker_ship.type, defender_ship.type), 1.0
+                        )
+                        damage = int(base_damage * attacker_damage_mult * type_modifier)
 
                         # Check if defender ship destroyed
                         ship_destruction_chance = damage / 50  # Example: 10 damage = 20% chance
@@ -940,11 +959,12 @@ class CombatService:
                                 "message": f"{attacker.username}'s ship critically damaged {defender.username}'s ship, forcing ejection"
                             })
                         else:
+                            modifier_note = f" (x{type_modifier:.1f} type advantage)" if type_modifier != 1.0 else ""
                             combat_details.append({
                                 "round": round_number,
                                 "actor": "attacker",
                                 "action": "ship_attack",
-                                "message": f"{attacker.username}'s ship hit {defender.username}'s ship for {damage} damage"
+                                "message": f"{attacker.username}'s ship hit {defender.username}'s ship for {damage} damage{modifier_note}"
                             })
                 else:
                     # Miss
@@ -981,9 +1001,12 @@ class CombatService:
                             "drones_destroyed": drones_destroyed
                         })
                     else:
-                        # Attack ship - calculate ship damage with rank bonus
+                        # Attack ship - calculate ship damage with rank bonus and weapon type modifier
                         base_damage = random.randint(1, 10)
-                        damage = int(base_damage * defender_damage_mult)
+                        type_modifier = self.SHIP_COMBAT_MODIFIERS.get(
+                            (defender_ship.type, attacker_ship.type), 1.0
+                        )
+                        damage = int(base_damage * defender_damage_mult * type_modifier)
 
                         # Check if attacker ship destroyed
                         ship_destruction_chance = damage / 50  # Example: 10 damage = 20% chance
@@ -996,11 +1019,12 @@ class CombatService:
                                 "message": f"{defender.username}'s ship critically damaged {attacker.username}'s ship, forcing ejection"
                             })
                         else:
+                            modifier_note = f" (x{type_modifier:.1f} type advantage)" if type_modifier != 1.0 else ""
                             combat_details.append({
                                 "round": round_number,
                                 "actor": "defender",
                                 "action": "ship_attack",
-                                "message": f"{defender.username}'s ship hit {attacker.username}'s ship for {damage} damage"
+                                "message": f"{defender.username}'s ship hit {attacker.username}'s ship for {damage} damage{modifier_note}"
                             })
                 else:
                     # Miss
@@ -1010,7 +1034,47 @@ class CombatService:
                         "action": "miss",
                         "message": f"{defender.username}'s attack missed {attacker.username}'s ship"
                     })
-            
+
+            # --- Escape check after both sides have dealt damage this round ---
+            # A combatant whose hull is exposed (all drones destroyed) attempts
+            # to flee. This represents being "below 25% effective hull" since
+            # the drone shield layer is gone and the ship is taking direct hits.
+            if not attacker_ship_destroyed and not defender_ship_destroyed:
+                # Defender tries to escape if they have no drones left (hull exposed)
+                if defender_drones <= 0:
+                    escape_pct = self._calculate_escape_chance(defender_ship, attacker_ship)
+                    if random.randint(1, 100) <= escape_pct:
+                        fled_result = CombatResult.DEFENDER_FLED
+                        combat_details.append({
+                            "round": round_number,
+                            "actor": "defender",
+                            "action": "escape",
+                            "message": (
+                                f"{defender.username}'s ship engaged emergency thrusters "
+                                f"and escaped! (escape chance: {escape_pct}%)"
+                            ),
+                            "escape_chance": escape_pct
+                        })
+
+                # Attacker tries to escape if they have no drones left (hull exposed)
+                if fled_result is None and attacker_drones <= 0:
+                    escape_pct = self._calculate_escape_chance(attacker_ship, defender_ship)
+                    if random.randint(1, 100) <= escape_pct:
+                        fled_result = CombatResult.ATTACKER_FLED
+                        combat_details.append({
+                            "round": round_number,
+                            "actor": "attacker",
+                            "action": "escape",
+                            "message": (
+                                f"{attacker.username}'s ship engaged emergency thrusters "
+                                f"and escaped! (escape chance: {escape_pct}%)"
+                            ),
+                            "escape_chance": escape_pct
+                        })
+
+            if fled_result is not None:
+                break
+
             # Check if combat ends due to round limit
             if round_number >= 10:
                 combat_details.append({
@@ -1021,7 +1085,13 @@ class CombatService:
                 break
         
         # Determine result
-        if attacker_ship_destroyed and defender_ship_destroyed:
+        if fled_result is not None:
+            result = fled_result
+            if fled_result == CombatResult.ATTACKER_FLED:
+                message = f"{attacker.username} fled from combat with {defender.username}"
+            else:
+                message = f"{defender.username} escaped from {attacker.username}'s attack"
+        elif attacker_ship_destroyed and defender_ship_destroyed:
             result = CombatResult.MUTUAL_DESTRUCTION
             message = "Combat ended in mutual destruction"
         elif attacker_ship_destroyed:
@@ -1578,6 +1648,32 @@ class CombatService:
             "combat_details": combat_details
         }
     
+    def _calculate_escape_chance(self, fleeing_ship: Ship, pursuing_ship: Ship) -> int:
+        """Calculate the percentage chance of a ship escaping combat.
+
+        Escape chance is based on relative speed of both ships, with a bonus
+        for nimble ship types (FAST_COURIER, SCOUT_SHIP). Result is clamped
+        to the range 10-90%.
+
+        Args:
+            fleeing_ship: The ship attempting to escape.
+            pursuing_ship: The ship trying to prevent escape.
+
+        Returns:
+            Escape chance as an integer percentage (10-90).
+        """
+        fleeing_speed = fleeing_ship.current_speed if fleeing_ship else 1.0
+        pursuing_speed = pursuing_ship.current_speed if pursuing_ship else 1.0
+
+        chance = 30 + int(fleeing_speed * 10) - int(pursuing_speed * 5)
+
+        # Fast/agile ships get a flat +20% bonus
+        if fleeing_ship and fleeing_ship.type in self.FAST_ESCAPE_SHIP_TYPES:
+            chance += 20
+
+        # Clamp to 10-90%
+        return max(10, min(90, chance))
+
     def _calculate_attack_power(self, ship: Ship, drones: int) -> float:
         """Calculate the attack power of a ship and its drones."""
         if not ship:

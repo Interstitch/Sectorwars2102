@@ -53,6 +53,27 @@ LEGACY_RANK_MAP: Dict[str, str] = {
     "Colonel": "Commodore",
 }
 
+# Achievement-based rank requirements beyond points
+# Ranks not listed have no achievement requirements beyond points
+RANK_REQUIREMENTS: Dict[str, Dict[str, int]] = {
+    "Sergeant": {"min_trades": 25, "min_sectors_visited": 50},
+    "Staff Sergeant": {"min_trades": 50, "min_combat_victories": 10},
+    "Master Sergeant": {"min_trades": 100, "min_combat_victories": 25, "min_sectors_visited": 100},
+    "Warrant Officer": {"min_combat_victories": 50, "min_trades": 200},
+    "Ensign": {"min_combat_victories": 100, "min_planets_owned": 1},
+    "Lieutenant": {"min_trades": 500, "min_combat_victories": 200},
+    "Commander": {"min_planets_owned": 3, "min_combat_victories": 500},
+    "Captain": {"min_trades": 1000, "min_combat_victories": 1000, "min_planets_owned": 5},
+}
+
+# Mapping from requirement keys to stat keys for comparison
+_REQUIREMENT_TO_STAT = {
+    "min_trades": "total_trades",
+    "min_combat_victories": "combat_victories",
+    "min_sectors_visited": "sectors_visited",
+    "min_planets_owned": "planets_owned",
+}
+
 # Valid reasons for awarding rank points
 VALID_REASONS = {
     "combat_victory",
@@ -315,6 +336,104 @@ class RankingService:
         return 25
 
     # ------------------------------------------------------------------
+    # Player stats & achievement requirements
+    # ------------------------------------------------------------------
+
+    def get_player_stats(self, player_id: uuid.UUID) -> Dict[str, int]:
+        """Query the DB to build current achievement stats for a player.
+
+        Returns a dict with keys: total_trades, combat_victories,
+        sectors_visited, planets_owned.
+        """
+        from sqlalchemy import func as sa_func, or_, and_
+
+        # --- total_trades: count from enhanced_market_transactions ---
+        from src.models.market_transaction import MarketTransaction
+        total_trades = (
+            self.db.query(sa_func.count(MarketTransaction.id))
+            .filter(MarketTransaction.player_id == player_id)
+            .scalar()
+        ) or 0
+
+        # --- combat_victories: attacker wins + defender wins ---
+        from src.models.combat_log import CombatLog
+        combat_victories = (
+            self.db.query(sa_func.count(CombatLog.id))
+            .filter(
+                or_(
+                    and_(
+                        CombatLog.attacker_id == player_id,
+                        CombatLog.outcome == "attacker_win",
+                    ),
+                    and_(
+                        CombatLog.defender_id == player_id,
+                        CombatLog.outcome == "defender_win",
+                    ),
+                )
+            )
+            .scalar()
+        ) or 0
+
+        # --- sectors_visited: count unique sectors from ARIA exploration map ---
+        from src.models.aria_personal_intelligence import ARIAExplorationMap
+        sectors_visited = (
+            self.db.query(sa_func.count(ARIAExplorationMap.id))
+            .filter(ARIAExplorationMap.player_id == player_id)
+            .scalar()
+        ) or 0
+
+        # --- planets_owned: count from planets table ---
+        from src.models.planet import Planet
+        planets_owned = (
+            self.db.query(sa_func.count(Planet.id))
+            .filter(Planet.owner_id == player_id)
+            .scalar()
+        ) or 0
+
+        return {
+            "total_trades": total_trades,
+            "combat_victories": combat_victories,
+            "sectors_visited": sectors_visited,
+            "planets_owned": planets_owned,
+        }
+
+    def check_rank_requirements(
+        self, player_id: uuid.UUID, target_rank: str
+    ) -> Dict[str, Any]:
+        """Check whether a player meets achievement requirements for a rank.
+
+        Returns a dict with keys:
+            met (bool), requirements (dict), current_stats (dict), missing (list)
+        """
+        requirements = RANK_REQUIREMENTS.get(target_rank)
+        if not requirements:
+            # No achievement requirements for this rank — auto-pass
+            return {
+                "met": True,
+                "requirements": {},
+                "current_stats": {},
+                "missing": [],
+            }
+
+        stats = self.get_player_stats(player_id)
+        missing: List[str] = []
+
+        for req_key, threshold in requirements.items():
+            stat_key = _REQUIREMENT_TO_STAT.get(req_key, req_key)
+            current_value = stats.get(stat_key, 0)
+            if current_value < threshold:
+                missing.append(
+                    f"{req_key}: have {current_value}, need {threshold}"
+                )
+
+        return {
+            "met": len(missing) == 0,
+            "requirements": requirements,
+            "current_stats": stats,
+            "missing": missing,
+        }
+
+    # ------------------------------------------------------------------
     # Core service methods
     # ------------------------------------------------------------------
 
@@ -387,7 +506,7 @@ class RankingService:
 
         rank_info = self._build_rank_info(player)
 
-        return {
+        result = {
             "success": True,
             "message": (
                 f"Promoted to {player.military_rank}!"
@@ -401,6 +520,18 @@ class RankingService:
             "new_rank": player.military_rank,
             "rank_info": rank_info,
         }
+
+        # If promotion was blocked by achievement requirements, surface that
+        if promotion_result.get("promotion_blocked"):
+            result["promotion_blocked"] = True
+            result["missing_requirements"] = promotion_result["missing_requirements"]
+            result["message"] = (
+                f"Awarded {points} rank points — promotion to "
+                f"{promotion_result['target_rank']} blocked: "
+                f"achievement requirements not met"
+            )
+
+        return result
 
     def check_and_promote(self, player_id: uuid.UUID) -> Dict[str, Any]:
         """Check if a player qualifies for promotion and promote if so.
@@ -417,10 +548,40 @@ class RankingService:
         return result
 
     def _check_and_promote(self, player: Player) -> Dict[str, Any]:
-        """Internal promotion check that operates on a loaded Player object."""
+        """Internal promotion check that operates on a loaded Player object.
+
+        In addition to verifying the player has enough rank points, this
+        method also checks achievement-based requirements (trades completed,
+        combat victories, sectors visited, planets owned) defined in
+        RANK_REQUIREMENTS.  If the player has enough points but does not
+        meet the achievement thresholds, the promotion is blocked and the
+        return dict includes ``promotion_blocked`` and ``missing_requirements``.
+        """
         earned_rank = self.get_rank_for_points(player.rank_points or 0)
 
         if earned_rank["name"] != player.military_rank:
+            # Player has enough points for a new rank — verify achievements
+            req_check = self.check_rank_requirements(player.id, earned_rank["name"])
+
+            if not req_check["met"]:
+                logger.info(
+                    "Player %s has points for %s but missing requirements: %s",
+                    player.id,
+                    earned_rank["name"],
+                    req_check["missing"],
+                )
+                return {
+                    "promoted": False,
+                    "promotion_blocked": True,
+                    "target_rank": earned_rank["name"],
+                    "missing_requirements": req_check["missing"],
+                    "current_stats": req_check["current_stats"],
+                    "message": (
+                        f"Points qualify for {earned_rank['name']} but "
+                        f"achievement requirements not met"
+                    ),
+                }
+
             old_rank = player.military_rank
             player.military_rank = earned_rank["name"]
             logger.info(

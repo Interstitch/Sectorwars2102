@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 from pydantic import BaseModel, Field
 
-from src.core.database import get_async_session
+from src.core.database import get_db
 from src.auth.dependencies import get_current_user, require_admin
 from src.models.user import User
 from src.models.fleet import Fleet, FleetBattle, FleetMember, FleetBattleCasualty, FleetStatus
@@ -129,13 +129,21 @@ async def get_all_fleets(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get all fleets with optional filters."""
     query = db.query(Fleet)
 
     if status:
-        query = query.filter(Fleet.status == status)
+        try:
+            validated_status = FleetStatus(status).value
+        except ValueError:
+            valid_values = [s.value for s in FleetStatus]
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid fleet status '{status}'. Valid values: {valid_values}"
+            )
+        query = query.filter(Fleet.status == validated_status)
     if team_id:
         query = query.filter(Fleet.team_id == team_id)
     if sector_id:
@@ -178,7 +186,7 @@ async def get_all_fleets(
 @router.get("/stats", response_model=FleetStatsResponse)
 async def get_fleet_statistics(
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get fleet statistics summary."""
     # Total fleets
@@ -263,7 +271,7 @@ async def get_all_battles(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get all fleet battles with optional filters."""
     query = db.query(FleetBattle)
@@ -324,7 +332,7 @@ async def get_all_battles(
 async def get_battle_details(
     battle_id: UUID,
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get detailed information about a specific battle."""
     battle = db.query(FleetBattle).filter(FleetBattle.id == battle_id).first()
@@ -393,7 +401,7 @@ async def intervene_in_battle(
     battle_id: UUID,
     request: InterveneBattleRequest,
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Intervene in an ongoing battle."""
     battle = db.query(FleetBattle).filter(FleetBattle.id == battle_id).first()
@@ -454,7 +462,7 @@ async def intervene_in_battle(
 async def get_fleet_details(
     fleet_id: UUID,
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get detailed information about a specific fleet."""
     fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
@@ -489,7 +497,7 @@ async def get_fleet_details(
 async def get_fleet_members(
     fleet_id: UUID,
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get all members of a fleet with detailed ship information."""
     fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
@@ -526,7 +534,7 @@ async def adjust_fleet_morale(
     morale: int = Query(..., ge=0, le=100),
     reason: str = Query(..., min_length=10),
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Adjust fleet morale administratively."""
     fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()
@@ -561,7 +569,7 @@ async def force_dissolve_fleet(
     fleet_id: UUID,
     request: ForceDissolveRequest,
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Force dissolve a fleet administratively."""
     fleet = db.query(Fleet).filter(Fleet.id == fleet_id).first()

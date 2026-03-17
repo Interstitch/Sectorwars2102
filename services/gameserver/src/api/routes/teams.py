@@ -3,6 +3,7 @@ Team management API routes
 """
 
 import logging
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -681,3 +682,184 @@ async def send_team_message(
         priority=message.priority,
         is_read=False
     )
+
+
+# ==========================================
+# Team War Endpoints
+# ==========================================
+
+class DeclareWarRequest(BaseModel):
+    target_team_id: str
+    reason: str = Field(default="", max_length=500)
+
+
+class CeasefireRequest(BaseModel):
+    target_team_id: str
+
+
+class WarEntry(BaseModel):
+    target_team_id: str
+    declared_by: str
+    declared_at: str
+    reason: str
+    status: str
+    score: dict
+
+
+@router.post("/{team_id}/wars/declare")
+async def declare_war(
+    team_id: UUID,
+    request: DeclareWarRequest,
+    current_player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """Declare war on another team. Requires team leader."""
+    # Verify player is leader of this team
+    team_service = TeamService(db)
+    team = team_service.get_team(team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.leader_id != current_player.id:
+        raise HTTPException(status_code=403, detail="Only team leader can declare war")
+
+    # Verify target team exists
+    target_id = request.target_team_id
+    try:
+        target_team = team_service.get_team(UUID(target_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid target team ID")
+    if not target_team:
+        raise HTTPException(status_code=404, detail="Target team not found")
+
+    # Cannot declare war on yourself
+    if str(team_id) == target_id:
+        raise HTTPException(status_code=400, detail="Cannot declare war on your own team")
+
+    # Store war declaration in member_roles JSONB (used as general metadata store)
+    from sqlalchemy.orm.attributes import flag_modified
+    if not team.member_roles:
+        team.member_roles = {}
+    wars = team.member_roles.get("active_wars", [])
+
+    # Check not already at war with this team
+    if any(w["target_team_id"] == target_id for w in wars):
+        raise HTTPException(status_code=400, detail="Already at war with this team")
+
+    war_entry = {
+        "target_team_id": target_id,
+        "declared_by": str(current_player.id),
+        "declared_at": datetime.utcnow().isoformat(),
+        "reason": request.reason,
+        "status": "active",
+        "score": {"us": 0, "them": 0},
+    }
+    wars.append(war_entry)
+    team.member_roles["active_wars"] = wars
+    flag_modified(team, "member_roles")
+
+    # Also record the war on the target team side
+    if not target_team.member_roles:
+        target_team.member_roles = {}
+    target_wars = target_team.member_roles.get("active_wars", [])
+    target_war_entry = {
+        "target_team_id": str(team_id),
+        "declared_by": str(current_player.id),
+        "declared_at": datetime.utcnow().isoformat(),
+        "reason": request.reason,
+        "status": "active",
+        "score": {"us": 0, "them": 0},
+    }
+    target_wars.append(target_war_entry)
+    target_team.member_roles["active_wars"] = target_wars
+    flag_modified(target_team, "member_roles")
+
+    db.commit()
+
+    return {"success": True, "message": "War declared", "war": war_entry}
+
+
+@router.get("/{team_id}/wars", response_model=List[WarEntry])
+async def list_wars(
+    team_id: UUID,
+    status: Optional[str] = Query(None, pattern="^(active|ceased)$"),
+    db: Session = Depends(get_db)
+):
+    """List wars for a team, optionally filtered by status."""
+    team_service = TeamService(db)
+    team = team_service.get_team(team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+
+    wars = (team.member_roles or {}).get("active_wars", [])
+
+    if status:
+        wars = [w for w in wars if w.get("status") == status]
+
+    return wars
+
+
+@router.post("/{team_id}/wars/ceasefire")
+async def ceasefire(
+    team_id: UUID,
+    request: CeasefireRequest,
+    current_player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """End a war via ceasefire. Requires leader of either involved team."""
+    team_service = TeamService(db)
+    team = team_service.get_team(team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+
+    target_id = request.target_team_id
+    try:
+        target_team = team_service.get_team(UUID(target_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid target team ID")
+    if not target_team:
+        raise HTTPException(status_code=404, detail="Target team not found")
+
+    # Verify the requesting player is leader of either team
+    is_leader_of_team = team.leader_id == current_player.id
+    is_leader_of_target = target_team.leader_id == current_player.id
+    if not is_leader_of_team and not is_leader_of_target:
+        raise HTTPException(status_code=403, detail="Only a leader of either team can request ceasefire")
+
+    from sqlalchemy.orm.attributes import flag_modified
+
+    # Update war status on the declaring team side
+    wars = (team.member_roles or {}).get("active_wars", [])
+    war_found = False
+    for w in wars:
+        if w["target_team_id"] == target_id and w["status"] == "active":
+            w["status"] = "ceased"
+            w["ceased_at"] = datetime.utcnow().isoformat()
+            w["ceased_by"] = str(current_player.id)
+            war_found = True
+            break
+
+    if not war_found:
+        raise HTTPException(status_code=404, detail="No active war found between these teams")
+
+    if not team.member_roles:
+        team.member_roles = {}
+    team.member_roles["active_wars"] = wars
+    flag_modified(team, "member_roles")
+
+    # Update war status on the target team side
+    target_wars = (target_team.member_roles or {}).get("active_wars", [])
+    for w in target_wars:
+        if w["target_team_id"] == str(team_id) and w["status"] == "active":
+            w["status"] = "ceased"
+            w["ceased_at"] = datetime.utcnow().isoformat()
+            w["ceased_by"] = str(current_player.id)
+            break
+
+    if not target_team.member_roles:
+        target_team.member_roles = {}
+    target_team.member_roles["active_wars"] = target_wars
+    flag_modified(target_team, "member_roles")
+
+    db.commit()
+
+    return {"success": True, "message": "Ceasefire declared", "ceased_by": str(current_player.id)}

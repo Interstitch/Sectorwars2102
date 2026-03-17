@@ -441,11 +441,62 @@ async def get_owned_planets(
     """Get all planets owned by the player."""
     service = PlanetaryService(db)
     planets = service.get_player_planets(player.id)
-    
+
     return {
         "planets": planets,
         "totalPlanets": len(planets)
     }
+
+
+@router.get("/terraforming/levels")
+async def get_terraforming_levels(
+    player: Player = Depends(get_current_player),
+):
+    """Get available terraforming levels and their costs."""
+    from src.services.terraforming_service import TerraformingService
+    return TerraformingService.get_terraforming_levels()
+
+
+@router.post("/{planet_id}/shields/upgrade")
+async def upgrade_shield_generator(
+    planet_id: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """Upgrade the planet's shield generator to the next level."""
+    try:
+        pid = UUID(planet_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    service = PlanetaryService(db)
+
+    try:
+        result = service.upgrade_shield_generator(pid, player.id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{planet_id}/defenses")
+async def get_planet_defenses(
+    planet_id: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """Get detailed defense information for a planet."""
+    try:
+        pid = UUID(planet_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    service = PlanetaryService(db)
+
+    try:
+        result = service.get_defense_info(pid)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/{planetId}")
