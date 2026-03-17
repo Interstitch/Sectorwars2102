@@ -123,8 +123,8 @@ class TerraformingService:
                 f"than current ({planet.habitability_score})"
             )
 
-        # Check player credits
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+        # Lock player for credit deduction race prevention
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             raise ValueError("Player not found")
 

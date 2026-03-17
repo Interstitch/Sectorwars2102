@@ -169,8 +169,8 @@ class PlanetaryService:
         # Calculate upgrade cost
         cost = self._calculate_upgrade_cost(building_type, current_level, target_level)
         
-        # Check if player can afford
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+        # Lock player for credit deduction
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if player.credits < cost["credits"]:
             raise ValueError("Insufficient credits for upgrade")
             
@@ -532,8 +532,8 @@ class PlanetaryService:
         # Cost scales with level: base_cost * (current_level + 1)
         upgrade_cost = DEFENSE_UPGRADE_COST * (current_level + 1)
 
-        # Check if player can afford
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+        # Lock player for credit deduction
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             raise ValueError("Player not found")
 
@@ -579,7 +579,7 @@ class PlanetaryService:
 
         Levels 0-10, with costs ranging from 50,000 to 3,000,000 credits.
         """
-        # Verify ownership
+        # Lock planet + verify ownership to prevent concurrent upgrade races
         planet = self.db.query(Planet).join(
             player_planets,
             Planet.id == player_planets.c.planet_id
@@ -588,7 +588,7 @@ class PlanetaryService:
                 Planet.id == planet_id,
                 player_planets.c.player_id == player_id
             )
-        ).first()
+        ).with_for_update().first()
 
         if not planet:
             raise ValueError("Planet not found or not owned by player")
@@ -604,8 +604,8 @@ class PlanetaryService:
         next_level_info = SHIELD_GENERATOR_LEVELS[next_level]
         upgrade_cost = next_level_info["cost"]
 
-        # Check if player can afford
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+        # Lock player for credit deduction
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             raise ValueError("Player not found")
 

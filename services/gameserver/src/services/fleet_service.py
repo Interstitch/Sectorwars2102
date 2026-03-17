@@ -357,7 +357,8 @@ class FleetService:
         Returns a dict with round results including damage dealt,
         ships destroyed/retreated, and remaining counts per side.
         """
-        battle = self.db.query(FleetBattle).filter(FleetBattle.id == battle_id).first()
+        # Lock battle row to prevent concurrent round simulation
+        battle = self.db.query(FleetBattle).filter(FleetBattle.id == battle_id).with_for_update().first()
         if not battle:
             raise ValueError(f"Battle {battle_id} not found")
 

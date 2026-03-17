@@ -714,18 +714,18 @@ async def declare_war(
     db: Session = Depends(get_db)
 ):
     """Declare war on another team. Requires team leader."""
-    # Verify player is leader of this team
-    team_service = TeamService(db)
-    team = team_service.get_team(team_id)
+    from src.models.team import Team
+    # Lock both teams to prevent concurrent war declaration races
+    team = db.query(Team).filter(Team.id == team_id).with_for_update().first()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
     if team.leader_id != current_player.id:
         raise HTTPException(status_code=403, detail="Only team leader can declare war")
 
-    # Verify target team exists
+    # Lock target team
     target_id = request.target_team_id
     try:
-        target_team = team_service.get_team(UUID(target_id))
+        target_team = db.query(Team).filter(Team.id == UUID(target_id)).with_for_update().first()
     except (ValueError, AttributeError):
         raise HTTPException(status_code=400, detail="Invalid target team ID")
     if not target_team:

@@ -167,7 +167,8 @@ class CitadelService:
 
     def start_upgrade(self, planet_id: uuid.UUID, player_id: uuid.UUID) -> Dict[str, Any]:
         """Start a citadel upgrade on a planet. Level 0->1 is free; higher levels cost credits and resources."""
-        planet = self.db.query(Planet).filter(Planet.id == planet_id).first()
+        # Lock planet to prevent concurrent upgrade races
+        planet = self.db.query(Planet).filter(Planet.id == planet_id).with_for_update().first()
         if not planet:
             return {"success": False, "message": "Planet not found"}
 
@@ -217,8 +218,8 @@ class CitadelService:
                 "citadel_name": level_1_info["name"],
             }
 
-        # For levels 1+: check credits
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+        # For levels 1+: lock player row to prevent concurrent credit races
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             return {"success": False, "message": "Player not found"}
 
@@ -529,8 +530,8 @@ class CitadelService:
 
         spec = DEFENSE_BUILDINGS[building_type]
 
-        # --- Load planet ---
-        planet = self.db.query(Planet).filter(Planet.id == planet_id).first()
+        # --- Lock planet to prevent concurrent building races ---
+        planet = self.db.query(Planet).filter(Planet.id == planet_id).with_for_update().first()
         if not planet:
             return {"success": False, "message": "Planet not found"}
 
@@ -566,8 +567,8 @@ class CitadelService:
                 ),
             }
 
-        # --- Credit check ---
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+        # --- Lock player for credit deduction ---
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             return {"success": False, "message": "Player not found"}
 
