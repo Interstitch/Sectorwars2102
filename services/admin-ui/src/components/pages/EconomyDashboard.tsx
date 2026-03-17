@@ -82,30 +82,51 @@ const EconomyDashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Fetch market data
-      const marketResponse = await api.get('/api/v1/admin/economy/market-data', {
-        params: {
-          commodity_filter: selectedCommodity !== 'all' ? selectedCommodity : undefined,
-          limit: 100
-        }
-      });
-      setMarketData(marketResponse.data as MarketData[]);
-      
-      // Fetch economic metrics
-      const metricsResponse = await api.get('/api/v1/admin/economy/metrics', {
-        params: { time_period: '24h' }
-      });
-      setMetrics(metricsResponse.data as EconomicMetrics);
-      
-      // Fetch price alerts
-      const alertsResponse = await api.get('/api/v1/admin/economy/price-alerts');
-      setPriceAlerts(Array.isArray(alertsResponse.data) ? alertsResponse.data : []);
-      
+
+      // Use allSettled so individual endpoint failures don't blank everything
+      const [marketResult, metricsResult, alertsResult] = await Promise.allSettled([
+        api.get('/api/v1/admin/economy/market-data', {
+          params: {
+            commodity_filter: selectedCommodity !== 'all' ? selectedCommodity : undefined,
+            limit: 100
+          }
+        }),
+        api.get('/api/v1/admin/economy/metrics', {
+          params: { time_period: '24h' }
+        }),
+        api.get('/api/v1/admin/economy/price-alerts'),
+      ]);
+
+      if (marketResult.status === 'fulfilled') {
+        setMarketData(marketResult.value.data as MarketData[]);
+      } else {
+        console.warn('Failed to load market data:', marketResult.reason);
+        setMarketData([]);
+      }
+
+      if (metricsResult.status === 'fulfilled') {
+        setMetrics(metricsResult.value.data as EconomicMetrics);
+      } else {
+        console.warn('Failed to load metrics:', metricsResult.reason);
+        setMetrics(null);
+      }
+
+      if (alertsResult.status === 'fulfilled') {
+        setPriceAlerts(Array.isArray(alertsResult.value.data) ? alertsResult.value.data : []);
+      } else {
+        console.warn('Failed to load price alerts:', alertsResult.reason);
+        setPriceAlerts([]);
+      }
+
+      // Show error only if ALL endpoints failed
+      const allFailed = [marketResult, metricsResult, alertsResult].every(r => r.status === 'rejected');
+      if (allFailed) {
+        setError('Failed to load economic data. Please check if the gameserver is running.');
+      }
+
     } catch (error: any) {
       console.error('Failed to fetch economic data:', error);
-      setError(error.response?.data?.detail || 'Failed to load economic data. Please check if the gameserver is running.');
-      // Clear data on error
+      setError('Failed to load economic data. Please check if the gameserver is running.');
       setMarketData([]);
       setMetrics(null);
       setPriceAlerts([]);

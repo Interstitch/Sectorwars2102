@@ -106,29 +106,45 @@ export const CombatOverview: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch combat events (using live endpoint for real-time data)
-      const eventsResponse = await api.get('/api/v1/admin/combat/live');
-      setCombatEvents(eventsResponse.data as CombatEvent[]);
-      
-      // Fetch combat statistics  
-      const statsResponse = await api.get('/api/v1/admin/combat/dashboard-summary');
-      setCombatStats(statsResponse.data as CombatStats);
-      
-      // Fetch combat rankings - for now we'll use empty data
-      // TODO: Implement player rankings endpoint
+      // Use allSettled so individual endpoint failures don't blank everything
+      const [eventsResult, statsResult, disputesResult] = await Promise.allSettled([
+        api.get('/api/v1/admin/combat/live'),
+        api.get('/api/v1/admin/combat/dashboard-summary'),
+        api.get('/api/v1/admin/combat/disputes'),
+      ]);
+
+      if (eventsResult.status === 'fulfilled') {
+        setCombatEvents(eventsResult.value.data as CombatEvent[]);
+      } else {
+        console.warn('Failed to load combat events:', eventsResult.reason);
+        setCombatEvents([]);
+      }
+
+      if (statsResult.status === 'fulfilled') {
+        setCombatStats(statsResult.value.data as CombatStats);
+      } else {
+        console.warn('Failed to load combat stats:', statsResult.reason);
+        setCombatStats(null);
+      }
+
+      // Rankings not yet implemented
       setRankings([]);
-      
-      // Fetch combat disputes
-      const disputesResponse = await api.get('/api/v1/admin/combat/disputes');
-      setDisputes(disputesResponse.data as CombatDispute[]);
+
+      if (disputesResult.status === 'fulfilled') {
+        setDisputes(disputesResult.value.data as CombatDispute[]);
+      } else {
+        console.warn('Failed to load combat disputes:', disputesResult.reason);
+        setDisputes([]);
+      }
+
+      // Show error only if ALL endpoints failed
+      const allFailed = [eventsResult, statsResult, disputesResult].every(r => r.status === 'rejected');
+      if (allFailed) {
+        setError('Failed to load combat data. Please check if the gameserver is running.');
+      }
     } catch (error: any) {
       console.error('Failed to load combat data:', error);
-      setError(error.response?.data?.detail || 'Failed to load combat data. Please check if the gameserver is running.');
-      // Clear data on error
-      setCombatEvents([]);
-      setCombatStats(null);
-      setRankings([]);
-      setDisputes([]);
+      setError('Failed to load combat data. Please check if the gameserver is running.');
     } finally {
       setIsLoading(false);
     }
