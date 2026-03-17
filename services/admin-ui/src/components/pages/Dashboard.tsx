@@ -52,81 +52,63 @@ const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
+  // Get API URL helper
+  const getApiUrl = () => {
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+    return '';
+  };
+
   const fetchDashboardData = async () => {
     try {
       // Prepare headers with authentication
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // Fetch all dashboard data concurrently using allSettled so partial failures
-      // don't blank the entire dashboard
-      const results = await Promise.allSettled([
-        axios.get<any>('/api/v1/status/database', { headers, timeout: 10000 }),
-        axios.get<any>('/api/v1/status/ai/providers', { headers, timeout: 15000 }),
-        axios.get<any>('/api/v1/status', { headers, timeout: 10000 }),
-        axios.get<any>('/api/v1/admin/stats', { headers, timeout: 10000 })
+      // Fetch all dashboard data concurrently (using relative URLs via proxy)
+      const [dbHealthRes, aiHealthRes, gameServerRes, adminStatsRes] = await Promise.all([
+        axios.get('/api/v1/status/database', { headers }),
+        axios.get('/api/v1/status/ai/providers', { headers }),
+        axios.get('/api/v1/status', { headers }),
+        axios.get('/api/v1/admin/stats', { headers })
       ]);
 
-      const [dbHealthResult, aiHealthResult, gameServerResult, adminStatsResult] = results;
-
-      // Process system health data with graceful fallbacks per-service
+      // Process system health data
       const systemHealth: SystemHealth = {
-        database: dbHealthResult.status === 'fulfilled'
-          ? {
-              status: dbHealthResult.value.data.status,
-              connected: dbHealthResult.value.data.connected,
-              response_time: dbHealthResult.value.data.response_time
-            }
-          : { status: 'unavailable', connected: false, response_time: 0 },
-        ai: aiHealthResult.status === 'fulfilled'
-          ? {
-              status: aiHealthResult.value.data.status,
-              healthy: aiHealthResult.value.data.summary.healthy,
-              total: aiHealthResult.value.data.summary.total
-            }
-          : { status: 'unavailable', healthy: 0, total: 2 },
-        gameserver: gameServerResult.status === 'fulfilled'
-          ? {
-              status: gameServerResult.value.data.status === 'healthy' ? 'healthy' : 'degraded',
-              response_time: 0
-            }
-          : { status: 'unavailable', response_time: 0 }
+        database: {
+          status: dbHealthRes.data.status,
+          connected: dbHealthRes.data.connected,
+          response_time: dbHealthRes.data.response_time
+        },
+        ai: {
+          status: aiHealthRes.data.status,
+          healthy: aiHealthRes.data.summary.healthy,
+          total: aiHealthRes.data.summary.total
+        },
+        gameserver: {
+          status: gameServerRes.data.status === 'healthy' ? 'healthy' : 'degraded',
+          response_time: 0 // Will be calculated from request time
+        }
       };
 
-      // Process admin stats data (may have failed independently)
-      let playerStats = { total_players: 0, active_sessions: 0, new_today: 0, new_this_week: 0 };
-      let universeStats = { total_sectors: 0, total_planets: 0, total_ports: 0, total_ships: 0, total_warp_tunnels: 0 };
-
-      if (adminStatsResult.status === 'fulfilled') {
-        const stats = adminStatsResult.value.data;
-        playerStats = {
+      // Process admin stats data
+      const stats = adminStatsRes.data as any;
+      
+      const dashboardData: DashboardData = {
+        system_health: systemHealth,
+        player_stats: {
           total_players: stats.total_players || 0,
           active_sessions: stats.active_sessions || 0,
           new_today: stats.new_players_today || 0,
           new_this_week: stats.new_players_week || 0
-        };
-        universeStats = {
+        },
+        universe_stats: {
           total_sectors: stats.total_sectors || 0,
           total_planets: stats.total_planets || 0,
           total_ports: stats.total_ports || 0,
           total_ships: stats.total_ships || 0,
           total_warp_tunnels: stats.total_warp_tunnels || 0
-        };
-      } else {
-        console.warn('Admin stats fetch failed:', adminStatsResult.reason);
-      }
-
-      // Log any individual failures for debugging
-      results.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          const endpoints = ['database health', 'AI providers', 'game server status', 'admin stats'];
-          console.warn(`Dashboard: ${endpoints[index]} fetch failed:`, result.reason?.message || result.reason);
-        }
-      });
-
-      const dashboardData: DashboardData = {
-        system_health: systemHealth,
-        player_stats: playerStats,
-        universe_stats: universeStats,
+        },
         last_updated: new Date().toISOString()
       };
 
@@ -134,7 +116,7 @@ const Dashboard: React.FC = () => {
       setLastRefresh(new Date());
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      // Set fallback data on unexpected error
+      // Set fallback data on error
       setDashboardData({
         system_health: {
           database: { status: 'unavailable', connected: false, response_time: 0 },
@@ -304,7 +286,10 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-tertiary">API:</span>
-                    <span className="text-sm font-medium text-secondary">Operational</span>
+                    <span className="text-sm font-medium text-secondary">
+                      {dashboardData.system_health.gameserver.status === 'healthy' ? 'Operational' :
+                       dashboardData.system_health.gameserver.status === 'degraded' ? 'Degraded' : 'Unavailable'}
+                    </span>
                   </div>
                 </div>
               </div>

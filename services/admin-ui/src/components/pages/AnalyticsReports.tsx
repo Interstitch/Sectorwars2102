@@ -291,7 +291,7 @@ const AnalyticsReports: React.FC = () => {
 
   const fetchReports = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       if (!token) return;
 
       const response = await fetch(
@@ -373,7 +373,7 @@ const AnalyticsReports: React.FC = () => {
 
   const handleGenerateReport = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       if (!token) return;
 
       const response = await fetch(
