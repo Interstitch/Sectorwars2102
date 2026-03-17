@@ -285,9 +285,287 @@ npx playwright test -c e2e_tests/playwright.config.ts
 - Bug escape rate minimized
 - Time per phase optimized through learning
 
+## 🎨 Operational Modes — Color Gate Protocol
+
+### Color Gate — Mandatory Triage Before Any Mode
+
+**RULE**: Before launching any mode, run the Color Gate to determine which protocol applies.
+
+**The Decision Fork — One Question:**
+
+> *"Has this capability ever worked in this project, or does it not exist yet?"*
+
+| Answer | Color | Protocol | What It Means |
+|--------|-------|----------|---------------|
+| "It worked before, now it doesn't" | BLUE | Diagnostic Triage | Something broke — find and fix the regression |
+| "It never existed / it's additive" | GREEN | Feature Gap Resolution | Something's missing — design and build it |
+
+**Activation Trigger Routing:**
+
+| Trigger | Route | Gate Needed? |
+|---------|-------|-------------|
+| "blue mode" / "diagnose" / "something's broken" | BLUE | No — explicit request |
+| "green mode" / "feature gap" / "build this" | GREEN | No — explicit request |
+| "gold mode" / "polish" / "quality sweep" | GOLD | No — explicit request |
+| "violet mode" / "vision audit" / "align to spec" | VIOLET | No — explicit request |
+| "amber mode" / "translation quality" / "i18n sweep" | AMBER | No — explicit request |
+| "500 error" / "page won't load" / "not working" | BLUE | No — clear regression |
+| "add support for..." / "I want the game to..." | GREEN | No — clear additive |
+| "something's off" / "X isn't right" | GATE | **Yes** — ask before routing |
+
 ---
+
+## BLUE MODE — Diagnostic Triage Protocol
+
+### What Is Blue Mode?
+
+Like a hospital "Code Blue," this protocol launches a full diagnostic sweep across all services — backend, frontend, database, WebSocket, admin UI — all in parallel, all read-only.
+
+**RULE**: Launch **6 parallel investigation tracks** as subagents. Every track is **strictly read-only**. Synthesize results into a diagnostic report with verdict and actionable next steps.
+
+**Activation Triggers**: "blue mode" / "diagnose" / "run diagnostics" / "something's broken" / "500 error"
+
+### The 6 Parallel Investigation Tracks
+
+Launch all 6 as subagents in parallel. Each reads source files and checks logs. **All read-only.**
+
+#### Track 1: SERVICE HEALTH — Are All Services Running?
+**Check:** `docker compose ps` on VM · All containers healthy · No restart loops · Game server responding at :8080 · Player client at :3000 · Admin UI at :3001 · Database connections · Redis connectivity · Nginx gateway routing
+**Red Flags:** Unhealthy containers · Restart loops · Connection refused · Port conflicts
+
+#### Track 2: BACKEND RUNTIME — Any Server Errors?
+**Check:** `docker compose logs gameserver` for `Error` / `Traceback` / `500` · SQLAlchemy errors · Import failures · Missing model attributes · Async/sync session mismatches · Alembic migration state
+**Red Flags:** Stack traces · "column does not exist" · ImportError · 500 responses
+
+#### Track 3: FRONTEND BUILD — Do Apps Compile?
+**Check:** `npm run build` for player-client and admin-ui · TypeScript errors · Missing imports · Broken component references · Console errors in browser · API endpoint mismatches (wrong paths, wrong auth token keys)
+**Red Flags:** Build failures · Runtime crashes (blank pages) · Network errors in console
+
+#### Track 4: API INTEGRITY — Do Endpoints Return Correct Data?
+**Check:** Key API endpoints respond correctly · Auth flow works (login → token → authenticated requests) · Admin endpoints require admin role · Data shape matches frontend expectations · CORS headers correct · WebSocket connections succeed
+**Red Flags:** 401/403 on valid tokens · Wrong response shapes · CORS blocks · WebSocket disconnect
+
+#### Track 5: DATABASE STATE — Is Schema Consistent?
+**Check:** `alembic current` matches head · All model columns exist in actual tables · No orphaned migrations · Foreign key integrity · Index existence · Data consistency (player.team_id references valid teams, etc.)
+**Red Flags:** Schema/model mismatches (like station_id vs port_id) · Failed migrations · Missing columns
+
+#### Track 6: GAME MECHANICS — Are Core Systems Working?
+**Check:** Trading endpoints work · Combat resolution succeeds · Planet colonization functional · Ship movement works · First login conversation completes · Genesis device deployment · Ranking points awarded · Economy dashboard shows real data
+**Red Flags:** Hardcoded mock data in production paths · Silent failures · Features that return success but don't persist
+
+### Severity Guide
+
+| Severity | Meaning |
+|----------|---------|
+| CRITICAL | Service won't start, game unplayable, data corruption (missing columns, import failures, build crashes) |
+| HIGH | Degraded — services run but key features broken (endpoints 500ing, blank pages, auth failures) |
+| WARNING | Unusual — monitor (mock data fallbacks, silent error swallowing, stale tokens) |
+| OK | Healthy — all checks pass |
+
+### Diagnostic Report
+
+Output: Overall verdict (CRITICAL / DEGRADED / HEALTHY) · Top 3 findings by impact · Track summary table · Recommended actions with specific file:line references · Plain-English summary.
+
+---
+
+## GREEN MODE — Feature Gap Resolution Protocol
+
+### What Is Green Mode?
+
+Green Mode resolves **feature gaps** — capabilities that should exist but don't. Unlike Blue Mode (diagnostics), Green Mode designs and builds new functionality through a 6-stage process.
+
+**RULE**: Follow all 6 stages in order. Do NOT skip stages.
+
+**Activation Triggers**: Color Gate routes GREEN · "green mode" / "feature gap" · Additive functionality requests
+
+### The 6 Stages
+
+#### Stage 1: GAP ANALYSIS — Define What's Missing
+Articulate what exists vs what's needed:
+- **Current behavior**: [What happens now]
+- **Expected behavior**: [What should happen]
+- **Constraints**: [What must NOT change — multiplayer sync, existing save data, other features, API compatibility]
+
+#### Stage 2: CODEBASE EXPLORATION — Understand the System
+Read-only exploration. Identify affected files across services:
+
+| Service | Key Locations |
+|---------|---------------|
+| Game Server | `services/gameserver/src/api/routes/` — API endpoints |
+| | `services/gameserver/src/services/` — business logic |
+| | `services/gameserver/src/models/` — SQLAlchemy models |
+| Player Client | `services/player-client/src/components/` — React components |
+| | `services/player-client/src/contexts/` — state management |
+| Admin UI | `services/admin-ui/src/components/pages/` — admin pages |
+| | `services/admin-ui/src/contexts/` — admin state |
+| Database | `services/gameserver/alembic/versions/` — migrations |
+| Docs | `DOCS/` — AISPEC files documenting systems |
+
+Output: Relevant files · Current code path · Existing patterns to follow · Impact assessment
+
+#### Stage 3: DESIGN — Architecture & Edge Cases (Approval Required)
+Design before coding. Consider:
+- Architecture and data flow across services
+- Database schema changes (need Alembic migration?)
+- API design (RESTful, consistent with existing patterns)
+- Frontend component structure and state management
+- Security implications (auth, authorization, input validation)
+- Multi-regional implications
+- Edge cases (missing data, concurrent access, race conditions)
+
+**Checkpoint (REQUIRED)**: Samantha approves before any code is written.
+
+#### Stage 4: PLAN — Implementation Steps
+Turn design into numbered checklist via `EnterPlanMode`. Cover: dependency-ordered changes, migration planning, API design, frontend wiring, verification steps.
+
+#### Stage 5: IMPLEMENT — Execute the Plan
+Follow approved plan. Dispatch parallel subagents if plan has **4+ files across multiple services**.
+
+**Rules during implementation:**
+- Follow existing patterns in each service
+- Backend: FastAPI routes, SQLAlchemy models, Pydantic schemas
+- Frontend: React hooks, TypeScript strict, existing context patterns
+- Use `Promise.allSettled` for resilient multi-endpoint fetches
+- Never generate mock data or fallback implementations
+- Commit after every completed task with conventional format
+
+#### Stage 6: VERIFY — Confirm Gap Closed
+ALL must pass:
+1. Backend: `docker compose exec gameserver poetry run pytest` — no new failures
+2. Frontend: `npm run build` for both player-client and admin-ui — no errors
+3. API endpoints respond correctly (test via curl or browser)
+4. Existing features still work (no regressions)
+5. Database migrations apply cleanly
+
+---
+
+## GOLD MODE — Polish Protocol
+
+### What Is Gold Mode?
+
+Gold Mode is a **proactive codebase quality sweep** using **subagents** in orchestrated waves. Each pass: analyze wave (read-only subagents per zone) → checkpoint → fix wave → verify. Unlike Blue (reactive) or Green (additive), Gold is preventive maintenance.
+
+**Activation Triggers**: "gold mode" / "polish" / "quality sweep" / "clean up"
+
+### Zone Partitioning
+
+Files in the same service/subsystem stay together. No two subagents write to the same file.
+
+| Zone | Covers |
+|------|--------|
+| GAMESERVER-ROUTES | `services/gameserver/src/api/routes/` — all API route files |
+| GAMESERVER-SERVICES | `services/gameserver/src/services/` — business logic |
+| GAMESERVER-MODELS | `services/gameserver/src/models/` + `src/core/` + `src/auth/` |
+| PLAYER-CLIENT | `services/player-client/src/` — all frontend code |
+| ADMIN-UI | `services/admin-ui/src/` — all admin interface code |
+| INFRASTRUCTURE | `docker-compose.yml`, Dockerfiles, nginx, scripts, configs |
+
+### The 8 Issue Categories
+
+| # | Category | Sev | Detection Pattern |
+|---|----------|-----|-------------------|
+| 1 | DEAD-CODE | LOW | Unused functions, unreachable code, commented-out blocks |
+| 2 | MOCK-DATA | HIGH | Hardcoded fake data, placeholder arrays, mock fallbacks |
+| 3 | STUB | MED | console.log-only handlers, TODO markers, `pass` bodies |
+| 4 | ERROR-HANDLING | MED | Bare `except: pass`, missing error states, silent failures |
+| 5 | SECURITY-GAP | HIGH | Missing auth checks, hardcoded secrets, XSS/injection vectors |
+| 6 | TYPE-SAFETY | LOW | `any` types in TypeScript, wrong localStorage keys, field mismatches |
+| 7 | API-MISMATCH | HIGH | Frontend calls endpoint that doesn't exist, wrong response shapes |
+| 8 | ASYNC-SYNC | HIGH | `get_async_session` with sync `.query()`, wrong DB session type |
+
+### The Convergent Loop
+
+1. **Analyze wave**: Launch subagents per zone (read-only). Each scans against the 8 categories.
+2. **Fix wave**: Launch subagents per zone. Each applies approved fixes.
+3. **Verify**: Builds succeed, no new errors, tests pass.
+4. **Convergence**: Findings decreased → next pass. Stalled or pass 4 → HALT.
+
+**Verdict:** PRISTINE (0 issues pass 1) · POLISHED (resolved by pass 3) · ACCEPTABLE (≤5 LOW remaining) · NEEDS ATTENTION (unresolved HIGH)
+
+---
+
+## VIOLET MODE — Spec Compliance & Construction Protocol
+
+### What Is Violet Mode?
+
+Violet Mode is a **spec-driven audit + construction protocol** that compares the AISPEC design documents against the actual codebase, grades every system, and builds what's missing. Violet treats the AISPEC documents in `DOCS/` as the source of truth.
+
+**RULE**: Violet Mode is **explicit-only**. Uses subagents in two phases: audit (read-only), then build in dependency-ordered waves. Max 3 passes.
+
+**Activation Triggers**: "violet mode" / "vision audit" / "spec compliance" / "align to spec"
+
+### Spec Documents (Source of Truth)
+
+All AISPEC files in `DOCS/` directory, referenced via `DOCS/README.md`. Key categories:
+
+| Category | AISPEC Coverage | Audit Zone |
+|----------|----------------|------------|
+| Trading & Economy | Market mechanics, commodities, pricing | GAMESERVER-SERVICES + ROUTES |
+| Combat System | Ship combat, drones, retreats, PvP | GAMESERVER-SERVICES + ROUTES |
+| Planetary Systems | Colonization, terraforming, genesis, defense | GAMESERVER-SERVICES + MODELS |
+| Player Progression | Ranking, reputation, achievements | GAMESERVER-SERVICES |
+| AI Systems | ARIA, dialogue, trading intelligence | GAMESERVER-SERVICES |
+| Regional Governance | Regions, governors, diplomacy, elections | GAMESERVER-ROUTES + ADMIN-UI |
+| Admin Interface | All 20 admin pages and their functionality | ADMIN-UI |
+| Player Interface | Game UI, navigation, trading, combat views | PLAYER-CLIENT |
+
+### Audit Grading Rubric
+
+**4 Dimensions:** Coverage (0-100%), Depth (STUB/SHALLOW/ADEQUATE/DEEP), Fidelity (LOW/MED/HIGH), Quality (LOW/MED/HIGH)
+
+**Grades:** COMPLETE (≥90% coverage, ADEQUATE+ depth) · PARTIAL (40-89%) · SKELETAL (<40%) · MISSING (<10%)
+
+### The Convergent Audit-Build Loop
+
+**Phase 1 — AUDIT**: Launch subagents per category. Each reads AISPEC + source files, returns scorecard.
+
+**Phase 2 — BUILD** in dependency order:
+1. **MODELS** — database schema must exist first
+2. **SERVICES** — business logic depends on models
+3. **ROUTES** — API endpoints depend on services
+4. **FRONTEND** — UI depends on API
+5. **DOCS** — update AISPEC files to reflect new reality
+
+**Convergence:** Max 3 passes. Score must improve each pass. Build priority: MISSING → SKELETAL → PARTIAL.
+
+**Verdict:** ALIGNED (all COMPLETE) · CONVERGING (improving) · DRIFTING (gaps remain) · MISALIGNED (major disconnect)
+
+---
+
+## AMBER MODE — Translation & i18n Quality Protocol
+
+### What Is Amber Mode?
+
+Amber Mode audits the internationalization system across both player-client and admin-ui, checking translation coverage, missing keys, format consistency, and locale-specific rendering issues.
+
+**RULE**: Amber Mode is **explicit-only**. Max 3 passes.
+
+**Activation Triggers**: "amber mode" / "translation quality" / "i18n sweep"
+
+### Audit Scope
+
+| Area | Check |
+|------|-------|
+| Translation files | All locale JSON files have consistent key sets |
+| Missing keys | Keys in English not present in other languages |
+| Format specifiers | Interpolation variables match across languages |
+| Component usage | All user-visible strings use i18n hooks (no hardcoded English) |
+| RTL support | Layout handles right-to-left languages if needed |
+| Date/Number formatting | Locale-aware formatting used consistently |
+
+### The Loop
+
+1. **Scan**: Subagents audit translation files and component usage
+2. **Fix**: Add missing keys, fix format mismatches, extract hardcoded strings
+3. **Verify**: All keys present, builds pass, no hardcoded strings remain
+4. **Convergence**: Issues must decrease each pass
+
+**Verdict:** PRISTINE · POLISHED · ACCEPTABLE · NEEDS ATTENTION
+
+---
+
 *Sectorwars2102: Multi-Regional Space Trading Game Platform*
-*Last Updated: 2026-03-15*
+*Last Updated: 2026-03-17*
 
 **Notes**:
 - Never name components with the word "enhanced" or "improved" without first asking Max
