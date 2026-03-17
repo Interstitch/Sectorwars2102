@@ -214,6 +214,9 @@ async def assault_planet(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid planet ID format")
 
+    # Lock player row to prevent concurrent turn deduction races
+    player = db.query(Player).filter(Player.id == player.id).with_for_update().first()
+
     # Fetch the planet
     planet = db.query(Planet).filter(Planet.id == pid).first()
     if not planet:
@@ -314,6 +317,9 @@ async def retreat_from_sector(
     On success the player is moved to a random warp-connected sector.
     On failure the player remains in the current sector.
     """
+    # Lock player row to prevent concurrent turn deduction races
+    player = db.query(Player).filter(Player.id == player.id).with_for_update().first()
+
     # Must have an active ship
     if not player.current_ship:
         raise HTTPException(status_code=400, detail="No active ship selected")
