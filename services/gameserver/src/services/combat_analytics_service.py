@@ -14,7 +14,7 @@ from src.models.ship import Ship
 from src.models.planet import Planet
 from src.models.fleet import FleetBattle
 from src.models.sector import Sector
-from src.services.audit_service import AuditService
+from src.services.audit_service import AuditService, AuditAction
 
 
 class CombatAnalyticsService:
@@ -88,7 +88,7 @@ class CombatAnalyticsService:
                 "current_round": combat.rounds,
                 "sector": {
                     "id": str(sector.id) if sector else None,
-                    "coordinates": f"[{sector.x},{sector.y},{sector.z}]" if sector else "Unknown",
+                    "coordinates": f"[{sector.x_coord},{sector.y_coord},{sector.z_coord}]" if sector else "Unknown",
                     "name": sector.name if sector and sector.name else "Unknown Sector"
                 },
                 "attacker": attacker,
@@ -96,10 +96,10 @@ class CombatAnalyticsService:
                 "combat_stats": {
                     "attacker_damage_dealt": combat.attacker_damage_dealt,
                     "defender_damage_dealt": combat.defender_damage_dealt,
-                    "attacker_fighters_lost": combat.attacker_fighters_lost,
-                    "defender_fighters_lost": combat.defender_fighters_lost,
-                    "attacker_fighters": combat.attacker_fighters,
-                    "defender_fighters": combat.defender_fighters
+                    "attacker_drones_lost": combat.attacker_drones_lost,
+                    "defender_drones_lost": combat.defender_drones_lost,
+                    "attacker_drones": combat.attacker_drones,
+                    "defender_drones": combat.defender_drones
                 },
                 "victor_id": str(victor_id) if victor_id else None,
                 "is_active": status == "in_progress",
@@ -193,14 +193,14 @@ class CombatAnalyticsService:
             
             # Log the intervention
             self.audit_service.log_action(
-                actor_id=admin_id,
-                action=f"combat.intervention.{intervention_type}",
+                user_id=admin_id,
+                action=AuditAction.INTERVENTION,
                 resource_type="combat",
-                resource_id=combat_id,
+                resource_id=str(combat_id),
                 details={
                     "intervention_id": str(intervention_id),
                     "intervention_type": intervention_type,
-                    "parameters": parameters,
+                    "parameters": {k: str(v) for k, v in parameters.items()},
                     "result": result
                 }
             )
@@ -222,12 +222,13 @@ class CombatAnalyticsService:
             
             # Log failed intervention
             self.audit_service.log_action(
-                actor_id=admin_id,
-                action=f"combat.intervention.{intervention_type}.failed",
+                user_id=admin_id,
+                action=AuditAction.INTERVENTION,
                 resource_type="combat",
-                resource_id=combat_id,
+                resource_id=str(combat_id),
                 details={
                     "intervention_id": str(intervention_id),
+                    "status": "failed",
                     "error": str(e)
                 }
             )
@@ -364,8 +365,7 @@ class CombatAnalyticsService:
         if participant_type == "player":
             player = self.db.query(Player).filter(Player.id == participant_id).first()
             if player:
-                info["name"] = player.nickname
-                info["level"] = player.experience_level
+                info["name"] = player.nickname or "Unknown"
                 info["team_id"] = str(player.team_id) if player.team_id else None
         elif participant_type == "ship":
             ship = self.db.query(Ship).filter(Ship.id == participant_id).first()
@@ -479,71 +479,68 @@ class CombatAnalyticsService:
     def _analyze_by_ship_type(self, combats: List[CombatLog]) -> Dict[str, Any]:
         """Analyze combat performance by ship type"""
         ship_stats = {}
-        
+
         for combat in combats:
-            # Get attacker ship
-            if combat.attacker_ship_id:
-                ship = self.db.query(Ship).filter(Ship.id == combat.attacker_ship_id).first()
-                if ship:
-                    ship_type = ship.ship_type
-                    if ship_type not in ship_stats:
-                        ship_stats[ship_type] = {
-                            'wins': 0, 'losses': 0, 'total': 0,
-                            'damage_dealt': 0, 'damage_taken': 0
-                        }
-                    
-                    ship_stats[ship_type]['total'] += 1
-                    ship_stats[ship_type]['damage_dealt'] += combat.attacker_damage_dealt
-                    ship_stats[ship_type]['damage_taken'] += combat.defender_damage_dealt
-                    
-                    if combat.outcome == "attacker_win":
-                        ship_stats[ship_type]['wins'] += 1
-                    else:
-                        ship_stats[ship_type]['losses'] += 1
-        
+            # Use stored ship type from combat log directly
+            ship_type = combat.attacker_ship_type
+            if not ship_type:
+                continue
+
+            if ship_type not in ship_stats:
+                ship_stats[ship_type] = {
+                    'wins': 0, 'losses': 0, 'total': 0,
+                    'damage_dealt': 0, 'damage_taken': 0
+                }
+
+            ship_stats[ship_type]['total'] += 1
+            ship_stats[ship_type]['damage_dealt'] += combat.attacker_damage_dealt
+            ship_stats[ship_type]['damage_taken'] += combat.defender_damage_dealt
+
+            if combat.outcome == "attacker_win":
+                ship_stats[ship_type]['wins'] += 1
+            else:
+                ship_stats[ship_type]['losses'] += 1
+
         # Calculate win rates
         for ship_type, stats in ship_stats.items():
             if stats['total'] > 0:
                 stats['win_rate'] = stats['wins'] / stats['total']
                 stats['avg_damage_dealt'] = stats['damage_dealt'] / stats['total']
                 stats['avg_damage_taken'] = stats['damage_taken'] / stats['total']
-        
+
         return ship_stats
     
     def _analyze_by_player_level(self, combats: List[CombatLog]) -> Dict[str, Any]:
-        """Analyze combat performance by player experience level"""
-        level_brackets = {
-            'novice': (0, 10),
-            'intermediate': (11, 30),
-            'advanced': (31, 50),
-            'expert': (51, 100),
-            'elite': (101, float('inf'))
+        """Analyze combat performance by player rank"""
+        rank_stats = {
+            'all_players': {
+                'wins': 0, 'losses': 0, 'total': 0
+            }
         }
-        
-        level_stats = {bracket: {
-            'wins': 0, 'losses': 0, 'total': 0
-        } for bracket in level_brackets}
-        
+
         for combat in combats:
-            # Analyze attacker player level
             if combat.attacker_id:
                 player = self.db.query(Player).filter(Player.id == combat.attacker_id).first()
                 if player:
-                    for bracket, (min_lvl, max_lvl) in level_brackets.items():
-                        if min_lvl <= player.experience_level <= max_lvl:
-                            level_stats[bracket]['total'] += 1
-                            if combat.outcome == "attacker_win":
-                                level_stats[bracket]['wins'] += 1
-                            else:
-                                level_stats[bracket]['losses'] += 1
-                            break
-        
+                    rank = player.military_rank or "Recruit"
+                    if rank not in rank_stats:
+                        rank_stats[rank] = {'wins': 0, 'losses': 0, 'total': 0}
+
+                    rank_stats[rank]['total'] += 1
+                    rank_stats['all_players']['total'] += 1
+                    if combat.outcome == "attacker_win":
+                        rank_stats[rank]['wins'] += 1
+                        rank_stats['all_players']['wins'] += 1
+                    else:
+                        rank_stats[rank]['losses'] += 1
+                        rank_stats['all_players']['losses'] += 1
+
         # Calculate win rates
-        for bracket, stats in level_stats.items():
+        for rank, stats in rank_stats.items():
             if stats['total'] > 0:
                 stats['win_rate'] = stats['wins'] / stats['total']
-        
-        return level_stats
+
+        return rank_stats
     
     def _analyze_by_combat_type(self, combats: List[CombatLog]) -> Dict[str, Any]:
         """Analyze combat statistics by type"""
