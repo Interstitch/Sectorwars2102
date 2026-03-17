@@ -13,7 +13,7 @@ const LogoutButton: React.FC<LogoutButtonProps> = ({ className }) => {
   
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
   
   return (

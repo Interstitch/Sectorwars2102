@@ -351,7 +351,7 @@ const GalaxyMap: React.FC = () => {
         
         {selectedSector && (
           <div className="sector-details-panel">
-            <h3>{selectedSector.isCurrent ? 'Current Location' : 'Selected Sector'}</h3>
+            <h3>{selectedSector.id === currentSector?.sector_id ? 'Current Location' : 'Selected Sector'}</h3>
             <div className="sector-info">
               <div className="sector-name">
                 Sector {selectedSector.id}: {selectedSector.name}
@@ -359,14 +359,18 @@ const GalaxyMap: React.FC = () => {
               <div className="sector-type">
                 {selectedSector.type}
               </div>
-              {!selectedSector.isCurrent && selectedSector.isConnected && (
-                <button 
+              {selectedSector.id !== currentSector?.sector_id && selectedSector.isConnected ? (
+                <button
                   className="travel-button"
                   onClick={handleTravelClick}
                 >
                   Travel to Sector
                 </button>
-              )}
+              ) : selectedSector.id === currentSector?.sector_id ? (
+                <div className="current-sector-badge">
+                  Current Sector
+                </div>
+              ) : null}
             </div>
           </div>
         )}

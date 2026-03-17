@@ -12,6 +12,14 @@ import { gameAPI } from '../../services/api';
 import { InputValidator, SecurityAudit } from '../../utils/security/inputValidation';
 import './combat-interface.css';
 
+// Format enum-style names like "LIGHT_FREIGHTER" to "Light Freighter"
+const formatShipType = (type: string): string => {
+  return type
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase());
+};
+
 // Define types locally since we're removing mocks
 interface CombatStatus {
   combatId: string;
@@ -260,7 +268,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
                 </div>
                 <div className="stat-row">
                   <span className="stat-label">Class</span>
-                  <span className="stat-value">{currentShip.type}</span>
+                  <span className="stat-value">{formatShipType(currentShip.type)}</span>
                 </div>
                 <div className="stat-row">
                   <span className="stat-label">Attack Rating</span>
@@ -335,7 +343,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
         {/* Player Status */}
         <div className="combatant player">
           <h3>{currentShip?.name || 'Your Ship'}</h3>
-          <div className="ship-type">{currentShip?.type || 'Unknown'}</div>
+          <div className="ship-type">{currentShip?.type ? formatShipType(currentShip.type) : 'Unknown'}</div>
           
           <div className="health-bar">
             <div 
