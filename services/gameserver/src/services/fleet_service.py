@@ -394,11 +394,13 @@ class FleetService:
 
         # Attackers fire at defenders
         for ship in attacker_ships:
-            if random.random() < 0.7:  # 70% hit chance
+            if random.random() < 0.7 and defender_ships:  # 70% hit chance
                 damage = self._calculate_ship_damage(ship, attacker_bonus)
                 target = random.choice(defender_ships)
                 self._apply_damage_to_ship(target, damage, battle, round_results)
                 round_results["attacker_damage"] += damage
+                # Remove destroyed ships mid-round
+                defender_ships = [s for s in defender_ships if (self._get_ship_combat_stat(s, "hull", 0) or 0) > 0]
 
         # Refresh defender list (some may have been destroyed this round)
         active_defender_ships = [
@@ -408,11 +410,13 @@ class FleetService:
 
         # Defenders return fire at attackers
         for ship in active_defender_ships:
-            if random.random() < 0.7:  # 70% hit chance
+            if random.random() < 0.7 and attacker_ships:  # 70% hit chance
                 damage = self._calculate_ship_damage(ship, defender_bonus)
                 target = random.choice(attacker_ships)
                 self._apply_damage_to_ship(target, damage, battle, round_results)
                 round_results["defender_damage"] += damage
+                # Remove destroyed ships mid-round
+                attacker_ships = [s for s in attacker_ships if (self._get_ship_combat_stat(s, "hull", 0) or 0) > 0]
 
         # Update battle damage statistics
         battle.attacker_damage_dealt = (battle.attacker_damage_dealt or 0) + round_results["attacker_damage"]
