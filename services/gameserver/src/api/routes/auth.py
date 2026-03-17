@@ -14,7 +14,7 @@ from src.auth.jwt import create_tokens, decode_token
 from src.auth.dependencies import get_current_user
 from src.models.user import User
 from src.models.admin_credentials import AdminCredentials
-from src.auth.oauth import GitHubOAuth, GoogleOAuth, SteamAuth, get_oauth_user, create_oauth_user
+from src.auth.oauth import GitHubOAuth, GoogleOAuth, SteamAuth, get_oauth_user, create_oauth_user, _validate_oauth_state
 from src.core.database import get_db
 from src.core.config import settings
 from src.models.refresh_token import RefreshToken
@@ -599,9 +599,12 @@ async def github_callback(request: Request, code: str, register: bool = False, s
     """
     Process GitHub OAuth callback.
     """
-    # Log OAuth state parameter for security auditing
-    if state is None:
-        logger.warning("GitHub OAuth callback received without state parameter — CSRF risk")
+    # Validate OAuth state parameter (CSRF protection)
+    if not _validate_oauth_state(state):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or expired OAuth state. Please try logging in again.",
+        )
 
     # Use the auto-detected API base URL
     api_base_url = settings.get_api_base_url()
@@ -727,9 +730,12 @@ async def google_callback(request: Request, code: str, register: bool = False, s
 
     redirect_uri = f"{base}/auth/google/callback?register={register}"
 
-    # Log OAuth state parameter for security auditing
-    if state is None:
-        logger.warning("Google OAuth callback received without state parameter — CSRF risk")
+    # Validate OAuth state parameter (CSRF protection)
+    if not _validate_oauth_state(state):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or expired OAuth state. Please try logging in again.",
+        )
 
     logger.debug("Google OAuth callback URI configured")
 

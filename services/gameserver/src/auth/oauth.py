@@ -1,11 +1,46 @@
 from typing import Dict, Optional, Any, Tuple
 import uuid
+import time
+import logging
 import httpx
 from fastapi import HTTPException, status, Request
 from sqlalchemy.orm import Session
 from urllib.parse import urlencode
 
 from src.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+# In-memory OAuth state store with TTL (10 minutes)
+# For production multi-instance deployments, replace with Redis
+_oauth_states: Dict[str, float] = {}
+_OAUTH_STATE_TTL = 600  # 10 minutes
+
+
+def _generate_oauth_state() -> str:
+    """Generate and store an OAuth state parameter for CSRF protection."""
+    # Purge expired states
+    now = time.monotonic()
+    expired = [s for s, t in _oauth_states.items() if now - t > _OAUTH_STATE_TTL]
+    for s in expired:
+        del _oauth_states[s]
+
+    state = str(uuid.uuid4())
+    _oauth_states[state] = now
+    return state
+
+
+def _validate_oauth_state(state: Optional[str]) -> bool:
+    """Validate and consume an OAuth state parameter. Returns True if valid."""
+    if not state:
+        logger.warning("OAuth callback received without state parameter")
+        return False
+    if state not in _oauth_states:
+        logger.warning("OAuth callback received with invalid/expired state: %s", state[:8])
+        return False
+    # Consume the state (one-time use)
+    del _oauth_states[state]
+    return True
 from src.models.user import User
 from src.models.oauth_account import OAuthAccount
 from src.models.player import Player
@@ -191,12 +226,12 @@ class GitHubOAuth:
 
     @staticmethod
     def get_authorization_url(redirect_uri: str) -> str:
-        """Get the GitHub authorization URL."""
+        """Get the GitHub authorization URL with CSRF state parameter."""
         params = {
             "client_id": settings.GITHUB_CLIENT_ID,
             "redirect_uri": redirect_uri,
             "scope": "read:user user:email",
-            "state": str(uuid.uuid4()),
+            "state": _generate_oauth_state(),
         }
         return f"https://github.com/login/oauth/authorize?{urlencode(params)}"
 
@@ -273,13 +308,13 @@ class GoogleOAuth:
 
     @staticmethod
     def get_authorization_url(redirect_uri: str) -> str:
-        """Get the Google authorization URL."""
+        """Get the Google authorization URL with CSRF state parameter."""
         params = {
             "client_id": settings.GOOGLE_CLIENT_ID,
             "redirect_uri": redirect_uri,
             "response_type": "code",
             "scope": "openid email profile",
-            "state": str(uuid.uuid4()),
+            "state": _generate_oauth_state(),
             "access_type": "offline",
             "prompt": "consent",
         }

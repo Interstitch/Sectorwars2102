@@ -270,15 +270,23 @@ async def simulate_battle_round(
     if not battle:
         raise HTTPException(status_code=404, detail="Battle not found")
 
-    # Check if player is in either fleet
+    # Check if player has ships in either fleet (not just team membership)
+    from src.models.fleet import FleetMember
     attacker = battle.attacker_fleet
     defender = battle.defender_fleet
 
-    player_in_attacker = attacker and attacker.team_id == player.team_id
-    player_in_defender = defender and defender.team_id == player.team_id
+    player_in_attacker = attacker and db.query(FleetMember).filter(
+        FleetMember.fleet_id == attacker.id,
+        FleetMember.player_id == player.id
+    ).first() is not None
+
+    player_in_defender = defender and db.query(FleetMember).filter(
+        FleetMember.fleet_id == defender.id,
+        FleetMember.player_id == player.id
+    ).first() is not None
 
     if not (player_in_attacker or player_in_defender):
-        raise HTTPException(status_code=403, detail="You are not involved in this battle")
+        raise HTTPException(status_code=403, detail="You have no ships in this battle")
 
     service = FleetService(db)
 

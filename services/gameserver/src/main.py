@@ -139,6 +139,20 @@ async def startup_event():
         logger.error(f"Admin user initialization failed: {e}")
         # Don't crash the server if admin creation fails
 
+    # Start WebSocket heartbeat cleanup background task
+    import asyncio
+    async def _heartbeat_cleanup_loop():
+        """Periodically disconnect stale WebSocket connections."""
+        from src.services.websocket_service import connection_manager
+        while True:
+            await asyncio.sleep(30)
+            try:
+                await connection_manager.cleanup_stale_connections(timeout_seconds=300)
+            except Exception as e:
+                logger.warning(f"Heartbeat cleanup error: {e}")
+
+    asyncio.create_task(_heartbeat_cleanup_loop())
+
     logger.info("Sectorwars 2102 Game Server started successfully")
 
 
