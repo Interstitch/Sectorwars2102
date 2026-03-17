@@ -11,6 +11,9 @@ export const PermissionsDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [editRoles, setEditRoles] = useState<string[]>([]);
+  const [editCustomPerms, setEditCustomPerms] = useState<string[]>([]);
 
   React.useEffect(() => {
     if (activeTab === 'users') {
@@ -52,9 +55,80 @@ export const PermissionsDashboard: React.FC = () => {
     }
   };
 
-  const handlePermissionChange = (roleId: string, permissionId: string, granted: boolean) => {
-    console.log('Permission changed:', { roleId, permissionId, granted });
-    // Update backend
+  const handlePermissionChange = async (roleId: string, permissionId: string, granted: boolean) => {
+    try {
+      const response = await fetch(`/api/v1/admin/roles/${roleId}/permissions`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        body: JSON.stringify({ permission_id: permissionId, granted })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ detail: 'Failed to update permission' }));
+        setError(errData.detail || 'Failed to update permission');
+      }
+    } catch (err) {
+      console.error('Error updating permission:', err);
+      setError('Network error while updating permission');
+    }
+  };
+
+  const handleEditPermissions = (user: any) => {
+    setEditingUser(user);
+    setEditRoles([...(user.roles || [])]);
+    setEditCustomPerms([...(user.customPermissions || [])]);
+  };
+
+  const handleSaveEditedPermissions = async () => {
+    if (!editingUser) return;
+    try {
+      await handleUserPermissionChange(editingUser.id, {
+        roles: editRoles,
+        customPermissions: editCustomPerms
+      });
+      setEditingUser(null);
+      alert('Permissions updated successfully');
+    } catch (err) {
+      console.error('Error saving permissions:', err);
+      alert('Failed to save permissions');
+    }
+  };
+
+  const handleRevokeAllAccess = async (user: any) => {
+    if (!confirm(`Are you sure you want to revoke ALL access for user "${user.username}"? This will remove all roles and custom permissions.`)) {
+      return;
+    }
+    if (!confirm(`FINAL CONFIRMATION: This will completely remove "${user.username}"'s access. Proceed?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/admin/users/${user.id}/permissions`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        body: JSON.stringify({ roles: [], customPermissions: [] })
+      });
+
+      if (response.ok) {
+        setUsers(users.map(u =>
+          u.id === user.id ? { ...u, roles: [], customPermissions: [] } : u
+        ));
+        setSelectedUser(null);
+        alert(`All access revoked for ${user.username}`);
+      } else {
+        const errData = await response.json().catch(() => ({ detail: 'Failed to revoke access' }));
+        alert(errData.detail || 'Failed to revoke access');
+      }
+    } catch (err) {
+      console.error('Error revoking access:', err);
+      alert('Network error while revoking access');
+    }
   };
 
   const handleUserPermissionChange = async (userId: string, changes: any) => {
@@ -248,15 +322,64 @@ export const PermissionsDashboard: React.FC = () => {
                       </div>
 
                       <div className="user-actions">
-                        <button className="btn btn-secondary">
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleEditPermissions(selectedUser)}
+                        >
                           <i className="fas fa-edit"></i>
                           Edit Permissions
                         </button>
-                        <button className="btn btn-danger">
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => handleRevokeAllAccess(selectedUser)}
+                        >
                           <i className="fas fa-ban"></i>
                           Revoke All Access
                         </button>
                       </div>
+
+                      {/* Inline Edit Mode */}
+                      {editingUser && editingUser.id === selectedUser.id && (
+                        <div style={{ marginTop: '16px', padding: '16px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                          <h4 style={{ margin: '0 0 12px 0' }}>Edit Permissions</h4>
+
+                          <div style={{ marginBottom: '12px' }}>
+                            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.9rem' }}>Roles (comma-separated)</label>
+                            <input
+                              type="text"
+                              value={editRoles.join(', ')}
+                              onChange={(e) => setEditRoles(e.target.value.split(',').map(r => r.trim()).filter(Boolean))}
+                              style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #374151', background: '#111827', color: '#e5e7eb' }}
+                            />
+                          </div>
+
+                          <div style={{ marginBottom: '12px' }}>
+                            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.9rem' }}>Custom Permissions (comma-separated)</label>
+                            <input
+                              type="text"
+                              value={editCustomPerms.join(', ')}
+                              onChange={(e) => setEditCustomPerms(e.target.value.split(',').map(p => p.trim()).filter(Boolean))}
+                              style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #374151', background: '#111827', color: '#e5e7eb' }}
+                            />
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <button
+                              className="btn btn-secondary"
+                              onClick={() => setEditingUser(null)}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              className="btn btn-primary"
+                              onClick={handleSaveEditedPermissions}
+                              style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}
+                            >
+                              Save Changes
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

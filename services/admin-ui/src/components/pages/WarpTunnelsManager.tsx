@@ -32,6 +32,12 @@ const WarpTunnelsManager: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
 
+  // Modal states
+  const [selectedTunnel, setSelectedTunnel] = useState<WarpTunnel | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<'view' | 'edit'>('view');
+  const [saving, setSaving] = useState(false);
+
   const fetchWarpTunnels = async () => {
     try {
       setLoading(true);
@@ -48,6 +54,71 @@ const WarpTunnelsManager: React.FC = () => {
   useEffect(() => {
     fetchWarpTunnels();
   }, []);
+
+  const handleViewTunnel = (tunnel: WarpTunnel) => {
+    setSelectedTunnel(tunnel);
+    setModalMode('view');
+    setShowModal(true);
+  };
+
+  const handleEditTunnel = (tunnel: WarpTunnel) => {
+    setSelectedTunnel(tunnel);
+    setModalMode('edit');
+    setShowModal(true);
+  };
+
+  const handleMaintenanceToggle = async (tunnel: WarpTunnel) => {
+    const newStatus = !tunnel.is_active;
+    const action = newStatus ? 'reactivate' : 'put into maintenance mode';
+    if (!confirm(`Are you sure you want to ${action} tunnel "${tunnel.name}"?`)) {
+      return;
+    }
+
+    try {
+      await api.patch(`/api/v1/admin/warp-tunnels/${tunnel.id}`, {
+        is_active: newStatus
+      });
+      setWarpTunnels(warpTunnels.map(t =>
+        t.id === tunnel.id ? { ...t, is_active: newStatus } : t
+      ));
+    } catch (err: any) {
+      alert(`Failed to update tunnel: ${err.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const handleDeleteTunnel = async (tunnel: WarpTunnel) => {
+    if (!confirm(`Are you sure you want to delete tunnel "${tunnel.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/api/v1/admin/warp-tunnels/${tunnel.id}`);
+      setWarpTunnels(warpTunnels.filter(t => t.id !== tunnel.id));
+    } catch (err: any) {
+      alert(`Failed to delete tunnel: ${err.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedTunnel(null);
+  };
+
+  const handleTunnelSaved = async (updatedData: Partial<WarpTunnel>) => {
+    if (!selectedTunnel) return;
+    setSaving(true);
+    try {
+      await api.patch(`/api/v1/admin/warp-tunnels/${selectedTunnel.id}`, updatedData);
+      setWarpTunnels(warpTunnels.map(t =>
+        t.id === selectedTunnel.id ? { ...t, ...updatedData } : t
+      ));
+      closeModal();
+    } catch (err: any) {
+      alert(`Failed to update tunnel: ${err.response?.data?.detail || err.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Filter and search logic
   const filteredWarpTunnels = warpTunnels.filter(tunnel => {
@@ -195,10 +266,10 @@ const WarpTunnelsManager: React.FC = () => {
                 <td>{(tunnel.total_traversals || 0).toLocaleString()}</td>
                 <td>
                   <div className="action-buttons">
-                    <button className="view-btn" title="View Details">👁️</button>
-                    <button className="edit-btn" title="Edit Tunnel">✏️</button>
-                    <button className="maintenance-btn" title="Maintenance">🔧</button>
-                    <button className="delete-btn" title="Delete Tunnel">🗑️</button>
+                    <button className="view-btn" title="View Details" onClick={() => handleViewTunnel(tunnel)}>👁️</button>
+                    <button className="edit-btn" title="Edit Tunnel" onClick={() => handleEditTunnel(tunnel)}>✏️</button>
+                    <button className="maintenance-btn" title={tunnel.is_active ? 'Set Maintenance' : 'Reactivate'} onClick={() => handleMaintenanceToggle(tunnel)}>🔧</button>
+                    <button className="delete-btn" title="Delete Tunnel" onClick={() => handleDeleteTunnel(tunnel)}>🗑️</button>
                   </div>
                 </td>
               </tr>
@@ -210,19 +281,19 @@ const WarpTunnelsManager: React.FC = () => {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="pagination">
-          <button 
+          <button
             onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
             className="pagination-btn"
           >
             Previous
           </button>
-          
+
           <span className="pagination-info">
             Page {currentPage} of {totalPages}
           </span>
-          
-          <button 
+
+          <button
             onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
             disabled={currentPage === totalPages}
             className="pagination-btn"
@@ -231,6 +302,176 @@ const WarpTunnelsManager: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* Tunnel View/Edit Modal */}
+      {showModal && selectedTunnel && (
+        <WarpTunnelModal
+          tunnel={selectedTunnel}
+          mode={modalMode}
+          onClose={closeModal}
+          onSave={handleTunnelSaved}
+          saving={saving}
+          formatStability={formatStability}
+          getStabilityColor={getStabilityColor}
+        />
+      )}
+    </div>
+  );
+};
+
+// Warp Tunnel Modal Component for View/Edit
+interface WarpTunnelModalProps {
+  tunnel: WarpTunnel;
+  mode: 'view' | 'edit';
+  onClose: () => void;
+  onSave: (data: Partial<WarpTunnel>) => void;
+  saving: boolean;
+  formatStability: (s: number) => string;
+  getStabilityColor: (s: number) => string;
+}
+
+const WarpTunnelModal: React.FC<WarpTunnelModalProps> = ({ tunnel, mode, onClose, onSave, saving, formatStability, getStabilityColor }) => {
+  const [formData, setFormData] = useState({
+    stability: tunnel.stability || 0,
+    energy_cost: tunnel.energy_cost || 0,
+    max_ship_size: tunnel.max_ship_size || 'Unknown',
+    is_active: tunnel.is_active ?? true,
+    is_bidirectional: tunnel.is_bidirectional ?? false,
+  });
+
+  const isReadOnly = mode === 'view';
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isReadOnly) return;
+    onSave(formData);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>{mode === 'view' ? 'View' : 'Edit'} Tunnel: {tunnel.name}</h2>
+          <button className="close-btn" onClick={onClose}>x</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Tunnel Name</label>
+              <input type="text" value={tunnel.name} readOnly />
+            </div>
+
+            <div className="form-group">
+              <label>Type</label>
+              <input type="text" value={tunnel.type || 'Standard'} readOnly />
+            </div>
+
+            <div className="form-group">
+              <label>Origin Sector</label>
+              <input type="text" value={tunnel.origin_sector_name || `Sector ${tunnel.origin_sector_id}`} readOnly />
+            </div>
+
+            <div className="form-group">
+              <label>Destination Sector</label>
+              <input type="text" value={tunnel.destination_sector_name || `Sector ${tunnel.destination_sector_id}`} readOnly />
+            </div>
+
+            <div className="form-group">
+              <label>Stability</label>
+              {isReadOnly ? (
+                <input type="text" value={formatStability(tunnel.stability || 0)} readOnly />
+              ) : (
+                <input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={formData.stability}
+                  onChange={(e) => setFormData({ ...formData, stability: parseFloat(e.target.value) })}
+                />
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>Energy Cost</label>
+              <input
+                type="number"
+                value={formData.energy_cost}
+                onChange={(e) => setFormData({ ...formData, energy_cost: parseInt(e.target.value) })}
+                readOnly={isReadOnly}
+                min="0"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Max Ship Size</label>
+              {isReadOnly ? (
+                <input type="text" value={formData.max_ship_size} readOnly />
+              ) : (
+                <select
+                  value={formData.max_ship_size}
+                  onChange={(e) => setFormData({ ...formData, max_ship_size: e.target.value })}
+                >
+                  <option value="Small">Small</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Large">Large</option>
+                  <option value="Capital">Capital</option>
+                </select>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>Active</label>
+              {isReadOnly ? (
+                <input type="text" value={tunnel.is_active ? 'Yes' : 'No'} readOnly />
+              ) : (
+                <select
+                  value={formData.is_active ? 'true' : 'false'}
+                  onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'true' })}
+                >
+                  <option value="true">Active</option>
+                  <option value="false">Inactive (Maintenance)</option>
+                </select>
+              )}
+            </div>
+          </div>
+
+          {/* Additional info section (view mode) */}
+          <div className="port-info">
+            <h3>Tunnel Information</h3>
+            <div className="info-grid">
+              <div className="info-item">
+                <span className="label">Direction:</span>
+                <span className="value">{tunnel.is_bidirectional ? 'Bidirectional' : 'Unidirectional'}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Travel Time:</span>
+                <span className="value">{tunnel.travel_time || 0} turns</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Total Traversals:</span>
+                <span className="value">{(tunnel.total_traversals || 0).toLocaleString()}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Created:</span>
+                <span className="value">{tunnel.created_at ? new Date(tunnel.created_at).toLocaleDateString() : 'Unknown'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" onClick={onClose} className="cancel-btn">
+              {isReadOnly ? 'Close' : 'Cancel'}
+            </button>
+            {mode === 'edit' && (
+              <button type="submit" disabled={saving} className="save-btn">
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
