@@ -16,6 +16,7 @@ from src.models.drone import Drone, DroneDeployment
 from src.models.planet import Planet
 from src.models.station import Station
 from src.services.ship_service import ShipService
+from src.services.ranking_service import RankingService
 
 logger = logging.getLogger(__name__)
 
@@ -113,11 +114,32 @@ class CombatService:
         
         # Update last_combat timestamp for sector
         sector.last_combat = datetime.now()
-        
+
+        # Award rank points for combat victory
+        rank_result = None
+        try:
+            ranking_service = RankingService(self.db)
+            if combat_result["result"] == CombatResult.ATTACKER_VICTORY:
+                points = RankingService.calculate_combat_points(
+                    attacker.military_rank, defender.military_rank
+                )
+                rank_result = ranking_service.award_rank_points(
+                    attacker.id, points, "combat_victory"
+                )
+            elif combat_result["result"] == CombatResult.DEFENDER_VICTORY:
+                points = RankingService.calculate_combat_points(
+                    defender.military_rank, attacker.military_rank
+                )
+                rank_result = ranking_service.award_rank_points(
+                    defender.id, points, "combat_victory"
+                )
+        except Exception as e:
+            logger.error("Failed to award rank points after combat: %s", e)
+
         # Commit changes
         self.db.commit()
-        
-        return {
+
+        result_dict = {
             "success": True,
             "message": combat_result["message"],
             "combat_result": combat_result["result"].name,
@@ -126,7 +148,14 @@ class CombatService:
             "turns_remaining": attacker.turns,
             "combat_log_id": str(combat_log.id)
         }
-    
+        if rank_result and rank_result.get("success"):
+            result_dict["rank_points_awarded"] = rank_result["points_awarded"]
+            result_dict["promoted"] = rank_result["promoted"]
+            if rank_result["promoted"]:
+                result_dict["new_rank"] = rank_result["new_rank"]
+
+        return result_dict
+
     def attack_sector_drones(self, attacker_id: uuid.UUID, sector_id: int) -> Dict[str, Any]:
         """Attack drones deployed in a sector."""
         # Get attacker
@@ -768,43 +797,22 @@ class CombatService:
         }
     
     def _is_combat_allowed(self, sector: Sector, attacker: Player, defender: Player) -> bool:
-        """Check if combat is allowed in a sector based on rules.
-
-        PvP flag logic:
-        - Federation/Terran space: both players must have PvP enabled in settings
-        - All other regions: combat is always allowed
-
-        Players can toggle PvP via their settings JSONB field: settings.pvp_enabled (bool)
-        """
-        # Determine if sector is in Federation/Terran space
-        is_federation_space = False
-
-        # Check via the sector's direct region relationship first
-        if sector and sector.region:
-            region_type = getattr(sector.region, 'region_type', None)
-            if region_type in ('terran_space', 'central_nexus'):
-                is_federation_space = True
-        # Fallback: check via cluster -> region chain
-        elif sector and sector.cluster and sector.cluster.region:
-            region_type = getattr(sector.cluster.region, 'region_type', None)
-            if region_type in ('terran_space', 'central_nexus'):
-                is_federation_space = True
-
-        # In Federation/Terran space, require both players to have PvP enabled
-        if is_federation_space:
-            attacker_settings = attacker.settings or {}
-            defender_settings = defender.settings or {}
-
-            attacker_pvp = attacker_settings.get("pvp_enabled", False)
-            defender_pvp = defender_settings.get("pvp_enabled", False)
-
-            if not attacker_pvp or not defender_pvp:
-                return False
-
-            # Both players opted in -- combat allowed in Federation space
+        """Check if combat is allowed in a sector based on rules."""
+        # Get region type for security rules
+        region_type = sector.cluster.region.type.name if sector and sector.cluster and sector.cluster.region else "FRONTIER"
+        
+        # Combat is always allowed in frontier regions
+        if region_type == "FRONTIER":
             return True
-
-        # Outside Federation space, combat is always allowed
+        
+        # In Federation space, combat might be restricted unless both players agree
+        if region_type == "FEDERATION":
+            # Could implement a PvP flag system here
+            # For now, just making it very difficult/expensive to fight in Federation space
+            # This would be expanded in an actual implementation
+            return False
+        
+        # In Border regions, combat is allowed but with penalties
         return True
     
     def _resolve_ship_combat(self, attacker: Player, defender: Player, sector: Sector) -> Dict[str, Any]:

@@ -14,6 +14,11 @@ from src.models.sector import Sector
 from src.models.ship import Ship
 from src.models.market_transaction import MarketTransaction, MarketPrice, TransactionType
 from src.services.trading_service import TradingService
+from src.services.ranking_service import RankingService
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/trading", tags=["trading"])
 
@@ -131,10 +136,22 @@ async def buy_resource(
             timestamp=datetime.now(UTC)
         )
         db.add(transaction)
-        
+
+        # Award rank points for trading volume
+        rank_awarded = None
+        try:
+            trade_points = RankingService.calculate_trading_points(total_cost)
+            if trade_points > 0:
+                ranking_service = RankingService(db)
+                rank_awarded = ranking_service.award_rank_points(
+                    current_player.id, trade_points, "trading_volume"
+                )
+        except Exception as e:
+            logger.error("Failed to award rank points for buy trade: %s", e)
+
         db.commit()
-        
-        return {
+
+        response = {
             "message": f"Successfully bought {trade_request.quantity} units of {trade_request.resource_type}",
             "transaction": {
                 "resource": trade_request.resource_type,
@@ -145,7 +162,12 @@ async def buy_resource(
                 "remaining_cargo_space": current_ship.cargo.get('capacity', 50) - current_ship.cargo.get('used', 0)
             }
         }
-        
+        if rank_awarded and rank_awarded.get("success") and rank_awarded.get("points_awarded", 0) > 0:
+            response["rank_points_awarded"] = rank_awarded["points_awarded"]
+            if rank_awarded.get("promoted"):
+                response["promoted_to"] = rank_awarded["new_rank"]
+        return response
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Trade failed: {str(e)}")
@@ -238,10 +260,22 @@ async def sell_resource(
         )
         db.add(transaction)
 
+        # Award rank points for trading volume
+        rank_awarded = None
+        try:
+            trade_points = RankingService.calculate_trading_points(total_earnings)
+            if trade_points > 0:
+                ranking_service = RankingService(db)
+                rank_awarded = ranking_service.award_rank_points(
+                    current_player.id, trade_points, "trading_volume"
+                )
+        except Exception as e:
+            logger.error("Failed to award rank points for sell trade: %s", e)
+
         db.commit()
 
         remaining = current_ship.cargo.get('contents', {}).get(trade_request.resource_type, 0)
-        return {
+        response = {
             "message": f"Successfully sold {trade_request.quantity} units of {trade_request.resource_type}",
             "transaction": {
                 "resource": trade_request.resource_type,
@@ -252,7 +286,12 @@ async def sell_resource(
                 "remaining_cargo": remaining
             }
         }
-        
+        if rank_awarded and rank_awarded.get("success") and rank_awarded.get("points_awarded", 0) > 0:
+            response["rank_points_awarded"] = rank_awarded["points_awarded"]
+            if rank_awarded.get("promoted"):
+                response["promoted_to"] = rank_awarded["new_rank"]
+        return response
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Trade failed: {str(e)}")

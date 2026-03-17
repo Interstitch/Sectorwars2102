@@ -1,0 +1,367 @@
+"""
+Military Ranking Service
+
+Manages the military ranking system for players, including rank definitions,
+point awards, promotions, and rank-based bonuses.
+"""
+
+import logging
+import uuid
+from typing import Dict, Any, Optional, List, Tuple
+from sqlalchemy.orm import Session
+from sqlalchemy import desc
+
+from src.models.player import Player
+
+logger = logging.getLogger(__name__)
+
+
+# Rank definitions ordered by point threshold (ascending)
+RANK_DEFINITIONS: List[Dict[str, Any]] = [
+    {"name": "Private", "points_required": 0, "level": 0},
+    {"name": "Corporal", "points_required": 100, "level": 1},
+    {"name": "Sergeant", "points_required": 250, "level": 2},
+    {"name": "Lieutenant", "points_required": 500, "level": 3},
+    {"name": "Captain", "points_required": 1000, "level": 4},
+    {"name": "Major", "points_required": 2000, "level": 5},
+    {"name": "Colonel", "points_required": 4000, "level": 6},
+    {"name": "General", "points_required": 8000, "level": 7},
+    {"name": "Admiral", "points_required": 16000, "level": 8},
+    {"name": "Fleet Admiral", "points_required": 32000, "level": 9},
+]
+
+# Valid reasons for awarding rank points
+VALID_REASONS = {
+    "combat_victory",
+    "trading_volume",
+    "exploration",
+    "colony_establishment",
+    "admin_grant",
+}
+
+
+class RankingService:
+    """Service for managing military ranking and progression."""
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    # ------------------------------------------------------------------
+    # Core rank helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_rank_for_points(points: int) -> Dict[str, Any]:
+        """Return the rank definition that matches the given point total."""
+        current_rank = RANK_DEFINITIONS[0]
+        for rank_def in RANK_DEFINITIONS:
+            if points >= rank_def["points_required"]:
+                current_rank = rank_def
+            else:
+                break
+        return current_rank
+
+    @staticmethod
+    def get_next_rank(current_rank_name: str) -> Optional[Dict[str, Any]]:
+        """Return the next rank definition above the given rank, or None if max."""
+        for i, rank_def in enumerate(RANK_DEFINITIONS):
+            if rank_def["name"] == current_rank_name:
+                if i + 1 < len(RANK_DEFINITIONS):
+                    return RANK_DEFINITIONS[i + 1]
+                return None
+        return None
+
+    @staticmethod
+    def get_rank_level(rank_name: str) -> int:
+        """Return the numeric level (0-9) for a given rank name.
+
+        Note: "Recruit" is treated as equivalent to "Private" (level 0)
+        for backwards compatibility with existing player records.
+        """
+        # Handle legacy "Recruit" rank name from existing player records
+        if rank_name == "Recruit":
+            return 0
+        for rank_def in RANK_DEFINITIONS:
+            if rank_def["name"] == rank_name:
+                return rank_def["level"]
+        return 0
+
+    # ------------------------------------------------------------------
+    # Rank bonuses
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_rank_bonuses(rank_name: str) -> Dict[str, Any]:
+        """Return the bonuses granted by a given rank.
+
+        Bonuses per rank level:
+        - Trading discount: 1% per level (max 10% at Fleet Admiral)
+        - Max turns bonus: +5 per level
+        - Combat damage bonus: +2% per level
+        """
+        level = RankingService.get_rank_level(rank_name)
+        return {
+            "trading_discount_percent": level,       # 0-9 => 0%-9% (capped at 10 if extended)
+            "max_turns_bonus": level * 5,             # 0, 5, 10 ... 45
+            "combat_damage_bonus_percent": level * 2, # 0, 2, 4 ... 18
+        }
+
+    # ------------------------------------------------------------------
+    # Point calculation helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def calculate_combat_points(
+        winner_rank: str, loser_rank: str
+    ) -> int:
+        """Calculate rank points earned from a combat victory.
+
+        Points range from 10-50 based on the relative rank difference.
+        Defeating a higher-ranked opponent grants more points.
+        """
+        winner_level = RankingService.get_rank_level(winner_rank)
+        loser_level = RankingService.get_rank_level(loser_rank)
+
+        base_points = 10
+        rank_diff = loser_level - winner_level  # positive = opponent is higher rank
+
+        if rank_diff > 0:
+            # Bonus for defeating higher ranked opponent: up to +40
+            bonus = min(rank_diff * 10, 40)
+        elif rank_diff < 0:
+            # Reduced points for defeating lower ranked opponent (minimum 10)
+            bonus = max(rank_diff * 5, -5)  # At most lose 5 from base
+        else:
+            bonus = 5  # Same rank gives a small bonus
+
+        return max(10, min(50, base_points + bonus))
+
+    @staticmethod
+    def calculate_trading_points(total_value: int) -> int:
+        """Calculate rank points earned from a trade based on total transaction value.
+
+        Points range from 5-20 depending on trade value milestones.
+        """
+        if total_value >= 100000:
+            return 20
+        elif total_value >= 50000:
+            return 15
+        elif total_value >= 10000:
+            return 10
+        elif total_value >= 1000:
+            return 5
+        return 0
+
+    @staticmethod
+    def calculate_exploration_points() -> int:
+        """Points awarded for discovering a new sector. Fixed 3 points."""
+        return 3
+
+    @staticmethod
+    def calculate_colony_points() -> int:
+        """Points awarded for establishing a colony. Fixed 25 points."""
+        return 25
+
+    # ------------------------------------------------------------------
+    # Core service methods
+    # ------------------------------------------------------------------
+
+    def award_rank_points(
+        self,
+        player_id: uuid.UUID,
+        points: int,
+        reason: str,
+    ) -> Dict[str, Any]:
+        """Award rank points to a player and check for promotion.
+
+        Args:
+            player_id: UUID of the player to award points to.
+            points: Number of points to award (must be positive).
+            reason: Reason for the award (must be a valid reason).
+
+        Returns:
+            Dict with keys: success, points_awarded, new_total, promoted, rank_info
+        """
+        if points <= 0:
+            return {
+                "success": False,
+                "message": "Points must be positive",
+                "points_awarded": 0,
+                "new_total": 0,
+                "promoted": False,
+                "rank_info": None,
+            }
+
+        if reason not in VALID_REASONS:
+            logger.warning(
+                "Invalid rank point reason '%s' for player %s", reason, player_id
+            )
+            return {
+                "success": False,
+                "message": f"Invalid reason: {reason}",
+                "points_awarded": 0,
+                "new_total": 0,
+                "promoted": False,
+                "rank_info": None,
+            }
+
+        player = self.db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            return {
+                "success": False,
+                "message": "Player not found",
+                "points_awarded": 0,
+                "new_total": 0,
+                "promoted": False,
+                "rank_info": None,
+            }
+
+        old_rank = player.military_rank
+        player.rank_points = (player.rank_points or 0) + points
+
+        # Check and apply promotion
+        promotion_result = self._check_and_promote(player)
+
+        self.db.flush()  # flush but let caller decide on commit
+
+        logger.info(
+            "Awarded %d rank points to player %s for %s (total: %d, rank: %s)",
+            points,
+            player_id,
+            reason,
+            player.rank_points,
+            player.military_rank,
+        )
+
+        rank_info = self._build_rank_info(player)
+
+        return {
+            "success": True,
+            "message": (
+                f"Promoted to {player.military_rank}!"
+                if promotion_result["promoted"]
+                else f"Awarded {points} rank points"
+            ),
+            "points_awarded": points,
+            "new_total": player.rank_points,
+            "promoted": promotion_result["promoted"],
+            "old_rank": old_rank,
+            "new_rank": player.military_rank,
+            "rank_info": rank_info,
+        }
+
+    def check_and_promote(self, player_id: uuid.UUID) -> Dict[str, Any]:
+        """Check if a player qualifies for promotion and promote if so.
+
+        Public wrapper that fetches the player by ID.
+        """
+        player = self.db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            return {"promoted": False, "message": "Player not found"}
+
+        result = self._check_and_promote(player)
+        if result["promoted"]:
+            self.db.flush()
+        return result
+
+    def _check_and_promote(self, player: Player) -> Dict[str, Any]:
+        """Internal promotion check that operates on a loaded Player object."""
+        earned_rank = self.get_rank_for_points(player.rank_points or 0)
+
+        if earned_rank["name"] != player.military_rank:
+            old_rank = player.military_rank
+            player.military_rank = earned_rank["name"]
+            logger.info(
+                "Player %s promoted from %s to %s (points: %d)",
+                player.id,
+                old_rank,
+                earned_rank["name"],
+                player.rank_points,
+            )
+            return {
+                "promoted": True,
+                "old_rank": old_rank,
+                "new_rank": earned_rank["name"],
+                "message": f"Promoted from {old_rank} to {earned_rank['name']}!",
+            }
+
+        return {"promoted": False, "message": "No promotion earned yet"}
+
+    def get_rank_info(self, player_id: uuid.UUID) -> Optional[Dict[str, Any]]:
+        """Return detailed rank information for a player."""
+        player = self.db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            return None
+        return self._build_rank_info(player)
+
+    def _build_rank_info(self, player: Player) -> Dict[str, Any]:
+        """Build rank info dict from a loaded Player object."""
+        current_rank = self.get_rank_for_points(player.rank_points or 0)
+        next_rank = self.get_next_rank(current_rank["name"])
+
+        if next_rank:
+            points_to_next = next_rank["points_required"] - (player.rank_points or 0)
+            progress_percent = (
+                ((player.rank_points or 0) - current_rank["points_required"])
+                / (next_rank["points_required"] - current_rank["points_required"])
+                * 100
+            )
+            progress_percent = max(0.0, min(100.0, progress_percent))
+        else:
+            points_to_next = 0
+            progress_percent = 100.0
+
+        bonuses = self.get_rank_bonuses(current_rank["name"])
+
+        return {
+            "player_id": str(player.id),
+            "username": player.username,
+            "current_rank": current_rank["name"],
+            "rank_level": current_rank["level"],
+            "rank_points": player.rank_points or 0,
+            "points_to_next_rank": points_to_next,
+            "next_rank": next_rank["name"] if next_rank else None,
+            "next_rank_points_required": next_rank["points_required"] if next_rank else None,
+            "progress_percent": round(progress_percent, 1),
+            "bonuses": bonuses,
+            "is_max_rank": next_rank is None,
+        }
+
+    # ------------------------------------------------------------------
+    # Leaderboard
+    # ------------------------------------------------------------------
+
+    def get_leaderboard(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """Return a leaderboard of top-ranked players.
+
+        Args:
+            limit: Maximum number of players to return (default 20, max 100).
+
+        Returns:
+            List of dicts with player rank info, ordered by rank_points descending.
+        """
+        limit = max(1, min(100, limit))
+
+        players = (
+            self.db.query(Player)
+            .filter(Player.is_active == True)
+            .order_by(desc(Player.rank_points))
+            .limit(limit)
+            .all()
+        )
+
+        leaderboard = []
+        for position, player in enumerate(players, start=1):
+            rank_info = self._build_rank_info(player)
+            leaderboard.append(
+                {
+                    "position": position,
+                    "player_id": str(player.id),
+                    "username": player.username,
+                    "military_rank": player.military_rank,
+                    "rank_points": player.rank_points or 0,
+                    "rank_level": rank_info["rank_level"],
+                }
+            )
+
+        return leaderboard
