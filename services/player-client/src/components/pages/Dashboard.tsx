@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useGame } from '../../contexts/GameContext';
 import UserProfile from '../auth/UserProfile';
-import { formatShipType } from '../../utils/formatters';
 import './pages.css';
 
 interface DashboardProps {
@@ -10,43 +10,39 @@ interface DashboardProps {
   apiEnvironment: string;
 }
 
-// Mock data for development
-const mockPlayerData = {
-  credits: 50000,
-  turns: 20,
-  currentSector: 'Alpha-9',
-  ships: [
-    { id: 1, name: 'Stellar Voyager', type: 'Light Freighter', health: 85 },
-    { id: 2, name: 'Nebula Runner', type: 'Scout', health: 95 }
-  ],
-  resources: [
-    { type: 'Food', amount: 250, unit: 'tons' },
-    { type: 'Fuel', amount: 180, unit: 'cells' },
-    { type: 'Ore', amount: 75, unit: 'units' },
-    { type: 'Tech', amount: 42, unit: 'crates' }
-  ],
-  notifications: [
-    { id: 1, message: 'Trade offer from Station Nebulus', type: 'trade', time: '2 hours ago' },
-    { id: 2, message: 'New warp tunnel discovered near sector Beta-7', type: 'discovery', time: '1 day ago' },
-    { id: 3, message: 'Ship maintenance required', type: 'warning', time: '3 days ago' }
-  ],
-  recentActivities: [
-    { id: 1, action: 'Purchased 50 tons of Food', location: 'Station Nebulus', time: '3 hours ago' },
-    { id: 2, action: 'Sold 30 units of Ore', location: 'Federation Trading Hub', time: '5 hours ago' },
-    { id: 3, action: 'Discovered new sector', location: 'Gamma Quadrant', time: '2 days ago' },
-    { id: 4, action: 'Repaired ship damage', location: 'Omega Shipyards', time: '4 days ago' }
-  ]
-};
-
-const Dashboard: React.FC<DashboardProps> = ({ 
-  apiStatus, 
-  apiMessage, 
-  apiEnvironment 
+const Dashboard: React.FC<DashboardProps> = ({
+  apiStatus,
+  apiMessage,
+  apiEnvironment
 }) => {
   const { user } = useAuth();
-  const [playerData] = useState(mockPlayerData);
+  const { playerState, ships, currentShip, currentSector, isLoading } = useGame();
   const [activeTab, setActiveTab] = useState('overview');
   
+  // Build cargo resource list from current ship
+  const cargoResources = currentShip?.cargo
+    ? Object.entries(currentShip.cargo)
+        .filter(([, amount]) => (amount as number) > 0)
+        .map(([type, amount]) => ({ type, amount: amount as number }))
+    : [];
+
+  if (isLoading && !playerState) {
+    return (
+      <div className="dashboard">
+        <div className="dashboard-header">
+          <div className="dashboard-title">
+            <h2>Command Center</h2>
+          </div>
+        </div>
+        <div className="coming-soon">
+          <div className="coming-soon-content">
+            <p>Loading player data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard">
       <div className="dashboard-header">
@@ -54,42 +50,52 @@ const Dashboard: React.FC<DashboardProps> = ({
           <h2>Command Center</h2>
           <div className="sector-indicator">
             <span className="sector-label">Current Sector:</span>
-            <span className="sector-value">{playerData.currentSector}</span>
+            <span className="sector-value">{currentSector?.name || `Sector ${playerState?.current_sector_id ?? '---'}`}</span>
           </div>
         </div>
         <UserProfile />
       </div>
-      
+
       <div className="resource-bar">
         <div className="resource-item credits">
           <span className="resource-icon">💰</span>
           <div className="resource-details">
             <span className="resource-label">Credits</span>
-            <span className="resource-value">{playerData.credits.toLocaleString()}</span>
+            <span className="resource-value">{(playerState?.credits ?? 0).toLocaleString()}</span>
           </div>
         </div>
-        
+
         <div className="resource-item turns">
           <span className="resource-icon">⏱️</span>
           <div className="resource-details">
             <span className="resource-label">Turns</span>
-            <span className="resource-value">{playerData.turns}</span>
+            <span className="resource-value">{playerState?.turns ?? 0}</span>
           </div>
         </div>
-        
-        {playerData.resources.map((resource, index) => (
-          <div key={index} className={`resource-item ${resource.type.toLowerCase()}`}>
-            <span className="resource-icon">
-              {resource.type === 'Food' ? '🌾' : 
-               resource.type === 'Fuel' ? '⚡' : 
-               resource.type === 'Ore' ? '🪨' : '🔧'}
-            </span>
+
+        {cargoResources.length > 0 ? (
+          cargoResources.map((resource, index) => (
+            <div key={index} className={`resource-item ${resource.type.toLowerCase()}`}>
+              <span className="resource-icon">
+                {resource.type === 'food' || resource.type === 'organics' ? '🌾' :
+                 resource.type === 'fuel' ? '⚡' :
+                 resource.type === 'ore' ? '🪨' : '🔧'}
+              </span>
+              <div className="resource-details">
+                <span className="resource-label">{resource.type.charAt(0).toUpperCase() + resource.type.slice(1)}</span>
+                <span className="resource-value">{resource.amount}</span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="resource-item">
+            <span className="resource-icon">📦</span>
             <div className="resource-details">
-              <span className="resource-label">{resource.type}</span>
-              <span className="resource-value">{resource.amount} {resource.unit}</span>
+              <span className="resource-label">Cargo</span>
+              <span className="resource-value">Empty</span>
             </div>
           </div>
-        ))}
+        )}
       </div>
       
       <div className="dashboard-tabs">
@@ -153,60 +159,98 @@ const Dashboard: React.FC<DashboardProps> = ({
               <section className="ships-overview">
                 <h3>Your Fleet</h3>
                 <div className="ship-list">
-                  {playerData.ships.map(ship => (
-                    <div key={ship.id} className="ship-item">
+                  {ships.length > 0 ? (
+                    ships.map(ship => {
+                      const isCurrent = ship.id === currentShip?.id;
+                      return (
+                        <div key={ship.id} className={`ship-item ${isCurrent ? 'selected' : ''}`}>
+                          <div className="ship-icon">🚀</div>
+                          <div className="ship-details">
+                            <div className="ship-name">{ship.name}{isCurrent ? ' (Active)' : ''}</div>
+                            <div className="ship-type">{ship.type}</div>
+                            <div className="ship-health">
+                              <div className="health-bar">
+                                <div
+                                  className="health-fill"
+                                  style={{ width: '100%', backgroundColor: '#10b981' }}
+                                />
+                              </div>
+                              <span className="health-text">Cargo: {Object.values(ship.cargo || {}).reduce((a: number, b: number) => a + b, 0)}/{ship.cargo_capacity}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="ship-item">
                       <div className="ship-icon">🚀</div>
                       <div className="ship-details">
-                        <div className="ship-name">{ship.name}</div>
-                        <div className="ship-type">{formatShipType(ship.type)}</div>
-                        <div className="ship-health">
-                          <div className="health-bar">
-                            <div 
-                              className="health-fill" 
-                              style={{ width: `${ship.health}%`, backgroundColor: ship.health > 75 ? '#10b981' : ship.health > 30 ? '#f59e0b' : '#ef4444' }} 
-                            />
-                          </div>
-                          <span className="health-text">{ship.health}%</span>
-                        </div>
+                        <div className="ship-name">No ships available</div>
+                        <div className="ship-type">Visit a space dock to acquire a ship</div>
                       </div>
-                      <button className="ship-action-button">View</button>
                     </div>
-                  ))}
+                  )}
                 </div>
               </section>
-              
+
               <section className="notifications">
-                <h3>Notifications</h3>
+                <h3>Status</h3>
                 <div className="notification-list">
-                  {playerData.notifications.map(notification => (
-                    <div key={notification.id} className={`notification-item ${notification.type}`}>
-                      <div className="notification-icon">
-                        {notification.type === 'trade' ? '💼' : 
-                         notification.type === 'discovery' ? '🔭' : '⚠️'}
-                      </div>
+                  <div className="notification-item discovery">
+                    <div className="notification-icon">📍</div>
+                    <div className="notification-content">
+                      <div className="notification-message">Current sector: {currentSector?.name || `Sector ${playerState?.current_sector_id ?? '---'}`}</div>
+                      <div className="notification-time">{currentSector?.type || 'Unknown type'}</div>
+                    </div>
+                  </div>
+                  {playerState?.is_docked && (
+                    <div className="notification-item trade">
+                      <div className="notification-icon">🔗</div>
                       <div className="notification-content">
-                        <div className="notification-message">{notification.message}</div>
-                        <div className="notification-time">{notification.time}</div>
+                        <div className="notification-message">Currently docked at a station</div>
                       </div>
                     </div>
-                  ))}
+                  )}
+                  {playerState?.is_landed && (
+                    <div className="notification-item trade">
+                      <div className="notification-icon">🌍</div>
+                      <div className="notification-content">
+                        <div className="notification-message">Currently on a planet surface</div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="notification-item warning">
+                    <div className="notification-icon">🤖</div>
+                    <div className="notification-content">
+                      <div className="notification-message">Drones: {playerState?.attack_drones ?? 0} attack / {playerState?.defense_drones ?? 0} defense</div>
+                    </div>
+                  </div>
                 </div>
               </section>
-              
+
               <section className="recent-activity">
-                <h3>Recent Activity</h3>
+                <h3>Player Info</h3>
                 <div className="activity-timeline">
-                  {playerData.recentActivities.map(activity => (
-                    <div key={activity.id} className="activity-item">
-                      <div className="activity-content">
-                        <div className="activity-action">{activity.action}</div>
-                        <div className="activity-details">
-                          <span className="activity-location">{activity.location}</span>
-                          <span className="activity-time">{activity.time}</span>
-                        </div>
+                  <div className="activity-item">
+                    <div className="activity-content">
+                      <div className="activity-action">Reputation: {playerState?.reputation_tier || 'Unknown'}</div>
+                      <div className="activity-details">
+                        <span className="activity-location">Score: {playerState?.personal_reputation ?? 0}</span>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                  <div className="activity-item">
+                    <div className="activity-content">
+                      <div className="activity-action">Military Rank: {playerState?.military_rank || 'Civilian'}</div>
+                    </div>
+                  </div>
+                  {playerState?.team_id && (
+                    <div className="activity-item">
+                      <div className="activity-content">
+                        <div className="activity-action">Team Member</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
               

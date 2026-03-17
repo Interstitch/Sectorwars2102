@@ -51,43 +51,10 @@ export const CombatLog: React.FC<CombatLogProps> = ({
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<CombatRecord | null>(null);
   
-  // Mock data for demonstration (remove when real data is available)
   const [combatRecords, setCombatRecords] = useState<CombatRecord[]>([]);
-  
+
   useEffect(() => {
-    // Generate mock combat records for demonstration
-    if (records.length === 0) {
-      const mockRecords: CombatRecord[] = Array.from({ length: 20 }, (_, i) => ({
-        id: `combat-${Date.now()}-${i}`,
-        timestamp: new Date(Date.now() - i * 3600000 * 24).toISOString(),
-        opponent: {
-          id: `opp-${i}`,
-          name: ['Pirate Raider', 'Mining Colony', 'Trade Station', 'Rogue Trader'][i % 4],
-          type: ['ship', 'planet', 'port', 'ship'][i % 4] as any
-        },
-        outcome: ['victory', 'defeat', 'retreat'][i % 3] as any,
-        rounds: Math.floor(Math.random() * 15) + 3,
-        damageDealt: Math.floor(Math.random() * 500) + 100,
-        damageTaken: Math.floor(Math.random() * 400) + 50,
-        dronesLost: Math.floor(Math.random() * 20),
-        dronesDestroyed: Math.floor(Math.random() * 15),
-        loot: i % 3 === 0 ? {
-          credits: Math.floor(Math.random() * 5000) + 1000,
-          resources: {
-            fuel: Math.floor(Math.random() * 100),
-            organics: Math.floor(Math.random() * 100),
-            equipment: Math.floor(Math.random() * 100)
-          }
-        } : undefined,
-        sector: {
-          id: `sector-${Math.floor(Math.random() * 100)}`,
-          name: `Sector ${Math.floor(Math.random() * 100)}`
-        }
-      }));
-      setCombatRecords(mockRecords);
-    } else {
-      setCombatRecords(records.slice(0, maxRecords));
-    }
+    setCombatRecords(records.slice(0, maxRecords));
   }, [records, maxRecords]);
   
   // Filter and sort records
@@ -284,7 +251,7 @@ export const CombatLog: React.FC<CombatLogProps> = ({
       <div className="log-entries">
         {filteredRecords.length === 0 ? (
           <div className="no-records">
-            <p>No combat records found</p>
+            <p>{combatRecords.length === 0 ? 'No combat history yet. Engage in combat to see your battle records here.' : 'No combat records match your filters.'}</p>
             {searchTerm && <p className="hint">Try adjusting your search</p>}
           </div>
         ) : (
