@@ -561,13 +561,40 @@ class GenesisService:
         planet.organics = base_resources
         planet.equipment = int(base_resources * 0.5)
 
-        # Set initial population
-        planet.colonists = 100
-        planet.population = 100
+        # Set initial population based on tier
+        if tier == "advanced":
+            # Spec: Advanced genesis creates a Settlement-level colony
+            # with a Level 2 (Garrison) citadel and 5000 colonists
+            planet.colonists = 5000
+            planet.population = 5000
+            planet.max_colonists = max(planet.max_colonists, 5000)
+
+            # Initialize citadel at Level 2 (Garrison) with proper stats
+            # Import citadel level config to stay consistent with citadel_service
+            from src.services.citadel_service import CITADEL_LEVELS
+            garrison_config = CITADEL_LEVELS[2]
+            planet.citadel_level = 2
+            planet.citadel_safe_credits = 0
+            planet.citadel_safe_max = garrison_config["safe_storage"]
+            planet.citadel_drone_capacity = garrison_config["drone_capacity"]
+            planet.citadel_max_population = garrison_config["max_population"]
+
+            logger.info(
+                f"Advanced genesis: Settlement-level colony created with L2 citadel "
+                f"(Garrison) and 5000 colonists on planet {planet.id}"
+            )
+        elif tier == "enhanced":
+            # Enhanced tier gets a modest head start over basic
+            planet.colonists = 500
+            planet.population = 500
+        else:
+            # Basic tier: minimal starting population
+            planet.colonists = 100
+            planet.population = 100
 
         logger.info(
             f"Planet {planet.id} ({planet.name}) formation complete. "
-            f"Type: {planet.type.value}, Habitability: {planet.habitability_score}"
+            f"Tier: {tier}, Type: {planet.type.value}, Habitability: {planet.habitability_score}"
         )
 
     def _generate_planet_name(self, sector_id: int, planet_type: PlanetType) -> str:

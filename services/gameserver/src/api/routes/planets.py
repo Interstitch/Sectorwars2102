@@ -499,6 +499,51 @@ async def get_planet_defenses(
         raise HTTPException(status_code=404, detail=str(e))
 
 
+class ConstructBuildingRequest(BaseModel):
+    """Defense building construction request."""
+    buildingType: str = Field(..., pattern="^(orbital_platform|turret_network|scanner_array)$")
+
+
+@router.get("/{planet_id}/buildings/available")
+async def get_available_buildings(
+    planet_id: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """Get defense buildings available for construction at current citadel level."""
+    from src.services.citadel_service import CitadelService
+    try:
+        pid = UUID(planet_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+    service = CitadelService(db)
+    result = service.get_available_buildings(pid)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Failed"))
+    return result
+
+
+@router.post("/{planet_id}/buildings/construct")
+async def construct_defense_building(
+    planet_id: str,
+    request: ConstructBuildingRequest,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """Construct a defense building on a planet."""
+    from src.services.citadel_service import CitadelService
+    try:
+        pid = UUID(planet_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+    service = CitadelService(db)
+    result = service.build_defense_building(pid, player.id, request.buildingType)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Construction failed"))
+    db.commit()
+    return result
+
+
 @router.get("/{planetId}")
 async def get_planet_details(
     planetId: str,
