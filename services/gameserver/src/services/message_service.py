@@ -90,14 +90,14 @@ class MessageService:
         db.refresh(message)
         
         # Send WebSocket notification
-        await MessageService._send_notification(message, sender)
+        await MessageService._send_notification(db, message, sender)
         
         logger.info(f"Message {message.id} sent from {sender_id} to {recipient_id or team_id}")
         
         return message
     
     @staticmethod
-    async def _send_notification(message: Message, sender: Player):
+    async def _send_notification(db: Session, message: Message, sender: Player):
         """Send WebSocket notification for new message"""
         notification = {
             "type": "new_message",
@@ -108,14 +108,20 @@ class MessageService:
             "sent_at": message.sent_at.isoformat() if message.sent_at else None,
             "priority": message.priority
         }
-        
+
         if message.recipient_id:
             # Send to specific player
             await manager.send_to_player(str(message.recipient_id), notification)
         elif message.team_id:
-            # Send to all team members
-            # TODO: Implement team broadcast when team members tracking is available
-            logger.info(f"Team message notification would be sent to team {message.team_id}")
+            # Send to all team members except the sender
+            team_members = db.query(Player).filter(
+                Player.team_id == message.team_id,
+                Player.id != message.sender_id,
+                Player.is_active == True
+            ).all()
+            for member in team_members:
+                await manager.send_to_player(str(member.id), notification)
+            logger.info(f"Team message notification sent to {len(team_members)} members of team {message.team_id}")
     
     @staticmethod
     async def get_inbox(
@@ -322,12 +328,42 @@ class MessageService:
         
         message.flagged = True
         message.flagged_reason = reason
-        
+
         db.commit()
-        
-        # TODO: Notify admins of flagged message
-        logger.warning(f"Message {message_id} flagged by {flagged_by} for: {reason}")
-        
+
+        # Notify all admin users about the flagged message
+        try:
+            from src.models.user import User
+            admin_users = db.query(User).filter(
+                User.is_admin == True,
+                User.is_active == True
+            ).all()
+
+            flagging_player = db.query(Player).filter(Player.id == flagged_by).first()
+            flagged_by_name = flagging_player.username if flagging_player else str(flagged_by)
+
+            for admin_user in admin_users:
+                # Send WebSocket notification to admin connections
+                admin_notification = {
+                    "type": "flagged_message_alert",
+                    "message_id": str(message_id),
+                    "flagged_by": str(flagged_by),
+                    "flagged_by_name": flagged_by_name,
+                    "reason": reason,
+                    "message_preview": message.content[:200] if message.content else "",
+                    "sender_id": str(message.sender_id),
+                    "flagged_at": datetime.utcnow().isoformat()
+                }
+                await manager.send_to_player(str(admin_user.id), admin_notification)
+
+            logger.warning(
+                f"Message {message_id} flagged by {flagged_by} for: {reason}. "
+                f"Notified {len(admin_users)} admin(s)."
+            )
+        except Exception as e:
+            logger.error(f"Failed to notify admins about flagged message {message_id}: {e}")
+            logger.warning(f"Message {message_id} flagged by {flagged_by} for: {reason}")
+
         return True
     
     @staticmethod

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-from src.core.database import get_db
+from src.core.database import get_async_session
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.models.faction import Faction, FactionType, FactionMission
@@ -126,7 +126,7 @@ class TerritoryResponse(BaseModel):
 # API Endpoints
 @router.get("/", response_model=List[FactionResponse])
 async def list_factions(
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get list of all factions."""
@@ -137,7 +137,7 @@ async def list_factions(
 
 @router.get("/reputation", response_model=List[ReputationResponse])
 async def get_player_reputations(
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get current player's reputation with all factions."""
@@ -154,7 +154,7 @@ async def get_player_reputations(
 @router.get("/{faction_id}/reputation", response_model=ReputationResponse)
 async def get_faction_reputation(
     faction_id: UUID,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get player's reputation with a specific faction."""
@@ -177,7 +177,7 @@ async def get_faction_reputation(
 @router.get("/missions", response_model=List[MissionResponse])
 async def get_available_missions(
     faction_id: Optional[UUID] = Query(None, description="Filter by faction ID"),
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get available missions for the current player."""
@@ -189,7 +189,7 @@ async def get_available_missions(
 @router.get("/{faction_id}/missions", response_model=List[MissionResponse])
 async def get_faction_missions(
     faction_id: UUID,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get available missions from a specific faction."""
@@ -208,7 +208,7 @@ async def get_faction_missions(
 async def accept_mission(
     faction_id: UUID,
     request: AcceptMissionRequest,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Accept a mission from a faction."""
@@ -229,9 +229,49 @@ async def accept_mission(
             detail="Mission not found or not available to you"
         )
     
-    # TODO: Implement mission acceptance logic
-    # This would involve creating a player_missions table to track accepted missions
-    
+    # Track accepted missions in the player's settings JSONB field
+    player_settings = current_player.settings or {}
+    accepted_missions = player_settings.get("accepted_missions", [])
+
+    # Check if player already accepted this mission
+    if any(m.get("mission_id") == request.mission_id for m in accepted_missions):
+        raise HTTPException(
+            status_code=409,
+            detail="You have already accepted this mission"
+        )
+
+    # Check max concurrent missions (limit to 5)
+    active_missions = [m for m in accepted_missions if m.get("status") == "active"]
+    if len(active_missions) >= 5:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot accept more than 5 missions at a time"
+        )
+
+    # Record the accepted mission
+    accepted_missions.append({
+        "mission_id": request.mission_id,
+        "faction_id": str(faction_id),
+        "title": mission.title,
+        "mission_type": mission.mission_type,
+        "status": "active",
+        "accepted_at": datetime.utcnow().isoformat(),
+        "credit_reward": mission.credit_reward,
+        "reputation_reward": mission.reputation_reward,
+        "target_sector_id": str(mission.target_sector_id) if mission.target_sector_id else None,
+        "cargo_type": mission.cargo_type,
+        "cargo_quantity": mission.cargo_quantity,
+        "expires_at": mission.expires_at.isoformat() if mission.expires_at else None
+    })
+
+    player_settings["accepted_missions"] = accepted_missions
+    current_player.settings = player_settings
+
+    # Use flag_modified to ensure SQLAlchemy detects the JSONB change
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(current_player, "settings")
+    db.commit()
+
     return {
         "success": True,
         "message": f"Mission '{mission.title}' accepted",
@@ -242,7 +282,7 @@ async def accept_mission(
 @router.get("/{faction_id}/territory", response_model=TerritoryResponse)
 async def get_faction_territory(
     faction_id: UUID,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get the territory controlled by a faction."""
@@ -263,7 +303,7 @@ async def get_faction_territory(
 @router.get("/{faction_id}/pricing-modifier")
 async def get_pricing_modifier(
     faction_id: UUID,
-    db=Depends(get_db),
+    db=Depends(get_async_session),
     current_player: Player = Depends(get_current_player)
 ):
     """Get the pricing modifier for trading at faction-controlled ports."""

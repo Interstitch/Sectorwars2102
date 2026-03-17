@@ -768,22 +768,43 @@ class CombatService:
         }
     
     def _is_combat_allowed(self, sector: Sector, attacker: Player, defender: Player) -> bool:
-        """Check if combat is allowed in a sector based on rules."""
-        # Get region type for security rules
-        region_type = sector.cluster.region.type.name if sector and sector.cluster and sector.cluster.region else "FRONTIER"
-        
-        # Combat is always allowed in frontier regions
-        if region_type == "FRONTIER":
+        """Check if combat is allowed in a sector based on rules.
+
+        PvP flag logic:
+        - Federation/Terran space: both players must have PvP enabled in settings
+        - All other regions: combat is always allowed
+
+        Players can toggle PvP via their settings JSONB field: settings.pvp_enabled (bool)
+        """
+        # Determine if sector is in Federation/Terran space
+        is_federation_space = False
+
+        # Check via the sector's direct region relationship first
+        if sector and sector.region:
+            region_type = getattr(sector.region, 'region_type', None)
+            if region_type in ('terran_space', 'central_nexus'):
+                is_federation_space = True
+        # Fallback: check via cluster -> region chain
+        elif sector and sector.cluster and sector.cluster.region:
+            region_type = getattr(sector.cluster.region, 'region_type', None)
+            if region_type in ('terran_space', 'central_nexus'):
+                is_federation_space = True
+
+        # In Federation/Terran space, require both players to have PvP enabled
+        if is_federation_space:
+            attacker_settings = attacker.settings or {}
+            defender_settings = defender.settings or {}
+
+            attacker_pvp = attacker_settings.get("pvp_enabled", False)
+            defender_pvp = defender_settings.get("pvp_enabled", False)
+
+            if not attacker_pvp or not defender_pvp:
+                return False
+
+            # Both players opted in -- combat allowed in Federation space
             return True
-        
-        # In Federation space, combat might be restricted unless both players agree
-        if region_type == "FEDERATION":
-            # Could implement a PvP flag system here
-            # For now, just making it very difficult/expensive to fight in Federation space
-            # This would be expanded in an actual implementation
-            return False
-        
-        # In Border regions, combat is allowed but with penalties
+
+        # Outside Federation space, combat is always allowed
         return True
     
     def _resolve_ship_combat(self, attacker: Player, defender: Player, sector: Sector) -> Dict[str, Any]:
