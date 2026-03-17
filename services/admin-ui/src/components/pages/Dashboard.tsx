@@ -69,7 +69,7 @@ const Dashboard: React.FC = () => {
       const [dbHealthRes, aiHealthRes, gameServerRes, adminStatsRes] = await Promise.allSettled([
         axios.get('/api/v1/status/database', { headers, timeout: 10000 }),
         axios.get('/api/v1/status/ai/providers', { headers, timeout: 15000 }),
-        axios.get('/api/v1/status', { headers, timeout: 10000 }),
+        axios.get('/api/v1/status/', { headers, timeout: 10000 }),
         axios.get('/api/v1/admin/stats', { headers, timeout: 10000 })
       ]);
 
