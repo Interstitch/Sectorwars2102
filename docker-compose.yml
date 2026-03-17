@@ -1,3 +1,9 @@
+# ==========================================================================
+# WARNING: All default passwords in this file are for LOCAL DEVELOPMENT ONLY.
+# For production deployments, ALL passwords MUST be overridden via environment
+# variables or a .env file with strong, unique credentials.
+# ==========================================================================
+
 services:
   # ================================
   # DATABASES
@@ -10,7 +16,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-sectorwars_dev}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev_password_123}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_only_not_for_production}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - postgres_backups:/var/lib/postgresql/backups
@@ -38,7 +44,7 @@ services:
     environment:
       POSTGRES_DB: ${NEXUS_DB_NAME:-central_nexus}
       POSTGRES_USER: ${NEXUS_DB_USER:-nexus_admin}
-      POSTGRES_PASSWORD: ${NEXUS_DB_PASSWORD:-nexus_secure_password_123}
+      POSTGRES_PASSWORD: ${NEXUS_DB_PASSWORD:-dev_only_not_for_production}
     volumes:
       - central_nexus_data:/var/lib/postgresql/data
       - ./services/gameserver/sql/init-central-nexus.sql:/docker-entrypoint-initdb.d/01-init.sql
@@ -62,7 +68,7 @@ services:
     environment:
       POSTGRES_DB: ${REGION_NAME:-default_region}
       POSTGRES_USER: ${REGION_DB_USER:-region_admin}
-      POSTGRES_PASSWORD: ${REGION_DB_PASSWORD:-region_secure_password_123}
+      POSTGRES_PASSWORD: ${REGION_DB_PASSWORD:-dev_only_not_for_production}
     volumes:
       - ./services/gameserver/sql/init-region.sql:/docker-entrypoint-initdb.d/01-init.sql
     networks:
@@ -83,7 +89,7 @@ services:
   redis-cache:
     image: redis:7-alpine
     container_name: sectorwars-redis-cache
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_dev_password_123}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-dev_only_not_for_production}
     volumes:
       - redis_cache_data:/data
     ports:
@@ -92,7 +98,7 @@ services:
       - sectorwars-network
       - nexus-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_dev_password_123}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-dev_only_not_for_production}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -107,7 +113,7 @@ services:
   redis-nexus:
     image: redis:7-alpine
     container_name: sectorwars-redis-nexus
-    command: redis-server --appendonly yes --requirepass ${REDIS_NEXUS_PASSWORD:-redis_nexus_password_123} --port 6380
+    command: redis-server --appendonly yes --requirepass ${REDIS_NEXUS_PASSWORD:-dev_only_not_for_production} --port 6380
     volumes:
       - redis_nexus_data:/data
     ports:
@@ -115,7 +121,7 @@ services:
     networks:
       - nexus-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6380", "-a", "${REDIS_NEXUS_PASSWORD:-redis_nexus_password_123}", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6380", "-a", "${REDIS_NEXUS_PASSWORD:-dev_only_not_for_production}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -141,7 +147,7 @@ services:
       - gameserver_logs:/app/logs
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_dev_password_123}@redis-cache:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-dev_only_not_for_production}@redis-cache:6379/0
       - ENVIRONMENT=${ENVIRONMENT:-development}
       - JWT_SECRET=${JWT_SECRET}
       - SECRET_KEY=${SECRET_KEY}
@@ -193,8 +199,8 @@ services:
         - ENVIRONMENT=${ENVIRONMENT:-production}
     container_name: sectorwars-central-nexus-server
     environment:
-      - DATABASE_URL=postgresql://${NEXUS_DB_USER:-nexus_admin}:${NEXUS_DB_PASSWORD:-nexus_secure_password_123}@central-nexus-db:5432/${NEXUS_DB_NAME:-central_nexus}
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_secure_password_123}@redis-nexus:6379/0
+      - DATABASE_URL=postgresql://${NEXUS_DB_USER:-nexus_admin}:${NEXUS_DB_PASSWORD:-dev_only_not_for_production}@central-nexus-db:5432/${NEXUS_DB_NAME:-central_nexus}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-dev_only_not_for_production}@redis-nexus:6379/0
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - SERVICE_TYPE=central-nexus
       - REGION_ID=central-nexus
@@ -238,8 +244,8 @@ services:
       args:
         - ENVIRONMENT=${ENVIRONMENT:-production}
     environment:
-      - DATABASE_URL=postgresql://${REGION_DB_USER:-region_admin}:${REGION_DB_PASSWORD:-region_secure_password_123}@${REGION_NAME:-default-region}-db:5432/${REGION_NAME:-default_region}
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_secure_password_123}@redis-nexus:6379/1
+      - DATABASE_URL=postgresql://${REGION_DB_USER:-region_admin}:${REGION_DB_PASSWORD:-dev_only_not_for_production}@${REGION_NAME:-default-region}-db:5432/${REGION_NAME:-default_region}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-dev_only_not_for_production}@redis-nexus:6379/1
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - SERVICE_TYPE=regional-server
       - REGION_ID=${REGION_NAME:-default-region}
@@ -376,8 +382,8 @@ services:
       dockerfile: Dockerfile
     container_name: sectorwars-region-manager
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres_dev_password_123@database:5432/sectorwars_dev}
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_dev_password_123}@redis-cache:6379/1
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:dev_only_not_for_production@database:5432/sectorwars_dev}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-dev_only_not_for_production}@redis-cache:6379/1
       - DOCKER_HOST=unix:///var/run/docker.sock
       - ENVIRONMENT=${ENVIRONMENT:-development}
       - JWT_SECRET=${JWT_SECRET}
@@ -442,7 +448,7 @@ services:
     image: grafana/grafana:latest
     container_name: sectorwars-grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin_secure_password_123}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-dev_only_not_for_production}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards

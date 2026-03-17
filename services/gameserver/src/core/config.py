@@ -1,7 +1,10 @@
+import logging
 import os
 from typing import Optional
 from pydantic import PostgresDsn, Field
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
 
 # Note: DATABASE_URL validation will happen in the Settings class below
 # which properly loads from .env files using Pydantic
@@ -12,7 +15,7 @@ class Settings(BaseSettings):
     API_BASE_URL: str = os.environ.get("API_BASE_URL", "")  # Empty string to auto-detect
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
-    DEBUG: bool = os.environ.get("DEBUG", "True").lower() == "true"
+    DEBUG: bool = os.environ.get("DEBUG", "False").lower() == "true"
     
     # Test and development mode flags
     TESTING: bool = os.environ.get("TESTING", "False").lower() == "true"
@@ -44,6 +47,11 @@ class Settings(BaseSettings):
             raise ValueError("ADMIN_PASSWORD environment variable is required")
         if len(self.ADMIN_PASSWORD) < 12:
             raise ValueError("ADMIN_PASSWORD must be at least 12 characters for security")
+        if "dev_only_not_for_production" in self.REDIS_URL:
+            logger.warning(
+                "SECURITY WARNING: REDIS_URL is using the default dev-only password. "
+                "Set REDIS_URL with a strong password for production deployments."
+            )
     
     # AI Provider Configuration
     OPENAI_API_KEY: Optional[str] = os.environ.get("OPENAI_API_KEY")
@@ -99,7 +107,7 @@ class Settings(BaseSettings):
     SQLALCHEMY_MAX_OVERFLOW: int = 20
     
     # Redis Configuration
-    REDIS_URL: str = os.environ.get("REDIS_URL", "redis://:redis_secure_password_123@localhost:6379/0")
+    REDIS_URL: str = os.environ.get("REDIS_URL", "redis://:dev_only_not_for_production@localhost:6379/0")
     REDIS_CACHE_TTL: int = int(os.environ.get("REDIS_CACHE_TTL", "3600"))  # 1 hour default
     REDIS_SESSION_TTL: int = int(os.environ.get("REDIS_SESSION_TTL", "86400"))  # 24 hours default
 
