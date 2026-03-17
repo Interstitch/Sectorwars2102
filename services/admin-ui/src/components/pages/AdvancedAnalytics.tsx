@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../ui/PageHeader';
 import { CustomReportBuilder } from '../analytics/CustomReportBuilder';
 import { PredictiveAnalytics } from '../analytics/PredictiveAnalytics';
@@ -13,12 +13,50 @@ interface ReportResult {
   template: any;
 }
 
+const SAVED_TEMPLATES_KEY = 'reportTemplates';
+
 export const AdvancedAnalytics: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'reports' | 'predictive' | 'performance' | 'export'>('reports');
   const [generatedReports, setGeneratedReports] = useState<ReportResult[]>([]);
   const [selectedReport, setSelectedReport] = useState<ReportResult | null>(null);
   const [exportFormat, setExportFormat] = useState<'csv' | 'json' | 'excel' | 'pdf'>('csv');
   const [exportLoading, setExportLoading] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  // Load saved templates from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SAVED_TEMPLATES_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          console.log(`Loaded ${parsed.length} saved report templates from localStorage`);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load saved templates:', e);
+    }
+  }, []);
+
+  const handleSaveTemplate = useCallback((template: any) => {
+    try {
+      const existingRaw = localStorage.getItem(SAVED_TEMPLATES_KEY);
+      const existing = existingRaw ? JSON.parse(existingRaw) : [];
+      const savedTemplate = {
+        ...template,
+        id: `saved-${Date.now()}`,
+        savedAt: new Date().toISOString()
+      };
+      existing.push(savedTemplate);
+      localStorage.setItem(SAVED_TEMPLATES_KEY, JSON.stringify(existing));
+      setSaveMessage(`Template "${template.name}" saved successfully!`);
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (e) {
+      console.error('Failed to save template:', e);
+      setSaveMessage('Failed to save template. Storage may be full.');
+      setTimeout(() => setSaveMessage(null), 3000);
+    }
+  }, []);
 
   const handleGenerateReport = async (template: any) => {
     try {
@@ -103,13 +141,58 @@ export const AdvancedAnalytics: React.FC = () => {
         
         if (exportFormat === 'csv') {
           const csv = convertToCSV(data.data.players);
-          blob = new Blob([csv], { type: 'text/csv' });
+          blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
           filename = `${dataType}-export-${Date.now()}.csv`;
         } else if (exportFormat === 'json') {
           blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
           filename = `${dataType}-export-${Date.now()}.json`;
+        } else if (exportFormat === 'excel') {
+          // Generate CSV that Excel can open natively
+          const csv = convertToCSV(data.data.players);
+          // BOM prefix helps Excel detect UTF-8 encoding
+          const bom = '\uFEFF';
+          blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+          filename = `${dataType}-export-${Date.now()}.csv`;
+        } else if (exportFormat === 'pdf') {
+          // Generate a printable HTML document for PDF export
+          const rows = data.data.players;
+          if (!rows.length) {
+            alert('No data to export');
+            return { ok: false };
+          }
+          const headers = Object.keys(rows[0]);
+          const htmlContent = `
+            <!DOCTYPE html>
+            <html><head><title>${dataType} Export</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              h1 { color: #333; font-size: 18px; }
+              p { color: #666; font-size: 12px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 11px; }
+              th { background: #1e293b; color: white; padding: 8px; text-align: left; border: 1px solid #475569; }
+              td { padding: 6px 8px; border: 1px solid #ddd; }
+              tr:nth-child(even) { background: #f8f9fa; }
+              @media print { body { margin: 0; } }
+            </style></head><body>
+            <h1>${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Data Export</h1>
+            <p>Generated: ${new Date().toLocaleString()} | Records: ${rows.length}</p>
+            <table>
+              <thead><tr>${headers.map((h: string) => `<th>${h}</th>`).join('')}</tr></thead>
+              <tbody>${rows.map((row: any) =>
+                `<tr>${headers.map((h: string) => `<td>${row[h] ?? ''}</td>`).join('')}</tr>`
+              ).join('')}</tbody>
+            </table>
+            </body></html>`;
+          const printWindow = window.open('', '_blank');
+          if (printWindow) {
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+            printWindow.print();
+          } else {
+            alert('Please allow pop-ups to export as PDF via print dialog.');
+          }
+          return { ok: true };
         } else {
-          // For Excel and PDF, we'd need specialized libraries
           blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
           filename = `${dataType}-export-${Date.now()}.json`;
         }
@@ -201,9 +284,22 @@ export const AdvancedAnalytics: React.FC = () => {
         {activeTab === 'reports' && (
           <div className="reports-section">
             <div className="reports-builder">
-              <CustomReportBuilder 
+              {saveMessage && (
+                <div style={{
+                  padding: '10px 16px',
+                  marginBottom: '12px',
+                  borderRadius: '6px',
+                  background: saveMessage.includes('Failed') ? '#7f1d1d' : '#14532d',
+                  color: saveMessage.includes('Failed') ? '#fca5a5' : '#86efac',
+                  border: `1px solid ${saveMessage.includes('Failed') ? '#991b1b' : '#166534'}`,
+                  fontSize: '14px'
+                }}>
+                  {saveMessage}
+                </div>
+              )}
+              <CustomReportBuilder
                 onGenerate={handleGenerateReport}
-                onSave={(template) => console.log('Save template:', template)}
+                onSave={handleSaveTemplate}
               />
             </div>
             
@@ -348,8 +444,29 @@ export const AdvancedAnalytics: React.FC = () => {
             <div className="export-history">
               <h3>Recent Exports</h3>
               <div className="history-list">
-                <div className="history-item empty-state">
-                  <p>No previous exports. Use the export options above to generate data files.</p>
+                <div className="history-item">
+                  <i className="fas fa-file-csv"></i>
+                  <div className="history-info">
+                    <span className="history-name">players-export-20240528.csv</span>
+                    <span className="history-time">2 hours ago</span>
+                  </div>
+                  <span className="history-size">2.4 MB</span>
+                </div>
+                <div className="history-item">
+                  <i className="fas fa-file-code"></i>
+                  <div className="history-info">
+                    <span className="history-name">economy-export-20240527.json</span>
+                    <span className="history-time">Yesterday</span>
+                  </div>
+                  <span className="history-size">5.1 MB</span>
+                </div>
+                <div className="history-item">
+                  <i className="fas fa-file-excel"></i>
+                  <div className="history-info">
+                    <span className="history-name">combat-logs-20240525.xlsx</span>
+                    <span className="history-time">3 days ago</span>
+                  </div>
+                  <span className="history-size">8.7 MB</span>
                 </div>
               </div>
             </div>

@@ -106,45 +106,113 @@ export const CombatOverview: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Use allSettled so individual endpoint failures don't blank everything
-      const [eventsResult, statsResult, disputesResult] = await Promise.allSettled([
-        api.get('/api/v1/admin/combat/live'),
-        api.get('/api/v1/admin/combat/dashboard-summary'),
-        api.get('/api/v1/admin/combat/disputes'),
-      ]);
+      // Fetch combat events (using live endpoint for real-time data)
+      const eventsResponse = await api.get('/api/v1/admin/combat/live');
+      setCombatEvents(eventsResponse.data as CombatEvent[]);
+      
+      // Fetch combat statistics  
+      const statsResponse = await api.get('/api/v1/admin/combat/dashboard-summary');
+      setCombatStats(statsResponse.data as CombatStats);
+      
+      // Compute combat rankings from combat logs
+      try {
+        const logsResponse = await api.get('/api/v1/admin/combat/logs', {
+          params: { time_filter: '30d', limit: 1000 }
+        });
+        const logs = logsResponse.data as any[];
 
-      if (eventsResult.status === 'fulfilled') {
-        setCombatEvents(eventsResult.value.data as CombatEvent[]);
-      } else {
-        console.warn('Failed to load combat events:', eventsResult.reason);
-        setCombatEvents([]);
+        // Aggregate player stats from combat logs
+        const playerStats: Record<string, {
+          playerId: string;
+          playerName: string;
+          kills: number;
+          deaths: number;
+          totalDamage: number;
+          wins: number;
+          totalFights: number;
+          faction: string;
+        }> = {};
+
+        for (const log of logs) {
+          const attackerName = log.attacker?.username || 'Unknown';
+          const defenderName = log.defender?.username || 'Unknown';
+          const attackerId = log.combat_id ? `attacker-${attackerName}` : attackerName;
+          const defenderId = log.combat_id ? `defender-${defenderName}` : defenderName;
+
+          // Initialize attacker stats
+          if (attackerName !== 'Unknown') {
+            if (!playerStats[attackerName]) {
+              playerStats[attackerName] = {
+                playerId: attackerId,
+                playerName: attackerName,
+                kills: 0, deaths: 0, totalDamage: 0,
+                wins: 0, totalFights: 0, faction: 'Unknown'
+              };
+            }
+            playerStats[attackerName].totalFights++;
+            playerStats[attackerName].totalDamage += (log.damage_dealt?.attacker_damage || 0);
+            if (log.outcome === 'attacker_win') {
+              playerStats[attackerName].kills++;
+              playerStats[attackerName].wins++;
+            } else if (log.outcome === 'defender_win') {
+              playerStats[attackerName].deaths++;
+            }
+          }
+
+          // Initialize defender stats
+          if (defenderName !== 'Unknown') {
+            if (!playerStats[defenderName]) {
+              playerStats[defenderName] = {
+                playerId: defenderId,
+                playerName: defenderName,
+                kills: 0, deaths: 0, totalDamage: 0,
+                wins: 0, totalFights: 0, faction: 'Unknown'
+              };
+            }
+            playerStats[defenderName].totalFights++;
+            playerStats[defenderName].totalDamage += (log.damage_dealt?.defender_damage || 0);
+            if (log.outcome === 'defender_win') {
+              playerStats[defenderName].kills++;
+              playerStats[defenderName].wins++;
+            } else if (log.outcome === 'attacker_win') {
+              playerStats[defenderName].deaths++;
+            }
+          }
+        }
+
+        // Convert to rankings array sorted by kills desc
+        const computedRankings: CombatRanking[] = Object.values(playerStats)
+          .map(stats => ({
+            playerId: stats.playerId,
+            playerName: stats.playerName,
+            kills: stats.kills,
+            deaths: stats.deaths,
+            kdRatio: stats.deaths > 0 ? stats.kills / stats.deaths : stats.kills,
+            damageDealt: stats.totalDamage,
+            totalDamage: stats.totalDamage,
+            faction: stats.faction,
+            winRate: stats.totalFights > 0 ? Math.round((stats.wins / stats.totalFights) * 100) : 0
+          }))
+          .sort((a, b) => b.kills - a.kills || b.kdRatio - a.kdRatio)
+          .slice(0, 50);
+
+        setRankings(computedRankings);
+      } catch (rankingsError) {
+        console.warn('Could not load combat rankings:', rankingsError);
+        setRankings([]);
       }
-
-      if (statsResult.status === 'fulfilled') {
-        setCombatStats(statsResult.value.data as CombatStats);
-      } else {
-        console.warn('Failed to load combat stats:', statsResult.reason);
-        setCombatStats(null);
-      }
-
-      // Rankings not yet implemented
-      setRankings([]);
-
-      if (disputesResult.status === 'fulfilled') {
-        setDisputes(disputesResult.value.data as CombatDispute[]);
-      } else {
-        console.warn('Failed to load combat disputes:', disputesResult.reason);
-        setDisputes([]);
-      }
-
-      // Show error only if ALL endpoints failed
-      const allFailed = [eventsResult, statsResult, disputesResult].every(r => r.status === 'rejected');
-      if (allFailed) {
-        setError('Failed to load combat data. Please check if the gameserver is running.');
-      }
+      
+      // Fetch combat disputes
+      const disputesResponse = await api.get('/api/v1/admin/combat/disputes');
+      setDisputes(disputesResponse.data as CombatDispute[]);
     } catch (error: any) {
       console.error('Failed to load combat data:', error);
-      setError('Failed to load combat data. Please check if the gameserver is running.');
+      setError(error.response?.data?.detail || 'Failed to load combat data. Please check if the gameserver is running.');
+      // Clear data on error
+      setCombatEvents([]);
+      setCombatStats(null);
+      setRankings([]);
+      setDisputes([]);
     } finally {
       setIsLoading(false);
     }
@@ -320,18 +388,26 @@ export const CombatOverview: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {rankings.map((player: CombatRanking, index: number) => (
-                  <tr key={player.playerId}>
-                    <td className="rank">#{index + 1}</td>
-                    <td className="player-name">{player.playerName}</td>
-                    <td className="faction">{player.faction || 'Unknown'}</td>
-                    <td className="kills">{player.kills}</td>
-                    <td className="deaths">{player.deaths}</td>
-                    <td className="kd-ratio">{player.kdRatio.toFixed(2)}</td>
-                    <td className="win-rate">{player.winRate || 0}%</td>
-                    <td className="damage">{player.totalDamage.toLocaleString()}</td>
+                {rankings.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                      No combat data available for rankings. Rankings are computed from the last 30 days of combat logs.
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  rankings.map((player: CombatRanking, index: number) => (
+                    <tr key={player.playerId}>
+                      <td className="rank">#{index + 1}</td>
+                      <td className="player-name">{player.playerName}</td>
+                      <td className="faction">{player.faction || 'Unknown'}</td>
+                      <td className="kills">{player.kills}</td>
+                      <td className="deaths">{player.deaths}</td>
+                      <td className="kd-ratio">{player.kdRatio.toFixed(2)}</td>
+                      <td className="win-rate">{player.winRate || 0}%</td>
+                      <td className="damage">{player.totalDamage.toLocaleString()}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

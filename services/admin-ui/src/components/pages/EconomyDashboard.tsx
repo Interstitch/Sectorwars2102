@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import * as d3 from 'd3';
 import PageHeader from '../ui/PageHeader';
 import { api } from '../../utils/auth';
 import { useEconomyUpdates } from '../../contexts/WebSocketContext';
@@ -22,6 +23,221 @@ interface EconomicMetrics {
   most_traded_commodity: string;
   economic_health_score: number;
 }
+
+/** Price Trends chart - shows buy/sell prices by commodity using D3 grouped bar chart */
+const PriceTrendsChart: React.FC<{ marketData: MarketData[] }> = ({ marketData }) => {
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    if (!svgRef.current || marketData.length === 0) return;
+
+    // Clear previous
+    d3.select(svgRef.current).selectAll('*').remove();
+
+    // Aggregate: average buy/sell price per commodity
+    const commodityMap: Record<string, { buyPrices: number[]; sellPrices: number[] }> = {};
+    for (const item of marketData) {
+      if (!commodityMap[item.commodity]) {
+        commodityMap[item.commodity] = { buyPrices: [], sellPrices: [] };
+      }
+      commodityMap[item.commodity].buyPrices.push(item.buy_price);
+      commodityMap[item.commodity].sellPrices.push(item.sell_price);
+    }
+
+    const data = Object.entries(commodityMap).map(([commodity, vals]) => ({
+      commodity,
+      avgBuy: vals.buyPrices.reduce((a, b) => a + b, 0) / vals.buyPrices.length,
+      avgSell: vals.sellPrices.reduce((a, b) => a + b, 0) / vals.sellPrices.length
+    })).sort((a, b) => b.avgBuy - a.avgBuy);
+
+    if (data.length === 0) return;
+
+    const margin = { top: 20, right: 20, bottom: 60, left: 60 };
+    const width = 500 - margin.left - margin.right;
+    const height = 280 - margin.top - margin.bottom;
+
+    const svg = d3.select(svgRef.current)
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom);
+
+    const g = svg.append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x0 = d3.scaleBand()
+      .domain(data.map(d => d.commodity))
+      .rangeRound([0, width])
+      .paddingInner(0.2);
+
+    const x1 = d3.scaleBand()
+      .domain(['avgBuy', 'avgSell'])
+      .rangeRound([0, x0.bandwidth()])
+      .padding(0.05);
+
+    const maxPrice = d3.max(data, d => Math.max(d.avgBuy, d.avgSell)) || 100;
+    const y = d3.scaleLinear()
+      .domain([0, maxPrice * 1.1])
+      .rangeRound([height, 0]);
+
+    // X axis
+    g.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x0))
+      .selectAll('text')
+      .style('text-anchor', 'end')
+      .attr('dx', '-0.5em')
+      .attr('dy', '0.15em')
+      .attr('transform', 'rotate(-35)')
+      .attr('fill', '#94a3b8')
+      .style('font-size', '11px');
+
+    // Y axis
+    g.append('g')
+      .call(d3.axisLeft(y).ticks(5).tickFormat(d => d3.format(',.0f')(d as number)))
+      .selectAll('text')
+      .attr('fill', '#94a3b8');
+
+    g.append('g')
+      .call(d3.axisLeft(y).ticks(5).tickSize(-width).tickFormat(() => ''))
+      .selectAll('line')
+      .attr('stroke', '#334155')
+      .attr('stroke-opacity', 0.5);
+
+    // Bars
+    const groups = g.selectAll('.bar-group')
+      .data(data)
+      .enter().append('g')
+      .attr('transform', d => `translate(${x0(d.commodity)},0)`);
+
+    groups.append('rect')
+      .attr('x', x1('avgBuy') as number)
+      .attr('y', d => y(d.avgBuy))
+      .attr('width', x1.bandwidth())
+      .attr('height', d => height - y(d.avgBuy))
+      .attr('fill', '#3b82f6')
+      .attr('rx', 2);
+
+    groups.append('rect')
+      .attr('x', x1('avgSell') as number)
+      .attr('y', d => y(d.avgSell))
+      .attr('width', x1.bandwidth())
+      .attr('height', d => height - y(d.avgSell))
+      .attr('fill', '#10b981')
+      .attr('rx', 2);
+
+    // Legend
+    const legend = g.append('g')
+      .attr('transform', `translate(${width - 140}, -10)`);
+
+    legend.append('rect').attr('width', 12).attr('height', 12).attr('fill', '#3b82f6').attr('rx', 2);
+    legend.append('text').attr('x', 16).attr('y', 10).text('Avg Buy').attr('fill', '#94a3b8').style('font-size', '11px');
+    legend.append('rect').attr('x', 80).attr('width', 12).attr('height', 12).attr('fill', '#10b981').attr('rx', 2);
+    legend.append('text').attr('x', 96).attr('y', 10).text('Avg Sell').attr('fill', '#94a3b8').style('font-size', '11px');
+
+  }, [marketData]);
+
+  if (marketData.length === 0) {
+    return <div className="chart-placeholder"><p>No market data available for price trends.</p></div>;
+  }
+
+  return <svg ref={svgRef}></svg>;
+};
+
+/** Trade Volume chart - shows quantity per port as a horizontal bar chart using D3 */
+const TradeVolumeChart: React.FC<{ marketData: MarketData[] }> = ({ marketData }) => {
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    if (!svgRef.current || marketData.length === 0) return;
+
+    // Clear previous
+    d3.select(svgRef.current).selectAll('*').remove();
+
+    // Aggregate: total quantity per port
+    const portMap: Record<string, number> = {};
+    for (const item of marketData) {
+      const key = item.port_name || item.sector_name || `Port ${item.station_id?.slice(0, 6)}`;
+      portMap[key] = (portMap[key] || 0) + item.quantity;
+    }
+
+    const data = Object.entries(portMap)
+      .map(([port, volume]) => ({ port, volume }))
+      .sort((a, b) => b.volume - a.volume)
+      .slice(0, 10); // Top 10 ports
+
+    if (data.length === 0) return;
+
+    const margin = { top: 10, right: 30, bottom: 30, left: 120 };
+    const width = 500 - margin.left - margin.right;
+    const barHeight = 24;
+    const height = data.length * (barHeight + 6);
+
+    const svg = d3.select(svgRef.current)
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom);
+
+    const g = svg.append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const y = d3.scaleBand()
+      .domain(data.map(d => d.port))
+      .rangeRound([0, height])
+      .padding(0.2);
+
+    const maxVolume = d3.max(data, d => d.volume) || 100;
+    const x = d3.scaleLinear()
+      .domain([0, maxVolume * 1.1])
+      .range([0, width]);
+
+    // Y axis (port names)
+    g.append('g')
+      .call(d3.axisLeft(y))
+      .selectAll('text')
+      .attr('fill', '#94a3b8')
+      .style('font-size', '11px');
+
+    // X axis
+    g.append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x).ticks(5).tickFormat(d => d3.format(',.0f')(d as number)))
+      .selectAll('text')
+      .attr('fill', '#94a3b8');
+
+    // Grid lines
+    g.append('g')
+      .call(d3.axisBottom(x).ticks(5).tickSize(-height).tickFormat(() => ''))
+      .attr('transform', `translate(0,${height})`)
+      .selectAll('line')
+      .attr('stroke', '#334155')
+      .attr('stroke-opacity', 0.5);
+
+    // Bars
+    g.selectAll('.bar')
+      .data(data)
+      .enter().append('rect')
+      .attr('y', d => y(d.port) as number)
+      .attr('width', d => x(d.volume))
+      .attr('height', y.bandwidth())
+      .attr('fill', '#8b5cf6')
+      .attr('rx', 3);
+
+    // Value labels
+    g.selectAll('.label')
+      .data(data)
+      .enter().append('text')
+      .attr('x', d => x(d.volume) + 5)
+      .attr('y', d => (y(d.port) as number) + y.bandwidth() / 2 + 4)
+      .text(d => d3.format(',.0f')(d.volume))
+      .attr('fill', '#94a3b8')
+      .style('font-size', '10px');
+
+  }, [marketData]);
+
+  if (marketData.length === 0) {
+    return <div className="chart-placeholder"><p>No market data available for trade volume.</p></div>;
+  }
+
+  return <svg ref={svgRef}></svg>;
+};
 
 const EconomyDashboard: React.FC = () => {
   const [marketData, setMarketData] = useState<MarketData[]>([]);
@@ -82,51 +298,30 @@ const EconomyDashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-
-      // Use allSettled so individual endpoint failures don't blank everything
-      const [marketResult, metricsResult, alertsResult] = await Promise.allSettled([
-        api.get('/api/v1/admin/economy/market-data', {
-          params: {
-            commodity_filter: selectedCommodity !== 'all' ? selectedCommodity : undefined,
-            limit: 100
-          }
-        }),
-        api.get('/api/v1/admin/economy/metrics', {
-          params: { time_period: '24h' }
-        }),
-        api.get('/api/v1/admin/economy/price-alerts'),
-      ]);
-
-      if (marketResult.status === 'fulfilled') {
-        setMarketData(marketResult.value.data as MarketData[]);
-      } else {
-        console.warn('Failed to load market data:', marketResult.reason);
-        setMarketData([]);
-      }
-
-      if (metricsResult.status === 'fulfilled') {
-        setMetrics(metricsResult.value.data as EconomicMetrics);
-      } else {
-        console.warn('Failed to load metrics:', metricsResult.reason);
-        setMetrics(null);
-      }
-
-      if (alertsResult.status === 'fulfilled') {
-        setPriceAlerts(Array.isArray(alertsResult.value.data) ? alertsResult.value.data : []);
-      } else {
-        console.warn('Failed to load price alerts:', alertsResult.reason);
-        setPriceAlerts([]);
-      }
-
-      // Show error only if ALL endpoints failed
-      const allFailed = [marketResult, metricsResult, alertsResult].every(r => r.status === 'rejected');
-      if (allFailed) {
-        setError('Failed to load economic data. Please check if the gameserver is running.');
-      }
-
+      
+      // Fetch market data
+      const marketResponse = await api.get('/api/v1/admin/economy/market-data', {
+        params: {
+          commodity_filter: selectedCommodity !== 'all' ? selectedCommodity : undefined,
+          limit: 100
+        }
+      });
+      setMarketData(marketResponse.data as MarketData[]);
+      
+      // Fetch economic metrics
+      const metricsResponse = await api.get('/api/v1/admin/economy/metrics', {
+        params: { time_period: '24h' }
+      });
+      setMetrics(metricsResponse.data as EconomicMetrics);
+      
+      // Fetch price alerts
+      const alertsResponse = await api.get('/api/v1/admin/economy/price-alerts');
+      setPriceAlerts(Array.isArray(alertsResponse.data) ? alertsResponse.data : []);
+      
     } catch (error: any) {
       console.error('Failed to fetch economic data:', error);
-      setError('Failed to load economic data. Please check if the gameserver is running.');
+      setError(error.response?.data?.detail || 'Failed to load economic data. Please check if the gameserver is running.');
+      // Clear data on error
       setMarketData([]);
       setMetrics(null);
       setPriceAlerts([]);
@@ -313,18 +508,12 @@ const EconomyDashboard: React.FC = () => {
           <div className="charts-section">
             <div className="chart-container">
               <h3>Price Trends (24h)</h3>
-              <div className="chart-placeholder">
-                <p>📈 Interactive price charts would be rendered here using a charting library like Chart.js or D3</p>
-                <p>Showing commodity price fluctuations across all ports</p>
-              </div>
+              <PriceTrendsChart marketData={filteredMarketData} />
             </div>
-            
+
             <div className="chart-container">
               <h3>Trade Volume by Route</h3>
-              <div className="chart-placeholder">
-                <p>📊 Trade flow visualization would be rendered here</p>
-                <p>Showing the most active trade routes and volumes</p>
-              </div>
+              <TradeVolumeChart marketData={filteredMarketData} />
             </div>
           </div>
         </>
