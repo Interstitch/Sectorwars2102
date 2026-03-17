@@ -117,7 +117,7 @@ const SystemHealthStatus: React.FC = () => {
       const response = await fetch('/api/v1/status', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       
@@ -156,7 +156,7 @@ const SystemHealthStatus: React.FC = () => {
       const response = await fetch('/api/v1/status/ai/providers', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       
@@ -178,7 +178,7 @@ const SystemHealthStatus: React.FC = () => {
       const response = await fetch('/api/v1/status/database', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
       
