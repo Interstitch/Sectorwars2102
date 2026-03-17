@@ -22,9 +22,9 @@ MEDAL_DEFINITIONS = {
     "silver_star": {
         "name": "Silver Star",
         "category": "Combat",
-        "description": "Awarded for 500 combat victories",
+        "description": "Awarded for 1000 combat victories",
         "icon": "star_silver",
-        "trigger": {"type": "combat_victories", "threshold": 500},
+        "trigger": {"type": "combat_victories", "threshold": 1000},
     },
     "quantum_cross": {
         "name": "Quantum Cross",
@@ -59,17 +59,17 @@ MEDAL_DEFINITIONS = {
     "genesis_award": {
         "name": "Genesis Award",
         "category": "Exploration",
-        "description": "Awarded for creating 5 planets with genesis devices",
+        "description": "Awarded for creating 25 planets with genesis devices",
         "icon": "award_genesis",
-        "trigger": {"type": "planets_created", "threshold": 5},
+        "trigger": {"type": "planets_created", "threshold": 25},
     },
     # Diplomatic medals
     "ambassadors_star": {
         "name": "Ambassador's Star",
         "category": "Diplomatic",
-        "description": "Awarded for reaching HONORED reputation with 3 factions",
+        "description": "Awarded for reaching HONORED reputation with 10 factions",
         "icon": "star_ambassador",
-        "trigger": {"type": "faction_honored", "threshold": 3},
+        "trigger": {"type": "faction_honored", "threshold": 10},
     },
     # Special medals
     "arias_favor": {

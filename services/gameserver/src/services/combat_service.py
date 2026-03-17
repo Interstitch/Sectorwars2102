@@ -49,11 +49,12 @@ class CombatService:
         if attacker.current_sector_id != defender.current_sector_id:
             return {"success": False, "message": "Target is not in your sector"}
         
-        # Look up attack turn cost from attacker's ship specification
-        attacker_spec = self.db.query(ShipSpecification).filter(
-            ShipSpecification.type == attacker.current_ship.type
+        # Look up attack turn cost from DEFENDER's ship specification
+        # Cost reflects difficulty of attacking that ship type (e.g., escape pod = 10,000 turns)
+        defender_spec = self.db.query(ShipSpecification).filter(
+            ShipSpecification.type == defender.current_ship.type
         ).first()
-        turn_cost = getattr(attacker_spec, 'attack_turn_cost', None) or 2
+        turn_cost = getattr(defender_spec, 'attack_turn_cost', None) or 2
         if attacker.turns < turn_cost:
             return {"success": False, "message": f"Not enough turns to initiate combat (need {turn_cost})"}
         
@@ -138,6 +139,54 @@ class CombatService:
                 )
         except Exception as e:
             logger.error("Failed to award rank points after combat: %s", e)
+
+        # ARIA consciousness + medal hooks for the victor
+        try:
+            winner = attacker if combat_result["result"] == CombatResult.ATTACKER_VICTORY else (
+                defender if combat_result["result"] == CombatResult.DEFENDER_VICTORY else None
+            )
+            if winner:
+                winner.aria_total_interactions += 1
+                # Check consciousness thresholds (50→L2, 150→L3, 400→L4, 1000→L5)
+                thresholds = {50: (2, 1.1), 150: (3, 1.2), 400: (4, 1.35), 1000: (5, 1.5)}
+                for threshold, (level, multiplier) in thresholds.items():
+                    if winner.aria_total_interactions >= threshold and winner.aria_consciousness_level < level:
+                        winner.aria_consciousness_level = level
+                        winner.aria_bonus_multiplier = multiplier
+                # Check combat medals
+                from src.services.medal_service import MedalService
+                victory_count = self.db.query(CombatLog).filter(
+                    ((CombatLog.attacker_id == winner.id) & (CombatLog.combat_result == CombatResult.ATTACKER_VICTORY)) |
+                    ((CombatLog.defender_id == winner.id) & (CombatLog.combat_result == CombatResult.DEFENDER_VICTORY))
+                ).count()
+                medal_service = MedalService(self.db)
+                medal_service.check_combat_medals(winner.id, victory_count)
+        except Exception as e:
+            logger.error("Failed ARIA/medal hooks after combat: %s", e)
+
+        # Personal reputation + bounty hooks
+        try:
+            from src.services.personal_reputation_service import PersonalReputationService
+            from src.services.bounty_service import BountyService
+            rep_service = PersonalReputationService(self.db)
+
+            if combat_result["result"] == CombatResult.ATTACKER_VICTORY:
+                # Attacker won — check if defender had bounties
+                bounty_service = BountyService(self.db)
+                bounty_result = bounty_service.collect_bounty(attacker.id, defender.id)
+                if bounty_result.get("total_collected", 0) > 0:
+                    rep_service.adjust_reputation(attacker.id, 100, "defeat_bounty_target")
+                else:
+                    # Attacked an innocent (no bounty) — reputation penalty
+                    rep_service.adjust_reputation(attacker.id, -100, "attack_innocent")
+                # Check if defender was in escape pod
+                if defender.current_ship and defender.current_ship.type == ShipType.ESCAPE_POD:
+                    rep_service.adjust_reputation(attacker.id, -500, "kill_escape_pod")
+            elif combat_result["result"] == CombatResult.DEFENDER_VICTORY:
+                # Defender successfully defended — reputation boost
+                rep_service.adjust_reputation(defender.id, 50, "defend_against_attacker")
+        except Exception as e:
+            logger.error("Failed reputation/bounty hooks after combat: %s", e)
 
         # Commit changes
         self.db.commit()

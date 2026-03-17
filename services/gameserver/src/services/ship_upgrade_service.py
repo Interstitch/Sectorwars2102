@@ -89,6 +89,28 @@ class ShipUpgradeService:
         },
     }
 
+    @staticmethod
+    def get_equipment_effects(ship) -> Dict[str, Any]:
+        """Read equipment_slots JSONB and return a merged dict of all active effects.
+
+        Example return: {"passive_income": 100, "mining_efficiency": 1.5}
+        Services can call this to apply bonuses from installed equipment.
+        """
+        equipment_slots = getattr(ship, 'equipment_slots', None) or {}
+        merged: Dict[str, Any] = {}
+        for eq_key, eq_data in equipment_slots.items():
+            effects = eq_data.get("effects", {}) if isinstance(eq_data, dict) else {}
+            for effect_name, effect_value in effects.items():
+                if effect_name in merged:
+                    # Additive stacking for numeric effects
+                    if isinstance(effect_value, (int, float)) and isinstance(merged[effect_name], (int, float)):
+                        merged[effect_name] += effect_value
+                    else:
+                        merged[effect_name] = effect_value
+                else:
+                    merged[effect_name] = effect_value
+        return merged
+
     def __init__(self, db: Session):
         self.db = db
 

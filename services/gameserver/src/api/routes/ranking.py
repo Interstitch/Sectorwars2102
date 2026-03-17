@@ -1,9 +1,10 @@
 """
-Military Ranking API Routes
+Military Ranking, Reputation & Bounty API Routes
 
-Player-facing and admin endpoints for the military ranking system.
+Player-facing and admin endpoints for ranking, reputation, and bounty systems.
 """
 
+import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -14,6 +15,8 @@ from src.auth.dependencies import get_current_player, get_current_admin
 from src.models.player import Player
 from src.models.user import User
 from src.services.ranking_service import RankingService, RANK_DEFINITIONS
+from src.services.bounty_service import BountyService
+from src.services.personal_reputation_service import PersonalReputationService
 
 router = APIRouter(
     prefix="/ranking",
@@ -141,3 +144,80 @@ async def get_player_medals(
             detail=result.get("message", "Failed to get medals"),
         )
     return result
+
+
+# ------------------------------------------------------------------
+# Reputation endpoints
+# ------------------------------------------------------------------
+
+@router.get("/reputation")
+async def get_player_reputation(
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Get the current player's personal reputation info."""
+    rep_service = PersonalReputationService(db)
+    result = rep_service.get_reputation_info(player.id)
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=result.get("message", "Reputation info not found"),
+        )
+    return result
+
+
+# ------------------------------------------------------------------
+# Bounty endpoints
+# ------------------------------------------------------------------
+
+class PlaceBountyRequest(BaseModel):
+    target_id: str
+    amount: int
+
+
+@router.post("/bounties/place")
+async def place_bounty(
+    request: PlaceBountyRequest,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Place a bounty on another player. Costs amount + 10% fee."""
+    bounty_service = BountyService(db)
+    result = bounty_service.place_bounty(
+        player.id, uuid.UUID(request.target_id), request.amount
+    )
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.get("message", "Failed to place bounty"),
+        )
+    db.commit()
+    return result
+
+
+@router.get("/bounties/target/{player_id}")
+async def get_bounties_on_player(
+    player_id: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Get all bounties on a specific player."""
+    bounty_service = BountyService(db)
+    result = bounty_service.get_bounties_on_player(uuid.UUID(player_id))
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=result.get("message", "Player not found"),
+        )
+    return result
+
+
+@router.get("/bounties/available")
+async def get_available_bounties(
+    limit: int = Query(default=20, ge=1, le=100),
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """List all players with active bounties."""
+    bounty_service = BountyService(db)
+    return bounty_service.get_available_bounties(limit=limit)

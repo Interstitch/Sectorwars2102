@@ -1629,7 +1629,11 @@ Description: {ship_specs.get('description', 'N/A')}
         
         # Update the player's first login flag in the main record
         player.first_login = {"completed": True, "session_id": str(session.id)}
-        
+
+        # Initialize ARIA relationship — warm start from first interaction
+        player.aria_relationship_score = 50
+        player.aria_total_interactions = 1
+
         self.db.commit()
         
         return {

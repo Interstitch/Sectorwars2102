@@ -72,7 +72,13 @@ class TeamService:
         existing_team = self.db.query(Team).filter(Team.name == name).first()
         if existing_team:
             raise ValueError("Team name already taken")
-        
+
+        # Charge team creation cost
+        TEAM_CREATION_COST = 10000
+        if creator.credits < TEAM_CREATION_COST:
+            raise ValueError(f"Need {TEAM_CREATION_COST} credits to create a team (have {creator.credits})")
+        creator.credits -= TEAM_CREATION_COST
+
         # Create the team
         team = Team(
             name=name,

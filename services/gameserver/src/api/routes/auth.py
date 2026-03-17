@@ -613,10 +613,15 @@ async def login_github(request: Request, register: bool = False):
 
 
 @router.get("/github/callback")
-async def github_callback(request: Request, code: str, register: bool = False, db: Session = Depends(get_db)):
+async def github_callback(request: Request, code: str, register: bool = False, state: Optional[str] = None, db: Session = Depends(get_db)):
     """
     Process GitHub OAuth callback.
     """
+    # Log OAuth state parameter for security auditing
+    if state is None:
+        import logging
+        logging.getLogger(__name__).warning("GitHub OAuth callback received without state parameter — CSRF risk")
+
     # Use the auto-detected API base URL
     api_base_url = settings.get_api_base_url()
 
@@ -785,7 +790,7 @@ async def login_google(request: Request, register: bool = False):
 
 
 @router.get("/google/callback")
-async def google_callback(request: Request, code: str, register: bool = False, db: Session = Depends(get_db)):
+async def google_callback(request: Request, code: str, register: bool = False, state: Optional[str] = None, db: Session = Depends(get_db)):
     """
     Process Google OAuth callback.
     """
@@ -800,6 +805,11 @@ async def google_callback(request: Request, code: str, register: bool = False, d
         base = f"{api_base_url}{settings.API_V1_STR}"
 
     redirect_uri = f"{base}/auth/google/callback?register={register}"
+
+    # Log OAuth state parameter for security auditing
+    if state is None:
+        import logging
+        logging.getLogger(__name__).warning("Google OAuth callback received without state parameter — CSRF risk")
 
     # Debug information
     print(f"Google OAuth callback URI: {redirect_uri}")

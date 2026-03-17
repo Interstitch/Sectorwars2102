@@ -390,7 +390,18 @@ class MovementService:
         
         # Consume turns
         player.turns -= turn_cost
-        
+
+        # ARIA consciousness hook — movement counts as interaction
+        try:
+            player.aria_total_interactions += 1
+            thresholds = {50: (2, 1.1), 150: (3, 1.2), 400: (4, 1.35), 1000: (5, 1.5)}
+            for threshold, (level, multiplier) in thresholds.items():
+                if player.aria_total_interactions >= threshold and player.aria_consciousness_level < level:
+                    player.aria_consciousness_level = level
+                    player.aria_bonus_multiplier = multiplier
+        except Exception as e:
+            logger.error("Failed ARIA hook during movement: %s", e)
+
         # Updates player's presence in sector records
         self._update_player_presence(player, old_sector_id, destination_sector_id)
         

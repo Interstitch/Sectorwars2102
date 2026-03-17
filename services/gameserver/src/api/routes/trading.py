@@ -15,6 +15,7 @@ from src.models.ship import Ship
 from src.models.market_transaction import MarketTransaction, MarketPrice, TransactionType
 from src.services.trading_service import TradingService
 from src.services.ranking_service import RankingService
+from src.services.medal_service import MedalService
 
 import logging
 
@@ -155,6 +156,24 @@ async def buy_resource(
         except Exception as e:
             logger.error("Failed to award rank points for buy trade: %s", e)
 
+        # ARIA consciousness + medal hooks
+        try:
+            current_player.aria_total_interactions += 1
+            # Check consciousness thresholds (50→L2, 150→L3, 400→L4, 1000→L5)
+            thresholds = {50: (2, 1.1), 150: (3, 1.2), 400: (4, 1.35), 1000: (5, 1.5)}
+            for threshold, (level, multiplier) in thresholds.items():
+                if current_player.aria_total_interactions >= threshold and current_player.aria_consciousness_level < level:
+                    current_player.aria_consciousness_level = level
+                    current_player.aria_bonus_multiplier = multiplier
+            # Check trading medals
+            trade_count = db.query(MarketTransaction).filter(
+                MarketTransaction.player_id == current_player.id
+            ).count()
+            medal_service = MedalService(db)
+            medal_service.check_trading_medals(current_player.id, trade_count, current_player.credits)
+        except Exception as e:
+            logger.error("Failed ARIA/medal hooks for buy trade: %s", e)
+
         db.commit()
 
         response = {
@@ -285,6 +304,24 @@ async def sell_resource(
                 )
         except Exception as e:
             logger.error("Failed to award rank points for sell trade: %s", e)
+
+        # ARIA consciousness + medal hooks
+        try:
+            current_player.aria_total_interactions += 1
+            # Check consciousness thresholds (50→L2, 150→L3, 400→L4, 1000→L5)
+            thresholds = {50: (2, 1.1), 150: (3, 1.2), 400: (4, 1.35), 1000: (5, 1.5)}
+            for threshold, (level, multiplier) in thresholds.items():
+                if current_player.aria_total_interactions >= threshold and current_player.aria_consciousness_level < level:
+                    current_player.aria_consciousness_level = level
+                    current_player.aria_bonus_multiplier = multiplier
+            # Check trading medals
+            trade_count = db.query(MarketTransaction).filter(
+                MarketTransaction.player_id == current_player.id
+            ).count()
+            medal_service = MedalService(db)
+            medal_service.check_trading_medals(current_player.id, trade_count, current_player.credits)
+        except Exception as e:
+            logger.error("Failed ARIA/medal hooks for sell trade: %s", e)
 
         db.commit()
 
