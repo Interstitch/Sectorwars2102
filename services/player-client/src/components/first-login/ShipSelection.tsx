@@ -50,6 +50,14 @@ const ShipSelection: React.FC = () => {
     }
   };
 
+  const handleShipClick = async (ship: string) => {
+    setSelectedShip(ship);
+    // Auto-submit if the player has already typed a response
+    if (response.trim() && !isLoading) {
+      await claimShip(ship, response);
+    }
+  };
+
   return (
     <div className="ship-selection-content">
       <div className="location-context">Callisto Colony Shipyard</div>
@@ -81,7 +89,7 @@ Guard: "Hold it right there! This area is restricted to registered pilots only. 
           <div 
             key={ship}
             className={`ship-option ${selectedShip === ship ? 'selected' : ''}`}
-            onClick={() => setSelectedShip(ship)}
+            onClick={() => handleShipClick(ship)}
           >
             <div className={`ship-image ${ship.toLowerCase().replace(/_/g, '-')}`}>
               <div className="fallback">{SHIP_NAMES[ship]}</div>

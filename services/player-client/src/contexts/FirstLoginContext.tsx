@@ -125,6 +125,9 @@ interface FirstLoginContextType {
   dialogueHistory: {
     npc: string;
     player: string;
+    consistency?: number;
+    confidence?: number;
+    persuasiveness?: number;
   }[];
   
   // Ship selection
@@ -156,7 +159,7 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
   
   // Session state
   const [session, setSession] = useState<FirstLoginSession | null>(null);
-  const [dialogueHistory, setDialogueHistory] = useState<{ npc: string; player: string; }[]>([]);
+  const [dialogueHistory, setDialogueHistory] = useState<{ npc: string; player: string; consistency?: number; confidence?: number; persuasiveness?: number; }[]>([]);
   const [currentPrompt, setCurrentPrompt] = useState<string>('');
   const [exchangeId, setExchangeId] = useState<string | null>(null);
   const [dialogueOutcome, setDialogueOutcome] = useState<DialogueAnalysis['outcome'] | null>(null);
@@ -279,20 +282,32 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
         // Set the outcome directly
         setDialogueOutcome(result.data.outcome);
 
-        // Update dialogue history with approval message
+        // Update dialogue history with approval message and any analysis scores
         setDialogueHistory(prev => [
           ...prev,
-          { npc: '', player: response },
+          {
+            npc: '',
+            player: response,
+            consistency: result.data.analysis?.consistency,
+            confidence: result.data.analysis?.confidence,
+            persuasiveness: result.data.analysis?.persuasiveness,
+          },
           { npc: result.data.npc_prompt, player: '' }
         ]);
 
         setCurrentPrompt(result.data.npc_prompt);
       } else {
         // Normal flow: received a question for interrogation
-        // Update dialogue history
+        // Update dialogue history with any analysis scores
         setDialogueHistory(prev => [
           ...prev,
-          { npc: '', player: response },
+          {
+            npc: '',
+            player: response,
+            consistency: result.data.analysis?.consistency,
+            confidence: result.data.analysis?.confidence,
+            persuasiveness: result.data.analysis?.persuasiveness,
+          },
           { npc: result.data.npc_prompt, player: '' }
         ]);
 
@@ -334,10 +349,16 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
         response
       });
 
-      // Update dialogue history
+      // Update dialogue history with player response and analysis scores
       setDialogueHistory(prev => [
         ...prev.slice(0, prev.length - 1),
-        { ...prev[prev.length - 1], player: response }
+        {
+          ...prev[prev.length - 1],
+          player: response,
+          consistency: result.data.analysis?.consistency,
+          confidence: result.data.analysis?.confidence,
+          persuasiveness: result.data.analysis?.persuasiveness,
+        }
       ]);
 
       // If there's a next question, add it to history and update state

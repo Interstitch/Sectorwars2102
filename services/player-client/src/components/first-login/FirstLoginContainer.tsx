@@ -320,8 +320,8 @@ const FirstLoginContainer: React.FC = () => {
           <p className="game-subtitle">Security Checkpoint - Callisto Colony</p>
           <p className="location-context">Docking Bay 7 - Authorization Required</p>
 
-          {/* Dev Reset Button */}
-          {session && (
+          {/* Dev Reset Button - only visible in development mode */}
+          {import.meta.env.DEV && session && (
             <button
               className="dev-reset-button"
               onClick={() => {
