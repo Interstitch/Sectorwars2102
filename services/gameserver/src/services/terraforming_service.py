@@ -7,7 +7,7 @@ and completing terraforming projects on player-owned planets.
 
 from typing import Dict, Any, Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 import logging
@@ -18,13 +18,21 @@ from src.models.planet import Planet, PlanetStatus, player_planets
 logger = logging.getLogger(__name__)
 
 # Terraforming configuration constants
-TERRAFORMING_START_COST = 5000        # Credits to begin terraforming
 TERRAFORMING_CANCEL_REFUND = 0.50     # 50% refund on cancellation
 TERRAFORMING_MAX_HABITABILITY = 100   # Maximum habitability score
 TERRAFORMING_MIN_TARGET = 90          # Planets at or above this don't need terraforming
 TERRAFORMING_BASE_INCREMENT = 1       # Minimum habitability gain per tick
 TERRAFORMING_MAX_INCREMENT = 3        # Maximum habitability gain per tick
 TERRAFORMING_POPULATION_SCALE = 1000  # Population per additional increment point
+
+# 5-level terraforming system with escalating costs and rewards
+TERRAFORMING_LEVELS = {
+    1: {"name": "Basic Atmospheric", "cost": 100000, "duration_hours": 72, "habitability_boost": 10, "organics_cost": 500, "equipment_cost": 200},
+    2: {"name": "Climate Stabilization", "cost": 250000, "duration_hours": 120, "habitability_boost": 15, "organics_cost": 1500, "equipment_cost": 500},
+    3: {"name": "Ecosystem Seeding", "cost": 500000, "duration_hours": 168, "habitability_boost": 20, "organics_cost": 3000, "equipment_cost": 1000},
+    4: {"name": "Biome Engineering", "cost": 1000000, "duration_hours": 240, "habitability_boost": 25, "organics_cost": 5000, "equipment_cost": 2000},
+    5: {"name": "Full Terraformation", "cost": 2000000, "duration_hours": 336, "habitability_boost": 30, "organics_cost": 10000, "equipment_cost": 5000},
+}
 
 
 class TerraformingService:
@@ -54,15 +62,25 @@ class TerraformingService:
         self,
         planet_id: UUID,
         player_id: UUID,
+        level: int = 1,
         target_habitability: Optional[int] = None
     ) -> Dict[str, Any]:
         """
-        Begin terraforming a planet the player owns.
+        Begin terraforming a planet the player owns at the specified level.
+
+        The 5-level terraforming system offers increasing habitability boosts
+        at escalating credit and resource costs:
+          Level 1: Basic Atmospheric       (+10 habitability)
+          Level 2: Climate Stabilization   (+15 habitability)
+          Level 3: Ecosystem Seeding       (+20 habitability)
+          Level 4: Biome Engineering        (+25 habitability)
+          Level 5: Full Terraformation     (+30 habitability)
 
         Args:
             planet_id: The planet to terraform
             player_id: The owning player
-            target_habitability: Desired habitability score (default: 100)
+            level: Terraforming level 1-5 (default: 1)
+            target_habitability: Desired habitability score (overrides level boost if provided)
 
         Raises:
             ValueError: If preconditions are not met
@@ -70,6 +88,13 @@ class TerraformingService:
         Returns:
             Dict with terraforming project details
         """
+        # Validate level
+        if level not in TERRAFORMING_LEVELS:
+            raise ValueError(
+                f"Invalid terraforming level {level}. Must be 1-5."
+            )
+
+        level_config = TERRAFORMING_LEVELS[level]
         planet = self._get_owned_planet(planet_id, player_id)
 
         # Validate planet is eligible for terraforming
@@ -82,12 +107,16 @@ class TerraformingService:
         if planet.terraforming_active:
             raise ValueError("A terraforming project is already active on this planet")
 
-        # Default target is max habitability
+        # Calculate target habitability from level boost or explicit target
+        boost = level_config["habitability_boost"]
         if target_habitability is None:
-            target_habitability = TERRAFORMING_MAX_HABITABILITY
+            target_habitability = min(
+                TERRAFORMING_MAX_HABITABILITY,
+                planet.habitability_score + boost
+            )
+        else:
+            target_habitability = min(target_habitability, TERRAFORMING_MAX_HABITABILITY)
 
-        # Validate target
-        target_habitability = min(target_habitability, TERRAFORMING_MAX_HABITABILITY)
         if target_habitability <= planet.habitability_score:
             raise ValueError(
                 f"Target habitability ({target_habitability}) must be higher "
@@ -99,38 +128,91 @@ class TerraformingService:
         if not player:
             raise ValueError("Player not found")
 
-        if player.credits < TERRAFORMING_START_COST:
+        credit_cost = level_config["cost"]
+        if player.credits < credit_cost:
             raise ValueError(
-                f"Insufficient credits. Need {TERRAFORMING_START_COST}, "
-                f"have {player.credits}"
+                f"Insufficient credits. Level {level} ({level_config['name']}) "
+                f"requires {credit_cost:,} credits, have {player.credits:,}"
             )
 
-        # Deduct credits and start terraforming
-        player.credits -= TERRAFORMING_START_COST
+        # Check planet resource stocks (organics and equipment)
+        organics_cost = level_config["organics_cost"]
+        equipment_cost = level_config["equipment_cost"]
 
+        if (planet.organics or 0) < organics_cost:
+            raise ValueError(
+                f"Insufficient organics on planet. Level {level} ({level_config['name']}) "
+                f"requires {organics_cost:,} organics, planet has {planet.organics or 0:,}"
+            )
+
+        if (planet.equipment or 0) < equipment_cost:
+            raise ValueError(
+                f"Insufficient equipment on planet. Level {level} ({level_config['name']}) "
+                f"requires {equipment_cost:,} equipment, planet has {planet.equipment or 0:,}"
+            )
+
+        # Deduct credits from player
+        player.credits -= credit_cost
+
+        # Deduct resources from planet
+        planet.organics = (planet.organics or 0) - organics_cost
+        planet.equipment = (planet.equipment or 0) - equipment_cost
+
+        # Set terraforming state
+        now = datetime.utcnow()
         planet.terraforming_active = True
         planet.terraforming_target = target_habitability
-        planet.terraforming_start_time = datetime.utcnow()
+        planet.terraforming_start_time = now
         planet.terraforming_progress = 0.0
         planet.status = PlanetStatus.TERRAFORMING
+
+        # Store terraforming metadata in active_events for refund/completion tracking
+        # We use the JSONB active_events column to persist the level details
+        terraforming_meta = {
+            "type": "terraforming",
+            "level": level,
+            "level_name": level_config["name"],
+            "credit_cost": credit_cost,
+            "organics_cost": organics_cost,
+            "equipment_cost": equipment_cost,
+            "habitability_boost": boost,
+            "duration_hours": level_config["duration_hours"],
+            "started_at": now.isoformat()
+        }
+        current_events = list(planet.active_events or [])
+        # Remove any stale terraforming events
+        current_events = [e for e in current_events if not (isinstance(e, dict) and e.get("type") == "terraforming")]
+        current_events.append(terraforming_meta)
+        planet.active_events = current_events
 
         self.db.commit()
         self.db.refresh(planet)
         self.db.refresh(player)
 
+        estimated_completion = now + timedelta(hours=level_config["duration_hours"])
+
         logger.info(
-            f"Terraforming started on planet {planet.name} (id={planet.id}) "
-            f"by player {player_id}. Target: {target_habitability}%"
+            f"Terraforming L{level} ({level_config['name']}) started on planet "
+            f"{planet.name} (id={planet.id}) by player {player_id}. "
+            f"Target: {target_habitability}%, cost: {credit_cost} credits + "
+            f"{organics_cost} organics + {equipment_cost} equipment"
         )
 
         return {
             "success": True,
             "planetId": str(planet.id),
             "planetName": planet.name,
+            "level": level,
+            "levelName": level_config["name"],
             "currentHabitability": planet.habitability_score,
             "targetHabitability": target_habitability,
+            "habitabilityBoost": boost,
             "progress": 0.0,
-            "cost": TERRAFORMING_START_COST,
+            "creditCost": credit_cost,
+            "organicsCost": organics_cost,
+            "equipmentCost": equipment_cost,
+            "durationHours": level_config["duration_hours"],
+            "estimatedCompletion": estimated_completion.isoformat(),
             "creditsRemaining": player.credits,
             "startedAt": planet.terraforming_start_time.isoformat()
         }
@@ -157,7 +239,8 @@ class TerraformingService:
                 "terraformingTarget": None,
                 "progress": None,
                 "startedAt": None,
-                "estimatedTicksRemaining": None
+                "estimatedTicksRemaining": None,
+                "availableLevels": self.get_terraforming_levels()
             }
 
         # Calculate estimated ticks remaining
@@ -253,7 +336,9 @@ class TerraformingService:
         """
         Cancel an active terraforming project with a partial refund.
 
-        The player receives 50% of the original cost back.
+        The player receives 50% of the original credit cost back.
+        Resource costs (organics, equipment) are NOT refunded as they
+        have already been consumed by the terraforming process.
 
         Returns:
             Dict with cancellation details
@@ -263,8 +348,12 @@ class TerraformingService:
         if not planet.terraforming_active:
             raise ValueError("No active terraforming project on this planet")
 
-        # Calculate refund
-        refund_amount = int(TERRAFORMING_START_COST * TERRAFORMING_CANCEL_REFUND)
+        # Retrieve terraforming metadata from active_events
+        terra_meta = self._get_terraforming_meta(planet)
+        original_credit_cost = terra_meta.get("credit_cost", 0) if terra_meta else 0
+
+        # Calculate refund (50% of credit cost)
+        refund_amount = int(original_credit_cost * TERRAFORMING_CANCEL_REFUND)
 
         # Credit the refund
         player = self.db.query(Player).filter(Player.id == player_id).first()
@@ -279,6 +368,10 @@ class TerraformingService:
         planet.terraforming_start_time = None
         planet.terraforming_progress = 0.0
 
+        # Remove terraforming event from active_events
+        current_events = list(planet.active_events or [])
+        planet.active_events = [e for e in current_events if not (isinstance(e, dict) and e.get("type") == "terraforming")]
+
         # Restore planet status based on current state
         if planet.colonists > 0 or planet.population > 0:
             planet.status = PlanetStatus.COLONIZED
@@ -290,15 +383,20 @@ class TerraformingService:
         self.db.commit()
         self.db.refresh(player)
 
+        level_info = terra_meta.get("level", "unknown") if terra_meta else "unknown"
         logger.info(
-            f"Terraforming cancelled on planet {planet.name} (id={planet.id}) "
-            f"by player {player_id}. Refund: {refund_amount} credits"
+            f"Terraforming L{level_info} cancelled on planet {planet.name} "
+            f"(id={planet.id}) by player {player_id}. "
+            f"Refund: {refund_amount} credits (50% of {original_credit_cost})"
         )
 
         return {
             "success": True,
             "planetId": str(planet.id),
             "planetName": planet.name,
+            "cancelledLevel": terra_meta.get("level") if terra_meta else None,
+            "cancelledLevelName": terra_meta.get("level_name") if terra_meta else None,
+            "originalCreditCost": original_credit_cost,
             "refundAmount": refund_amount,
             "creditsAfterRefund": player.credits,
             "currentHabitability": planet.habitability_score
@@ -322,20 +420,79 @@ class TerraformingService:
         self.db.commit()
         return result
 
+    # --- Public helpers ---
+
+    @staticmethod
+    def get_terraforming_levels() -> Dict[int, Dict[str, Any]]:
+        """
+        Return the full terraforming levels configuration for API exposure.
+
+        Each level includes: name, credit cost, duration in hours,
+        habitability boost, and resource costs (organics, equipment).
+        """
+        return {
+            level: {
+                "level": level,
+                "name": config["name"],
+                "creditCost": config["cost"],
+                "durationHours": config["duration_hours"],
+                "habitabilityBoost": config["habitability_boost"],
+                "organicsCost": config["organics_cost"],
+                "equipmentCost": config["equipment_cost"],
+            }
+            for level, config in TERRAFORMING_LEVELS.items()
+        }
+
     # --- Private helpers ---
 
     def _complete_terraforming(self, planet: Planet) -> Dict[str, Any]:
         """
         Internal method to finalize a terraforming project.
-        Sets habitability to target and clears terraforming state.
-        """
-        planet.habitability_score = planet.terraforming_target
-        final_habitability = planet.terraforming_target
 
+        Applies the habitability boost from the terraforming level and
+        recalculates the planet's max population based on the new
+        habitability score (higher habitability supports more population).
+        """
+        # Retrieve level metadata before clearing
+        terra_meta = self._get_terraforming_meta(planet)
+        boost = terra_meta.get("habitability_boost", 0) if terra_meta else 0
+        level = terra_meta.get("level", 0) if terra_meta else 0
+        level_name = terra_meta.get("level_name", "Unknown") if terra_meta else "Unknown"
+
+        # Apply habitability boost (capped at 100)
+        old_habitability = planet.habitability_score
+        planet.habitability_score = min(
+            TERRAFORMING_MAX_HABITABILITY,
+            planet.habitability_score + boost
+        )
+        final_habitability = planet.habitability_score
+
+        # Recalculate max population based on habitability
+        # Higher habitability directly scales the planet's carrying capacity
+        if planet.max_population and planet.max_population > 0:
+            habitability_factor = planet.habitability_score / 100.0
+            planet.max_population = int(planet.max_population * habitability_factor)
+        if planet.max_colonists and planet.max_colonists > 0:
+            habitability_factor = planet.habitability_score / 100.0
+            planet.max_colonists = max(1, int(planet.max_colonists * habitability_factor))
+
+        # Boost population growth rate based on habitability improvement
+        if planet.habitability_score >= 80:
+            planet.population_growth = max(planet.population_growth, 2.0)
+        elif planet.habitability_score >= 60:
+            planet.population_growth = max(planet.population_growth, 1.5)
+        elif planet.habitability_score >= 40:
+            planet.population_growth = max(planet.population_growth, 1.0)
+
+        # Clear terraforming state
         planet.terraforming_active = False
         planet.terraforming_target = None
         planet.terraforming_start_time = None
         planet.terraforming_progress = 100.0
+
+        # Remove terraforming event from active_events
+        current_events = list(planet.active_events or [])
+        planet.active_events = [e for e in current_events if not (isinstance(e, dict) and e.get("type") == "terraforming")]
 
         # Update planet status
         if planet.colonists > 0 or planet.population > 0:
@@ -344,16 +501,36 @@ class TerraformingService:
             planet.status = PlanetStatus.HABITABLE
 
         logger.info(
-            f"Terraforming complete on planet {planet.name} (id={planet.id}). "
-            f"Final habitability: {final_habitability}%"
+            f"Terraforming L{level} ({level_name}) complete on planet "
+            f"{planet.name} (id={planet.id}). "
+            f"Habitability: {old_habitability}% -> {final_habitability}% (+{boost})"
         )
 
         return {
             "planetId": str(planet.id),
             "planetName": planet.name,
+            "level": level,
+            "levelName": level_name,
+            "previousHabitability": old_habitability,
             "finalHabitability": final_habitability,
+            "habitabilityGained": final_habitability - old_habitability,
+            "maxPopulation": planet.max_population,
+            "populationGrowthRate": planet.population_growth,
             "status": planet.status.value
         }
+
+    def _get_terraforming_meta(self, planet: Planet) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve the terraforming metadata stored in the planet's
+        active_events JSONB column.
+
+        Returns:
+            The terraforming event dict, or None if not found.
+        """
+        for event in (planet.active_events or []):
+            if isinstance(event, dict) and event.get("type") == "terraforming":
+                return event
+        return None
 
     def _calculate_increment(self, planet: Planet) -> int:
         """

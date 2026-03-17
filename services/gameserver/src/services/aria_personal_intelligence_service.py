@@ -242,6 +242,153 @@ class ARIAPersonalIntelligenceService:
         return intelligence
     
     # =============================================================================
+    # CONVENIENCE MEMORY RECORDERS (Combat, Trade, Exploration)
+    # =============================================================================
+
+    async def record_combat_memory(self, player_id: str, combat_data: dict,
+                                   db: AsyncSession) -> None:
+        """
+        Record a combat encounter as an ARIA memory.
+
+        Args:
+            player_id: The player whose ARIA should remember this combat.
+            combat_data: Dict with keys like opponent_name, outcome, sector_id,
+                         attacker_ship, defender_ship, cargo_stolen, reputation_change.
+            db: Async database session.
+        """
+        try:
+            outcome = combat_data.get("outcome", "unknown")
+            opponent = combat_data.get("opponent_name", "Unknown")
+
+            # Higher importance for victories and first-time encounters
+            importance = 0.8 if outcome == "victory" else 0.7
+
+            content = {
+                "event": "combat_encounter",
+                "opponent_name": str(opponent),
+                "outcome": str(outcome),
+                "sector_id": combat_data.get("sector_id"),
+                "attacker_ship": combat_data.get("attacker_ship"),
+                "defender_ship": combat_data.get("defender_ship"),
+                "cargo_stolen": combat_data.get("cargo_stolen"),
+                "reputation_change": combat_data.get("reputation_change"),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+
+            await self._create_memory(
+                player_id,
+                "combat",
+                content,
+                importance=importance,
+                db=db,
+            )
+
+            logger.info(
+                "Recorded combat memory for player %s: %s vs %s",
+                player_id, outcome, opponent,
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to record combat memory for player %s: %s",
+                player_id, e,
+            )
+
+    async def record_trade_memory(self, player_id: str, trade_data: dict,
+                                  db: AsyncSession) -> None:
+        """
+        Record a trading event as an ARIA memory.
+
+        Args:
+            player_id: The player whose ARIA should remember this trade.
+            trade_data: Dict with keys like station_name, action, commodity,
+                        quantity, total_value, profit.
+            db: Async database session.
+        """
+        try:
+            action = trade_data.get("action", "unknown")
+            commodity = trade_data.get("commodity", "unknown")
+            profit = trade_data.get("profit")
+
+            # Profitable trades are more memorable
+            if profit is not None and profit > 0:
+                importance = min(0.5 + (profit / 10000), 0.9)
+            else:
+                importance = 0.5
+
+            content = {
+                "event": "trade_transaction",
+                "station_name": str(trade_data.get("station_name", "Unknown")),
+                "action": str(action),
+                "commodity": str(commodity),
+                "quantity": trade_data.get("quantity"),
+                "total_value": trade_data.get("total_value"),
+                "profit": profit,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+
+            await self._create_memory(
+                player_id,
+                "market",
+                content,
+                importance=importance,
+                db=db,
+            )
+
+            logger.info(
+                "Recorded trade memory for player %s: %s %s at %s",
+                player_id, action, commodity,
+                trade_data.get("station_name", "Unknown"),
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to record trade memory for player %s: %s",
+                player_id, e,
+            )
+
+    async def record_exploration_memory(self, player_id: str, exploration_data: dict,
+                                        db: AsyncSession) -> None:
+        """
+        Record a sector exploration event as an ARIA memory.
+
+        Args:
+            player_id: The player whose ARIA should remember this exploration.
+            exploration_data: Dict with keys like sector_id, sector_name, discovery.
+            db: Async database session.
+        """
+        try:
+            discovery = exploration_data.get("discovery", "revisit")
+
+            # New discoveries are more important than revisits
+            importance = 0.8 if discovery == "new_sector" else 0.4
+
+            content = {
+                "event": "sector_exploration",
+                "sector_id": exploration_data.get("sector_id"),
+                "sector_name": str(exploration_data.get("sector_name", "Unknown Sector")),
+                "discovery": str(discovery),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+
+            await self._create_memory(
+                player_id,
+                "exploration",
+                content,
+                importance=importance,
+                db=db,
+            )
+
+            logger.info(
+                "Recorded exploration memory for player %s: %s sector %s",
+                player_id, discovery,
+                exploration_data.get("sector_id"),
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to record exploration memory for player %s: %s",
+                player_id, e,
+            )
+
+    # =============================================================================
     # QUANTUM PREDICTIONS (Personal Data Only)
     # =============================================================================
     

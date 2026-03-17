@@ -156,6 +156,22 @@ class CitadelService:
         next_level = current_level + 1
         next_info = CITADEL_LEVELS[next_level]
 
+        # Prerequisite validation: higher citadel levels require planetary defenses
+        prerequisite_defense = {
+            3: (2, "basic defenses (defense level 2+)"),
+            4: (5, "advanced defenses (defense level 5+)"),
+            5: (8, "fortified defenses (defense level 8+)"),
+        }
+        if next_level in prerequisite_defense:
+            required_defense, description = prerequisite_defense[next_level]
+            planet_defense = getattr(planet, "defense_level", 0) or 0
+            if planet_defense < required_defense:
+                return {
+                    "success": False,
+                    "message": f"Requires defense level {required_defense}+ to upgrade to {next_info['name']}. "
+                               f"Current defense level: {planet_defense}.",
+                }
+
         # Level 0 -> 1 is free: apply immediately
         if current_level == 0:
             planet.citadel_level = 1
@@ -314,14 +330,14 @@ class CitadelService:
                 "message": f"Insufficient credits. Have {player.credits:,}, need {amount:,}.",
             }
 
-        safe_max = getattr(planet, "citadel_safe_max", 0) or 0
+        # Use CITADEL_LEVELS config as authoritative source for safe storage capacity
+        capacity = CITADEL_LEVELS[current_level]["safe_storage"]
         safe_current = getattr(planet, "citadel_safe_credits", 0) or 0
 
-        if safe_current + amount > safe_max:
-            space_remaining = safe_max - safe_current
+        if safe_current + amount > capacity:
             return {
                 "success": False,
-                "message": f"Deposit would exceed safe capacity. Space remaining: {space_remaining:,} credits.",
+                "message": f"Safe storage capacity is {capacity:,}. Currently storing {safe_current:,}.",
             }
 
         player.credits -= amount
@@ -338,7 +354,7 @@ class CitadelService:
             "message": f"Deposited {amount:,} credits into citadel safe.",
             "credits_deposited": amount,
             "safe_balance": safe_current + amount,
-            "safe_capacity": safe_max,
+            "safe_capacity": capacity,
             "player_credits": player.credits,
         }
 

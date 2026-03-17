@@ -29,6 +29,23 @@ DEFENSE_UPGRADE_COST = 1000     # Credits per defense level
 DEFENSE_MAX_LEVEL = 10          # Maximum defense level
 DEFENSE_DAMAGE_REDUCTION_PER_LEVEL = 0.10  # 10% damage reduction per level
 
+# Shield Generator Levels (0-10)
+# Uses planet.defense_shields to track generator level, planet.shields for strength
+SHIELD_GENERATOR_MAX_LEVEL = 10
+SHIELD_GENERATOR_LEVELS = {
+    0: {"name": "No Shields", "strength": 0, "regen_per_hour": 0, "cost": 0},
+    1: {"name": "Basic Shield", "strength": 1000, "regen_per_hour": 100, "cost": 50000},
+    2: {"name": "Reinforced Shield", "strength": 2500, "regen_per_hour": 250, "cost": 100000},
+    3: {"name": "Military Shield", "strength": 5000, "regen_per_hour": 500, "cost": 200000},
+    4: {"name": "Advanced Shield", "strength": 10000, "regen_per_hour": 1000, "cost": 350000},
+    5: {"name": "Heavy Shield", "strength": 15000, "regen_per_hour": 1500, "cost": 500000},
+    6: {"name": "Fortress Shield", "strength": 25000, "regen_per_hour": 2500, "cost": 750000},
+    7: {"name": "Citadel Shield", "strength": 35000, "regen_per_hour": 3500, "cost": 1000000},
+    8: {"name": "Planetary Shield", "strength": 50000, "regen_per_hour": 5000, "cost": 1500000},
+    9: {"name": "Quantum Shield", "strength": 65000, "regen_per_hour": 6500, "cost": 2000000},
+    10: {"name": "Impervious Shield", "strength": 75000, "regen_per_hour": 7500, "cost": 3000000},
+}
+
 
 class PlanetaryService:
     """Service for managing planetary operations."""
@@ -545,6 +562,141 @@ class PlanetaryService:
             "creditsCost": upgrade_cost,
             "creditsRemaining": player.credits,
             "nextUpgradeCost": DEFENSE_UPGRADE_COST * (new_level + 1) if new_level < DEFENSE_MAX_LEVEL else None
+        }
+
+    def upgrade_shield_generator(
+        self,
+        planet_id: UUID,
+        player_id: UUID
+    ) -> Dict[str, Any]:
+        """
+        Upgrade a planet's shield generator by one level.
+
+        Shield generators provide planetary shields that absorb damage during
+        attacks and sieges. Each level increases shield strength, regeneration
+        rate, and cost. Uses planet.defense_shields to track the generator level
+        and planet.shields for the current shield strength value.
+
+        Levels 0-10, with costs ranging from 50,000 to 3,000,000 credits.
+        """
+        # Verify ownership
+        planet = self.db.query(Planet).join(
+            player_planets,
+            Planet.id == player_planets.c.planet_id
+        ).filter(
+            and_(
+                Planet.id == planet_id,
+                player_planets.c.player_id == player_id
+            )
+        ).first()
+
+        if not planet:
+            raise ValueError("Planet not found or not owned by player")
+
+        current_level = planet.defense_shields or 0
+
+        if current_level >= SHIELD_GENERATOR_MAX_LEVEL:
+            raise ValueError(
+                f"Shield generator is already at maximum level ({SHIELD_GENERATOR_MAX_LEVEL})"
+            )
+
+        next_level = current_level + 1
+        next_level_info = SHIELD_GENERATOR_LEVELS[next_level]
+        upgrade_cost = next_level_info["cost"]
+
+        # Check if player can afford
+        player = self.db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise ValueError("Player not found")
+
+        if player.credits < upgrade_cost:
+            raise ValueError(
+                f"Insufficient credits. Need {upgrade_cost:,}, have {player.credits:,}"
+            )
+
+        # Deduct credits and upgrade
+        player.credits -= upgrade_cost
+        planet.defense_shields = next_level
+        planet.shields = next_level_info["strength"]
+
+        self.db.commit()
+        self.db.refresh(planet)
+        self.db.refresh(player)
+
+        # Determine next upgrade info (if not at max)
+        further_upgrade_cost = None
+        if next_level < SHIELD_GENERATOR_MAX_LEVEL:
+            further_upgrade_cost = SHIELD_GENERATOR_LEVELS[next_level + 1]["cost"]
+
+        logger.info(
+            f"Shield generator upgraded to level {next_level} "
+            f"({next_level_info['name']}) on planet {planet.name} (id={planet.id})"
+        )
+
+        return {
+            "success": True,
+            "shieldGenerator": {
+                "level": next_level,
+                "maxLevel": SHIELD_GENERATOR_MAX_LEVEL,
+                "name": next_level_info["name"],
+                "strength": next_level_info["strength"],
+                "regenPerHour": next_level_info["regen_per_hour"],
+            },
+            "creditsCost": upgrade_cost,
+            "creditsRemaining": player.credits,
+            "nextUpgradeCost": further_upgrade_cost,
+        }
+
+    def get_defense_info(self, planet_id: UUID) -> Dict[str, Any]:
+        """
+        Get comprehensive defense information for a planet.
+
+        Returns shield generator status, defense level, turret and fighter
+        counts, and the cost to upgrade shields to the next level.
+        Does not require ownership -- useful for scouting and admin views.
+        """
+        planet = self.db.query(Planet).filter(Planet.id == planet_id).first()
+        if not planet:
+            raise ValueError("Planet not found")
+
+        # Shield generator info
+        shield_level = planet.defense_shields or 0
+        shield_info = SHIELD_GENERATOR_LEVELS.get(shield_level, SHIELD_GENERATOR_LEVELS[0])
+
+        # Next level upgrade cost
+        next_upgrade_cost = None
+        next_level_info = None
+        if shield_level < SHIELD_GENERATOR_MAX_LEVEL:
+            next_level_info = SHIELD_GENERATOR_LEVELS[shield_level + 1]
+            next_upgrade_cost = next_level_info["cost"]
+
+        # Defense level info
+        defense_level = planet.defense_level or 0
+        damage_reduction = defense_level * DEFENSE_DAMAGE_REDUCTION_PER_LEVEL
+
+        return {
+            "planetId": str(planet.id),
+            "planetName": planet.name,
+            "shieldGenerator": {
+                "level": shield_level,
+                "maxLevel": SHIELD_GENERATOR_MAX_LEVEL,
+                "name": shield_info["name"],
+                "strength": shield_info["strength"],
+                "currentShields": planet.shields or 0,
+                "regenPerHour": shield_info["regen_per_hour"],
+                "nextUpgrade": {
+                    "level": shield_level + 1,
+                    "name": next_level_info["name"],
+                    "strength": next_level_info["strength"],
+                    "regenPerHour": next_level_info["regen_per_hour"],
+                    "cost": next_upgrade_cost,
+                } if next_level_info else None,
+            },
+            "defenseLevel": defense_level,
+            "maxDefenseLevel": DEFENSE_MAX_LEVEL,
+            "damageReduction": f"{int(damage_reduction * 100)}%",
+            "turrets": planet.defense_turrets or 0,
+            "fighters": planet.defense_fighters or 0,
         }
 
     def lift_siege(self, planet_id: UUID) -> Dict[str, Any]:
