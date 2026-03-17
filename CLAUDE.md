@@ -114,63 +114,43 @@ git push origin master                                # Deploy changes
 
 ### GCP Development VM (Primary Environment)
 
-Docker containers run on a remote GCP VM, accessed securely via Tailscale. Max develops locally on his MacBook with Claude Code + Chrome browser automation.
+Docker containers run on a remote GCP VM, accessed securely via Tailscale. Development happens locally on MacBook with Claude Code + Chrome browser automation.
 
 **GCP Instance Details**:
-- **VM Name**: `sectorwars-dev`
-- **Project**: `sectorwars2102`
-- **Zone**: `us-central1-a`
+- **VM Name**: See `dev-scripts/` (local, gitignored)
 - **Machine Type**: `e2-standard-4` (4 vCPU, 16GB RAM, spot/preemptible)
 - **Disk**: 50GB pd-balanced, Debian 12
-- **Tailscale IP**: `100.64.208.28` (no public IP exposed for service ports)
-- **SSH**: `ssh mrathbone@100.64.208.28`
-- **Auto-Shutdown**: 11 PM CT daily via GCP instance schedule (`sectorwars-auto-stop`)
-- **Firewall**: `deny-sectorwars-services` blocks public access to ports 3000/3001/8080/5433
+- **Access**: Via Tailscale VPN (no public IP exposed for service ports)
+- **Auto-Shutdown**: 11 PM CT daily via GCP instance schedule
+- **Firewall**: Blocks public access to ports 3000/3001/8080/5433
 - **Cost**: ~$0.04/hr (spot), roughly $80/month at 8hrs/day
 
 **Services Running on VM** (via `docker compose --profile development`):
-- Player Client: http://100.64.208.28:3000 (React/TypeScript frontend)
-- Admin UI: http://100.64.208.28:3001 (React/TypeScript admin interface)
-- Game Server: http://100.64.208.28:8080 (FastAPI/Python backend)
+- Player Client: `http://<TAILSCALE_IP>:3000` (React/TypeScript frontend)
+- Admin UI: `http://<TAILSCALE_IP>:3001` (React/TypeScript admin interface)
+- Game Server: `http://<TAILSCALE_IP>:8080` (FastAPI/Python backend)
 - Database: PostgreSQL 15 (postgres:15-alpine, internal port 5432)
 - Redis Cache: Redis 7 (internal port 6379)
 - Nginx Gateway: Reverse proxy (healthy)
 - Region Manager: Regional coordination service
 
-**Repo on VM**: `/home/mrathbone/sectorwars2102/`
-**VM .env**: Copied from local, URLs adjusted to Tailscale IP
-
-**VM Management Scripts** (run from MacBook):
-```bash
-./dev-scripts/vm-start.sh                        # Start VM, wait for Tailscale
-./dev-scripts/vm-stop.sh                         # Stop VM (saves cost)
-./dev-scripts/vm-sync.sh                         # Push dev branch + git pull on VM
-```
+**VM Management**: See local `dev-scripts/` directory (gitignored — contains VM IPs and credentials).
 
 **Git Workflow**:
 - **`dev` branch**: All development work. Commit freely, push to sync to VM.
 - **`master` branch**: Tested, validated code only. Merge from dev when ready.
-- VM tracks `origin/dev` — `vm-sync.sh` pushes and pulls automatically.
+- VM tracks `origin/dev` — sync script pushes and pulls automatically.
 - Containers volume-mount source from VM repo, so changes hot-reload on pull.
 
-**VM SSH & Docker Commands**:
+**VM Docker Commands** (on VM via SSH):
 ```bash
-ssh mrathbone@100.64.208.28                      # SSH into VM via Tailscale
 docker compose --profile development up -d       # Start all containers
 docker compose --profile development logs -f     # Follow logs
 docker compose --profile development down        # Stop containers
 ```
 
-**GCloud Commands** (from MacBook):
-```bash
-gcloud compute instances start sectorwars-dev --project=sectorwars2102 --zone=us-central1-a
-gcloud compute instances stop sectorwars-dev --project=sectorwars2102 --zone=us-central1-a
-gcloud compute ssh sectorwars-dev --project=sectorwars2102 --zone=us-central1-a  # Fallback SSH
-```
-
 **Important Notes**:
 - Tailscale must be running on MacBook to access VM services
-- MacBook Tailscale device: `shoudens-mbpro` (100.118.237.67)
 - VM has public IP for outbound internet (Docker pulls, Tailscale DERP) but service ports are firewalled
 - Spot VM may be preempted with 30s notice — data persists on disk
 - After VM restart: Tailscale auto-starts, but `docker compose up -d` must be run manually
@@ -215,13 +195,7 @@ docker compose config                            # Show resolved configuration
 ## 🔧 ESSENTIAL COMMANDS REFERENCE
 
 ```bash
-# VM Lifecycle (from MacBook)
-./dev-scripts/vm-start.sh                            # Start GCP VM + wait for Tailscale
-./dev-scripts/vm-stop.sh                             # Stop GCP VM
-./dev-scripts/vm-sync.sh                             # Rsync code changes to VM
-
-# SSH into VM
-ssh mrathbone@100.64.208.28                          # Via Tailscale
+# VM Lifecycle (from MacBook) — see dev-scripts/ (local, gitignored)
 
 # Development Workflow (ON VM via SSH)
 docker compose --profile development up -d           # Start all services
