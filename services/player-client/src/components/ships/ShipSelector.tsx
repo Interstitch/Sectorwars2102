@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { useGame } from '../../contexts/GameContext';
 import { Ship } from '../../types/game';
 import { InputValidator, SecurityAudit } from '../../utils/security/inputValidation';
+import { formatShipType } from '../../utils/formatters';
 import './ship-selector.css';
 
 interface ShipSelectorProps {
@@ -225,11 +226,6 @@ export const ShipSelector: React.FC<ShipSelectorProps> = ({
     return 'critical';
   };
   
-  // Get ship type display name
-  const getShipTypeDisplay = (type: string): string => {
-    return type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-  };
-  
   return (
     <div className="ship-selector">
       <div className="selector-header">
@@ -296,7 +292,7 @@ export const ShipSelector: React.FC<ShipSelectorProps> = ({
               {ship.id === currentShip?.id && <span className="active-badge">ACTIVE</span>}
             </div>
             
-            <div className="ship-type">{getShipTypeDisplay(ship.type)}</div>
+            <div className="ship-type">{formatShipType(ship.type)}</div>
             
             <div className="ship-stats">
               <div className="stat-group">

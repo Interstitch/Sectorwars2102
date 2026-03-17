@@ -5,6 +5,7 @@ import { useGame } from '../../contexts/GameContext';
 // import { useTheme } from '../../themes/ThemeProvider'; // Available for future use
 import UserProfile from '../auth/UserProfile';
 import LogoutButton from '../auth/LogoutButton';
+import { formatShipType } from '../../utils/formatters';
 import './game-layout.css';
 import '../../styles/themes/cockpit-animations.css';
 import '../../styles/themes/cockpit-components.css';
@@ -101,7 +102,7 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
               {currentShip ? (
                 <div className="current-ship">
                   <div className="ship-name">{currentShip.name || 'UNNAMED VESSEL'}</div>
-                  <div className="ship-type">{currentShip.type || 'UNKNOWN CLASS'}</div>
+                  <div className="ship-type">{currentShip.type ? formatShipType(currentShip.type) : 'UNKNOWN CLASS'}</div>
                   <div className="ship-cargo">
                     <h4 className="cargo-header">CARGO BAY</h4>
                     {(() => {

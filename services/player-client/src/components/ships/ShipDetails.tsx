@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Ship } from '../../types/game';
 import { InputValidator } from '../../utils/security/inputValidation';
+import { formatShipType } from '../../utils/formatters';
 import './ship-details.css';
 
 interface ShipModification {
@@ -204,7 +205,7 @@ const ShipDetails: React.FC<ShipDetailsProps> = ({
               )}
             </div>
           )}
-          <div className="ship-class">{ship.type}</div>
+          <div className="ship-class">{formatShipType(ship.type)}</div>
           {isCurrentShip && <div className="current-ship-badge">ACTIVE</div>}
         </div>
         

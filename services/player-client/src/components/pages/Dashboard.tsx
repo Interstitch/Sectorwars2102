@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import UserProfile from '../auth/UserProfile';
+import { formatShipType } from '../../utils/formatters';
 import './pages.css';
 
 interface DashboardProps {
@@ -157,7 +158,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <div className="ship-icon">🚀</div>
                       <div className="ship-details">
                         <div className="ship-name">{ship.name}</div>
-                        <div className="ship-type">{ship.type}</div>
+                        <div className="ship-type">{formatShipType(ship.type)}</div>
                         <div className="ship-health">
                           <div className="health-bar">
                             <div 

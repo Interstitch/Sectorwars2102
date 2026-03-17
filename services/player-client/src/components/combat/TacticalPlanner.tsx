@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { InputValidator } from '../../utils/security/inputValidation';
+import { formatShipType } from '../../utils/formatters';
 import { gameAPI } from '../../services/api';
 import { Ship } from '../../types/game';
 import './tactical-planner.css';
@@ -192,7 +193,7 @@ const TacticalPlanner: React.FC<TacticalPlannerProps> = ({
     <div className="tactical-planner">
       <div className="planner-header">
         <h3>Tactical Planning</h3>
-        <span className="ship-info">{ship.name} - {ship.type}</span>
+        <span className="ship-info">{ship.name} - {formatShipType(ship.type)}</span>
       </div>
 
       <div className="planner-content">

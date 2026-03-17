@@ -10,15 +10,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useGame } from '../../contexts/GameContext';
 import { gameAPI } from '../../services/api';
 import { InputValidator, SecurityAudit } from '../../utils/security/inputValidation';
+import { formatShipType } from '../../utils/formatters';
 import './combat-interface.css';
-
-// Format enum-style names like "LIGHT_FREIGHTER" to "Light Freighter"
-const formatShipType = (type: string): string => {
-  return type
-    .replace(/_/g, ' ')
-    .toLowerCase()
-    .replace(/\b\w/g, c => c.toUpperCase());
-};
 
 // Define types locally since we're removing mocks
 interface CombatStatus {
@@ -312,7 +305,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
                 {playersInSector.map((player: any, index: number) => (
                   <div key={player.id || player.player_id || index} className="contact-entry">
                     <span className="contact-name">{player.name || player.username || 'Unknown Vessel'}</span>
-                    <span className="contact-type">{player.ship_type || 'Ship'}</span>
+                    <span className="contact-type">{player.ship_type ? formatShipType(player.ship_type) : 'Ship'}</span>
                   </div>
                 ))}
               </div>
