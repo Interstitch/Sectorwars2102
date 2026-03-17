@@ -164,7 +164,7 @@ async def claim_planet(
     if planet.sector_id != player.current_sector_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Planet is in sector {planet.sector_id}, but you are in sector {player.current_sector_id}"
+            detail="Planet is not accessible from your current location"
         )
 
     # Check if planet is already owned
@@ -336,7 +336,7 @@ async def land_on_planet(
     if planet.sector_id != player.current_sector_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Planet is in sector {planet.sector_id}, but you are in sector {player.current_sector_id}"
+            detail="Planet is not accessible from your current location"
         )
 
     # Check if planet is landable (not uninhabitable, gas giant, or restricted)

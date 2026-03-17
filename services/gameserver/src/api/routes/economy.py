@@ -75,11 +75,11 @@ async def get_market_data(
     market_data = []
     for price in market_prices:
         station = price.station
-        sector = station.sector if port else None
-        
+        sector = station.sector if station else None
+
         market_data.append(MarketDataResponse(
             station_id=str(price.station_id),
-            port_name=station.name if port else "Unknown",
+            port_name=station.name if station else "Unknown",
             sector_name=f"Sector {sector.sector_id}" if sector else "Unknown",
             commodity=price.commodity,
             buy_price=price.buy_price,

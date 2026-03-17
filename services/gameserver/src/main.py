@@ -194,6 +194,14 @@ async def health_check():
 # Setup error handling
 setup_error_handling(app)
 
+# Setup security middleware (rate limiting, input validation, security headers, audit logging)
+try:
+    from src.api.middleware.security import setup_security_middleware
+    setup_security_middleware(app)
+    logger.info("Security middleware registered successfully")
+except Exception as e:
+    logger.warning(f"Failed to register security middleware: {e}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(

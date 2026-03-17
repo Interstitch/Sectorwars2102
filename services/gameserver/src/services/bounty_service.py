@@ -131,8 +131,9 @@ class BountyService:
         self, collector_id: uuid.UUID, target_id: uuid.UUID
     ) -> Dict[str, Any]:
         """Award all bounties on target to collector (called on kill)."""
-        collector = self.db.query(Player).filter(Player.id == collector_id).first()
-        target = self.db.query(Player).filter(Player.id == target_id).first()
+        # Lock both rows to prevent double-collection race condition
+        collector = self.db.query(Player).filter(Player.id == collector_id).with_for_update().first()
+        target = self.db.query(Player).filter(Player.id == target_id).with_for_update().first()
 
         if not collector or not target:
             return {"success": False, "message": "Player not found"}

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Dict, Any
 from datetime import datetime, UTC
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.core.database import get_db
 from src.auth.dependencies import get_current_user, get_current_player
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/trading", tags=["trading"])
 class TradeRequest(BaseModel):
     station_id: str
     resource_type: str
-    quantity: int
+    quantity: int = Field(..., gt=0, le=100000, description="Must be between 1 and 100,000")
 
 
 class StationDockRequest(BaseModel):
@@ -51,16 +51,19 @@ async def buy_resource(
     # Verify player is docked at this port
     if not current_player.is_docked:
         raise HTTPException(status_code=400, detail="You must be docked at a station to trade")
-    
+
     # Get the station
     station = db.query(Station).filter(Station.id == trade_request.station_id).first()
     if not station:
         raise HTTPException(status_code=404, detail="Station not found")
-    
+
     # Verify player is in the same sector as the station
     if current_player.current_sector_id != station.sector_id:
         raise HTTPException(status_code=400, detail="You must be in the same sector as the station")
-    
+
+    # Lock player row to prevent race conditions on concurrent trades
+    current_player = db.query(Player).filter(Player.id == current_player.id).with_for_update().first()
+
     # Get current ship
     current_ship = db.query(Ship).filter(
         Ship.id == current_player.current_ship_id,
@@ -68,7 +71,7 @@ async def buy_resource(
     ).first()
     if not current_ship:
         raise HTTPException(status_code=404, detail="No active ship found")
-    
+
     # Get market price for this resource
     market_price = db.query(MarketPrice).filter(
         MarketPrice.station_id == trade_request.station_id,
@@ -76,14 +79,14 @@ async def buy_resource(
     ).first()
     if not market_price:
         raise HTTPException(status_code=404, detail="Resource not available at this port")
-    
+
     # Check if port has enough quantity
     if market_price.quantity < trade_request.quantity:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"Station only has {market_price.quantity} units available"
         )
-    
+
     # Apply rank trading discount to buy price
     bonuses = RankingService.get_rank_bonuses(current_player.military_rank)
     discount_pct = bonuses["trading_discount_percent"] / 100.0
@@ -208,11 +211,14 @@ async def sell_resource(
     current_player: Player = Depends(get_current_player)
 ):
     """Sell a resource to a station"""
-    
+
     # Verify player is docked at this port
     if not current_player.is_docked:
         raise HTTPException(status_code=400, detail="You must be docked at a station to trade")
-    
+
+    # Lock player row to prevent race conditions on concurrent trades
+    current_player = db.query(Player).filter(Player.id == current_player.id).with_for_update().first()
+
     # Get the station
     station = db.query(Station).filter(Station.id == trade_request.station_id).first()
     if not station:
@@ -397,15 +403,18 @@ async def dock_at_station(
     current_player: Player = Depends(get_current_player)
 ):
     """Dock at a station"""
-    
+
     # Define docking turn cost
     DOCKING_TURN_COST = 1
-    
+
+    # Lock player row to prevent concurrent turn deduction races
+    current_player = db.query(Player).filter(Player.id == current_player.id).with_for_update().first()
+
     # Get the station
     station = db.query(Station).filter(Station.id == dock_request.station_id).first()
     if not station:
         raise HTTPException(status_code=404, detail="Station not found")
-    
+
     # Verify player is in the same sector as the station
     if current_player.current_sector_id != station.sector_id:
         raise HTTPException(status_code=400, detail="You must be in the same sector as the station")
@@ -460,10 +469,13 @@ async def undock_from_port(
     current_player: Player = Depends(get_current_player)
 ):
     """Undock from current port"""
-    
+
     # Define undocking turn cost
     UNDOCKING_TURN_COST = 1
-    
+
+    # Lock player row to prevent concurrent turn deduction races
+    current_player = db.query(Player).filter(Player.id == current_player.id).with_for_update().first()
+
     if not current_player.is_docked:
         raise HTTPException(status_code=400, detail="You are not currently docked at a station")
     

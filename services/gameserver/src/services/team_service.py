@@ -680,17 +680,18 @@ class TeamService:
     def deposit_to_treasury(self, team_id: uuid.UUID, player_id: uuid.UUID,
                            resource_type: str, amount: int) -> Dict[str, Any]:
         """Deposit resources to team treasury"""
-        team = self.get_team(team_id)
+        # Lock team and player rows to prevent race conditions
+        team = self.db.query(Team).filter(Team.id == team_id).with_for_update().first()
         if not team:
             raise ValueError("Team not found")
-        
+
         # Check if player is a member
         member = self._get_team_member(team_id, player_id)
         if not member:
             raise ValueError("Player is not a team member")
-        
-        # Get player
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+
+        # Get player with lock
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             raise ValueError("Player not found")
         
@@ -756,17 +757,18 @@ class TeamService:
     def withdraw_from_treasury(self, team_id: uuid.UUID, player_id: uuid.UUID,
                               resource_type: str, amount: int) -> Dict[str, Any]:
         """Withdraw resources from team treasury"""
-        team = self.get_team(team_id)
+        # Lock team and player rows to prevent race conditions
+        team = self.db.query(Team).filter(Team.id == team_id).with_for_update().first()
         if not team:
             raise ValueError("Team not found")
-        
+
         # Check permissions
         member = self._get_team_member(team_id, player_id)
         if not member or not member.can_manage_treasury:
             raise ValueError("Insufficient permissions to manage treasury")
-        
-        # Get player
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+
+        # Get player with lock
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             raise ValueError("Player not found")
         

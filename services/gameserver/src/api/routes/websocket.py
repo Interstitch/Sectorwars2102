@@ -1,9 +1,11 @@
 import json
 import asyncio
+import time
+from collections import defaultdict
 from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Dict
 import logging
 
 from src.core.database import get_db
@@ -15,6 +17,23 @@ from src.services.websocket_service import connection_manager, handle_websocket_
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
+
+# Per-connection rate limiter: max 100 messages per second
+_ws_rate_limits: Dict[str, list] = defaultdict(list)
+WS_RATE_LIMIT = 100  # messages per window
+WS_RATE_WINDOW = 1.0  # seconds
+
+
+def _check_ws_rate_limit(user_id: str) -> bool:
+    """Return True if under rate limit, False if exceeded."""
+    now = time.monotonic()
+    timestamps = _ws_rate_limits[user_id]
+    # Purge old entries
+    _ws_rate_limits[user_id] = [t for t in timestamps if now - t < WS_RATE_WINDOW]
+    if len(_ws_rate_limits[user_id]) >= WS_RATE_LIMIT:
+        return False
+    _ws_rate_limits[user_id].append(now)
+    return True
 
 
 @router.websocket("/connect")
@@ -67,12 +86,20 @@ async def websocket_endpoint(
             while True:
                 # Wait for messages from client
                 data = await websocket.receive_text()
-                
+
+                # Rate limit: 100 msg/s per connection
+                if not _check_ws_rate_limit(str(user.id)):
+                    await connection_manager.send_personal_message(str(user.id), {
+                        "type": "error",
+                        "message": "Rate limit exceeded. Max 100 messages per second."
+                    })
+                    continue
+
                 try:
                     message_data = json.loads(data)
                     await handle_websocket_message(str(user.id), message_data)
                 except json.JSONDecodeError:
-                    logger.warning(f"Invalid JSON received from user {user.id}: {data}")
+                    logger.warning(f"Invalid JSON received from user {user.id}")
                     await connection_manager.send_personal_message(str(user.id), {
                         "type": "error",
                         "message": "Invalid message format"
@@ -80,7 +107,7 @@ async def websocket_endpoint(
                 except Exception as e:
                     logger.error(f"Error handling WebSocket message from user {user.id}: {e}")
                     await connection_manager.send_personal_message(str(user.id), {
-                        "type": "error", 
+                        "type": "error",
                         "message": "Error processing message"
                     })
         
@@ -200,7 +227,14 @@ async def broadcast_message(
         await connection_manager.broadcast_to_team(target_id, message)
     else:
         raise HTTPException(status_code=400, detail="Invalid target type or missing target_id")
-    
+
+    # Audit log admin broadcasts
+    logger.info(
+        "ADMIN_BROADCAST: admin_id=%s target=%s:%s content_length=%d",
+        current_user.id, target_type, target_id or "all",
+        len(message_data.get("content", "")),
+    )
+
     return {"message": "Broadcast sent successfully", "target_type": target_type, "target_id": target_id}
 
 
