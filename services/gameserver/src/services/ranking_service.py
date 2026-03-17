@@ -16,19 +16,41 @@ from src.models.player import Player
 logger = logging.getLogger(__name__)
 
 
-# Rank definitions ordered by point threshold (ascending)
+# 18-rank spec-compliant definitions ordered by point threshold (ascending)
+# Tiers: Enlisted (3), NCO (3), Warrant (2), Officer (5), Flag (5)
 RANK_DEFINITIONS: List[Dict[str, Any]] = [
-    {"name": "Private", "points_required": 0, "level": 0},
-    {"name": "Corporal", "points_required": 100, "level": 1},
-    {"name": "Sergeant", "points_required": 250, "level": 2},
-    {"name": "Lieutenant", "points_required": 500, "level": 3},
-    {"name": "Captain", "points_required": 1000, "level": 4},
-    {"name": "Major", "points_required": 2000, "level": 5},
-    {"name": "Colonel", "points_required": 4000, "level": 6},
-    {"name": "General", "points_required": 8000, "level": 7},
-    {"name": "Admiral", "points_required": 16000, "level": 8},
-    {"name": "Fleet Admiral", "points_required": 32000, "level": 9},
+    # Enlisted
+    {"name": "Recruit",           "points_required": 0,      "level": 0,  "tier": "Enlisted",  "trading_bonus": 0,  "combat_bonus": 0,  "max_turns_bonus": 0},
+    {"name": "Spacer",            "points_required": 50,     "level": 1,  "tier": "Enlisted",  "trading_bonus": 2,  "combat_bonus": 1,  "max_turns_bonus": 5},
+    {"name": "Corporal",          "points_required": 150,    "level": 2,  "tier": "Enlisted",  "trading_bonus": 3,  "combat_bonus": 2,  "max_turns_bonus": 10},
+    # NCO
+    {"name": "Sergeant",          "points_required": 300,    "level": 3,  "tier": "NCO",       "trading_bonus": 5,  "combat_bonus": 4,  "max_turns_bonus": 15},
+    {"name": "Staff Sergeant",    "points_required": 500,    "level": 4,  "tier": "NCO",       "trading_bonus": 6,  "combat_bonus": 5,  "max_turns_bonus": 20},
+    {"name": "Master Sergeant",   "points_required": 800,    "level": 5,  "tier": "NCO",       "trading_bonus": 7,  "combat_bonus": 6,  "max_turns_bonus": 25},
+    # Warrant
+    {"name": "Warrant Officer",       "points_required": 1200,  "level": 6,  "tier": "Warrant",  "trading_bonus": 8,   "combat_bonus": 8,   "max_turns_bonus": 30},
+    {"name": "Chief Warrant Officer", "points_required": 1800,  "level": 7,  "tier": "Warrant",  "trading_bonus": 10,  "combat_bonus": 10,  "max_turns_bonus": 35},
+    # Officer
+    {"name": "Ensign",            "points_required": 2500,   "level": 8,  "tier": "Officer",   "trading_bonus": 12,  "combat_bonus": 12,  "max_turns_bonus": 40},
+    {"name": "Lieutenant",        "points_required": 3500,   "level": 9,  "tier": "Officer",   "trading_bonus": 15,  "combat_bonus": 14,  "max_turns_bonus": 45},
+    {"name": "Commander",         "points_required": 5000,   "level": 10, "tier": "Officer",   "trading_bonus": 18,  "combat_bonus": 16,  "max_turns_bonus": 50},
+    {"name": "Captain",           "points_required": 7000,   "level": 11, "tier": "Officer",   "trading_bonus": 20,  "combat_bonus": 18,  "max_turns_bonus": 55},
+    {"name": "Senior Captain",    "points_required": 10000,  "level": 12, "tier": "Officer",   "trading_bonus": 22,  "combat_bonus": 20,  "max_turns_bonus": 60},
+    # Flag
+    {"name": "Commodore",         "points_required": 14000,  "level": 13, "tier": "Flag",      "trading_bonus": 25,  "combat_bonus": 22,  "max_turns_bonus": 70},
+    {"name": "Rear Admiral",      "points_required": 20000,  "level": 14, "tier": "Flag",      "trading_bonus": 30,  "combat_bonus": 25,  "max_turns_bonus": 80},
+    {"name": "Vice Admiral",      "points_required": 28000,  "level": 15, "tier": "Flag",      "trading_bonus": 35,  "combat_bonus": 28,  "max_turns_bonus": 90},
+    {"name": "Admiral",           "points_required": 40000,  "level": 16, "tier": "Flag",      "trading_bonus": 40,  "combat_bonus": 32,  "max_turns_bonus": 100},
+    {"name": "Fleet Admiral",     "points_required": 60000,  "level": 17, "tier": "Flag",      "trading_bonus": 50,  "combat_bonus": 40,  "max_turns_bonus": 120},
 ]
+
+# Legacy rank name mapping for backwards compatibility with existing player records
+LEGACY_RANK_MAP: Dict[str, str] = {
+    "Private": "Recruit",
+    "General": "Admiral",
+    "Major": "Commander",
+    "Colonel": "Commodore",
+}
 
 # Valid reasons for awarding rank points
 VALID_REASONS = {
@@ -64,8 +86,9 @@ class RankingService:
     @staticmethod
     def get_next_rank(current_rank_name: str) -> Optional[Dict[str, Any]]:
         """Return the next rank definition above the given rank, or None if max."""
+        mapped_name = LEGACY_RANK_MAP.get(current_rank_name, current_rank_name)
         for i, rank_def in enumerate(RANK_DEFINITIONS):
-            if rank_def["name"] == current_rank_name:
+            if rank_def["name"] == mapped_name:
                 if i + 1 < len(RANK_DEFINITIONS):
                     return RANK_DEFINITIONS[i + 1]
                 return None
@@ -73,16 +96,14 @@ class RankingService:
 
     @staticmethod
     def get_rank_level(rank_name: str) -> int:
-        """Return the numeric level (0-9) for a given rank name.
+        """Return the numeric level (0-17) for a given rank name.
 
-        Note: "Recruit" is treated as equivalent to "Private" (level 0)
-        for backwards compatibility with existing player records.
+        Handles legacy rank names from existing player records via LEGACY_RANK_MAP.
         """
-        # Handle legacy "Recruit" rank name from existing player records
-        if rank_name == "Recruit":
-            return 0
+        # Map legacy names to current names
+        mapped_name = LEGACY_RANK_MAP.get(rank_name, rank_name)
         for rank_def in RANK_DEFINITIONS:
-            if rank_def["name"] == rank_name:
+            if rank_def["name"] == mapped_name:
                 return rank_def["level"]
         return 0
 
@@ -94,16 +115,22 @@ class RankingService:
     def get_rank_bonuses(rank_name: str) -> Dict[str, Any]:
         """Return the bonuses granted by a given rank.
 
-        Bonuses per rank level:
-        - Trading discount: 1% per level (max 10% at Fleet Admiral)
-        - Max turns bonus: +5 per level
-        - Combat damage bonus: +2% per level
+        Each rank has specific trading, combat, and turn bonuses defined
+        in RANK_DEFINITIONS. Legacy rank names are mapped automatically.
         """
-        level = RankingService.get_rank_level(rank_name)
+        mapped_name = LEGACY_RANK_MAP.get(rank_name, rank_name)
+        for rank_def in RANK_DEFINITIONS:
+            if rank_def["name"] == mapped_name:
+                return {
+                    "trading_discount_percent": rank_def["trading_bonus"],
+                    "max_turns_bonus": rank_def["max_turns_bonus"],
+                    "combat_damage_bonus_percent": rank_def["combat_bonus"],
+                }
+        # Fallback for unknown rank names
         return {
-            "trading_discount_percent": level,       # 0-9 => 0%-9% (capped at 10 if extended)
-            "max_turns_bonus": level * 5,             # 0, 5, 10 ... 45
-            "combat_damage_bonus_percent": level * 2, # 0, 2, 4 ... 18
+            "trading_discount_percent": 0,
+            "max_turns_bonus": 0,
+            "combat_damage_bonus_percent": 0,
         }
 
     # ------------------------------------------------------------------
@@ -318,6 +345,7 @@ class RankingService:
             "username": player.username,
             "current_rank": current_rank["name"],
             "rank_level": current_rank["level"],
+            "rank_tier": current_rank.get("tier", "Enlisted"),
             "rank_points": player.rank_points or 0,
             "points_to_next_rank": points_to_next,
             "next_rank": next_rank["name"] if next_rank else None,

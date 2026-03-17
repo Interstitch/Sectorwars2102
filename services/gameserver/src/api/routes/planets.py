@@ -630,9 +630,104 @@ async def get_siege_status(
         raise HTTPException(status_code=400, detail="Invalid planet ID format")
     
     service = PlanetaryService(db)
-    
+
     try:
         result = service.get_siege_status(planet_id, player.id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# Citadel Endpoints
+
+class CitadelDepositRequest(BaseModel):
+    amount: int = Field(..., gt=0)
+
+
+class CitadelWithdrawRequest(BaseModel):
+    amount: int = Field(..., gt=0)
+
+
+@router.get("/{planetId}/citadel")
+async def get_citadel_info(
+    planetId: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Get citadel information for a planet."""
+    try:
+        planet_id = UUID(planetId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    from src.services.citadel_service import CitadelService
+    service = CitadelService(db)
+    result = service.get_citadel_info(planet_id, player.id)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Failed to get citadel info"))
+    return result
+
+
+@router.post("/{planetId}/citadel/upgrade")
+async def upgrade_citadel(
+    planetId: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Start a citadel upgrade on a planet."""
+    try:
+        planet_id = UUID(planetId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    from src.services.citadel_service import CitadelService
+    service = CitadelService(db)
+    result = service.start_upgrade(planet_id, player.id)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Citadel upgrade failed"))
+    db.commit()
+    return result
+
+
+@router.post("/{planetId}/citadel/deposit")
+async def citadel_deposit(
+    planetId: str,
+    request: CitadelDepositRequest,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Deposit credits into the citadel's safe storage."""
+    try:
+        planet_id = UUID(planetId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    from src.services.citadel_service import CitadelService
+    service = CitadelService(db)
+    result = service.deposit_to_safe(planet_id, player.id, request.amount)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Deposit failed"))
+    db.commit()
+    return result
+
+
+@router.post("/{planetId}/citadel/withdraw")
+async def citadel_withdraw(
+    planetId: str,
+    request: CitadelWithdrawRequest,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Withdraw credits from the citadel's safe storage."""
+    try:
+        planet_id = UUID(planetId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    from src.services.citadel_service import CitadelService
+    service = CitadelService(db)
+    result = service.withdraw_from_safe(planet_id, player.id, request.amount)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Withdrawal failed"))
+    db.commit()
+    return result

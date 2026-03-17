@@ -91,10 +91,14 @@ class Ship(Base):
     
     # Combat
     combat = Column(JSONB, nullable=False)
-    
+    attack_turn_cost = Column(Integer, nullable=True)  # Turn cost to initiate combat with this ship
+
     # Upgrades and modifications
     upgrades = Column(JSONB, nullable=False, default=[])
-    
+
+    # Equipment slots
+    equipment_slots = Column(JSONB, nullable=False, default={})
+
     # Insurance
     insurance = Column(JSONB, nullable=True)
     
@@ -153,6 +157,7 @@ class ShipSpecification(Base):
     # Performance
     attack_rating = Column(Integer, nullable=False)
     defense_rating = Column(Integer, nullable=False)
+    attack_turn_cost = Column(Integer, nullable=True)  # Turn cost to initiate combat
     maintenance_rate = Column(Float, nullable=False)
     construction_time = Column(Integer, nullable=False)
     fuel_efficiency = Column(Integer, nullable=False)

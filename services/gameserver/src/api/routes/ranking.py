@@ -37,6 +37,7 @@ class RankInfoResponse(BaseModel):
     username: str
     current_rank: str
     rank_level: int
+    rank_tier: str = "Enlisted"
     rank_points: int
     points_to_next_rank: int
     next_rank: Optional[str] = None
@@ -50,6 +51,10 @@ class RankDefinitionResponse(BaseModel):
     name: str
     points_required: int
     level: int
+    tier: str = "Enlisted"
+    trading_bonus: int = 0
+    combat_bonus: int = 0
+    max_turns_bonus: int = 0
 
 
 class LeaderboardEntry(BaseModel):
@@ -115,3 +120,24 @@ async def get_rankings_leaderboard(
         entries=[LeaderboardEntry(**e) for e in entries],
         total_players=total_players,
     )
+
+
+# ------------------------------------------------------------------
+# Medal endpoints
+# ------------------------------------------------------------------
+
+@router.get("/medals")
+async def get_player_medals(
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Get the current player's earned and available medals."""
+    from src.services.medal_service import MedalService
+    medal_service = MedalService(db)
+    result = medal_service.get_player_medals(player.id)
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.get("message", "Failed to get medals"),
+        )
+    return result

@@ -83,9 +83,15 @@ async def buy_resource(
             detail=f"Station only has {market_price.quantity} units available"
         )
     
+    # Apply rank trading discount to buy price
+    bonuses = RankingService.get_rank_bonuses(current_player.military_rank)
+    discount_pct = bonuses["trading_discount_percent"] / 100.0
+    discounted_price = market_price.buy_price * (1 - discount_pct)
+    effective_buy_price = max(1, int(discounted_price))  # Floor at 1 credit
+
     # Calculate total cost
-    total_cost = market_price.buy_price * trade_request.quantity
-    
+    total_cost = effective_buy_price * trade_request.quantity
+
     # Check if player has enough credits
     if current_player.credits < total_cost:
         raise HTTPException(
@@ -131,7 +137,7 @@ async def buy_resource(
             transaction_type=TransactionType.BUY,
             commodity=trade_request.resource_type,
             quantity=trade_request.quantity,
-            unit_price=market_price.buy_price,
+            unit_price=effective_buy_price,
             total_value=total_cost,
             timestamp=datetime.now(UTC)
         )
@@ -156,7 +162,9 @@ async def buy_resource(
             "transaction": {
                 "resource": trade_request.resource_type,
                 "quantity": trade_request.quantity,
-                "unit_price": market_price.buy_price,
+                "unit_price": effective_buy_price,
+                "base_price": market_price.buy_price,
+                "rank_discount_percent": bonuses["trading_discount_percent"],
                 "total_cost": total_cost,
                 "remaining_credits": current_player.credits,
                 "remaining_cargo_space": current_ship.cargo.get('capacity', 50) - current_ship.cargo.get('used', 0)
@@ -223,9 +231,15 @@ async def sell_resource(
     if not market_price:
         raise HTTPException(status_code=404, detail="Station doesn't trade this resource")
     
+    # Apply rank trading bonus to sell price
+    bonuses = RankingService.get_rank_bonuses(current_player.military_rank)
+    bonus_pct = bonuses["trading_discount_percent"] / 100.0
+    boosted_price = market_price.sell_price * (1 + bonus_pct)
+    effective_sell_price = int(boosted_price)
+
     # Calculate total earnings
-    total_earnings = market_price.sell_price * trade_request.quantity
-    
+    total_earnings = effective_sell_price * trade_request.quantity
+
     # Execute the trade
     try:
         # Update player credits
@@ -254,7 +268,7 @@ async def sell_resource(
             transaction_type=TransactionType.SELL,
             commodity=trade_request.resource_type,
             quantity=trade_request.quantity,
-            unit_price=market_price.sell_price,
+            unit_price=effective_sell_price,
             total_value=total_earnings,
             timestamp=datetime.now(UTC)
         )
@@ -280,7 +294,9 @@ async def sell_resource(
             "transaction": {
                 "resource": trade_request.resource_type,
                 "quantity": trade_request.quantity,
-                "unit_price": market_price.sell_price,
+                "unit_price": effective_sell_price,
+                "base_price": market_price.sell_price,
+                "rank_bonus_percent": bonuses["trading_discount_percent"],
                 "total_earnings": total_earnings,
                 "new_credits": current_player.credits,
                 "remaining_cargo": remaining

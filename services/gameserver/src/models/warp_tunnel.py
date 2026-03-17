@@ -105,7 +105,7 @@ class WarpTunnel(Base):
     traversal_history = Column(JSONB, nullable=False, default=[])
     
     # Legacy properties for backward compatibility
-    turn_cost = Column(Integer, nullable=False, default=5)  # Turns required to traverse
+    turn_cost = Column(Integer, nullable=False, default=1)  # Turns required to traverse
     energy_cost = Column(Integer, nullable=False, default=0)  # Additional energy required
     is_public = Column(Boolean, nullable=False, default=True)  # Whether anyone can use it
     access_requirements = Column(JSONB, nullable=True)  # Requirements to use this tunnel

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
 from src.models.player import Player
-from src.models.ship import Ship, ShipType
+from src.models.ship import Ship, ShipType, ShipSpecification
 from src.models.sector import Sector
 from src.models.combat import CombatType, CombatResult
 from src.models.combat_log import CombatLog
@@ -49,10 +49,13 @@ class CombatService:
         if attacker.current_sector_id != defender.current_sector_id:
             return {"success": False, "message": "Target is not in your sector"}
         
-        # Check if attacker has enough turns
-        turn_cost = 2  # Base cost for initiating combat
+        # Look up attack turn cost from attacker's ship specification
+        attacker_spec = self.db.query(ShipSpecification).filter(
+            ShipSpecification.type == attacker.current_ship.type
+        ).first()
+        turn_cost = getattr(attacker_spec, 'attack_turn_cost', None) or 2
         if attacker.turns < turn_cost:
-            return {"success": False, "message": "Not enough turns to initiate combat"}
+            return {"success": False, "message": f"Not enough turns to initiate combat (need {turn_cost})"}
         
         # Check if players are docked or landed (optionally could prevent combat)
         if attacker.is_docked:
@@ -820,7 +823,13 @@ class CombatService:
         # Get ships and equipment
         attacker_ship = attacker.current_ship
         defender_ship = defender.current_ship
-        
+
+        # Get rank combat bonuses for both sides
+        attacker_bonuses = RankingService.get_rank_bonuses(attacker.military_rank)
+        defender_bonuses = RankingService.get_rank_bonuses(defender.military_rank)
+        attacker_damage_mult = 1.0 + (attacker_bonuses["combat_damage_bonus_percent"] / 100.0)
+        defender_damage_mult = 1.0 + (defender_bonuses["combat_damage_bonus_percent"] / 100.0)
+
         # Combat parameters
         attacker_drones = attacker.defense_drones
         defender_drones = defender.defense_drones
@@ -867,9 +876,10 @@ class CombatService:
                             "drones_destroyed": drones_destroyed
                         })
                     else:
-                        # Attack ship - calculate ship damage
-                        damage = random.randint(1, 10)
-                        
+                        # Attack ship - calculate ship damage with rank bonus
+                        base_damage = random.randint(1, 10)
+                        damage = int(base_damage * attacker_damage_mult)
+
                         # Check if defender ship destroyed
                         ship_destruction_chance = damage / 50  # Example: 10 damage = 20% chance
                         if random.random() < ship_destruction_chance:
@@ -895,16 +905,16 @@ class CombatService:
                         "action": "miss",
                         "message": f"{attacker.username}'s attack missed {defender.username}'s ship"
                     })
-            
+
             # Check if combat is over
             if defender_ship_destroyed:
                 break
-            
+
             # Defender's turn
             if not defender_ship_destroyed:
                 # Calculate chance to hit
                 hit_chance = min(0.8, defender_defense / (attacker_attack * 1.5) * 0.6)
-                
+
                 # Random element
                 if random.random() < hit_chance:
                     # Successful hit
@@ -922,9 +932,10 @@ class CombatService:
                             "drones_destroyed": drones_destroyed
                         })
                     else:
-                        # Attack ship - calculate ship damage
-                        damage = random.randint(1, 10)
-                        
+                        # Attack ship - calculate ship damage with rank bonus
+                        base_damage = random.randint(1, 10)
+                        damage = int(base_damage * defender_damage_mult)
+
                         # Check if attacker ship destroyed
                         ship_destruction_chance = damage / 50  # Example: 10 damage = 20% chance
                         if random.random() < ship_destruction_chance:

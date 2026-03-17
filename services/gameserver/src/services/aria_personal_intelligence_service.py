@@ -1119,6 +1119,124 @@ class ARIAPersonalIntelligenceService:
         db.add(offspring)
         await db.commit()
 
+    # =============================================================================
+    # CONSCIOUSNESS & RELATIONSHIP TRACKING
+    # =============================================================================
+
+    # 5-tier bonus system: consciousness_level + interaction thresholds -> multiplier
+    CONSCIOUSNESS_BONUSES = {
+        1: 1.0,   # Dormant
+        2: 1.1,   # Awakening (50+ interactions, 10+ memories)
+        3: 1.2,   # Aware (150+ interactions, 30+ memories)
+        4: 1.35,  # Sentient (400+ interactions, 75+ memories)
+        5: 1.5,   # Transcendent (1000+ interactions, 150+ memories)
+    }
+
+    CONSCIOUSNESS_THRESHOLDS = {
+        2: {"interactions": 50, "memories": 10},
+        3: {"interactions": 150, "memories": 30},
+        4: {"interactions": 400, "memories": 75},
+        5: {"interactions": 1000, "memories": 150},
+    }
+
+    async def update_consciousness_level(self, player_id: str, db: AsyncSession) -> Dict[str, Any]:
+        """
+        Update a player's ARIA consciousness level based on memory count and interaction quality.
+        Called after significant ARIA interactions.
+        """
+        from src.models.player import Player
+
+        stmt = select(Player).where(Player.id == player_id)
+        result = await db.execute(stmt)
+        player = result.scalar_one_or_none()
+        if not player:
+            return {"success": False, "message": "Player not found"}
+
+        # Count player's ARIA memories
+        memory_stmt = select(func.count(ARIAPersonalMemory.id)).where(
+            ARIAPersonalMemory.player_id == player_id
+        )
+        memory_result = await db.execute(memory_stmt)
+        memory_count = memory_result.scalar() or 0
+
+        total_interactions = player.aria_total_interactions
+        current_level = player.aria_consciousness_level
+
+        # Check if player qualifies for a higher level
+        new_level = 1
+        for level in range(5, 1, -1):
+            thresholds = self.CONSCIOUSNESS_THRESHOLDS[level]
+            if total_interactions >= thresholds["interactions"] and memory_count >= thresholds["memories"]:
+                new_level = level
+                break
+
+        leveled_up = new_level > current_level
+        if leveled_up:
+            player.aria_consciousness_level = new_level
+            player.aria_bonus_multiplier = self.CONSCIOUSNESS_BONUSES[new_level]
+            logger.info(
+                "Player %s ARIA consciousness upgraded: %d -> %d (multiplier: %.2f)",
+                player_id, current_level, new_level, player.aria_bonus_multiplier,
+            )
+
+        return {
+            "success": True,
+            "consciousness_level": player.aria_consciousness_level,
+            "bonus_multiplier": player.aria_bonus_multiplier,
+            "total_interactions": total_interactions,
+            "memory_count": memory_count,
+            "leveled_up": leveled_up,
+        }
+
+    async def update_relationship_score(self, player_id: str, db: AsyncSession, increment: int = 1) -> Dict[str, Any]:
+        """
+        Update the ARIA relationship score for a player.
+        Score increases on interaction, decays on inactivity.
+        """
+        from src.models.player import Player
+
+        stmt = select(Player).where(Player.id == player_id)
+        result = await db.execute(stmt)
+        player = result.scalar_one_or_none()
+        if not player:
+            return {"success": False, "message": "Player not found"}
+
+        # Increment interaction count
+        player.aria_total_interactions = (player.aria_total_interactions or 0) + 1
+
+        # Update relationship score (clamped 0-100)
+        old_score = player.aria_relationship_score
+        player.aria_relationship_score = min(100, max(0, old_score + increment))
+
+        return {
+            "success": True,
+            "relationship_score": player.aria_relationship_score,
+            "total_interactions": player.aria_total_interactions,
+            "score_change": player.aria_relationship_score - old_score,
+        }
+
+    async def apply_inactivity_decay(self, player_id: str, db: AsyncSession, days_inactive: int) -> Dict[str, Any]:
+        """
+        Decay relationship score based on days of inactivity.
+        -1 point per day inactive, minimum 0.
+        """
+        from src.models.player import Player
+
+        stmt = select(Player).where(Player.id == player_id)
+        result = await db.execute(stmt)
+        player = result.scalar_one_or_none()
+        if not player:
+            return {"success": False, "message": "Player not found"}
+
+        decay = min(days_inactive, player.aria_relationship_score)
+        player.aria_relationship_score = max(0, player.aria_relationship_score - decay)
+
+        return {
+            "success": True,
+            "relationship_score": player.aria_relationship_score,
+            "decay_applied": decay,
+        }
+
 
 # Singleton instance
 _aria_intelligence_service = None
