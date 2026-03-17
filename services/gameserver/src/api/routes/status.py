@@ -5,9 +5,12 @@ by frontends to check if the API is up and running.
 """
 import os
 import datetime
+import logging
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+
+logger = logging.getLogger(__name__)
 
 from src.core.config import settings
 
@@ -398,9 +401,9 @@ async def containers_health():
                                 "network_io": net_io,
                                 "block_io": block_io
                             })
-                except Exception:
+                except Exception as e:
                     # Stats collection failed for this container, continue
-                    pass
+                    logger.warning(f"Failed to collect stats for container {container_name}: {e}")
                     
     except subprocess.TimeoutExpired:
         error = "Docker command timed out"

@@ -95,8 +95,8 @@ async def websocket_endpoint(
         logger.error(f"WebSocket connection error: {e}")
         try:
             await websocket.close(code=4000, reason="Connection error")
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to close WebSocket cleanly: {e}")
 
 
 @router.websocket("/admin")

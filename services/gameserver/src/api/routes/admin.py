@@ -110,29 +110,32 @@ async def get_all_players(
                         user = db.query(User).filter(User.id == player.user_id).first()
                         if user:
                             username = user.username
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Failed to resolve username for player {player.id}: {e}")
                     username = f"User-{player.user_id}"
-                
+
                 # Get real ship count for this player
                 try:
                     from src.models.ship import Ship
                     ships_count = db.query(Ship).filter(Ship.owner_id == player.id).count()
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Failed to get ship count for player {player.id}: {e}")
                     ships_count = 0
-                    
+
                 # Get real planet count for this player
                 try:
                     planets_count = db.query(Planet).filter(Planet.owner_id == player.id).count()
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Failed to get planet count for player {player.id}: {e}")
                     planets_count = 0
-                
+
                 # Get team info safely
                 team_id = None
                 try:
                     team_id = str(player.team_id) if player.team_id else None
-                except Exception:
-                    pass
-                
+                except Exception as e:
+                    logger.warning(f"Failed to get team_id for player {player.id}: {e}")
+
                 # Get email and user data safely
                 email = "unknown@example.com"
                 created_at = None
@@ -142,16 +145,16 @@ async def get_all_players(
                         email = player.user.email
                         created_at = player.user.created_at.isoformat() if player.user.created_at else None
                         last_login = player.user.last_login.isoformat() if player.user.last_login else None
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to get user data for player {player.id}: {e}")
 
                 # Get ports count
                 ports_count = 0
                 try:
                     from src.models.station import Station
                     ports_count = db.query(Station).filter(Station.owner_id == player.id).count()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to get ports count for player {player.id}: {e}")
 
                 # Calculate total asset value (simplified)
                 total_asset_value = getattr(player, 'credits', 0)
@@ -545,9 +548,10 @@ async def get_all_colonies(
                 owner = db.query(Player).filter(Player.id == planet.owner_id).first()
                 if owner:
                     owner_name = owner.user.username
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to resolve owner name for planet {planet.id}: {e}")
                 owner_name = "Unknown"
-        
+
         colonies_list.append({
             "id": str(planet.id),
             "name": planet.name,
@@ -600,8 +604,8 @@ async def get_all_teams(
                     leader = db.query(Player).join(User).filter(Player.id == team.leader_id).first()
                     if leader and leader.user:
                         leader_name = leader.user.username
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to resolve leader name for team {team.id}: {e}")
                 
                 teams_list.append({
                     "id": str(team.id),
@@ -679,23 +683,24 @@ async def get_teams_analytics(
                             "name": team.name,
                             "totalCombatRating": total_combat_rating
                         }
-                except Exception:
-                    pass
-                    
+                except Exception as e:
+                    logger.warning(f"Failed to calculate combat rating for team {team.id}: {e}")
+
             except Exception as e:
                 logger.error(f"Error processing team {team.id}: {e}")
                 continue
-        
+
         # Calculate average team size
         average_team_size = total_members / total_teams if total_teams > 0 else 0
-        
+
         # Get alliance count (if alliance table exists)
         total_alliances = 0
         try:
             # Try to get alliance count - this might fail if the table doesn't exist
             from src.models.alliance import Alliance
             total_alliances = db.query(Alliance).count()
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to query alliance count: {e}")
             total_alliances = 0
         
         return {
@@ -760,26 +765,28 @@ async def get_admin_stats(
             active_sessions = db.query(Player).filter(
                 Player.last_game_login >= cutoff_time
             ).count()
-        except:
-            # If session query fails, just return 0
+        except Exception as e:
+            logger.warning(f"Failed to query active sessions: {e}")
             active_sessions = 0
-        
+
         # Get new players today
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         try:
             new_players_today = db.query(Player).filter(
                 Player.created_at >= today_start
             ).count()
-        except:
+        except Exception as e:
+            logger.warning(f"Failed to query new players today: {e}")
             new_players_today = 0
-        
-        # Get new players this week  
+
+        # Get new players this week
         week_start = datetime.now(timezone.utc) - timedelta(days=7)
         try:
             new_players_week = db.query(Player).filter(
                 Player.created_at >= week_start
             ).count()
-        except:
+        except Exception as e:
+            logger.warning(f"Failed to query new players this week: {e}")
             new_players_week = 0
         
         # Ensure we commit the read transactions
@@ -806,38 +813,45 @@ async def get_admin_stats(
         # Try to get basic stats with individual error handling
         try:
             total_users = db.query(User).count()
-        except:
+        except Exception as e:
+            logger.warning(f"Fallback: failed to query user count: {e}")
             total_users = 0
-            
+
         try:
             active_players = db.query(Player).count()
-        except:
+        except Exception as e:
+            logger.warning(f"Fallback: failed to query player count: {e}")
             active_players = 0
-            
+
         try:
             total_sectors = db.query(Sector).count()
-        except:
+        except Exception as e:
+            logger.warning(f"Fallback: failed to query sector count: {e}")
             total_sectors = 0
-            
+
         try:
             total_planets = db.query(Planet).count()
-        except:
+        except Exception as e:
+            logger.warning(f"Fallback: failed to query planet count: {e}")
             total_planets = 0
-            
+
         try:
             from src.models.ship import Ship
             total_ships = db.query(Ship).count()
-        except:
+        except Exception as e:
+            logger.warning(f"Fallback: failed to query ship count: {e}")
             total_ships = 0
-            
+
         try:
             total_warp_tunnels = db.query(WarpTunnel).count()
-        except:
+        except Exception as e:
+            logger.warning(f"Fallback: failed to query warp tunnel count: {e}")
             total_warp_tunnels = 0
-            
+
         try:
             total_ports = db.query(Station).count()
-        except:
+        except Exception as e:
+            logger.warning(f"Fallback: failed to query port count: {e}")
             total_ports = 0
         
         return {
@@ -869,35 +883,41 @@ async def get_galaxy_info(
     # Get real statistics with error handling
     try:
         active_players = db.query(Player).count()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query player count for galaxy info: {e}")
         active_players = 0
-        
+
     try:
         total_sectors = db.query(Sector).count()
         discovered_sectors = db.query(Sector).filter(Sector.is_discovered == True).count()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query sector counts for galaxy info: {e}")
         total_sectors = 0
         discovered_sectors = 0
-        
+
     try:
         station_count = db.query(Station).count()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query station count for galaxy info: {e}")
         station_count = 0
 
     try:
         planet_count = db.query(Planet).count()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query planet count for galaxy info: {e}")
         planet_count = 0
 
     try:
         team_count = db.query(Team).count()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to query team count for galaxy info: {e}")
         team_count = 0
 
     # Commit any pending transactions to avoid aborted transaction state
     try:
         db.commit()
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to commit pending transactions for galaxy info: {e}")
         db.rollback()
 
     try:

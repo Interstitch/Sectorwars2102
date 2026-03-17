@@ -28,42 +28,18 @@ const StationsManager: React.FC = () => {
   const [filterClass, setFilterClass] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
-  const [totalStations, setTotalStations] = useState(0);
-  const [serverPageSize] = useState(500);
-
+  
   // Modal states
   const [selectedPort, setSelectedPort] = useState<Station | null>(null);
   const [showPortModal, setShowPortModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'add'>('view');
 
-  const fetchPorts = async (offset = 0) => {
+  const fetchPorts = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/v1/admin/stations?limit=${serverPageSize}&offset=${offset}`);
-      const newStations = response.data.stations || [];
-      const total = response.data.total || 0;
-      setTotalStations(total);
-
-      if (offset === 0) {
-        // If we got all stations in one request, great; otherwise fetch remaining
-        if (newStations.length < total) {
-          // Fetch all remaining stations
-          const allStations = [...newStations];
-          let currentOffset = serverPageSize;
-          while (currentOffset < total) {
-            const nextResponse = await api.get(`/api/v1/admin/stations?limit=${serverPageSize}&offset=${currentOffset}`);
-            const nextStations = nextResponse.data.stations || [];
-            allStations.push(...nextStations);
-            currentOffset += serverPageSize;
-          }
-          setPorts(allStations);
-        } else {
-          setPorts(newStations);
-        }
-      } else {
-        setPorts(prev => [...prev, ...newStations]);
-      }
+      const response = await api.get('/api/v1/admin/stations');
+      setPorts(response.data.stations || []);
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to fetch stations');
@@ -200,7 +176,7 @@ const StationsManager: React.FC = () => {
         </div>
 
         <div className="results-info">
-          <span>{filteredPorts.length} of {totalStations} stations</span>
+          <span>{filteredPorts.length} of {ports.length} stations</span>
         </div>
       </div>
 
@@ -411,8 +387,8 @@ const PortModal: React.FC<PortModalProps> = ({ port, mode, onClose, onSave }) =>
             <div className="form-group">
               <label>Port Class</label>
               <select
-                value={formData.port_class}
-                onChange={(e) => setFormData({ ...formData, port_class: e.target.value })}
+                value={formData.station_type}
+                onChange={(e) => setFormData({ ...formData, station_type: e.target.value })}
                 disabled={isReadOnly}
                 required
               >
@@ -565,7 +541,7 @@ const AddPortModal: React.FC<AddPortModalProps> = ({ onClose, onSave }) => {
   const [formData, setFormData] = useState({
     name: '',
     sector_id: '',
-    port_class: 'CLASS_1',
+    station_type: 'CLASS_1',
     trade_volume: 1000,
     max_capacity: 5000,
     security_level: 50,
@@ -698,8 +674,8 @@ const AddPortModal: React.FC<AddPortModalProps> = ({ onClose, onSave }) => {
             <div className="form-group">
               <label>Port Class *</label>
               <select
-                value={formData.port_class}
-                onChange={(e) => setFormData({ ...formData, port_class: e.target.value })}
+                value={formData.station_type}
+                onChange={(e) => setFormData({ ...formData, station_type: e.target.value })}
                 required
               >
                 <option value="CLASS_0">CLASS_0 - Sol System</option>

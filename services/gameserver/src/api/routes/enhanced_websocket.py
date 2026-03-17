@@ -189,8 +189,8 @@ async def enhanced_trading_websocket(
                 player_id=player_id,
                 details={"endpoint": "enhanced_trading"}
             )
-        except:
-            pass  # Don't fail on audit log error during cleanup
+        except Exception as e:
+            logger.warning(f"Failed to log WebSocket disconnect audit event: {e}")
 
 
 @router.websocket("/market-stream")
@@ -264,9 +264,9 @@ async def public_market_stream(
                 try:
                     # Non-blocking receive to check connection
                     await websocket.receive_text()
-                except:
-                    pass
-                    
+                except Exception as e:
+                    logger.warning(f"Failed to check WebSocket client heartbeat: {e}")
+
         except WebSocketDisconnect:
             logger.info(f"Public market stream disconnected from {client_ip}")
             

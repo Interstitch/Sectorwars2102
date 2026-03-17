@@ -497,9 +497,9 @@ async def get_ships_comprehensive(
                             owner = db.query(Player).join(User).filter(Player.id == ship.owner_id).first()
                             if owner and owner.user:
                                 owner_name = owner.user.username
-                except Exception:
-                    pass
-                
+                except Exception as e:
+                    logger.warning(f"Failed to resolve ship owner name for ship {ship.id}: {e}")
+
                 # Extract maintenance rating from maintenance JSONB field
                 maintenance_data = getattr(ship, 'maintenance', {}) or {}
                 maintenance_rating = maintenance_data.get('current_rating', 100.0)
