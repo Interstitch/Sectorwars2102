@@ -308,6 +308,7 @@ npx playwright test -c e2e_tests/playwright.config.ts
 | "green mode" / "feature gap" / "build this" | GREEN | No — explicit request |
 | "gold mode" / "polish" / "quality sweep" | GOLD | No — explicit request |
 | "violet mode" / "vision audit" / "align to spec" | VIOLET | No — explicit request |
+| "red mode" / "security audit" / "security sweep" | RED | No — explicit request |
 | "amber mode" / "translation quality" / "i18n sweep" | AMBER | No — explicit request |
 | "500 error" / "page won't load" / "not working" | BLUE | No — clear regression |
 | "add support for..." / "I want the game to..." | GREEN | No — clear additive |
@@ -494,20 +495,51 @@ Violet Mode is a **spec-driven audit + construction protocol** that compares the
 
 **Activation Triggers**: "violet mode" / "vision audit" / "spec compliance" / "align to spec"
 
-### Spec Documents (Source of Truth)
+### Documentation Architecture (7 Layers)
 
-All AISPEC files in `DOCS/` directory, referenced via `DOCS/README.md`. Key categories:
+The `DOCS/` directory contains ~100 files across 7 interconnected layers:
 
-| Category | AISPEC Coverage | Audit Zone |
-|----------|----------------|------------|
-| Trading & Economy | Market mechanics, commodities, pricing | GAMESERVER-SERVICES + ROUTES |
-| Combat System | Ship combat, drones, retreats, PvP | GAMESERVER-SERVICES + ROUTES |
-| Planetary Systems | Colonization, terraforming, genesis, defense | GAMESERVER-SERVICES + MODELS |
-| Player Progression | Ranking, reputation, achievements | GAMESERVER-SERVICES |
-| AI Systems | ARIA, dialogue, trading intelligence | GAMESERVER-SERVICES |
-| Regional Governance | Regions, governors, diplomacy, elections | GAMESERVER-ROUTES + ADMIN-UI |
-| Admin Interface | All 20 admin pages and their functionality | ADMIN-UI |
-| Player Interface | Game UI, navigation, trading, combat views | PLAYER-CLIENT |
+| Layer | Path | Purpose | Files |
+|-------|------|---------|-------|
+| **SPECS** | `DOCS/SPECS/*.aispec` | AI-optimized quick reference | 11 core AISPEC files |
+| **API** | `DOCS/API/v1/*.aispec` | Endpoint contracts (355/358 documented) | 8 API spec files |
+| **FEATURES** | `DOCS/FEATURES/` | Game design & business requirements | 34 feature docs |
+| **ARCHITECTURE** | `DOCS/ARCHITECTURE/data-models/` | Technical schema & data models | 26 model docs |
+| **STATUS** | `DOCS/STATUS/` | Live implementation tracking & audits | 10 status files |
+| **TOOLS** | `DOCS/_TOOLS/` | Auto-discovery & validation scripts | 3 Python scripts |
+| **README** | `DOCS/README.md` | Master index of all documentation | 1 file |
+
+### Audit Categories & Spec-to-Code Mapping
+
+Launch one subagent per category. Each reads the listed spec files + corresponding code files.
+
+| # | Category | Spec Files (Source of Truth) | Code Zone | Last Known Coverage |
+|---|----------|----------------------------|-----------|-------------------|
+| 1 | **Trading & Economy** | `SPECS/Resources.aispec`, `SPECS/GameMechanics.aispec`, `FEATURES/ECONOMY/PORT_TRADING.md`, `API/v1/trading.aispec` (31 endpoints) | `routes/trading.py`, `services/trading_service.py`, `models/station.py`, `models/market_transaction.py` | 95% |
+| 2 | **Combat System** | `SPECS/GameMechanics.aispec`, `FEATURES/GAMEPLAY/COMBAT_MECHANICS.md`, `FEATURES/GAMEPLAY/LARGE_SCALE_COMBAT.md`, `API/v1/combat.aispec` (6 endpoints) | `routes/combat.py`, `routes/player_combat.py`, `services/combat_service.py`, `models/combat_log.py` | 75% |
+| 3 | **Ships & Fleet** | `SPECS/Ships.aispec` (9 types, attack costs, equipment slots, insurance), `API/v1/fleets-drones.aispec` (29 endpoints) | `models/ship.py`, `services/ship_service.py`, `routes/fleets.py`, `routes/drones.py` | 80% |
+| 4 | **Planetary Systems** | `FEATURES/PLANETS/PLANETARY_COLONIZATION.md`, `FEATURES/PLANETS/CITADEL_SYSTEM.md`, `FEATURES/PLANETS/TERRAFORMING.md`, `FEATURES/PLANETS/PLANETARY_DEFENSE.md`, `FEATURES/GALAXY/GENESIS_DEVICES.md`, `API/v1/sectors-planets.aispec` | `models/planet.py`, `services/planetary_service.py`, `services/terraforming_service.py`, `services/genesis_service.py`, `routes/planets.py` | 60% |
+| 5 | **Player Progression** | `SPECS/Ranking.aispec` (18 ranks, medals, bonuses), `FEATURES/GAMEPLAY/RANKING_SYSTEM.md`, `FEATURES/GAMEPLAY/REPUTATION_SYSTEM.md` | `services/ranking_service.py`, `services/faction_service.py`, `models/reputation.py` | 30% |
+| 6 | **AI Systems (ARIA)** | `FEATURES/AI_SYSTEMS/ARIA.md` (477 lines), `FEATURES/AI_SYSTEMS/AI_SECURITY_SYSTEM.md`, `FEATURES/GAMEPLAY/FIRST_LOGIN.md` | `services/aria_personal_intelligence_service.py`, `services/ai_dialogue_service.py`, `services/first_login_service.py`, `models/aria_personal_intelligence.py` | 60% |
+| 7 | **Teams & Factions** | `FEATURES/GAMEPLAY/TEAM_SYSTEMS.md`, `FEATURES/GAMEPLAY/FACTION_SYSTEM.md`, `API/v1/teams.aispec` (18 endpoints), `API/v1/factions-messages.aispec` | `services/team_service.py`, `services/faction_service.py`, `routes/teams.py`, `routes/factions.py` | 80% |
+| 8 | **Galaxy & Navigation** | `FEATURES/GALAXY/GALAXY_GENERATION.md`, `FEATURES/GALAXY/WARP_GATES.md` (878 lines), `SPECS/GameConcepts.aispec` (5300 sectors) | `services/galaxy_service.py`, `services/movement_service.py`, `models/sector.py`, `models/warp_tunnel.py` | 95% |
+| 9 | **Auth & Security** | `SPECS/AuthSystem.aispec` (464 lines), `API/v1/auth.aispec` (24 endpoints) | `auth/jwt.py`, `auth/oauth.py`, `routes/auth.py`, `routes/mfa.py` | 100% |
+| 10 | **Infrastructure** | `SPECS/Architecture.aispec`, `SPECS/WebSocket.aispec` (25+ events), `SPECS/Database.aispec`, `FEATURES/INFRASTRUCTURE/MULTI_REGIONAL*.md`, `API/v1/infrastructure.aispec` | `docker-compose.yml`, `services/websocket_service.py`, `core/config.py`, `services/regional_governance_service.py` | 95% |
+| 11 | **Admin Interface** | `FEATURES/WEB_INTERFACES/ADMIN_UI.md`, `API/v1/admin.aispec` (123 endpoints) | `services/admin-ui/src/components/pages/` (20 pages) | 90% |
+| 12 | **Player Interface** | `FEATURES/WEB_INTERFACES/PLAYER_UI.md`, `FEATURES/ECONOMY/TRADEDOCK_SHIPYARD.md` | `services/player-client/src/` (components, contexts, pages) | 85% |
+
+### Known Gaps (from STATUS/ files)
+
+| STATUS File | System | Key Missing Pieces |
+|-------------|--------|-------------------|
+| `STATUS/RANKING_STATUS.md` | Ranking | 18-rank hierarchy not implemented, only 10-tier simple version exists |
+| `STATUS/CITADEL_STATUS.md` | Citadel | Entire 5-level citadel upgrade system missing |
+| `STATUS/ARIA_IMPLEMENTATION_AUDIT.md` | ARIA | Turn bonuses not applied, consciousness evolution not integrated |
+| `STATUS/SHIPS_AUDIT.md` | Ships | `attack_turn_cost` anti-griefing not enforced, equipment slots missing |
+| `STATUS/GENESIS_DEVICE_STATUS.md` | Genesis | Basic implementation exists, spec requires more complex mechanics |
+| `STATUS/TERRAFORMING_STATUS.md` | Terraforming | Service exists but habitability effects partially connected |
+| `STATUS/PLANETARY_DEFENSE_STATUS.md` | Defense | Basic levels exist, advanced systems (shield generators 1-10, orbital platforms) missing |
+| `STATUS/UNUSED_ENDPOINTS.md` | API | 19 backend endpoints awaiting frontend wiring |
 
 ### Audit Grading Rubric
 
@@ -515,20 +547,88 @@ All AISPEC files in `DOCS/` directory, referenced via `DOCS/README.md`. Key cate
 
 **Grades:** COMPLETE (≥90% coverage, ADEQUATE+ depth) · PARTIAL (40-89%) · SKELETAL (<40%) · MISSING (<10%)
 
+**Max score:** 12 auditable categories × 3 points = **36 points**
+
 ### The Convergent Audit-Build Loop
 
-**Phase 1 — AUDIT**: Launch subagents per category. Each reads AISPEC + source files, returns scorecard.
+**Phase 1 — AUDIT**: Launch subagents per category (up to 12). Each reads the listed spec files + corresponding code, returns scorecard with grade and specific gaps.
 
 **Phase 2 — BUILD** in dependency order:
 1. **MODELS** — database schema must exist first
 2. **SERVICES** — business logic depends on models
 3. **ROUTES** — API endpoints depend on services
 4. **FRONTEND** — UI depends on API
-5. **DOCS** — update AISPEC files to reflect new reality
+5. **DOCS** — update STATUS files and AISPEC files to reflect new reality
 
 **Convergence:** Max 3 passes. Score must improve each pass. Build priority: MISSING → SKELETAL → PARTIAL.
 
-**Verdict:** ALIGNED (all COMPLETE) · CONVERGING (improving) · DRIFTING (gaps remain) · MISALIGNED (major disconnect)
+**Verdict:** ALIGNED (score ≥ 32/36, all COMPLETE or PARTIAL) · CONVERGING (score ≥ 24 AND improving) · DRIFTING (score 12-23 OR any MISSING remain) · MISALIGNED (score < 12 OR stalled)
+
+---
+
+## RED MODE — Security Audit & Hardening Protocol
+
+### What Is Red Mode?
+
+Red Mode is a **security-focused audit and hardening protocol** that performs an OWASP-style review across all services, maps the attack surface, identifies vulnerabilities, and fixes them. Unlike GOLD (general quality), RED focuses exclusively on security posture.
+
+**RULE**: Red Mode is **explicit-only**. Launch **6 parallel security tracks** as subagents (read-only scan), then fix in priority order. Max 2 passes.
+
+**Activation Triggers**: "red mode" / "security audit" / "security sweep" / "pentest" / "harden"
+
+### The 6 Security Tracks
+
+Launch all 6 as subagents in parallel. **All read-only.**
+
+#### Track 1: AUTHENTICATION & AUTHORIZATION
+**Check:** JWT validation on all protected endpoints · Token expiry enforced · Refresh token rotation · OAuth state parameter validation · Admin-only endpoints verify admin role · No auth bypass paths (mock tokens, hardcoded credentials) · Password hashing uses Argon2id · Rate limiting on login (5 attempts → 15 min lockout per `AuthSystem.aispec`)
+**Spec Reference:** `SPECS/AuthSystem.aispec`, `API/v1/auth.aispec`
+
+#### Track 2: API SECURITY
+**Check:** Input validation on all endpoints (Pydantic schemas) · SQL injection prevention (parameterized queries via SQLAlchemy) · No raw SQL strings · CORS configuration restrictive · Rate limiting on sensitive endpoints · Request size limits · No sensitive data in URLs/logs · Proper HTTP status codes (401 vs 403)
+**Spec Reference:** `SPECS/GameServer.aispec`
+
+#### Track 3: DATA PROTECTION
+**Check:** No secrets in source code (API keys, passwords, JWT secrets) · Environment variables for all credentials · Database credentials not in docker-compose defaults · SSL/TLS for external connections · PII handling (player emails, IPs) · No sensitive data in console.log · Redis password configured · Backup encryption
+**Spec Reference:** `SPECS/Database.aispec`, `SPECS/Architecture.aispec`
+
+#### Track 4: WEBSOCKET SECURITY
+**Check:** JWT validation on WebSocket connect · Message authentication (HMAC signatures) · Rate limiting per connection (100 msg/s per `WebSocket.aispec`) · No message spoofing possible · Graceful handling of malformed messages · Connection limits per user · Heartbeat timeout enforcement
+**Spec Reference:** `SPECS/WebSocket.aispec`
+
+#### Track 5: GAME ECONOMY INTEGRITY
+**Check:** Credit duplication impossible · Trading price manipulation prevented · Market crash protection · Bot trading detection · Resource generation within defined bounds (`Resources.aispec` price ranges) · Turn manipulation blocked · Genesis device rate limits enforced · Drone count within ship limits
+**Spec Reference:** `SPECS/Resources.aispec`, `SPECS/Ships.aispec`, `SPECS/GameMechanics.aispec`
+
+#### Track 6: MULTI-TENANT ISOLATION
+**Check:** Player data isolation (no cross-player data leaks) · Regional data boundaries enforced · Team membership verified before access · Admin endpoints don't leak non-admin data · WebSocket messages scoped correctly (sector/team/global) · No IDOR vulnerabilities (accessing resources by guessing IDs)
+**Spec Reference:** `SPECS/Architecture.aispec`, `FEATURES/INFRASTRUCTURE/MULTI_REGIONAL*.md`
+
+### Severity Classification
+
+| Severity | Meaning | SLA |
+|----------|---------|-----|
+| CRITICAL | Active exploit possible — auth bypass, data leak, RCE | Fix immediately |
+| HIGH | Exploitable with effort — IDOR, privilege escalation, injection | Fix this session |
+| MEDIUM | Defense gap — missing rate limit, weak validation, hardcoded defaults | Fix this sprint |
+| LOW | Hygiene — verbose errors, debug endpoints, console.log with data | Fix when convenient |
+
+### Fix Priority
+
+After scan, fix in this order:
+1. **CRITICAL** — All critical findings fixed before moving on
+2. **HIGH** — All high findings fixed
+3. **MEDIUM** — Best-effort within session
+4. **LOW** — Document for future cleanup
+
+### Verdict Scale
+
+| Verdict | Criteria |
+|---------|----------|
+| HARDENED | 0 CRITICAL, 0 HIGH, ≤3 MEDIUM |
+| SECURE | 0 CRITICAL, ≤2 HIGH |
+| EXPOSED | Any CRITICAL remaining |
+| COMPROMISED | Multiple CRITICAL + active exploit paths |
 
 ---
 
