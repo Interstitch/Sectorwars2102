@@ -126,24 +126,18 @@ class Planet(Base):
     active_events = Column(JSONB, nullable=False, default=[])
     description = Column(String, nullable=True)
     
-    # Colony morale (0-100 scale, affects production and siege vulnerability)
-    morale = Column(Integer, nullable=False, default=100)
-
     # Siege information
     under_siege = Column(Boolean, nullable=False, default=False)
     siege_started_at = Column(DateTime(timezone=True), nullable=True)
     siege_attacker_id = Column(UUID(as_uuid=True), nullable=True)
-    siege_turns = Column(Integer, nullable=False, default=0)  # Consecutive turns enemies present
     
-    # Terraforming
-    terraforming_active = Column(Boolean, nullable=False, default=False)
-    terraforming_target = Column(Integer, nullable=True)  # Target habitability score
-    terraforming_start_time = Column(DateTime(timezone=True), nullable=True)
-    terraforming_progress = Column(Float, nullable=False, default=0.0)  # 0-100% progress toward target
-
     # Genesis device information
     genesis_created = Column(Boolean, nullable=False, default=False)
     genesis_device_id = Column(UUID(as_uuid=True), ForeignKey("genesis_devices.id"), nullable=True)
+    genesis_tier = Column(String(20), nullable=True)  # basic / enhanced / advanced
+    formation_status = Column(String(20), nullable=True)  # forming / complete
+    formation_started_at = Column(DateTime(timezone=True), nullable=True)
+    formation_complete_at = Column(DateTime(timezone=True), nullable=True)
     
     # Regional association
     region_id = Column(UUID(as_uuid=True), ForeignKey("regions.id"), nullable=True)
