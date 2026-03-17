@@ -18,6 +18,29 @@ from src.services.websocket_service import ConnectionManager
 logger = logging.getLogger(__name__)
 manager = ConnectionManager()
 
+# Faction rivalry configuration: paired factions have a combined reputation cap.
+# Gaining standing with one faction limits how high you can go with its rival.
+FACTION_RIVALRIES = {
+    "terran_federation": {"rival": "fringe_alliance", "max_combined": 800},
+    "fringe_alliance": {"rival": "terran_federation", "max_combined": 800},
+    "mercantile_guild": {"rival": "shadow_syndicate", "max_combined": 600},
+    "shadow_syndicate": {"rival": "mercantile_guild", "max_combined": 600},
+}
+
+# Trade price multipliers keyed by reputation thresholds (checked high-to-low).
+# Positive reputation = discount, negative = surcharge.
+TRADE_MODIFIERS = [
+    (700, 0.85),    # EXALTED: 15% discount
+    (500, 0.90),    # REVERED: 10% discount
+    (300, 0.95),    # HONORED: 5% discount
+    (100, 0.97),    # FRIENDLY: 3% discount
+    (-99, 1.00),    # NEUTRAL: no change (covers -99 to +99)
+    (-299, 1.05),   # UNFRIENDLY: 5% surcharge
+    (-499, 1.15),   # HOSTILE: 15% surcharge
+    (-699, 1.30),   # HATED: 30% surcharge
+]
+TRADE_MODIFIER_PUBLIC_ENEMY = 1.50  # Fallback for -700 and below
+
 
 class FactionService:
     """Service for managing faction-related operations."""
@@ -108,7 +131,11 @@ class FactionService:
         
         old_value = reputation.current_value
         old_level = reputation.current_level
-        
+
+        # Enforce faction rivalry cap when increasing reputation
+        if change > 0:
+            change = self._apply_rivalry_cap(player_id, faction_id, reputation.current_value, change)
+
         # Update reputation value (clamped between -800 and +800)
         reputation.current_value = max(-800, min(800, reputation.current_value + change))
         
@@ -151,6 +178,185 @@ class FactionService:
         logger.info(f"Updated reputation for player {player_id} with faction {faction_id}: {old_value} -> {reputation.current_value}")
         return reputation
     
+    # ------------------------------------------------------------------
+    # Rivalry, decay, and trade modifier helpers
+    # ------------------------------------------------------------------
+
+    def _apply_rivalry_cap(
+        self,
+        player_id: UUID,
+        faction_id: UUID,
+        current_value: int,
+        change: int
+    ) -> int:
+        """
+        Enforce faction rivalry limits on a positive reputation change.
+
+        When a faction has a defined rival, the player's combined reputation
+        with both factions cannot exceed the configured max_combined cap.
+        If necessary the change is reduced so the cap is respected.
+
+        Returns the (possibly reduced) change value.
+        """
+        # Resolve faction name for the target faction
+        faction = self.db.query(Faction).filter(Faction.id == faction_id).first()
+        if not faction:
+            return change
+
+        faction_name = faction.name.lower().replace(" ", "_")
+        rivalry = FACTION_RIVALRIES.get(faction_name)
+        if not rivalry:
+            return change
+
+        # Look up the rival faction by name pattern
+        rival_name = rivalry["rival"]
+        max_combined = rivalry["max_combined"]
+
+        rival_faction = self.db.query(Faction).filter(
+            func.lower(func.replace(Faction.name, ' ', '_')) == rival_name
+        ).first()
+        if not rival_faction:
+            return change
+
+        rival_rep = self.db.query(Reputation).filter(
+            and_(
+                Reputation.player_id == player_id,
+                Reputation.faction_id == rival_faction.id
+            )
+        ).first()
+
+        rival_value = rival_rep.current_value if rival_rep else 0
+
+        # Only cap when both reputations are positive
+        if rival_value <= 0:
+            return change
+
+        # Projected new value after the change
+        projected = current_value + change
+        if projected + rival_value > max_combined:
+            allowed = max(0, max_combined - rival_value - current_value)
+            if allowed < change:
+                logger.info(
+                    f"Rivalry between {faction_name} and {rival_name} limits reputation gain "
+                    f"for player {player_id}: requested +{change}, allowed +{allowed}"
+                )
+                return allowed
+
+        return change
+
+    async def apply_reputation_decay(self, player_id: UUID) -> List[Dict[str, Any]]:
+        """
+        Apply time-based reputation decay for a player.
+
+        Reputations above +100 or below -100 that have not been updated in
+        over 30 days decay by 1 point per inactive day, up to a maximum of
+        -50 total decay per call.  Reputations flagged with ``decay_paused``
+        are skipped.
+
+        Returns a list of dicts describing each decayed faction for caller
+        visibility / WebSocket notification.
+        """
+        reputations = self.db.query(Reputation).filter(
+            Reputation.player_id == player_id
+        ).all()
+
+        now = datetime.utcnow()
+        decay_threshold = timedelta(days=30)
+        max_decay = 50  # absolute cap on total decay applied per invocation
+        results: List[Dict[str, Any]] = []
+
+        for rep in reputations:
+            # Skip locked or paused reputations
+            if rep.decay_paused or rep.is_locked:
+                continue
+
+            # Only decay reputations outside the neutral band
+            if -100 <= rep.current_value <= 100:
+                continue
+
+            # Check inactivity window
+            last = rep.last_updated.replace(tzinfo=None) if rep.last_updated.tzinfo else rep.last_updated
+            inactive_days = (now - last).days
+            if inactive_days <= 30:
+                continue
+
+            decay_days = inactive_days - 30
+            decay_amount = min(decay_days, max_decay)
+
+            old_value = rep.current_value
+            if rep.current_value > 100:
+                # Decay toward zero but not below +100
+                rep.current_value = max(100, rep.current_value - decay_amount)
+            elif rep.current_value < -100:
+                # Decay toward zero but not above -100
+                rep.current_value = min(-100, rep.current_value + decay_amount)
+
+            if rep.current_value != old_value:
+                rep.current_level = self._calculate_reputation_level(rep.current_value)
+                rep.title = self._get_reputation_title(rep.current_level)
+                rep.trade_modifier = self._calculate_trade_modifier(rep.current_value)
+                rep.port_access_level = self._calculate_port_access_level(rep.current_value)
+                rep.combat_response = self._calculate_combat_response(rep.current_value)
+
+                # Record decay in history
+                if not rep.history:
+                    rep.history = []
+                rep.history = rep.history + [{
+                    "timestamp": now.isoformat(),
+                    "old_value": old_value,
+                    "new_value": rep.current_value,
+                    "change": rep.current_value - old_value,
+                    "reason": f"Inactivity decay ({decay_days} days idle)"
+                }]
+
+                results.append({
+                    "faction_id": str(rep.faction_id),
+                    "old_value": old_value,
+                    "new_value": rep.current_value,
+                    "decay_applied": old_value - rep.current_value if old_value > 0 else rep.current_value - old_value,
+                    "inactive_days": inactive_days
+                })
+
+                logger.info(
+                    f"Reputation decay for player {player_id}, faction {rep.faction_id}: "
+                    f"{old_value} -> {rep.current_value} ({inactive_days} days inactive)"
+                )
+
+        if results:
+            self.db.commit()
+
+        return results
+
+    async def get_trade_modifier(self, player_id: UUID, faction_id: UUID) -> float:
+        """
+        Return a price multiplier for a player at a faction-controlled port.
+
+        The multiplier is derived from the player's current reputation value
+        with the faction using the TRADE_MODIFIERS lookup table:
+
+            EXALTED  (+700+): 0.85  (15% discount)
+            REVERED  (+500) : 0.90
+            HONORED  (+300) : 0.95
+            FRIENDLY (+100) : 0.97
+            NEUTRAL         : 1.00
+            UNFRIENDLY(-100): 1.05
+            HOSTILE  (-300) : 1.15
+            HATED    (-500) : 1.30
+            PUBLIC_ENEMY(-700): 1.50
+
+        Returns 1.0 (no modifier) when no reputation record exists.
+        """
+        reputation = await self.get_player_reputation(player_id, faction_id)
+        if not reputation:
+            return 1.0
+
+        value = reputation.current_value
+        for threshold, modifier in TRADE_MODIFIERS:
+            if value >= threshold:
+                return modifier
+
+        return TRADE_MODIFIER_PUBLIC_ENEMY
+
     def _calculate_reputation_level(self, value: int) -> ReputationLevel:
         """Calculate reputation level from numeric value."""
         if value >= 700:

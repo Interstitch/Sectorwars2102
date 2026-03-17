@@ -82,19 +82,16 @@ export const CombatOverview: React.FC = () => {
 
   // WebSocket handlers
   const handleNewCombatEvent = useCallback((data: any) => {
-    console.log('New combat event received:', data);
     setCombatEvents(prev => [data, ...prev].slice(0, 100)); // Keep last 100 events
     setLastUpdate(new Date());
   }, []);
 
   const handleDisputeFiled = useCallback((data: any) => {
-    console.log('New dispute filed:', data);
     setDisputes(prev => [data, ...prev]);
     setLastUpdate(new Date());
   }, []);
 
   const handleStatsUpdate = useCallback((data: any) => {
-    console.log('Combat stats updated:', data);
     setCombatStats(data);
     setLastUpdate(new Date());
   }, []);
@@ -105,117 +102,133 @@ export const CombatOverview: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     setError(null);
-    try {
-      // Fetch combat events (using live endpoint for real-time data)
-      const eventsResponse = await api.get('/api/v1/admin/combat/live');
-      setCombatEvents(eventsResponse.data as CombatEvent[]);
-      
-      // Fetch combat statistics  
-      const statsResponse = await api.get('/api/v1/admin/combat/dashboard-summary');
-      setCombatStats(statsResponse.data as CombatStats);
-      
-      // Compute combat rankings from combat logs
-      try {
-        const logsResponse = await api.get('/api/v1/admin/combat/logs', {
-          params: { time_filter: '30d', limit: 1000 }
-        });
-        const logs = logsResponse.data as any[];
+    // Fetch all combat data concurrently - use allSettled so partial failures don't blank everything
+    const [eventsRes, statsRes, logsRes, disputesRes] = await Promise.allSettled([
+      api.get('/api/v1/admin/combat/live'),
+      api.get('/api/v1/admin/combat/dashboard-summary'),
+      api.get('/api/v1/admin/combat/logs', { params: { time_filter: '30d', limit: 1000 } }),
+      api.get('/api/v1/admin/combat/disputes')
+    ]);
 
-        // Aggregate player stats from combat logs
-        const playerStats: Record<string, {
-          playerId: string;
-          playerName: string;
-          kills: number;
-          deaths: number;
-          totalDamage: number;
-          wins: number;
-          totalFights: number;
-          faction: string;
-        }> = {};
+    // Track errors for display
+    const errors: string[] = [];
 
-        for (const log of logs) {
-          const attackerName = log.attacker?.username || 'Unknown';
-          const defenderName = log.defender?.username || 'Unknown';
-          const attackerId = log.combat_id ? `attacker-${attackerName}` : attackerName;
-          const defenderId = log.combat_id ? `defender-${defenderName}` : defenderName;
+    // Process combat events
+    if (eventsRes.status === 'fulfilled') {
+      setCombatEvents(eventsRes.value.data as CombatEvent[]);
+    } else {
+      setCombatEvents([]);
+      errors.push('Combat feed unavailable');
+    }
 
-          // Initialize attacker stats
-          if (attackerName !== 'Unknown') {
-            if (!playerStats[attackerName]) {
-              playerStats[attackerName] = {
-                playerId: attackerId,
-                playerName: attackerName,
-                kills: 0, deaths: 0, totalDamage: 0,
-                wins: 0, totalFights: 0, faction: 'Unknown'
-              };
-            }
-            playerStats[attackerName].totalFights++;
-            playerStats[attackerName].totalDamage += (log.damage_dealt?.attacker_damage || 0);
-            if (log.outcome === 'attacker_win') {
-              playerStats[attackerName].kills++;
-              playerStats[attackerName].wins++;
-            } else if (log.outcome === 'defender_win') {
-              playerStats[attackerName].deaths++;
-            }
+    // Process combat statistics
+    if (statsRes.status === 'fulfilled') {
+      setCombatStats(statsRes.value.data as CombatStats);
+    } else {
+      setCombatStats(null);
+      errors.push('Combat statistics unavailable');
+    }
+
+    // Process combat logs into rankings
+    if (logsRes.status === 'fulfilled') {
+      const logs = logsRes.value.data as any[];
+
+      // Aggregate player stats from combat logs
+      const playerStats: Record<string, {
+        playerId: string;
+        playerName: string;
+        kills: number;
+        deaths: number;
+        totalDamage: number;
+        wins: number;
+        totalFights: number;
+        faction: string;
+      }> = {};
+
+      for (const log of logs) {
+        const attackerName = log.attacker?.username || 'Unknown';
+        const defenderName = log.defender?.username || 'Unknown';
+        const attackerId = log.combat_id ? `attacker-${attackerName}` : attackerName;
+        const defenderId = log.combat_id ? `defender-${defenderName}` : defenderName;
+
+        // Initialize attacker stats
+        if (attackerName !== 'Unknown') {
+          if (!playerStats[attackerName]) {
+            playerStats[attackerName] = {
+              playerId: attackerId,
+              playerName: attackerName,
+              kills: 0, deaths: 0, totalDamage: 0,
+              wins: 0, totalFights: 0, faction: 'Unknown'
+            };
           }
-
-          // Initialize defender stats
-          if (defenderName !== 'Unknown') {
-            if (!playerStats[defenderName]) {
-              playerStats[defenderName] = {
-                playerId: defenderId,
-                playerName: defenderName,
-                kills: 0, deaths: 0, totalDamage: 0,
-                wins: 0, totalFights: 0, faction: 'Unknown'
-              };
-            }
-            playerStats[defenderName].totalFights++;
-            playerStats[defenderName].totalDamage += (log.damage_dealt?.defender_damage || 0);
-            if (log.outcome === 'defender_win') {
-              playerStats[defenderName].kills++;
-              playerStats[defenderName].wins++;
-            } else if (log.outcome === 'attacker_win') {
-              playerStats[defenderName].deaths++;
-            }
+          playerStats[attackerName].totalFights++;
+          playerStats[attackerName].totalDamage += (log.damage_dealt?.attacker_damage || 0);
+          if (log.outcome === 'attacker_win') {
+            playerStats[attackerName].kills++;
+            playerStats[attackerName].wins++;
+          } else if (log.outcome === 'defender_win') {
+            playerStats[attackerName].deaths++;
           }
         }
 
-        // Convert to rankings array sorted by kills desc
-        const computedRankings: CombatRanking[] = Object.values(playerStats)
-          .map(stats => ({
-            playerId: stats.playerId,
-            playerName: stats.playerName,
-            kills: stats.kills,
-            deaths: stats.deaths,
-            kdRatio: stats.deaths > 0 ? stats.kills / stats.deaths : stats.kills,
-            damageDealt: stats.totalDamage,
-            totalDamage: stats.totalDamage,
-            faction: stats.faction,
-            winRate: stats.totalFights > 0 ? Math.round((stats.wins / stats.totalFights) * 100) : 0
-          }))
-          .sort((a, b) => b.kills - a.kills || b.kdRatio - a.kdRatio)
-          .slice(0, 50);
-
-        setRankings(computedRankings);
-      } catch (rankingsError) {
-        console.warn('Could not load combat rankings:', rankingsError);
-        setRankings([]);
+        // Initialize defender stats
+        if (defenderName !== 'Unknown') {
+          if (!playerStats[defenderName]) {
+            playerStats[defenderName] = {
+              playerId: defenderId,
+              playerName: defenderName,
+              kills: 0, deaths: 0, totalDamage: 0,
+              wins: 0, totalFights: 0, faction: 'Unknown'
+            };
+          }
+          playerStats[defenderName].totalFights++;
+          playerStats[defenderName].totalDamage += (log.damage_dealt?.defender_damage || 0);
+          if (log.outcome === 'defender_win') {
+            playerStats[defenderName].kills++;
+            playerStats[defenderName].wins++;
+          } else if (log.outcome === 'attacker_win') {
+            playerStats[defenderName].deaths++;
+          }
+        }
       }
-      
-      // Fetch combat disputes
-      const disputesResponse = await api.get('/api/v1/admin/combat/disputes');
-      setDisputes(disputesResponse.data as CombatDispute[]);
-    } catch (error: any) {
-      console.error('Failed to load combat data:', error);
-      setError(error.response?.data?.detail || 'Failed to load combat data. Please check if the gameserver is running.');
-      // Clear data on error
-      setCombatEvents([]);
-      setCombatStats(null);
+
+      // Convert to rankings array sorted by kills desc
+      const computedRankings: CombatRanking[] = Object.values(playerStats)
+        .map(stats => ({
+          playerId: stats.playerId,
+          playerName: stats.playerName,
+          kills: stats.kills,
+          deaths: stats.deaths,
+          kdRatio: stats.deaths > 0 ? stats.kills / stats.deaths : stats.kills,
+          damageDealt: stats.totalDamage,
+          totalDamage: stats.totalDamage,
+          faction: stats.faction,
+          winRate: stats.totalFights > 0 ? Math.round((stats.wins / stats.totalFights) * 100) : 0
+        }))
+        .sort((a, b) => b.kills - a.kills || b.kdRatio - a.kdRatio)
+        .slice(0, 50);
+
+      setRankings(computedRankings);
+    } else {
       setRankings([]);
-      setDisputes([]);
-    } finally {
-      setIsLoading(false);
     }
+
+    // Process disputes
+    if (disputesRes.status === 'fulfilled') {
+      setDisputes(disputesRes.value.data as CombatDispute[]);
+    } else {
+      setDisputes([]);
+      errors.push('Combat disputes unavailable');
+    }
+
+    // Show combined error if all endpoints failed
+    if (errors.length === 4) {
+      setError('Failed to load combat data. Please check if the gameserver is running.');
+    } else if (errors.length > 0) {
+      setError(errors.join(' | '));
+    }
+
+    setIsLoading(false);
   };
 
   // Load initial data
@@ -241,15 +254,18 @@ export const CombatOverview: React.FC = () => {
     if (selectedCombatId) {
       try {
         await api.post(`/api/v1/admin/combat/${selectedCombatId}/intervene`, {
-          action: action
+          intervention_type: action === 'end' ? 'stop_combat' : action === 'restore' ? 'restore_shields' : action,
+          parameters: {
+            reason: `Admin intervention: ${action}`
+          }
         });
         setShowInterventionModal(false);
         setSelectedCombatId(null);
         // Refresh data
         await loadData();
       } catch (error: any) {
-        console.error('Failed to intervene:', error);
-        alert(error.response?.data?.detail || 'Failed to intervene in combat');
+        setError(error.response?.data?.detail || 'Failed to intervene in combat');
+        setShowInterventionModal(false);
       }
     }
   };

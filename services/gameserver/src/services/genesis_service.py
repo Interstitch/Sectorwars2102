@@ -26,7 +26,7 @@ GENESIS_FORMATION_HOURS = 48
 # Device tier definitions
 GENESIS_TIERS = {
     "basic": {
-        "cost": 10000,
+        "cost": 25000,
         "requires_ship_sacrifice": False,
         "planet_type_weights": {
             PlanetType.TERRAN: 50,
@@ -40,7 +40,7 @@ GENESIS_TIERS = {
         "size_range": (3, 6),
     },
     "enhanced": {
-        "cost": 25000,
+        "cost": 75000,
         "requires_ship_sacrifice": False,
         "planet_type_weights": {
             PlanetType.TERRAN: 60,
@@ -54,7 +54,7 @@ GENESIS_TIERS = {
         "size_range": (4, 7),
     },
     "advanced": {
-        "cost": 50000,
+        "cost": 250000,
         "requires_ship_sacrifice": True,
         "sacrifice_ship_type": ShipType.COLONY_SHIP,
         "planet_type_weights": {

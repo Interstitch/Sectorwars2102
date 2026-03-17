@@ -177,6 +177,25 @@ async def buy_resource(
         except Exception as e:
             logger.error("Failed ARIA/medal hooks for buy trade: %s", e)
 
+        # Record ARIA trade memory (best-effort, don't block trade)
+        try:
+            trade_memory = {
+                "station_name": station.name if station else "Unknown",
+                "action": "buy",
+                "commodity": trade_request.resource_type,
+                "quantity": trade_request.quantity,
+                "total_value": total_cost,
+            }
+            if not current_player.settings:
+                current_player.settings = {}
+            pending = current_player.settings.get("pending_aria_memories", [])
+            pending.append({"type": "trade", "data": trade_memory})
+            # Keep only last 10 pending memories
+            current_player.settings["pending_aria_memories"] = pending[-10:]
+            flag_modified(current_player, "settings")
+        except Exception as e:
+            logger.debug("ARIA trade memory recording skipped: %s", e)
+
         db.commit()
 
         response = {
@@ -328,6 +347,25 @@ async def sell_resource(
             medal_service.check_trading_medals(current_player.id, trade_count, current_player.credits)
         except Exception as e:
             logger.error("Failed ARIA/medal hooks for sell trade: %s", e)
+
+        # Record ARIA trade memory (best-effort, don't block trade)
+        try:
+            trade_memory = {
+                "station_name": station.name if station else "Unknown",
+                "action": "sell",
+                "commodity": trade_request.resource_type,
+                "quantity": trade_request.quantity,
+                "total_value": total_earnings,
+            }
+            if not current_player.settings:
+                current_player.settings = {}
+            pending = current_player.settings.get("pending_aria_memories", [])
+            pending.append({"type": "trade", "data": trade_memory})
+            # Keep only last 10 pending memories
+            current_player.settings["pending_aria_memories"] = pending[-10:]
+            flag_modified(current_player, "settings")
+        except Exception as e:
+            logger.debug("ARIA trade memory recording skipped: %s", e)
 
         db.commit()
 

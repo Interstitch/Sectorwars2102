@@ -252,7 +252,6 @@ const EconomyDashboard: React.FC = () => {
 
   // WebSocket handlers
   const handleMarketUpdate = useCallback((data: any) => {
-    console.log('Market update received:', data);
     setMarketData(prevData => {
       // Update or add the new market data
       const index = prevData.findIndex(item => 
@@ -271,12 +270,10 @@ const EconomyDashboard: React.FC = () => {
   }, []);
 
   const handlePriceChange = useCallback((data: any) => {
-    console.log('Price change alert:', data);
     setPriceAlerts(prev => [data, ...prev].slice(0, 10)); // Keep last 10 alerts
   }, []);
 
   const handleIntervention = useCallback((data: any) => {
-    console.log('Market intervention:', data);
     // Refresh market data after intervention
     fetchEconomicData();
   }, []);
@@ -295,51 +292,72 @@ const EconomyDashboard: React.FC = () => {
 
 
   const fetchEconomicData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Fetch market data
-      const marketResponse = await api.get('/api/v1/admin/economy/market-data', {
+    setLoading(true);
+    setError(null);
+
+    // Fetch all economy data concurrently - use allSettled so partial failures don't blank everything
+    const [marketRes, metricsRes, alertsRes] = await Promise.allSettled([
+      api.get('/api/v1/admin/economy/market-data', {
         params: {
           commodity_filter: selectedCommodity !== 'all' ? selectedCommodity : undefined,
           limit: 100
         }
-      });
-      setMarketData(marketResponse.data as MarketData[]);
-      
-      // Fetch economic metrics
-      const metricsResponse = await api.get('/api/v1/admin/economy/metrics', {
+      }),
+      api.get('/api/v1/admin/economy/metrics', {
         params: { time_period: '24h' }
-      });
-      setMetrics(metricsResponse.data as EconomicMetrics);
-      
-      // Fetch price alerts
-      const alertsResponse = await api.get('/api/v1/admin/economy/price-alerts');
-      setPriceAlerts(Array.isArray(alertsResponse.data) ? alertsResponse.data : []);
-      
-    } catch (error: any) {
-      console.error('Failed to fetch economic data:', error);
-      setError(error.response?.data?.detail || 'Failed to load economic data. Please check if the gameserver is running.');
-      // Clear data on error
+      }),
+      api.get('/api/v1/admin/economy/price-alerts')
+    ]);
+
+    // Track errors for display
+    const errors: string[] = [];
+
+    // Process market data
+    if (marketRes.status === 'fulfilled') {
+      setMarketData(marketRes.value.data as MarketData[]);
+    } else {
       setMarketData([]);
-      setMetrics(null);
-      setPriceAlerts([]);
-    } finally {
-      setLoading(false);
+      errors.push('Market data unavailable');
     }
+
+    // Process economic metrics
+    if (metricsRes.status === 'fulfilled') {
+      setMetrics(metricsRes.value.data as EconomicMetrics);
+    } else {
+      setMetrics(null);
+      errors.push('Economic metrics unavailable');
+    }
+
+    // Process price alerts
+    if (alertsRes.status === 'fulfilled') {
+      setPriceAlerts(Array.isArray(alertsRes.value.data) ? alertsRes.value.data : []);
+    } else {
+      setPriceAlerts([]);
+    }
+
+    // Show combined error if all endpoints failed
+    if (errors.length === 2) {
+      setError('Failed to load economic data. Please check if the gameserver is running.');
+    } else if (errors.length > 0) {
+      setError(errors.join(' | '));
+    }
+
+    setLoading(false);
   };
 
   const handlePriceIntervention = async (stationId: string, commodity: string, newPrice: number) => {
     try {
       await api.post('/api/v1/admin/economy/intervention', {
-        station_id: stationId,
-        commodity,
-        new_price: newPrice
+        intervention_type: 'price_adjustment',
+        parameters: {
+          station_id: stationId,
+          resource_type: commodity,
+          new_price: newPrice
+        }
       });
       fetchEconomicData();
-    } catch (error) {
-      console.error('Price intervention failed:', error);
+    } catch (error: any) {
+      setError(error.response?.data?.detail || 'Price intervention failed.');
     }
   };
 

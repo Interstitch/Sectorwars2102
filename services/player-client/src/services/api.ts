@@ -493,6 +493,12 @@ export const rankingAPI = {
 
   getReputation: () =>
     apiRequest('/api/v1/ranking/reputation'),
+
+  getPublicLeaderboard: (category: string = 'rank_points', limit: number = 20) =>
+    apiRequest(`/api/v1/ranking/leaderboard/public?category=${category}&limit=${limit}`),
+
+  getProgress: () =>
+    apiRequest('/api/v1/ranking/progress'),
 };
 
 // Bounty APIs
