@@ -372,7 +372,7 @@ export const shipAPI = {
   getMaintenanceStatus: (shipId: string) =>
     apiRequest(`/api/ships/${shipId}/maintenance`),
 
-  scheduleMainenance: (shipId: string, components: any[]) =>
+  scheduleMaintenance: (shipId: string, components: any[]) =>
     apiRequest(`/api/ships/${shipId}/maintenance`, {
       method: 'POST',
       body: JSON.stringify({ components })

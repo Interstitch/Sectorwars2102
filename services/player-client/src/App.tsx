@@ -44,18 +44,14 @@ function MainApp() {
   const [authMode, setAuthMode] = useState<'none' | 'login' | 'register'>('none');
   const navigate = useNavigate();
 
-  // Live galaxy view state
-  const [activePlayers, setActivePlayers] = useState<number>(847);
-  const [activeSectors, setActiveSectors] = useState<number>(1247);
-  const [recentTrades, setRecentTrades] = useState<number>(15042);
-  const [aiConfidence, setAiConfidence] = useState<number>(98.7);
-  const [liveFeed, setLiveFeed] = useState<Array<{id: number, type: string, message: string, time: string}>>([
-    { id: 1, type: 'trade', message: 'Player [Voidwalker] traded 450 Organics at Sector 847', time: '2s ago' },
-    { id: 2, type: 'ai', message: 'ARIA detected profitable route: Sectors 102→847→1001', time: '5s ago' },
-    { id: 3, type: 'combat', message: 'Combat initiated in Sector 445 - 2 ships engaged', time: '8s ago' },
-    { id: 4, type: 'join', message: 'Player [Starforge] joined Universe Alpha', time: '12s ago' },
-    { id: 5, type: 'trade', message: 'Player [Nebula_Trader] sold 1200 Equipment at Sector 203', time: '18s ago' },
-  ]);
+  // Static game feature highlights
+  const gameFeatures = [
+    { id: 1, type: 'trade', message: 'Real-time multiplayer trading across 5,000+ sectors' },
+    { id: 2, type: 'ai', message: 'AI-powered companion ARIA learns your trading style' },
+    { id: 3, type: 'warp', message: 'Create planets with Genesis Devices' },
+    { id: 4, type: 'combat', message: 'Fleet combat with formation bonuses' },
+    { id: 5, type: 'join', message: '18-rank military progression system' },
+  ];
   
   // Simple API URL - use env var or default to localhost:8080
   const getApiUrl = () => {
@@ -90,7 +86,7 @@ function MainApp() {
           window.history.replaceState({}, document.title, url.href);
         }
       } catch (error) {
-        console.error('Error parsing auth parameter:', error);
+        console.error('Auth parameter parsing failed');
       }
     }
     
@@ -108,7 +104,7 @@ function MainApp() {
           setApiEnvironment(response.data.environment || 'production');
         }
       } catch (error) {
-        console.error('API status check failed:', error);
+        console.error('API status check failed');
         setApiStatus('Offline');
         setApiMessage('Unable to connect to game server');
         setApiEnvironment('');
@@ -140,7 +136,7 @@ function MainApp() {
             sessionStorage.removeItem('oauth_redirect_completed');
           }
         } catch (error) {
-          console.error('Failed to verify authentication:', error);
+          console.error('Failed to verify authentication');
           // Clear tokens on auth failure
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
@@ -156,90 +152,6 @@ function MainApp() {
     return () => clearInterval(intervalId)
   }, [])
 
-  // Animate live feed and stats
-  useEffect(() => {
-    const feedTemplates = [
-      { type: 'trade', templates: [
-        'Player [${name}] traded ${amount} ${commodity} at Sector ${sector}',
-        'Player [${name}] sold ${amount} ${commodity} for ${credits} credits',
-        'Bulk trade completed: ${amount} ${commodity} → Sector ${sector}',
-      ]},
-      { type: 'ai', templates: [
-        'ARIA detected profitable route: Sectors ${s1}→${s2}→${s3}',
-        'AI Alert: Market anomaly detected in Sector ${sector}',
-        'ARIA recommends: Buy ${commodity} at current prices',
-        'Neural network confidence: ${percent}% on ${commodity} surge',
-      ]},
-      { type: 'combat', templates: [
-        'Combat initiated in Sector ${sector} - ${count} ships engaged',
-        'Player [${name}] destroyed hostile ship in Sector ${sector}',
-        'Pirate attack reported in Sector ${sector}',
-      ]},
-      { type: 'join', templates: [
-        'Player [${name}] joined Universe Alpha',
-        'New commander [${name}] entered the galaxy',
-        'Captain [${name}] initialized neural link',
-      ]},
-      { type: 'warp', templates: [
-        'Warp tunnel activated: Sector ${s1} ↔ Sector ${s2}',
-        'Player [${name}] built warp gate at Sector ${sector}',
-        'New region discovered via quantum tunnel',
-      ]},
-    ];
-
-    const names = ['Voidwalker', 'Starforge', 'Nebula_Trader', 'QuantumPilot', 'CosmicHawk', 'Nexus', 'Eclipse', 'Photon', 'Astral'];
-    const commodities = ['Organics', 'Equipment', 'Ore', 'Fuel', 'Luxuries', 'Weapons'];
-
-    const generateFeedEntry = () => {
-      const category = feedTemplates[Math.floor(Math.random() * feedTemplates.length)];
-      const template = category.templates[Math.floor(Math.random() * category.templates.length)];
-
-      const message = template
-        .replace('${name}', names[Math.floor(Math.random() * names.length)])
-        .replace('${amount}', String(Math.floor(Math.random() * 2000) + 100))
-        .replace('${commodity}', commodities[Math.floor(Math.random() * commodities.length)])
-        .replace('${sector}', String(Math.floor(Math.random() * 1500) + 1))
-        .replace('${s1}', String(Math.floor(Math.random() * 500) + 1))
-        .replace('${s2}', String(Math.floor(Math.random() * 500) + 500))
-        .replace('${s3}', String(Math.floor(Math.random() * 500) + 1000))
-        .replace('${credits}', String(Math.floor(Math.random() * 50000) + 5000))
-        .replace('${count}', String(Math.floor(Math.random() * 5) + 2))
-        .replace('${percent}', String(Math.floor(Math.random() * 20) + 75));
-
-      return {
-        id: Date.now(),
-        type: category.type,
-        message,
-        time: 'now'
-      };
-    };
-
-    // Update live feed every 3 seconds
-    const feedInterval = setInterval(() => {
-      setLiveFeed(prev => {
-        const newEntry = generateFeedEntry();
-        const updated = [newEntry, ...prev.slice(0, 9)]; // Keep only 10 entries
-        return updated;
-      });
-    }, 3000);
-
-    // Update stats slightly every 5 seconds
-    const statsInterval = setInterval(() => {
-      setActivePlayers(prev => prev + Math.floor(Math.random() * 5) - 2);
-      setActiveSectors(prev => prev + Math.floor(Math.random() * 3) - 1);
-      setRecentTrades(prev => prev + Math.floor(Math.random() * 100) + 50);
-      setAiConfidence(prev => {
-        const change = (Math.random() - 0.5) * 2;
-        const newVal = prev + change;
-        return Math.max(85, Math.min(99.9, newVal));
-      });
-    }, 5000);
-
-    return () => {
-      clearInterval(feedInterval);
-      clearInterval(statsInterval);
-    };
-  }, []);
 
   const handleLoginClick = () => {
     setAuthMode('login');
@@ -318,16 +230,15 @@ function MainApp() {
               {/* Scanline effect overlay */}
               <div className="scanline-overlay"></div>
 
-              {/* Left Terminal: Live Feed */}
+              {/* Left Terminal: Game Features */}
               <div className="terminal-feed">
                 <div className="terminal-header">
-                  <span className="terminal-title">⚡ LIVE FEED</span>
+                  <span className="terminal-title">⚡ GAME FEATURES</span>
                   <span className="terminal-blink">█</span>
                 </div>
                 <div className="terminal-content">
-                  {liveFeed.map((entry) => (
+                  {gameFeatures.map((entry) => (
                     <div key={entry.id} className={`feed-entry feed-${entry.type}`}>
-                      <span className="feed-time">[{entry.time}]</span>
                       <span className="feed-message">{entry.message}</span>
                     </div>
                   ))}
@@ -389,7 +300,7 @@ function MainApp() {
                 {/* Title Overlay */}
                 <div className="hero-title-overlay">
                   <h1 className="hero-title-live">
-                    <span className="title-line-1">COMMAND THE</span>
+                    <span className="title-line-1">COMMAND THE </span>
                     <span className="title-line-2">GALAXY</span>
                   </h1>
                   <p className="hero-subtitle-live">Neural Link Initialized • AI Consciousness Active</p>
@@ -401,31 +312,28 @@ function MainApp() {
                 </div>
               </div>
 
-              {/* Right Terminal: System Status */}
+              {/* Right Terminal: Galaxy Stats */}
               <div className="terminal-status">
                 <div className="terminal-header">
-                  <span className="terminal-title">📊 SYSTEM STATUS</span>
+                  <span className="terminal-title">📊 GALAXY STATS</span>
                   <span className="terminal-blink">█</span>
                 </div>
                 <div className="terminal-content">
                   <div className="status-line">
-                    <span className="status-label">ACTIVE PLAYERS:</span>
-                    <span className="status-value status-cyan">{activePlayers.toLocaleString()}</span>
+                    <span className="status-label">SECTORS:</span>
+                    <span className="status-value status-cyan">5,300+</span>
                   </div>
                   <div className="status-line">
-                    <span className="status-label">ACTIVE SECTORS:</span>
-                    <span className="status-value status-purple">{activeSectors.toLocaleString()}</span>
+                    <span className="status-label">SHIP TYPES:</span>
+                    <span className="status-value status-purple">9</span>
                   </div>
                   <div className="status-line">
-                    <span className="status-label">TRADES (24H):</span>
-                    <span className="status-value status-green">{recentTrades.toLocaleString()}</span>
+                    <span className="status-label">MILITARY RANKS:</span>
+                    <span className="status-value status-green">18</span>
                   </div>
-                  <div className="status-line status-ai">
-                    <span className="status-label">AI CONFIDENCE:</span>
-                    <span className="status-value status-amber">{aiConfidence.toFixed(1)}%</span>
-                  </div>
-                  <div className="status-bar">
-                    <div className="status-bar-fill" style={{width: `${aiConfidence}%`}}></div>
+                  <div className="status-line">
+                    <span className="status-label">PORT CLASSES:</span>
+                    <span className="status-value status-amber">12</span>
                   </div>
                   <div className="status-line status-divider">
                     <span className="status-label">UNIVERSE STATUS:</span>
@@ -637,29 +545,29 @@ function MainApp() {
 
               <div className="updates-grid">
                 <div className="update-card">
-                  <div className="update-icon">🤖</div>
+                  <div className="update-icon">🎖️</div>
                   <div className="update-content">
-                    <span className="update-date">December 2024</span>
-                    <h3>AI Trading Assistant ARIA Launched</h3>
-                    <p>Revolutionary AI companion now helps players with personalized market analysis and trading recommendations.</p>
+                    <span className="update-date">March 2026</span>
+                    <h3>18-Rank Military Progression System</h3>
+                    <p>Full ranking overhaul with 18 military ranks, medals, combat bonuses, and rank-gated ship access.</p>
                   </div>
                 </div>
 
                 <div className="update-card">
-                  <div className="update-icon">🌀</div>
+                  <div className="update-icon">⚔️</div>
                   <div className="update-content">
-                    <span className="update-date">November 2024</span>
-                    <h3>Quantum Warp Tunnels Live</h3>
-                    <p>Players can now build warp gates to access hidden sectors and expand the universe.</p>
+                    <span className="update-date">February 2026</span>
+                    <h3>Fleet Combat with Formation Bonuses</h3>
+                    <p>Strategic fleet combat system with formation tactics, drone deployment, and large-scale battle support.</p>
                   </div>
                 </div>
 
                 <div className="update-card">
-                  <div className="update-icon">🌍</div>
+                  <div className="update-icon">🤝</div>
                   <div className="update-content">
-                    <span className="update-date">October 2024</span>
-                    <h3>Genesis Devices Released</h3>
-                    <p>Create new planets in empty space using advanced terraforming technology.</p>
+                    <span className="update-date">January 2026</span>
+                    <h3>Reputation & Faction System</h3>
+                    <p>Dynamic reputation tracking across factions with trade bonuses, faction-specific perks, and diplomacy mechanics.</p>
                   </div>
                 </div>
               </div>

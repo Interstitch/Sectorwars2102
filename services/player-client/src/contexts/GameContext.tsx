@@ -366,14 +366,14 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       }
     } catch (error: any) {
-      console.error('GameContext: Error loading ships:', error);
-      
-      // Don't set a general error here as ships might not exist for new players
+      console.warn('Failed to load ships:', error);
+
+      // Don't set global error - ships failing shouldn't block the game
+      // But do handle auth errors specifically since they affect everything
       if (error.response?.status === 401) {
         setError('Authentication required. Please log in again.');
-      } else {
-        setShips([]);
       }
+      setShips([]);
     } finally {
       setIsLoading(false);
     }

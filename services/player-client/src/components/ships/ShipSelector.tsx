@@ -5,7 +5,7 @@
  * Displays ship stats, location, and condition for easy comparison.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../../contexts/GameContext';
 import { Ship } from '../../types/game';
 import { InputValidator, SecurityAudit } from '../../utils/security/inputValidation';
@@ -17,117 +17,29 @@ interface ShipSelectorProps {
   onClose?: () => void;
 }
 
-// Mock ship data for testing (remove when real data is available)
-const mockShips: Ship[] = [
-  {
-    id: 'ship-1',
-    name: 'Stellar Wanderer',
-    type: 'LIGHT_FREIGHTER',
-    sector_id: 42,
-    cargo: {
-      ore: 50,
-      organics: 30,
-      equipment: 20,
-      luxury_goods: 10,
-      medical_supplies: 5,
-      technology: 0
-    },
-    cargo_capacity: 500,
-    current_speed: 5,
-    base_speed: 5,
-    combat: {
-      attack_rating: 5,
-      defense_rating: 6,
-      attack_drones: 10,
-      defense_drones: 5,
-      max_drones: 50,
-      shields: { current: 80, max: 100, recharge_rate: 2 },
-      evasion: 15,
-      scanner_range: 3
-    },
-    maintenance: {
-      current_rating: 85,
-      last_service_date: new Date(Date.now() - 86400000 * 5),
-      degradation_rate: 1.5,
-      failure_status: 'NONE',
-      critical_systems: [],
-      performance_impacts: {
-        speed_modifier: 0,
-        combat_modifier: 0,
-        fuel_modifier: 0,
-        failure_chance: 0
-      },
-      next_warning_threshold: 75
-    },
-    is_flagship: true,
-    purchase_value: 50000,
-    current_value: 45000
-  },
-  {
-    id: 'ship-2',
-    name: 'Cargo Runner',
-    type: 'CARGO_HAULER',
-    sector_id: 12,
-    cargo: {
-      ore: 200,
-      organics: 150,
-      equipment: 100,
-      luxury_goods: 50,
-      medical_supplies: 0,
-      technology: 0
-    },
-    cargo_capacity: 1500,
-    current_speed: 3,
-    base_speed: 3,
-    combat: {
-      attack_rating: 2,
-      defense_rating: 8,
-      attack_drones: 0,
-      defense_drones: 20,
-      max_drones: 80,
-      shields: { current: 120, max: 150, recharge_rate: 1 },
-      evasion: 5,
-      scanner_range: 2
-    },
-    maintenance: {
-      current_rating: 45,
-      last_service_date: new Date(Date.now() - 86400000 * 20),
-      degradation_rate: 2.0,
-      failure_status: 'MINOR',
-      critical_systems: [
-        { name: 'Navigation', status: 60, affects: 'speed' }
-      ],
-      performance_impacts: {
-        speed_modifier: -15,
-        combat_modifier: -10,
-        fuel_modifier: 20,
-        failure_chance: 5
-      },
-      next_warning_threshold: 25
-    },
-    is_flagship: false,
-    purchase_value: 120000,
-    current_value: 95000
-  }
-];
-
 export const ShipSelector: React.FC<ShipSelectorProps> = ({
   onShipSelected,
   onClose
 }) => {
   const { ships: gameShips, currentShip, setCurrentShip, playerState } = useGame();
-  
-  // Use mock ships if no real ships available (for testing)
-  const ships = gameShips.length > 0 ? gameShips : mockShips;
-  
+
   const [selectedShipId, setSelectedShipId] = useState<string | null>(currentShip?.id || null);
   const [isChangingShip, setIsChangingShip] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'docked'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'type' | 'location' | 'condition'>('name');
-  
+
+  // Show empty state if player has no ships
+  if (gameShips.length === 0) {
+    return (
+      <div className="ship-selector-empty">
+        <p>No ships available. Visit a shipyard to purchase your first ship.</p>
+      </div>
+    );
+  }
+
   // Filter ships based on selected filter
-  const filteredShips = ships.filter(ship => {
+  const filteredShips = gameShips.filter(ship => {
     if (filter === 'all') return true;
     if (filter === 'active') return ship.id === currentShip?.id;
     if (filter === 'docked') return ship.id !== currentShip?.id;
@@ -177,7 +89,7 @@ export const ShipSelector: React.FC<ShipSelectorProps> = ({
     try {
       await setCurrentShip(selectedShipId);
       
-      const selectedShip = ships.find(s => s.id === selectedShipId);
+      const selectedShip = gameShips.find(s => s.id === selectedShipId);
       if (selectedShip && onShipSelected) {
         onShipSelected(selectedShip);
       }
@@ -206,7 +118,7 @@ export const ShipSelector: React.FC<ShipSelectorProps> = ({
     if (typeof cargo.used === 'number') {
       used = cargo.used;
     } else {
-      // Fallback for mock data or alternative cargo formats: sum commodity values
+      // Fallback for alternative cargo formats: sum commodity values
       // but exclude metadata keys like "capacity", "used", "contents"
       const metadataKeys = ['capacity', 'used', 'contents'];
       used = Object.entries(cargo)
@@ -248,7 +160,7 @@ export const ShipSelector: React.FC<ShipSelectorProps> = ({
             className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
             onClick={() => setFilter('all')}
           >
-            All Ships ({ships.length})
+            All Ships ({gameShips.length})
           </button>
           <button
             className={`filter-btn ${filter === 'active' ? 'active' : ''}`}
