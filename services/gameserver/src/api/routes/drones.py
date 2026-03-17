@@ -2,10 +2,6 @@
 Drone management API endpoints.
 
 Provides endpoints for creating, deploying, and managing drones.
-
-IMPORTANT: Named routes (e.g., /deployed, /deployments, /combat/history)
-must be defined BEFORE parameterized routes (e.g., /{drone_id}) to avoid
-FastAPI treating the named path segment as a path parameter.
 """
 
 from uuid import UUID, uuid4
@@ -82,7 +78,7 @@ class DroneResponse(BaseModel):
     abilities: Optional[str]
     created_at: datetime
     destroyed_at: Optional[datetime]
-
+    
     class Config:
         from_attributes = True
 
@@ -101,7 +97,7 @@ class DroneDeploymentResponse(BaseModel):
     enemies_destroyed: int
     resources_collected: int
     damage_prevented: int
-
+    
     class Config:
         from_attributes = True
 
@@ -119,15 +115,10 @@ class DroneCombatResponse(BaseModel):
     attacker_damage_dealt: int
     defender_damage_dealt: int
     combat_log: Optional[str]
-
+    
     class Config:
         from_attributes = True
 
-
-# =============================================================================
-# Collection-level endpoints (no path parameters)
-# These MUST be defined before /{drone_id} to prevent route conflicts
-# =============================================================================
 
 @router.post("/", response_model=DroneResponse)
 async def create_drone(
@@ -137,7 +128,7 @@ async def create_drone(
 ):
     """Create a new drone for the current player."""
     service = DroneService(db)
-
+    
     try:
         drone = await service.create_drone(
             player_id=current_player.id,
@@ -232,195 +223,6 @@ async def get_drone_types():
     }
 
 
-@router.get("/deployed")
-async def get_deployed_drones_contract(
-    current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_async_session)
-):
-    """Get all deployed drones (API contract version)."""
-    service = DroneService(db)
-    deployments = await service.get_drone_deployments(
-        player_id=current_player.id,
-        active_only=True
-    )
-
-    # Transform to API contract format
-    result = []
-    for deployment in deployments:
-        result.append({
-            "deploymentId": str(deployment.id),
-            "droneId": str(deployment.drone_id),
-            "sectorId": str(deployment.sector_id),
-            "deployedAt": deployment.deployed_at.isoformat(),
-            "droneType": deployment.drone.drone_type if deployment.drone else "unknown",
-            "health": deployment.drone.health if deployment.drone else 0,
-            "maxHealth": deployment.drone.max_health if deployment.drone else 0
-        })
-
-    return {"deployments": result}
-
-
-@router.get("/deployments", response_model=List[DroneDeploymentResponse])
-async def get_my_deployments(
-    active_only: bool = True,
-    current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_async_session)
-):
-    """Get all drone deployments for the current player."""
-    service = DroneService(db)
-    deployments = await service.get_drone_deployments(
-        player_id=current_player.id,
-        active_only=active_only
-    )
-    return deployments
-
-
-@router.post("/deploy")
-async def deploy_drones_contract(
-    request: DeployDronesRequest,
-    current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_async_session)
-):
-    """Deploy multiple drones to a sector (API contract version)."""
-    try:
-        sector_id = UUID(request.sectorId)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid sector ID format"
-        )
-
-    # Get player's available drones
-    service = DroneService(db)
-    available_drones = await service.get_player_drones(
-        player_id=current_player.id,
-        include_destroyed=False
-    )
-
-    # Filter for drones not currently deployed
-    undeployed_drones = [d for d in available_drones if d.status != DroneStatus.DEPLOYED.value]
-
-    if len(undeployed_drones) < request.droneCount:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Not enough available drones. Have {len(undeployed_drones)}, requested {request.droneCount}"
-        )
-
-    # Deploy the requested number of drones
-    deployed_count = 0
-    deployment_id = str(uuid4())  # Create a single deployment ID for this batch
-
-    for i in range(min(request.droneCount, len(undeployed_drones))):
-        drone = undeployed_drones[i]
-        try:
-            await service.deploy_drone(
-                drone_id=drone.id,
-                sector_id=sector_id,
-                deployment_type="defense"
-            )
-            deployed_count += 1
-        except Exception:
-            # Continue deploying others even if one fails
-            pass
-
-    return {
-        "deploymentId": deployment_id,
-        "dronesDeployed": deployed_count
-    }
-
-
-@router.post("/combat/initiate", response_model=DroneCombatResponse)
-async def initiate_combat(
-    request: InitiateCombatRequest,
-    current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_async_session)
-):
-    """Initiate combat between drones."""
-    # Verify attacker ownership
-    attacker = await db.get(Drone, request.attacker_drone_id)
-    if not attacker or attacker.player_id != current_player.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Attacker drone not found or not owned by you"
-        )
-
-    service = DroneService(db)
-
-    try:
-        combat = await service.initiate_combat(
-            attacker_id=request.attacker_drone_id,
-            defender_id=request.defender_drone_id,
-            sector_id=request.sector_id
-        )
-        return combat
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-
-
-@router.get("/combat/history", response_model=List[DroneCombatResponse])
-async def get_combat_history(
-    drone_id: Optional[UUID] = None,
-    sector_id: Optional[UUID] = None,
-    limit: int = 10,
-    current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_async_session)
-):
-    """Get combat history for drones or sectors."""
-    # If drone_id is provided, verify ownership
-    if drone_id:
-        drone = await db.get(Drone, drone_id)
-        if not drone or drone.player_id != current_player.id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Drone not found or not owned by you"
-            )
-
-    service = DroneService(db)
-    combats = await service.get_combat_history(
-        drone_id=drone_id,
-        sector_id=sector_id,
-        limit=limit
-    )
-    return combats
-
-
-@router.get("/sector/{sector_id}", response_model=List[DroneResponse])
-async def get_sector_drones(
-    sector_id: UUID,
-    db: AsyncSession = Depends(get_async_session)
-):
-    """Get all active drones in a sector."""
-    service = DroneService(db)
-    drones = await service.get_sector_drones(sector_id)
-    return drones
-
-
-@router.get("/team/{team_id}", response_model=List[DroneResponse])
-async def get_team_drones(
-    team_id: UUID,
-    include_destroyed: bool = False,
-    current_player: Player = Depends(get_current_player),
-    db: AsyncSession = Depends(get_async_session)
-):
-    """Get all drones assigned to a team."""
-    # TODO: Verify player is member of the team
-
-    service = DroneService(db)
-    drones = await service.get_team_drones(
-        team_id=team_id,
-        include_destroyed=include_destroyed
-    )
-    return drones
-
-
-# =============================================================================
-# Parameterized routes - /{drone_id} and sub-routes
-# These MUST come after all named routes above
-# =============================================================================
-
 @router.get("/{drone_id}", response_model=DroneResponse)
 async def get_drone(
     drone_id: UUID,
@@ -429,20 +231,20 @@ async def get_drone(
 ):
     """Get a specific drone by ID."""
     drone = await db.get(Drone, drone_id)
-
+    
     if not drone:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Drone not found"
         )
-
+        
     # Check ownership
     if drone.player_id != current_player.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't own this drone"
         )
-
+        
     return drone
 
 
@@ -461,9 +263,9 @@ async def deploy_drone(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Drone not found or not owned by you"
         )
-
+        
     service = DroneService(db)
-
+    
     try:
         deployment = await service.deploy_drone(
             drone_id=drone_id,
@@ -493,16 +295,16 @@ async def recall_drone(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Drone not found or not owned by you"
         )
-
+        
     service = DroneService(db)
     deployment = await service.recall_drone(drone_id)
-
+    
     if not deployment:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Drone is not deployed"
         )
-
+        
     return {"message": "Drone recalled successfully"}
 
 
@@ -521,9 +323,9 @@ async def repair_drone(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Drone not found or not owned by you"
         )
-
+        
     service = DroneService(db)
-
+    
     try:
         drone = await service.repair_drone(drone_id, request.repair_amount)
         return drone
@@ -548,9 +350,9 @@ async def upgrade_drone(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Drone not found or not owned by you"
         )
-
+        
     service = DroneService(db)
-
+    
     try:
         drone = await service.upgrade_drone(drone_id)
         return drone
@@ -559,6 +361,197 @@ async def upgrade_drone(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+
+@router.post("/combat/initiate", response_model=DroneCombatResponse)
+async def initiate_combat(
+    request: InitiateCombatRequest,
+    current_player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Initiate combat between drones."""
+    # Verify attacker ownership
+    attacker = await db.get(Drone, request.attacker_drone_id)
+    if not attacker or attacker.player_id != current_player.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Attacker drone not found or not owned by you"
+        )
+        
+    service = DroneService(db)
+    
+    try:
+        combat = await service.initiate_combat(
+            attacker_id=request.attacker_drone_id,
+            defender_id=request.defender_drone_id,
+            sector_id=request.sector_id
+        )
+        return combat
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.get("/deployments", response_model=List[DroneDeploymentResponse])
+async def get_my_deployments(
+    active_only: bool = True,
+    current_player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Get all drone deployments for the current player."""
+    service = DroneService(db)
+    deployments = await service.get_drone_deployments(
+        player_id=current_player.id,
+        active_only=active_only
+    )
+    return deployments
+
+
+@router.get("/sector/{sector_id}", response_model=List[DroneResponse])
+async def get_sector_drones(
+    sector_id: UUID,
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Get all active drones in a sector."""
+    service = DroneService(db)
+    drones = await service.get_sector_drones(sector_id)
+    return drones
+
+
+@router.get("/combat/history", response_model=List[DroneCombatResponse])
+async def get_combat_history(
+    drone_id: Optional[UUID] = None,
+    sector_id: Optional[UUID] = None,
+    limit: int = 10,
+    current_player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Get combat history for drones or sectors."""
+    # If drone_id is provided, verify ownership
+    if drone_id:
+        drone = await db.get(Drone, drone_id)
+        if not drone or drone.player_id != current_player.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Drone not found or not owned by you"
+            )
+    
+    service = DroneService(db)
+    combats = await service.get_combat_history(
+        drone_id=drone_id,
+        sector_id=sector_id,
+        limit=limit
+    )
+    return combats
+
+
+@router.get("/team/{team_id}", response_model=List[DroneResponse])
+async def get_team_drones(
+    team_id: UUID,
+    include_destroyed: bool = False,
+    current_player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Get all drones assigned to a team."""
+    # Verify player is a member of the team
+    if current_player.team_id != team_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not a member of this team"
+        )
+
+    service = DroneService(db)
+    drones = await service.get_team_drones(
+        team_id=team_id,
+        include_destroyed=include_destroyed
+    )
+    return drones
+
+
+# API Contract compliant endpoints for Player UI
+
+@router.post("/deploy")
+async def deploy_drones_contract(
+    request: DeployDronesRequest,
+    current_player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Deploy multiple drones to a sector (API contract version)."""
+    try:
+        sector_id = UUID(request.sectorId)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid sector ID format"
+        )
+    
+    # Get player's available drones
+    service = DroneService(db)
+    available_drones = await service.get_player_drones(
+        player_id=current_player.id,
+        include_destroyed=False
+    )
+    
+    # Filter for drones not currently deployed
+    undeployed_drones = [d for d in available_drones if d.status != DroneStatus.DEPLOYED.value]
+    
+    if len(undeployed_drones) < request.droneCount:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Not enough available drones. Have {len(undeployed_drones)}, requested {request.droneCount}"
+        )
+    
+    # Deploy the requested number of drones
+    deployed_count = 0
+    deployment_id = str(uuid4())  # Create a single deployment ID for this batch
+    
+    for i in range(min(request.droneCount, len(undeployed_drones))):
+        drone = undeployed_drones[i]
+        try:
+            await service.deploy_drone(
+                drone_id=drone.id,
+                sector_id=sector_id,
+                deployment_type="defense"
+            )
+            deployed_count += 1
+        except Exception:
+            # Continue deploying others even if one fails
+            pass
+    
+    return {
+        "deploymentId": deployment_id,
+        "dronesDeployed": deployed_count
+    }
+
+
+@router.get("/deployed")
+async def get_deployed_drones_contract(
+    current_player: Player = Depends(get_current_player),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Get all deployed drones (API contract version)."""
+    service = DroneService(db)
+    deployments = await service.get_drone_deployments(
+        player_id=current_player.id,
+        active_only=True
+    )
+    
+    # Transform to API contract format
+    result = []
+    for deployment in deployments:
+        result.append({
+            "deploymentId": str(deployment.id),
+            "droneId": str(deployment.drone_id),
+            "sectorId": str(deployment.sector_id),
+            "deployedAt": deployment.deployed_at.isoformat(),
+            "droneType": deployment.drone.drone_type if deployment.drone else "unknown",
+            "health": deployment.drone.health if deployment.drone else 0,
+            "maxHealth": deployment.drone.max_health if deployment.drone else 0
+        })
+    
+    return {"deployments": result}
 
 
 @router.delete("/{deploymentId}/recall")
@@ -575,7 +568,7 @@ async def recall_drones_contract(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid deployment ID format"
         )
-
+    
     # Get the deployment
     deployment = await db.get(DroneDeployment, deployment_id)
     if not deployment:
@@ -583,15 +576,15 @@ async def recall_drones_contract(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Deployment not found"
         )
-
+    
     # Verify ownership
     if deployment.player_id != current_player.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't own this deployment"
         )
-
+    
     service = DroneService(db)
     await service.recall_drone(deployment.drone_id)
-
+    
     return {"dronesRecalled": 1}
