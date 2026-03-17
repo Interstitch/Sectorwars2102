@@ -694,6 +694,19 @@ class PlanetaryService:
         defense_level = planet.defense_level or 0
         damage_reduction = defense_level * DEFENSE_DAMAGE_REDUCTION_PER_LEVEL
 
+        # Calculate habitability effects
+        habitability_effects = self.get_habitability_effects(planet)
+
+        # Build terraforming details if active
+        terraforming_details = None
+        if planet.terraforming_active:
+            terraforming_details = {
+                "active": True,
+                "target": planet.terraforming_target,
+                "progress": round(planet.terraforming_progress or 0.0, 2),
+                "startedAt": planet.terraforming_start_time.isoformat() if planet.terraforming_start_time else None
+            }
+
         return {
             "id": str(planet.id),
             "name": planet.name,
@@ -701,7 +714,14 @@ class PlanetaryService:
             "sectorName": sector.name if sector else "Unknown",
             "planetType": planet.planet_type or "terran",
             "colonists": planet.colonists,
-            "maxColonists": planet.max_colonists,
+            "maxColonists": habitability_effects["effectiveMaxColonists"],
+            "baseMaxColonists": habitability_effects["baseMaxColonists"],
+            "habitability": {
+                "score": planet.habitability_score,
+                "effectiveMaxColonists": habitability_effects["effectiveMaxColonists"],
+                "growthMultiplier": habitability_effects["growthMultiplier"],
+                "moraleBonus": habitability_effects["moraleBonus"]
+            },
             "morale": planet.morale,
             "productionRates": production_rates,
             "allocations": {
@@ -719,13 +739,14 @@ class PlanetaryService:
                 "maxDefenseLevel": DEFENSE_MAX_LEVEL,
                 "damageReduction": f"{int(damage_reduction * 100)}%"
             },
+            "terraforming": terraforming_details,
             "underSiege": planet.under_siege,
             "siegeDetails": siege_details,
             "isVulnerable": planet.morale <= 0
         }
         
     def _calculate_production_rates(self, planet: Planet) -> Dict[str, float]:
-        """Calculate production rates based on allocations, buildings, and siege state."""
+        """Calculate production rates based on allocations, buildings, habitability, and siege state."""
         base_rate = 10  # Base production per colonist per day
 
         # Get building levels
@@ -738,8 +759,10 @@ class PlanetaryService:
         organics_rate = (planet.organics_allocation or 0) * base_rate * (1 + farm_level * 0.1)
         equipment_rate = (planet.equipment_allocation or 0) * base_rate * (1 + factory_level * 0.1)
 
-        # Colonist growth rate (1% per day base)
-        colonist_rate = planet.colonists * 0.01
+        # Colonist growth rate (1% per day base), scaled by habitability
+        habitability = max(planet.habitability_score or 0, 1)
+        habitability_multiplier = habitability / 100.0
+        colonist_rate = planet.colonists * 0.01 * habitability_multiplier
 
         # Apply specialization bonuses
         if planet.specialization:
@@ -766,6 +789,38 @@ class PlanetaryService:
             "organics": round(organics_rate, 2),
             "equipment": round(equipment_rate, 2),
             "colonists": round(colonist_rate, 2)
+        }
+
+    def get_habitability_effects(self, planet: Planet) -> Dict[str, Any]:
+        """
+        Calculate the effects of habitability on a planet's capacity and morale.
+
+        Effects:
+        - Max population capacity: base_capacity * (habitability / 100)
+        - Population growth rate: multiplied by (habitability / 100)
+        - Colony morale bonus: +1% per 10 habitability points above 50
+        """
+        habitability = max(planet.habitability_score or 0, 0)
+        habitability_ratio = habitability / 100.0
+
+        # Max population capacity scaled by habitability
+        base_max_colonists = planet.max_colonists or 10000
+        effective_max_colonists = int(base_max_colonists * habitability_ratio)
+
+        # Population growth multiplier
+        growth_multiplier = habitability_ratio
+
+        # Morale bonus: +1% per 10 habitability points above 50
+        morale_bonus = 0
+        if habitability > 50:
+            morale_bonus = int((habitability - 50) / 10)
+
+        return {
+            "habitabilityScore": habitability,
+            "effectiveMaxColonists": effective_max_colonists,
+            "baseMaxColonists": base_max_colonists,
+            "growthMultiplier": round(growth_multiplier, 2),
+            "moraleBonus": morale_bonus
         }
         
     def _get_buildings_data(self, planet: Planet) -> List[Dict[str, Any]]:

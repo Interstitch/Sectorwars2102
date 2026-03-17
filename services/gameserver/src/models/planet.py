@@ -135,6 +135,12 @@ class Planet(Base):
     siege_attacker_id = Column(UUID(as_uuid=True), nullable=True)
     siege_turns = Column(Integer, nullable=False, default=0)  # Consecutive turns enemies present
     
+    # Terraforming
+    terraforming_active = Column(Boolean, nullable=False, default=False)
+    terraforming_target = Column(Integer, nullable=True)  # Target habitability score
+    terraforming_start_time = Column(DateTime(timezone=True), nullable=True)
+    terraforming_progress = Column(Float, nullable=False, default=0.0)  # 0-100% progress toward target
+
     # Genesis device information
     genesis_created = Column(Boolean, nullable=False, default=False)
     genesis_device_id = Column(UUID(as_uuid=True), ForeignKey("genesis_devices.id"), nullable=True)

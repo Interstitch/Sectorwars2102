@@ -2,7 +2,7 @@
 Planetary management API endpoints.
 
 Handles planet colonization, resource allocation, building construction,
-defenses, sieges, and landing/departing operations.
+defenses, sieges, terraforming, and landing/departing operations.
 """
 
 from typing import List, Optional
@@ -17,6 +17,7 @@ from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.models.planet import Planet, PlanetStatus
 from src.services.planetary_service import PlanetaryService
+from src.services.terraforming_service import TerraformingService
 
 router = APIRouter(prefix="/planets", tags=["planets"])
 
@@ -115,6 +116,11 @@ class RenameResponse(BaseModel):
     planet_id: str
     old_name: str
     new_name: str
+
+
+class TerraformStartRequest(BaseModel):
+    """Terraforming start request."""
+    targetHabitability: Optional[int] = Field(None, ge=1, le=100)
 
 
 # Planet Landing/Departure Endpoints
@@ -657,6 +663,114 @@ async def upgrade_defense(
 
     try:
         result = service.upgrade_defense(
+            planet_id=planet_id,
+            player_id=player.id
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Terraforming Endpoints
+
+@router.post("/{planetId}/terraform")
+async def start_terraforming(
+    planetId: str,
+    request: TerraformStartRequest = None,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """
+    Start terraforming a planet to increase its habitability.
+
+    Costs 5000 credits. Planet habitability must be below 90%.
+    Only one active terraforming project per planet is allowed.
+    Higher population on the planet increases terraforming speed.
+
+    Requirements:
+    - Player must own the planet
+    - Planet habitability must be below 90%
+    - No active terraforming project on the planet
+    - Player must have at least 5000 credits
+    """
+    try:
+        planet_id = UUID(planetId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    service = TerraformingService(db)
+
+    target = None
+    if request and request.targetHabitability is not None:
+        target = request.targetHabitability
+
+    try:
+        result = service.start_terraforming(
+            planet_id=planet_id,
+            player_id=player.id,
+            target_habitability=target
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{planetId}/terraform")
+async def get_terraforming_status(
+    planetId: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """
+    Get the current terraforming status of a planet.
+
+    Returns progress, estimated time remaining, and population bonuses.
+
+    Requirements:
+    - Player must own the planet
+    """
+    try:
+        planet_id = UUID(planetId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    service = TerraformingService(db)
+
+    try:
+        result = service.get_terraforming_status(
+            planet_id=planet_id,
+            player_id=player.id
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/{planetId}/terraform")
+async def cancel_terraforming(
+    planetId: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """
+    Cancel an active terraforming project.
+
+    The player receives a 50% refund of the original 5000 credit cost
+    (2500 credits returned).
+
+    Requirements:
+    - Player must own the planet
+    - Planet must have an active terraforming project
+    """
+    try:
+        planet_id = UUID(planetId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    service = TerraformingService(db)
+
+    try:
+        result = service.cancel_terraforming(
             planet_id=planet_id,
             player_id=player.id
         )
