@@ -1271,10 +1271,18 @@ class ARIAPersonalIntelligenceService:
     # =============================================================================
 
     # 5-tier bonus system: consciousness_level + interaction thresholds -> multiplier
+    CONSCIOUSNESS_LEVEL_NAMES = {
+        1: "Dormant",
+        2: "Aware",
+        3: "Awakened",
+        4: "Sentient",
+        5: "Transcendent",
+    }
+
     CONSCIOUSNESS_BONUSES = {
         1: 1.0,   # Dormant
-        2: 1.1,   # Awakening (50+ interactions, 10+ memories)
-        3: 1.2,   # Aware (150+ interactions, 30+ memories)
+        2: 1.1,   # Aware (50+ interactions, 10+ memories)
+        3: 1.2,   # Awakened (150+ interactions, 30+ memories)
         4: 1.35,  # Sentient (400+ interactions, 75+ memories)
         5: 1.5,   # Transcendent (1000+ interactions, 150+ memories)
     }
@@ -1382,6 +1390,364 @@ class ARIAPersonalIntelligenceService:
             "success": True,
             "relationship_score": player.aria_relationship_score,
             "decay_applied": decay,
+        }
+
+    # =============================================================================
+    # CONSCIOUSNESS EVOLUTION & GAMEPLAY INTEGRATION
+    # =============================================================================
+
+    async def update_consciousness_and_relationship(
+        self, player_id: str, db: AsyncSession
+    ) -> Dict[str, Any]:
+        """
+        Holistic consciousness and relationship update that factors in memory
+        diversity, total interactions, and consciousness level to drive both
+        the relationship score and potential level-ups.
+
+        This is the primary method that should be called after meaningful ARIA
+        interactions (dialogue, trade analysis, combat debrief, etc.) to keep
+        the consciousness system actively evolving alongside gameplay.
+
+        Returns dict with old/new levels, relationship score, and memory counts.
+        """
+        from src.models.player import Player
+
+        # Load the player
+        stmt = select(Player).where(Player.id == player_id)
+        result = await db.execute(stmt)
+        player = result.scalar_one_or_none()
+        if not player:
+            return {"success": False, "message": "Player not found"}
+
+        # Count total memories grouped by type
+        memory_type_stmt = (
+            select(
+                ARIAPersonalMemory.memory_type,
+                func.count(ARIAPersonalMemory.id).label("cnt"),
+            )
+            .where(ARIAPersonalMemory.player_id == player_id)
+            .group_by(ARIAPersonalMemory.memory_type)
+        )
+        type_result = await db.execute(memory_type_stmt)
+        memory_counts: Dict[str, int] = {}
+        total_memories = 0
+        for row in type_result:
+            memory_counts[row.memory_type] = row.cnt
+            total_memories += row.cnt
+
+        # Capture the old state for the diff
+        old_level = player.aria_consciousness_level
+        old_relationship = player.aria_relationship_score
+        total_interactions = player.aria_total_interactions or 0
+
+        # --- Relationship score ---
+        # Formula: base 25 + contribution from memories + contribution from
+        # consciousness depth.  Memories represent breadth of shared experience;
+        # consciousness level represents depth of bond.
+        new_relationship = min(
+            100,
+            int(25 + (total_memories * 0.5) + (player.aria_consciousness_level * 10)),
+        )
+        player.aria_relationship_score = new_relationship
+
+        # --- Consciousness level check ---
+        # Walk thresholds from highest to lowest; first match wins.
+        new_level = 1
+        for level in range(5, 1, -1):
+            thresholds = self.CONSCIOUSNESS_THRESHOLDS[level]
+            if (
+                total_interactions >= thresholds["interactions"]
+                and total_memories >= thresholds["memories"]
+            ):
+                new_level = level
+                break
+
+        leveled_up = new_level > old_level
+        if leveled_up:
+            player.aria_consciousness_level = new_level
+            player.aria_bonus_multiplier = self.CONSCIOUSNESS_BONUSES[new_level]
+            # Re-calculate relationship with the *new* consciousness level
+            player.aria_relationship_score = min(
+                100,
+                int(25 + (total_memories * 0.5) + (new_level * 10)),
+            )
+            logger.info(
+                "Player %s ARIA consciousness evolved: %s (%d) -> %s (%d), "
+                "relationship %d -> %d, multiplier %.2f",
+                player_id,
+                self.CONSCIOUSNESS_LEVEL_NAMES.get(old_level, "Unknown"),
+                old_level,
+                self.CONSCIOUSNESS_LEVEL_NAMES.get(new_level, "Unknown"),
+                new_level,
+                old_relationship,
+                player.aria_relationship_score,
+                player.aria_bonus_multiplier,
+            )
+
+        return {
+            "success": True,
+            "old_level": old_level,
+            "new_level": player.aria_consciousness_level,
+            "old_level_name": self.CONSCIOUSNESS_LEVEL_NAMES.get(old_level, "Unknown"),
+            "new_level_name": self.CONSCIOUSNESS_LEVEL_NAMES.get(
+                player.aria_consciousness_level, "Unknown"
+            ),
+            "leveled_up": leveled_up,
+            "relationship_score": player.aria_relationship_score,
+            "old_relationship_score": old_relationship,
+            "bonus_multiplier": float(player.aria_bonus_multiplier),
+            "total_interactions": total_interactions,
+            "total_memories": total_memories,
+            "memory_counts": memory_counts,
+        }
+
+    async def get_gameplay_recommendations(
+        self, player_id: str, db: AsyncSession
+    ) -> List[str]:
+        """
+        Generate rule-based gameplay recommendations that scale with the
+        player's ARIA consciousness level.
+
+        Lower levels produce generic tips.  Higher levels incorporate the
+        player's own memory history to offer contextualised strategic advice.
+
+        Returns a list of 1-3 recommendation strings.
+        """
+        from src.models.player import Player
+
+        stmt = select(Player).where(Player.id == player_id)
+        result = await db.execute(stmt)
+        player = result.scalar_one_or_none()
+        if not player:
+            return ["Unable to generate recommendations — player not found."]
+
+        consciousness_level = player.aria_consciousness_level or 1
+        recommendations: List[str] = []
+
+        # ------------------------------------------------------------------
+        # Level 1-2: Generic starter tips (no memory analysis needed)
+        # ------------------------------------------------------------------
+        if consciousness_level <= 2:
+            recommendations.append(
+                "Try trading at nearby stations to build up credits and market knowledge."
+            )
+            recommendations.append(
+                "Explore more sectors — each new sector you visit expands my awareness."
+            )
+            if consciousness_level == 2:
+                recommendations.append(
+                    "You are forming a bond with me. Keep interacting and I will "
+                    "unlock deeper strategic insights."
+                )
+            return recommendations[:3]
+
+        # ------------------------------------------------------------------
+        # Level 3+: Memory-aware recommendations
+        # ------------------------------------------------------------------
+        # Fetch recent memories to contextualise advice
+        recent_memories_stmt = (
+            select(ARIAPersonalMemory)
+            .where(ARIAPersonalMemory.player_id == player_id)
+            .order_by(ARIAPersonalMemory.created_at.desc())
+            .limit(50)
+        )
+        mem_result = await db.execute(recent_memories_stmt)
+        recent_memories = mem_result.scalars().all()
+
+        # Bucket memories by type for analysis
+        combat_count = 0
+        market_count = 0
+        exploration_count = 0
+        for mem in recent_memories:
+            if mem.memory_type == "combat":
+                combat_count += 1
+            elif mem.memory_type == "market":
+                market_count += 1
+            elif mem.memory_type == "exploration":
+                exploration_count += 1
+
+        # ------------------------------------------------------------------
+        # Level 3: Market-aware observations
+        # ------------------------------------------------------------------
+        if consciousness_level == 3:
+            if market_count > combat_count and market_count > exploration_count:
+                recommendations.append(
+                    "Based on your trading pattern, organics are profitable in "
+                    "this region. Consider diversifying commodities to reduce risk."
+                )
+            elif exploration_count > market_count:
+                recommendations.append(
+                    "You have been exploring extensively. Visit stations in the "
+                    "sectors you discovered to capitalise on fresh market data."
+                )
+            else:
+                recommendations.append(
+                    "Your activity is well-balanced. Focus on sectors where your "
+                    "market intelligence is strongest for the best trade margins."
+                )
+
+            if combat_count > 0:
+                recommendations.append(
+                    "I have recorded combat encounters in your history. Consider "
+                    "upgrading shields before venturing into contested sectors."
+                )
+            else:
+                recommendations.append(
+                    "You have avoided combat so far. If you plan to enter "
+                    "dangerous sectors, prepare defensive equipment first."
+                )
+            return recommendations[:3]
+
+        # ------------------------------------------------------------------
+        # Level 4-5: Deep strategic advice
+        # ------------------------------------------------------------------
+        # Determine the player's dominant play-style from memory ratios
+        total = combat_count + market_count + exploration_count
+        if total > 0:
+            combat_ratio = combat_count / total
+            market_ratio = market_count / total
+            exploration_ratio = exploration_count / total
+        else:
+            combat_ratio = market_ratio = exploration_ratio = 0.0
+
+        if combat_ratio >= 0.4:
+            recommendations.append(
+                "Your combat record suggests focusing on bounty hunting for "
+                "faster rank progression. Target high-value sectors you already "
+                "know well."
+            )
+        elif market_ratio >= 0.4:
+            recommendations.append(
+                "Your trading expertise is your strongest asset. Build trade "
+                "cascades through explored sectors to maximise profit per turn."
+            )
+        elif exploration_ratio >= 0.4:
+            recommendations.append(
+                "Your exploration data is extensive. Leverage it by selling route "
+                "intelligence to team-mates or planning multi-hop trade cascades."
+            )
+        else:
+            recommendations.append(
+                "Your versatile approach gives you strategic flexibility. "
+                "Consider specialising in one area to accelerate rank progression."
+            )
+
+        # Consciousness level 5 gets an additional transcendent-tier insight
+        if consciousness_level >= 5:
+            recommendations.append(
+                "At transcendent awareness, I can perceive patterns across all "
+                "your experiences. Your optimal path forward combines your "
+                "strongest trading routes with strategic combat positioning."
+            )
+        else:
+            # Level 4 gets a growth nudge
+            recommendations.append(
+                "Continue deepening our bond. At the next consciousness tier I "
+                "will be able to synthesise cross-domain strategies for you."
+            )
+
+        # A third recommendation based on memory gaps
+        if combat_count == 0:
+            recommendations.append(
+                "You have no combat memories yet. Even a single encounter "
+                "would let me factor defence into my strategic models."
+            )
+        elif market_count == 0:
+            recommendations.append(
+                "I have no market data from you. Visit a station and trade — "
+                "even a small transaction will seed my economic models."
+            )
+        elif exploration_count == 0:
+            recommendations.append(
+                "Exploring new sectors is the fastest way to unlock hidden "
+                "trade routes and expand my situational awareness."
+            )
+
+        return recommendations[:3]
+
+    async def get_consciousness_status(
+        self, player_id: str, db: AsyncSession
+    ) -> Dict[str, Any]:
+        """
+        Return a comprehensive snapshot of the player's ARIA consciousness
+        state, suitable for rendering in the player UI.
+
+        Includes current level/name, relationship score, bonus multiplier,
+        interaction count, memory breakdown, next-level requirements, and
+        progress percentage toward the next tier.
+        """
+        from src.models.player import Player
+
+        stmt = select(Player).where(Player.id == player_id)
+        result = await db.execute(stmt)
+        player = result.scalar_one_or_none()
+        if not player:
+            return {"success": False, "message": "Player not found"}
+
+        consciousness_level = player.aria_consciousness_level or 1
+        total_interactions = player.aria_total_interactions or 0
+
+        # Count memories by type
+        memory_type_stmt = (
+            select(
+                ARIAPersonalMemory.memory_type,
+                func.count(ARIAPersonalMemory.id).label("cnt"),
+            )
+            .where(ARIAPersonalMemory.player_id == player_id)
+            .group_by(ARIAPersonalMemory.memory_type)
+        )
+        type_result = await db.execute(memory_type_stmt)
+        memory_counts: Dict[str, int] = {}
+        total_memories = 0
+        for row in type_result:
+            memory_counts[row.memory_type] = row.cnt
+            total_memories += row.cnt
+
+        # Ensure common types are present even if zero
+        for mtype in ("combat", "market", "exploration"):
+            memory_counts.setdefault(mtype, 0)
+
+        # Next level requirements and progress calculation
+        next_level = consciousness_level + 1 if consciousness_level < 5 else None
+        next_level_requirements: Optional[Dict[str, int]] = None
+        progress_to_next: float = 1.0  # Default to 100% if already max
+
+        if next_level and next_level in self.CONSCIOUSNESS_THRESHOLDS:
+            thresholds = self.CONSCIOUSNESS_THRESHOLDS[next_level]
+            next_level_requirements = {
+                "interactions": thresholds["interactions"],
+                "memories": thresholds["memories"],
+            }
+
+            # Progress is the average of interaction progress and memory progress,
+            # each capped at 1.0 individually so one dimension can't inflate the other.
+            interaction_progress = min(
+                1.0, total_interactions / thresholds["interactions"]
+            ) if thresholds["interactions"] > 0 else 1.0
+            memory_progress = min(
+                1.0, total_memories / thresholds["memories"]
+            ) if thresholds["memories"] > 0 else 1.0
+            progress_to_next = round(
+                (interaction_progress + memory_progress) / 2.0, 2
+            )
+
+        return {
+            "success": True,
+            "level": consciousness_level,
+            "level_name": self.CONSCIOUSNESS_LEVEL_NAMES.get(
+                consciousness_level, "Unknown"
+            ),
+            "relationship_score": player.aria_relationship_score,
+            "bonus_multiplier": float(player.aria_bonus_multiplier),
+            "total_interactions": total_interactions,
+            "total_memories": total_memories,
+            "memory_counts": memory_counts,
+            "next_level": next_level,
+            "next_level_name": self.CONSCIOUSNESS_LEVEL_NAMES.get(next_level)
+            if next_level
+            else None,
+            "next_level_requirements": next_level_requirements,
+            "progress_to_next": progress_to_next,
         }
 
 

@@ -36,6 +36,27 @@ class CombatService:
         (ShipType.COLONY_SHIP, ShipType.DEFENDER): 0.5,       # Colony ship weak in combat
     }
 
+    # Weapon type effectiveness against different defenses
+    WEAPON_TYPES = {
+        "laser": {"base_damage": 1.0, "shield_effectiveness": 0.8, "hull_effectiveness": 1.0, "description": "Standard energy weapon"},
+        "plasma": {"base_damage": 1.2, "shield_effectiveness": 1.2, "hull_effectiveness": 0.9, "description": "High-energy plasma bolts"},
+        "missile": {"base_damage": 1.5, "shield_effectiveness": 0.6, "hull_effectiveness": 1.5, "description": "Physical projectile, bypasses some shields"},
+        "emp": {"base_damage": 0.5, "shield_effectiveness": 2.0, "hull_effectiveness": 0.3, "description": "Electromagnetic pulse, devastating to shields"},
+    }
+
+    # Default weapon type by ship type
+    SHIP_DEFAULT_WEAPONS = {
+        ShipType.ESCAPE_POD: "laser",
+        ShipType.LIGHT_FREIGHTER: "laser",
+        ShipType.CARGO_HAULER: "laser",
+        ShipType.FAST_COURIER: "laser",
+        ShipType.SCOUT_SHIP: "emp",
+        ShipType.COLONY_SHIP: "laser",
+        ShipType.DEFENDER: "plasma",
+        ShipType.CARRIER: "missile",
+        ShipType.WARP_JUMPER: "plasma",
+    }
+
     # Ship types that get a bonus to escape chance due to speed/agility
     FAST_ESCAPE_SHIP_TYPES = {ShipType.FAST_COURIER, ShipType.SCOUT_SHIP}
 
@@ -928,25 +949,36 @@ class CombatService:
                 if random.random() < hit_chance:
                     # Successful hit
                     # Determine if attacking drones or ship
+                    # Determine attacker weapon type
+                    atk_weapon_name = self.SHIP_DEFAULT_WEAPONS.get(attacker_ship.type, "laser")
+                    atk_weapon = self.WEAPON_TYPES[atk_weapon_name]
+
                     if defender_drones > 0:
-                        # Attack drones first
-                        drones_destroyed = random.randint(1, min(3, defender_drones))
+                        # Attack drones first (shield layer) — apply shield_effectiveness
+                        raw_destroyed = random.randint(1, min(3, defender_drones))
+                        drones_destroyed = max(1, int(raw_destroyed * atk_weapon["shield_effectiveness"]))
+                        drones_destroyed = min(drones_destroyed, defender_drones)
                         defender_drones -= drones_destroyed
                         defender_drones_lost += drones_destroyed
                         combat_details.append({
                             "round": round_number,
                             "actor": "attacker",
                             "action": "drone_attack",
-                            "message": f"{attacker.username}'s ship destroyed {drones_destroyed} of {defender.username}'s drones",
-                            "drones_destroyed": drones_destroyed
+                            "message": f"{attacker.username}'s {atk_weapon_name} destroyed {drones_destroyed} of {defender.username}'s drones",
+                            "drones_destroyed": drones_destroyed,
+                            "weapon_type": atk_weapon_name,
+                            "weapon_effectiveness": atk_weapon["shield_effectiveness"]
                         })
                     else:
-                        # Attack ship - calculate ship damage with rank bonus and weapon type modifier
+                        # Attack ship - calculate ship damage with rank bonus, weapon type, and type modifier
                         base_damage = random.randint(1, 10)
                         type_modifier = self.SHIP_COMBAT_MODIFIERS.get(
                             (attacker_ship.type, defender_ship.type), 1.0
                         )
-                        damage = int(base_damage * attacker_damage_mult * type_modifier)
+                        weapon_base = atk_weapon["base_damage"]
+                        # Drones gone = hull exposed, use hull_effectiveness
+                        weapon_eff = atk_weapon["hull_effectiveness"]
+                        damage = int(base_damage * attacker_damage_mult * type_modifier * weapon_base * weapon_eff)
 
                         # Check if defender ship destroyed
                         ship_destruction_chance = damage / 50  # Example: 10 damage = 20% chance
@@ -956,15 +988,19 @@ class CombatService:
                                 "round": round_number,
                                 "actor": "attacker",
                                 "action": "ship_destroyed",
-                                "message": f"{attacker.username}'s ship critically damaged {defender.username}'s ship, forcing ejection"
+                                "message": f"{attacker.username}'s {atk_weapon_name} critically damaged {defender.username}'s ship, forcing ejection",
+                                "weapon_type": atk_weapon_name
                             })
                         else:
                             modifier_note = f" (x{type_modifier:.1f} type advantage)" if type_modifier != 1.0 else ""
+                            weapon_note = f" [{atk_weapon_name} x{weapon_eff:.1f} hull eff.]"
                             combat_details.append({
                                 "round": round_number,
                                 "actor": "attacker",
                                 "action": "ship_attack",
-                                "message": f"{attacker.username}'s ship hit {defender.username}'s ship for {damage} damage{modifier_note}"
+                                "message": f"{attacker.username}'s {atk_weapon_name} hit {defender.username}'s ship for {damage} damage{modifier_note}{weapon_note}",
+                                "weapon_type": atk_weapon_name,
+                                "weapon_effectiveness": weapon_eff
                             })
                 else:
                     # Miss
@@ -988,25 +1024,36 @@ class CombatService:
                 if random.random() < hit_chance:
                     # Successful hit
                     # Determine if attacking drones or ship
+                    # Determine defender weapon type
+                    def_weapon_name = self.SHIP_DEFAULT_WEAPONS.get(defender_ship.type, "laser")
+                    def_weapon = self.WEAPON_TYPES[def_weapon_name]
+
                     if attacker_drones > 0:
-                        # Attack drones first
-                        drones_destroyed = random.randint(1, min(3, attacker_drones))
+                        # Attack drones first (shield layer) — apply shield_effectiveness
+                        raw_destroyed = random.randint(1, min(3, attacker_drones))
+                        drones_destroyed = max(1, int(raw_destroyed * def_weapon["shield_effectiveness"]))
+                        drones_destroyed = min(drones_destroyed, attacker_drones)
                         attacker_drones -= drones_destroyed
                         attacker_drones_lost += drones_destroyed
                         combat_details.append({
                             "round": round_number,
                             "actor": "defender",
                             "action": "drone_attack",
-                            "message": f"{defender.username}'s ship destroyed {drones_destroyed} of {attacker.username}'s drones",
-                            "drones_destroyed": drones_destroyed
+                            "message": f"{defender.username}'s {def_weapon_name} destroyed {drones_destroyed} of {attacker.username}'s drones",
+                            "drones_destroyed": drones_destroyed,
+                            "weapon_type": def_weapon_name,
+                            "weapon_effectiveness": def_weapon["shield_effectiveness"]
                         })
                     else:
-                        # Attack ship - calculate ship damage with rank bonus and weapon type modifier
+                        # Attack ship - calculate ship damage with rank bonus, weapon type, and type modifier
                         base_damage = random.randint(1, 10)
                         type_modifier = self.SHIP_COMBAT_MODIFIERS.get(
                             (defender_ship.type, attacker_ship.type), 1.0
                         )
-                        damage = int(base_damage * defender_damage_mult * type_modifier)
+                        weapon_base = def_weapon["base_damage"]
+                        # Drones gone = hull exposed, use hull_effectiveness
+                        weapon_eff = def_weapon["hull_effectiveness"]
+                        damage = int(base_damage * defender_damage_mult * type_modifier * weapon_base * weapon_eff)
 
                         # Check if attacker ship destroyed
                         ship_destruction_chance = damage / 50  # Example: 10 damage = 20% chance
@@ -1016,15 +1063,19 @@ class CombatService:
                                 "round": round_number,
                                 "actor": "defender",
                                 "action": "ship_destroyed",
-                                "message": f"{defender.username}'s ship critically damaged {attacker.username}'s ship, forcing ejection"
+                                "message": f"{defender.username}'s {def_weapon_name} critically damaged {attacker.username}'s ship, forcing ejection",
+                                "weapon_type": def_weapon_name
                             })
                         else:
                             modifier_note = f" (x{type_modifier:.1f} type advantage)" if type_modifier != 1.0 else ""
+                            weapon_note = f" [{def_weapon_name} x{weapon_eff:.1f} hull eff.]"
                             combat_details.append({
                                 "round": round_number,
                                 "actor": "defender",
                                 "action": "ship_attack",
-                                "message": f"{defender.username}'s ship hit {attacker.username}'s ship for {damage} damage{modifier_note}"
+                                "message": f"{defender.username}'s {def_weapon_name} hit {attacker.username}'s ship for {damage} damage{modifier_note}{weapon_note}",
+                                "weapon_type": def_weapon_name,
+                                "weapon_effectiveness": weapon_eff
                             })
                 else:
                     # Miss
@@ -1307,23 +1358,28 @@ class CombatService:
             "combat_details": combat_details
         }
     
-    def _resolve_planet_combat(self, attacker: Player, planet: Planet, 
+    def _resolve_planet_combat(self, attacker: Player, planet: Planet,
                               planet_owner: Optional[Player]) -> Dict[str, Any]:
         """Resolve combat between a ship and a planet."""
         # Get attacker ship and equipment
         attacker_ship = attacker.current_ship
         attacker_drones = attacker.defense_drones
-        
+
         # Planet defenses
         planet_defense_level = planet.defense_level or 0
         planet_shields = planet.shields or 0
         planet_weapons = planet.weapon_batteries or 0
-        
+
+        # Calculate planetary defense reduction (shields, defense level, generators)
+        planetary_def = self._calculate_planetary_defense_reduction(planet)
+        damage_reduction = planetary_def["damage_reduction"]
+        remaining_shield_hp = planetary_def["shield_hp"]
+
         # Combat parameters
         attacker_attack = self._calculate_attack_power(attacker_ship, attacker_drones)
         planet_attack = planet_weapons * 2 + planet_defense_level * 3
         planet_defense = planet_shields * 3 + planet_defense_level * 5
-        
+
         # Track combat details
         round_number = 0
         attacker_drones_lost = 0
@@ -1331,39 +1387,75 @@ class CombatService:
         attacker_ship_destroyed = False
         planet_captured = False
         combat_details = []
-        
+
+        # Log planetary defense status at start of combat
+        if damage_reduction > 0 or remaining_shield_hp > 0:
+            combat_details.append({
+                "round": 0,
+                "action": "planetary_defense_status",
+                "message": f"Planetary defenses active: {planetary_def['description']}",
+                "damage_reduction": damage_reduction,
+                "shield_hp": remaining_shield_hp
+            })
+
         # Combat continues until one side is defeated or retreats
         while (not attacker_ship_destroyed and not planet_captured):
             round_number += 1
-            
+
             # Add round header
             combat_details.append({
                 "round": round_number,
                 "message": f"Combat Round {round_number}"
             })
-            
+
             # Attacker's turn
             if not attacker_ship_destroyed:
                 # Calculate chance to hit
                 hit_chance = min(0.8, attacker_attack / (planet_defense * 1.2) * 0.6)
-                
+
                 # Random element
                 if random.random() < hit_chance:
                     # Successful hit - damage planet defenses
-                    damage = random.randint(1, 5)
+                    raw_damage = random.randint(1, 5)
+
+                    # Apply planetary defense reduction to attacker's damage
+                    reduced_damage = max(1, int(raw_damage * (1.0 - damage_reduction)))
+
+                    # If shield HP remains, absorb damage there first
+                    if remaining_shield_hp > 0:
+                        shield_absorbed = min(reduced_damage, remaining_shield_hp)
+                        remaining_shield_hp -= shield_absorbed
+                        hull_damage = reduced_damage - shield_absorbed
+                        if shield_absorbed > 0:
+                            combat_details.append({
+                                "round": round_number,
+                                "actor": "attacker",
+                                "action": "shield_hit",
+                                "message": f"Planetary shields absorbed {shield_absorbed} damage ({remaining_shield_hp} shield HP remaining)",
+                                "shield_absorbed": shield_absorbed,
+                                "shield_hp_remaining": remaining_shield_hp
+                            })
+                        damage = hull_damage
+                    else:
+                        damage = reduced_damage
+
                     planet_damage += damage
-                    
+
                     # Update planet defense parameters for subsequent rounds
                     effective_defense_left = max(0, planet_defense_level - planet_damage)
                     planet_defense = effective_defense_left * 5 + planet_shields * 3
-                    
-                    combat_details.append({
-                        "round": round_number,
-                        "actor": "attacker",
-                        "action": "planet_attack",
-                        "message": f"{attacker.username}'s ship damaged planet defenses for {damage} points",
-                        "damage": damage
-                    })
+
+                    if damage > 0:
+                        reduction_note = f" (reduced from {raw_damage} by {damage_reduction:.0%} defenses)" if damage_reduction > 0 else ""
+                        combat_details.append({
+                            "round": round_number,
+                            "actor": "attacker",
+                            "action": "planet_attack",
+                            "message": f"{attacker.username}'s ship damaged planet defenses for {damage} points{reduction_note}",
+                            "damage": damage,
+                            "raw_damage": raw_damage,
+                            "damage_reduction": damage_reduction
+                        })
                     
                     # Check if planet captured
                     if planet_damage >= planet_defense_level:
@@ -1673,6 +1765,52 @@ class CombatService:
 
         # Clamp to 10-90%
         return max(10, min(90, chance))
+
+    def _calculate_planetary_defense_reduction(self, planet: Planet) -> Dict[str, Any]:
+        """Calculate how much planetary defenses reduce incoming attack damage.
+
+        Reads the planet's defense_level (0-10), shields, and defense_shields
+        (shield generator level) to produce a damage reduction factor and a
+        shield HP pool that must be depleted before hull damage is dealt.
+
+        Returns:
+            Dict with:
+                damage_reduction: float 0.0-0.9 — multiplicative reduction on
+                    incoming damage (e.g. 0.35 means 35% less damage).
+                shield_hp: int — flat shield hit-points from shield generators
+                    that must be burned through before planet hull takes damage.
+                description: str — human-readable summary.
+        """
+        defense_level = getattr(planet, "defense_level", 0) or 0
+        shield_gen_level = getattr(planet, "defense_shields", 0) or 0
+        shields = getattr(planet, "shields", 0) or 0
+
+        # Each defense_level reduces damage by 5%, capped at 50% (level 10)
+        level_reduction = min(defense_level * 0.05, 0.50)
+
+        # Shield generators add a flat shield HP pool (500 HP per generator level,
+        # plus any existing shield value on the planet).
+        shield_hp = (shield_gen_level * 500) + (shields * 100)
+
+        # Total damage_reduction also includes a small bonus from shield generators
+        # (each gen level adds 4% reduction, up to 40% at level 10)
+        gen_reduction = min(shield_gen_level * 0.04, 0.40)
+
+        # Combined reduction capped at 0.9 so planets are never invincible
+        damage_reduction = min(level_reduction + gen_reduction, 0.90)
+
+        parts = []
+        if defense_level > 0:
+            parts.append(f"Level {defense_level} defenses ({level_reduction:.0%} reduction)")
+        if shield_gen_level > 0:
+            parts.append(f"Level {shield_gen_level} shield generators ({gen_reduction:.0%} reduction, {shield_hp} shield HP)")
+        description = " + ".join(parts) if parts else "No planetary defenses"
+
+        return {
+            "damage_reduction": round(damage_reduction, 2),
+            "shield_hp": shield_hp,
+            "description": description
+        }
 
     def _calculate_attack_power(self, ship: Ship, drones: int) -> float:
         """Calculate the attack power of a ship and its drones."""
