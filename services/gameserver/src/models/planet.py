@@ -126,10 +126,14 @@ class Planet(Base):
     active_events = Column(JSONB, nullable=False, default=[])
     description = Column(String, nullable=True)
     
+    # Colony morale (0-100 scale, affects production and siege vulnerability)
+    morale = Column(Integer, nullable=False, default=100)
+
     # Siege information
     under_siege = Column(Boolean, nullable=False, default=False)
     siege_started_at = Column(DateTime(timezone=True), nullable=True)
     siege_attacker_id = Column(UUID(as_uuid=True), nullable=True)
+    siege_turns = Column(Integer, nullable=False, default=0)  # Consecutive turns enemies present
     
     # Genesis device information
     genesis_created = Column(Boolean, nullable=False, default=False)

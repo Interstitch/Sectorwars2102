@@ -50,6 +50,17 @@ class GenesisDeployRequest(BaseModel):
     planetType: str = Field(..., pattern="^(terran|oceanic|mountainous|desert|frozen)$")
 
 
+class DefenseUpgradeResponse(BaseModel):
+    """Defense upgrade response."""
+    success: bool
+    defenseLevel: int
+    maxLevel: int
+    damageReduction: str
+    creditsCost: int
+    creditsRemaining: int
+    nextUpgradeCost: Optional[int] = None
+
+
 class SpecializationRequest(BaseModel):
     """Planet specialization request."""
     specialization: str = Field(..., pattern="^(agricultural|industrial|military|research|balanced)$")
@@ -608,11 +619,47 @@ async def get_siege_status(
         planet_id = UUID(planetId)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid planet ID format")
-    
+
     service = PlanetaryService(db)
-    
+
     try:
         result = service.get_siege_status(planet_id, player.id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/{planetId}/upgrade-defense", response_model=DefenseUpgradeResponse)
+async def upgrade_defense(
+    planetId: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """
+    Upgrade a planet's defense level by one.
+
+    Each defense level costs 1000 credits * (current_level + 1).
+    Maximum defense level is 10.
+    Each level provides +10% damage reduction during siege and
+    reduces morale loss from siege effects.
+
+    Requirements:
+    - Player must own the planet
+    - Planet defense must be below max level (10)
+    - Player must have sufficient credits
+    """
+    try:
+        planet_id = UUID(planetId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    service = PlanetaryService(db)
+
+    try:
+        result = service.upgrade_defense(
+            planet_id=planet_id,
+            player_id=player.id
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
