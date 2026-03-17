@@ -5,7 +5,6 @@ import { useGame } from '../../contexts/GameContext';
 // import { useTheme } from '../../themes/ThemeProvider'; // Available for future use
 import UserProfile from '../auth/UserProfile';
 import LogoutButton from '../auth/LogoutButton';
-import { formatShipType } from '../../utils/formatters';
 import './game-layout.css';
 import '../../styles/themes/cockpit-animations.css';
 import '../../styles/themes/cockpit-components.css';
@@ -24,7 +23,6 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
   const hasAttemptedRefresh = React.useRef(false);
   React.useEffect(() => {
     if (user && !playerState && !isLoading && !hasAttemptedRefresh.current) {
-      console.log('GameLayout: No player state detected, refreshing...');
       hasAttemptedRefresh.current = true;
       refreshPlayerState();
     }
@@ -102,59 +100,23 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
               {currentShip ? (
                 <div className="current-ship">
                   <div className="ship-name">{currentShip.name || 'UNNAMED VESSEL'}</div>
-                  <div className="ship-type">{currentShip.type ? formatShipType(currentShip.type) : 'UNKNOWN CLASS'}</div>
+                  <div className="ship-type">{currentShip.type || 'UNKNOWN CLASS'}</div>
                   <div className="ship-cargo">
                     <h4 className="cargo-header">CARGO BAY</h4>
-                    {(() => {
-                      // Extract displayable cargo contents from either new or legacy format
-                      const cargo = currentShip.cargo;
-                      let contents: Record<string, number> = {};
-                      let used = 0;
-                      let capacity = 0;
-
-                      if (cargo && typeof cargo === 'object') {
-                        if ('contents' in cargo) {
-                          // New format: {capacity, used, contents: {...}}
-                          contents = (cargo.contents && typeof cargo.contents === 'object')
-                            ? cargo.contents as Record<string, number>
-                            : {};
-                          used = Number(cargo.used) || 0;
-                          capacity = Number(cargo.capacity) || 0;
-                        } else {
-                          // Legacy format: {resource: amount, ...}
-                          contents = cargo as Record<string, number>;
-                        }
-                      }
-
-                      // Filter to only entries with numeric values > 0
-                      const filledContents = Object.entries(contents).filter(
-                        ([, amt]) => typeof amt === 'number' && amt > 0
-                      );
-
-                      const formatCargoName = (name: string) =>
-                        name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-
-                      if (filledContents.length > 0) {
-                        return (
-                          <>
-                            {capacity > 0 && (
-                              <div className="cargo-capacity" style={{ fontSize: '0.7rem', opacity: 0.7, marginBottom: '0.25rem' }}>
-                                {used} / {capacity} UNITS
-                              </div>
-                            )}
-                            <ul className="cargo-list">
-                              {filledContents.map(([resource, amount]) => (
-                                <li key={resource} className="cargo-item">
-                                  <span className="resource-name">{formatCargoName(resource)}</span>
-                                  <span className="data-readout">{amount}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </>
-                        );
-                      }
-                      return <p className="empty-cargo">CARGO BAY EMPTY</p>;
-                    })()}
+                    {currentShip.cargo && Object.keys(currentShip.cargo).length > 0 ? (
+                      <ul className="cargo-list">
+                        {Object.entries(currentShip.cargo).map(([resource, amount]) => (
+                          <li key={resource} className="cargo-item">
+                            <span className="resource-name">{resource}</span>
+                            <span className="data-readout">
+                              {typeof amount === 'object' ? JSON.stringify(amount) : amount}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="empty-cargo">CARGO BAY EMPTY</p>
+                    )}
                   </div>
 
                   {/* Genesis Device Display - Special Items */}

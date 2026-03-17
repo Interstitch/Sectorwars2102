@@ -98,7 +98,6 @@ const FirstLoginContainer: React.FC = () => {
         setGuardPersonality(guard);
         // Set initial trust based on guard's base suspicion (inverted)
         setCurrentTrust(1 - guard.baseSuspicion);
-        console.log(`[FirstLogin:Guard] ${guard.title} ${guard.name} | Trait: ${guard.trait} | Base Trust: ${(1 - guard.baseSuspicion).toFixed(2)}`);
       }
     }
   }, [requiresFirstLogin, session, isLoading]); // Removed guardPersonality to prevent infinite loop
@@ -107,15 +106,6 @@ const FirstLoginContainer: React.FC = () => {
   if (!requiresFirstLogin) {
     return null;
   }
-
-  // Debug logging
-  console.log('[FirstLoginContainer] Rendering with:', {
-    currentStep,
-    hasSession: !!session,
-    hasGuardPersonality: !!guardPersonality,
-    sessionId: session?.session_id,
-    shipChoice: session?.ship_choice
-  });
 
   // Render guard silhouette SVG
   const renderGuardSilhouette = () => (

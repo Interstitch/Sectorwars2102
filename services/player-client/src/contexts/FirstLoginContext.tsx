@@ -1,9 +1,67 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import axios from 'axios';
 import { useAuth } from './AuthContext';
-import apiClient from '../services/apiClient';
 
-// Use the shared apiClient which handles token attachment and 401 refresh
-const api = apiClient;
+// Create an axios instance that uses the Vite proxy
+const api = axios.create({
+  baseURL: '', // Empty baseURL to use current origin and proxy
+  withCredentials: false
+});
+
+// Add interceptor to include auth token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Add response interceptor for automatic token refresh on 401
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If error is 401 and not already retrying, attempt to refresh token
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // Get the refresh token from localStorage
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        // Call refresh endpoint
+        const response = await axios.post('/api/v1/auth/refresh', {
+          refresh_token: refreshToken
+        }, {
+          headers: { Authorization: '' } // Don't send current auth header
+        });
+
+        const { access_token, refresh_token } = response.data;
+
+        // Update tokens in localStorage
+        localStorage.setItem('accessToken', access_token);
+        localStorage.setItem('refreshToken', refresh_token);
+
+        // Update the failed request's auth header and retry
+        originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        // If refresh fails, clear tokens and redirect to login
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 // Types for first login state
 export interface FirstLoginSession {
@@ -148,7 +206,6 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
     // Rate limiting check
     const now = Date.now();
     if (now - lastSessionTime < SESSION_COOLDOWN) {
-      console.log('FirstLoginContext: Skipping startSession due to rate limiting');
       return;
     }
     setLastSessionTime(now);
@@ -158,12 +215,10 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
 
     try {
       const response = await api.post('/api/v1/first-login/session');
-      console.log('[FirstLogin:Session] Started | Ships:', (response.data as any).available_ships);
 
       // Auto-reset any existing session on page load/reload
       // This ensures players always start from ship selection when refreshing
       if ((response.data as any).current_step !== 'ship_selection') {
-        console.log('[FirstLogin:Session] Detected existing session, auto-resetting for fresh start...');
         await api.delete('/api/v1/first-login/session');
         // Retry with a fresh session
         const retryResponse = await api.post('/api/v1/first-login/session');
@@ -171,7 +226,6 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
         setCurrentPrompt((retryResponse.data as any).npc_prompt);
         setExchangeId((retryResponse.data as any).exchange_id || null);
         setDialogueHistory([{ npc: (retryResponse.data as any).npc_prompt, player: '' }]);
-        console.log('[FirstLogin:Session] Fresh session created after auto-reset');
         return;
       }
 
@@ -188,11 +242,9 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
       
       // Handle specific error types
       if (error.response?.status === 429) {
-        console.log('FirstLoginContext: Rate limited, will retry in 10 seconds');
         setError('Too many requests. Please wait a moment.');
         // Retry after a longer delay for rate limiting
         setTimeout(() => {
-          console.log('FirstLoginContext: Retrying after rate limit');
           startSession();
         }, 10000); // 10 seconds
         return;
@@ -211,8 +263,6 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
     setIsLoading(true);
     setError(null);
 
-    console.log(`[FirstLogin:ShipClaim] ${shipType} | Response: ${response.substring(0, 50)}...`);
-
     try {
       const payload = {
         ship_type: shipType,
@@ -221,15 +271,10 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
 
       const result = await api.post('/api/v1/first-login/claim-ship', payload);
 
-      console.log('[FirstLogin:ShipClaim] Response received:', result.data);
-      console.log('[FirstLogin:ShipClaim] current_step:', result.data.current_step);
-      console.log('[FirstLogin:ShipClaim] outcome:', result.data.outcome);
-
       setSession(result.data);
 
       // Check if this is an immediate outcome (e.g., Escape Pod auto-approval)
       if (result.data.current_step === 'completion' && result.data.outcome) {
-        console.log('[FirstLogin:ShipClaim] Immediate approval - skipping interrogation');
 
         // Set the outcome directly
         setDialogueOutcome(result.data.outcome);
@@ -244,8 +289,6 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
         setCurrentPrompt(result.data.npc_prompt);
       } else {
         // Normal flow: received a question for interrogation
-        console.log('[FirstLogin:ShipClaim] Success | First Question Received');
-
         // Update dialogue history
         setDialogueHistory(prev => [
           ...prev,
@@ -258,11 +301,7 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
         setExchangeId(result.data.exchange_id || null);
       }
     } catch (error: any) {
-      console.error('❌ FirstLogin: Error claiming ship:', error);
-      console.error('Error response:', error.response);
-      console.error('Error response data:', error.response?.data);
-      console.error('Error response status:', error.response?.status);
-      console.error('Error response headers:', error.response?.headers);
+      console.error('FirstLogin: Error claiming ship:', error.response?.status, error.response?.data?.detail || error.message);
       
       // More specific error messages
       if (error.response?.status === 401) {
@@ -270,7 +309,6 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
       } else if (error.response?.status === 400) {
         setError(error.response?.data?.detail || 'Invalid ship selection or response.');
       } else if (error.response?.status === 500) {
-        console.error('500 Error details:', error.response?.data);
         setError('Server error. Please try again later.');
       } else if (error.code === 'ERR_NETWORK') {
         setError('Network error. Please check your connection.');
@@ -296,26 +334,6 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
         response
       });
 
-      // Consolidated logging with all key info in one line
-      const analysis = result.data.analysis;
-      const provider = analysis?.provider || 'unknown';
-      const believability = analysis?.overall_believability ?? analysis?.believability ?? 0;
-      const aiError = analysis?.ai_error;
-
-      console.log(
-        `[FirstLogin:Q${dialogueHistory.length}] Provider:${provider} | ` +
-        `Scores: P=${(analysis?.persuasiveness || 0).toFixed(2)} ` +
-        `C=${(analysis?.confidence || 0).toFixed(2)} ` +
-        `Cons=${(analysis?.consistency || 0).toFixed(2)} ` +
-        `B=${believability.toFixed(2)} | ` +
-        `Status: ${result.data.is_final ? 'FINAL' : 'Continue'}`
-      );
-
-      // Log AI errors to help troubleshooting
-      if (aiError && provider === 'manual') {
-        console.warn(`[FirstLogin:AI-Error] Fell back to manual scoring. Reason: ${aiError}`);
-      }
-
       // Update dialogue history
       setDialogueHistory(prev => [
         ...prev.slice(0, prev.length - 1),
@@ -335,15 +353,6 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
       // If this is the final response, store the outcome
       if (result.data.is_final && result.data.outcome) {
         const outcome = result.data.outcome;
-
-        // Comprehensive outcome logging with pass/fail reason
-        console.log(
-          `[FirstLogin:Outcome] ${outcome.outcome} | ` +
-          `Ship: ${outcome.awarded_ship} | ` +
-          `Score: ${outcome.final_persuasion_score?.toFixed(4)} | ` +
-          `Skill: ${outcome.negotiation_skill} | ` +
-          `Credits: ${outcome.starting_credits}`
-        );
 
         setDialogueOutcome(outcome);
 
@@ -373,10 +382,7 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
     setError(null);
 
     try {
-      console.log('[FirstLogin:Complete] Finalizing...');
       const result = await api.post('/api/v1/first-login/complete');
-
-      console.log(`[FirstLogin:Complete] Success | Ship: ${result.data.ship.name} | Credits: ${result.data.credits}`);
 
       // First login is now complete
       setRequiresFirstLogin(false);
@@ -406,9 +412,8 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
       
       // Try to reset server-side session
       await api.delete('/api/v1/first-login/session');
-      console.log('[FirstLogin:Reset] Session cleared');
-    } catch (error) {
-      console.log('[FirstLogin:Reset] Server cleanup skipped (non-critical)');
+    } catch {
+      // Server cleanup is non-critical
       // Don't show error to user as this is just a cleanup attempt
     }
   };

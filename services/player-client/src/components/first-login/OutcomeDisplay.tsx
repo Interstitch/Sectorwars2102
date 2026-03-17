@@ -31,13 +31,6 @@ const OutcomeDisplay: React.FC = () => {
   const [completionResult, setCompletionResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Only log once when component mounts with valid outcome
-  React.useEffect(() => {
-    if (dialogueOutcome) {
-      console.log(`[FirstLogin:UI] Outcome screen displayed | ${dialogueOutcome.outcome}`);
-    }
-  }, [dialogueOutcome]);
-
   if (!dialogueOutcome) {
     return null;
   }
@@ -48,20 +41,17 @@ const OutcomeDisplay: React.FC = () => {
 
     try {
       const result = await completeFirstLogin();
-      console.log('✅ OutcomeDisplay: First Login marked complete in database:', result);
       setCompletionResult(result);
 
       // Refresh all game data in GameContext
-      console.log('🔄 OutcomeDisplay: Refreshing game data...');
       await onFirstLoginComplete();
 
       // Redirect to the game dashboard after a short delay
-      console.log('🚀 OutcomeDisplay: Redirecting to /game in 1.5 seconds...');
       setTimeout(() => {
         navigate('/game');
       }, 1500);
     } catch (err) {
-      console.error('❌ OutcomeDisplay: Failed to complete first login:', err);
+      console.error('Failed to complete first login:', err);
       setError('Failed to complete registration. Please try again.');
       setIsCompleting(false);
     }

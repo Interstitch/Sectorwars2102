@@ -73,12 +73,10 @@ function MainApp() {
     const authParam = params.get('auth');
     if (authParam) {
       try {
-        console.log('Found auth parameter in URL');
         const authData = JSON.parse(decodeURIComponent(authParam));
         
         // Store tokens in localStorage
         if (authData.accessToken) {
-          console.log('Setting tokens from URL parameter');
           localStorage.setItem('accessToken', authData.accessToken);
           localStorage.setItem('refreshToken', authData.refreshToken);
           localStorage.setItem('userId', authData.userId);
@@ -97,7 +95,6 @@ function MainApp() {
     }
     
     const apiUrl = getApiUrl();
-    console.log('Checking API status at:', apiUrl);
 
     const checkApiStatus = async () => {
       try {
@@ -128,38 +125,22 @@ function MainApp() {
       const accessToken = localStorage.getItem('accessToken');
       const isFromOAuth = sessionStorage.getItem('oauth_redirect_completed') === 'true';
       
-      if (isFromOAuth) {
-        console.log('App detected we are coming from OAuth redirect');
-        console.log('Access token exists:', !!accessToken);
-        if (accessToken) {
-          console.log('Access token substring:', accessToken.substring(0, 20) + '...');
-        }
-      }
-      
       if (accessToken) {
         try {
           // Set auth header
-          console.log('Setting authorization header with token (first 20 chars):', accessToken.substring(0, 20) + '...');
           axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-          
-          // Log the current headers for debugging
-          console.log('Current axios headers:', axios.defaults.headers.common);
-          
+
           // Get user info
-          console.log('Making request to /api/v1/auth/me');
           const response = await axios.get(`${apiUrl}/api/v1/auth/me`);
-          console.log('Authentication successful, user data:', response.data);
           setUser(response.data);
           setIsAuthenticated(true);
           
           // Clear the OAuth flag if it exists
           if (isFromOAuth) {
-            console.log('Clearing OAuth redirect flag');
             sessionStorage.removeItem('oauth_redirect_completed');
           }
         } catch (error) {
           console.error('Failed to verify authentication:', error);
-          console.error('Error details:', (error as any).response?.data || (error as any).message);
           // Clear tokens on auth failure
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
@@ -700,13 +681,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = !!accessToken;
   
   if (!isAuthenticated) {
-    console.log('Access token not found, redirecting to home');
     return <Navigate to="/" replace />;
   }
   
   // Ensure the token is set in axios headers
   if (accessToken && !axios.defaults.headers.common['Authorization']) {
-    console.log('Setting axios auth header in ProtectedRoute');
     axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
   }
   

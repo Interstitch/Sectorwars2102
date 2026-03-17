@@ -188,63 +188,13 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
     }
   }, [playerState, refreshPlayerState, onCombatEnd]);
   
-  // Retreat state
-  const [isRetreating, setIsRetreating] = useState(false);
-  const [retreatMessage, setRetreatMessage] = useState<string | null>(null);
-
   // Attempt retreat
   const attemptRetreat = useCallback(async () => {
-    if (!combatId || !playerState || combatStatus?.status === 'completed' || isRetreating) return;
-
-    setIsRetreating(true);
-    setRetreatMessage(null);
-    setError(null);
-
-    try {
-      const result = await gameAPI.combat.retreat(combatId);
-
-      if (result.success) {
-        // Retreat succeeded
-        setRetreatMessage(result.message || 'Retreat successful!');
-        setAnimationState('defending');
-
-        // Refresh combat status to reflect the escaped outcome
-        const updatedStatus = await gameAPI.combat.getStatus(combatId);
-        if (updatedStatus) {
-          setCombatStatus(updatedStatus);
-        }
-
-        // Refresh player state and notify parent
-        refreshPlayerState();
-
-        // Navigate away after a brief delay
-        setTimeout(() => {
-          if (onClose) {
-            onClose();
-          }
-        }, 2000);
-      } else {
-        // Retreat failed
-        setRetreatMessage(result.message || 'Retreat failed! You must keep fighting.');
-        setAnimationState('defending');
-        setTimeout(() => setAnimationState('idle'), 500);
-
-        // Refresh combat status to show damage from failed retreat
-        const updatedStatus = await gameAPI.combat.getStatus(combatId);
-        if (updatedStatus) {
-          setCombatStatus(updatedStatus);
-          if (updatedStatus.status === 'completed') {
-            handleCombatEnd(updatedStatus);
-          }
-        }
-      }
-    } catch (err) {
-      setError('Failed to attempt retreat. Please try again.');
-      console.error('Retreat attempt failed:', err);
-    } finally {
-      setIsRetreating(false);
-    }
-  }, [combatId, playerState, combatStatus, isRetreating, refreshPlayerState, onClose, handleCombatEnd]);
+    if (!combatId || !playerState || combatStatus?.status === 'completed') return;
+    
+    // TODO: Implement retreat mechanics when API is available
+    console.warn('Retreat attempt - not yet implemented');
+  }, [combatId, playerState, combatStatus]);
   
   // Calculate health percentages
   const getHealthPercentage = (current: number, max: number = 100): number => {
@@ -280,13 +230,6 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
         <div className="combat-error">
           <span className="error-icon">⚠️</span>
           {error}
-        </div>
-      )}
-
-      {retreatMessage && (
-        <div className={`combat-retreat-message ${retreatMessage.includes('successful') ? 'success' : 'failure'}`}>
-          <span className="retreat-icon">{retreatMessage.includes('successful') ? '🚀' : '⚔️'}</span>
-          {retreatMessage}
         </div>
       )}
       
@@ -348,12 +291,11 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
                       >
                         DEPLOY DRONES
                       </button>
-                      <button
+                      <button 
                         className={`action-btn retreat ${selectedAction === 'retreat' ? 'active' : ''}`}
                         onClick={attemptRetreat}
-                        disabled={isRetreating}
                       >
-                        {isRetreating ? 'RETREATING...' : 'ATTEMPT RETREAT'}
+                        ATTEMPT RETREAT
                       </button>
                     </div>
                   </>

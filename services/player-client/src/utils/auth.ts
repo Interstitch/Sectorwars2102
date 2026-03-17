@@ -16,7 +16,6 @@ export const decodeToken = (token: string): any => {
   try {
     // Handle mock tokens for testing
     if (token.startsWith('mock-')) {
-      console.log('Mock token detected, returning test payload');
       const now = Math.floor(Date.now() / 1000);
       return {
         sub: '67890',

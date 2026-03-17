@@ -115,7 +115,7 @@ class WebSocketService {
     
     // In Docker/Codespaces, use the external port mapping
     if (window.location.host.includes('.app.github.dev')) {
-      console.log('WebSocket: GitHub Codespaces detected - using external gameserver WebSocket');
+      // GitHub Codespaces detected - using external gameserver WebSocket
       // Use the external gameserver URL for WebSocket
       const gameserverHost = window.location.host.replace('-3000.app.github.dev', '-8080.app.github.dev');
       return `${protocol}//${gameserverHost}/api/v1/ws/connect`;
@@ -141,13 +141,11 @@ class WebSocketService {
     }
 
     if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
-      console.log('WebSocket: Already connected or connecting');
       return;
     }
 
     try {
       const wsUrl = `${this.getWebSocketUrl()}?token=${encodeURIComponent(this.token)}`;
-      console.log('WebSocket: Connecting to', wsUrl.replace(this.token, '[TOKEN]'));
       
       this.ws = new WebSocket(wsUrl);
       this.setupWebSocketHandlers();
@@ -161,7 +159,6 @@ class WebSocketService {
     if (!this.ws) return;
 
     this.ws.onopen = () => {
-      console.log('WebSocket: Connected successfully');
       this.isConnected = true;
       this.reconnectAttempts = 0;
       this.reconnectDelay = 1000;
@@ -178,7 +175,6 @@ class WebSocketService {
     this.ws.onmessage = (event) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
-        console.log('WebSocket: Received message', message.type);
         this.notifyHandlers(message);
       } catch (error) {
         console.error('WebSocket: Failed to parse message', error);
@@ -186,7 +182,6 @@ class WebSocketService {
     };
 
     this.ws.onclose = (event) => {
-      console.log('WebSocket: Connection closed', event.code, event.reason);
       this.isConnected = false;
       this.stopHeartbeat();
       
@@ -227,7 +222,7 @@ class WebSocketService {
       return;
     }
 
-    console.log(`WebSocket: Scheduling reconnect attempt ${this.reconnectAttempts + 1} in ${this.reconnectDelay}ms`);
+    console.warn(`WebSocket: Scheduling reconnect attempt ${this.reconnectAttempts + 1} in ${this.reconnectDelay}ms`);
     
     setTimeout(() => {
       this.reconnectAttempts++;

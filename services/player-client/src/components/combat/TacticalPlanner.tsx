@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { InputValidator } from '../../utils/security/inputValidation';
-import { formatShipType } from '../../utils/formatters';
 import { gameAPI } from '../../services/api';
 import { Ship } from '../../types/game';
 import './tactical-planner.css';
@@ -154,7 +153,6 @@ const TacticalPlanner: React.FC<TacticalPlannerProps> = ({
     }
 
     // In a real implementation, this would call an API to simulate combat outcomes
-    console.log('Simulating plan:', plan);
     alert(`Simulation for "${plan.name}" would show:\n- Win probability\n- Expected damage taken\n- Resource consumption\n- Time to victory`);
   }, [canPerformAction]);
 
@@ -193,7 +191,7 @@ const TacticalPlanner: React.FC<TacticalPlannerProps> = ({
     <div className="tactical-planner">
       <div className="planner-header">
         <h3>Tactical Planning</h3>
-        <span className="ship-info">{ship.name} - {formatShipType(ship.type)}</span>
+        <span className="ship-info">{ship.name} - {ship.type}</span>
       </div>
 
       <div className="planner-content">

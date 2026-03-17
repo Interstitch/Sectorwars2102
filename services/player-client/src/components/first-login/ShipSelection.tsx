@@ -50,15 +50,6 @@ const ShipSelection: React.FC = () => {
     }
   };
 
-  // Development logging
-  console.log('[ShipSelection] Rendering with:', {
-    availableShips,
-    availableShipsLength: availableShips?.length,
-    currentPrompt: currentPrompt?.substring(0, 100),
-    sessionLoaded,
-    session: session?.session_id
-  });
-
   return (
     <div className="ship-selection-content">
       <div className="location-context">Callisto Colony Shipyard</div>
