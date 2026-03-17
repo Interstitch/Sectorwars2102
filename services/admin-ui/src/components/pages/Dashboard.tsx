@@ -65,34 +65,34 @@ const Dashboard: React.FC = () => {
       // Prepare headers with authentication
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // Fetch all dashboard data concurrently (using relative URLs via proxy)
-      const [dbHealthRes, aiHealthRes, gameServerRes, adminStatsRes] = await Promise.all([
-        axios.get('/api/v1/status/database', { headers }),
-        axios.get('/api/v1/status/ai/providers', { headers }),
-        axios.get('/api/v1/status', { headers }),
-        axios.get('/api/v1/admin/stats', { headers })
+      // Fetch all dashboard data concurrently - use allSettled so partial failures don't blank everything
+      const [dbHealthRes, aiHealthRes, gameServerRes, adminStatsRes] = await Promise.allSettled([
+        axios.get('/api/v1/status/database', { headers, timeout: 10000 }),
+        axios.get('/api/v1/status/ai/providers', { headers, timeout: 15000 }),
+        axios.get('/api/v1/status', { headers, timeout: 10000 }),
+        axios.get('/api/v1/admin/stats', { headers, timeout: 10000 })
       ]);
 
-      // Process system health data
+      // Process system health data with graceful degradation
       const systemHealth: SystemHealth = {
-        database: {
-          status: dbHealthRes.data.status,
-          connected: dbHealthRes.data.connected,
-          response_time: dbHealthRes.data.response_time
-        },
-        ai: {
-          status: aiHealthRes.data.status,
-          healthy: aiHealthRes.data.summary.healthy,
-          total: aiHealthRes.data.summary.total
-        },
-        gameserver: {
-          status: gameServerRes.data.status === 'healthy' ? 'healthy' : 'degraded',
-          response_time: 0 // Will be calculated from request time
-        }
+        database: dbHealthRes.status === 'fulfilled' ? {
+          status: dbHealthRes.value.data.status,
+          connected: dbHealthRes.value.data.connected,
+          response_time: dbHealthRes.value.data.response_time
+        } : { status: 'unavailable', connected: false, response_time: 0 },
+        ai: aiHealthRes.status === 'fulfilled' ? {
+          status: aiHealthRes.value.data.status,
+          healthy: aiHealthRes.value.data.summary.healthy,
+          total: aiHealthRes.value.data.summary.total
+        } : { status: 'unavailable', healthy: 0, total: 0 },
+        gameserver: gameServerRes.status === 'fulfilled' ? {
+          status: gameServerRes.value.data.status === 'healthy' ? 'healthy' : 'degraded',
+          response_time: 0
+        } : { status: 'unavailable', response_time: 0 }
       };
 
       // Process admin stats data
-      const stats = adminStatsRes.data as any;
+      const stats = adminStatsRes.status === 'fulfilled' ? adminStatsRes.value.data as any : {};
       
       const dashboardData: DashboardData = {
         system_health: systemHealth,
