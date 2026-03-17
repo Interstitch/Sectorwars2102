@@ -175,12 +175,6 @@ gcloud compute ssh sectorwars-dev --project=sectorwars2102 --zone=us-central1-a 
 - Spot VM may be preempted with 30s notice — data persists on disk
 - After VM restart: Tailscale auto-starts, but `docker compose up -d` must be run manually
 
-### Legacy Environment (Codespaces)
-
-Previously ran on GitHub Codespaces with port forwarding. The `.env.example` still references Codespaces URLs. When using Codespaces instead of GCP:
-- `./dev-scripts/start-unified.sh` starts all services
-- URLs use Codespaces port forwarding pattern
-
 **DOCKER COMPOSE PROFILES**:
 ```bash
 docker compose --profile development up          # Default: development profile
@@ -214,8 +208,9 @@ docker compose config                            # Show resolved configuration
 - **Project**: Sectorwars2102 - Web-based space trading simulation game
 - **Architecture**: Multi-regional microservices with Docker Compose orchestration
 - **Tech Stack**: Node.js, Docker, PostgreSQL, FastAPI, React, TypeScript
-- **Recent Major Changes**: Multi-regional architecture, i18n system, trading interface improvements, GCP dev VM with Tailscale
-- **Last Updated**: 2026-03-15
+- **Recent Major Changes**: Security hardening (30+ vulns fixed), VIOLET spec alignment (reputation, bounties, shields, terraforming, ARIA hooks, price dynamics), dependency updates, MFA backdoor removed
+- **Last Updated**: 2026-03-17
+- **VIOLET Score**: ~69% overall (12 categories), targeting 80%+ all categories
 
 ## 🔧 ESSENTIAL COMMANDS REFERENCE
 
@@ -328,44 +323,18 @@ Like a hospital "Code Blue," this protocol launches a full diagnostic sweep acro
 
 ### The 6 Parallel Investigation Tracks
 
-Launch all 6 as subagents in parallel. Each reads source files and checks logs. **All read-only.**
+Launch all 6 as subagents in parallel. **All read-only.**
 
-#### Track 1: SERVICE HEALTH — Are All Services Running?
-**Check:** `docker compose ps` on VM · All containers healthy · No restart loops · Game server responding at :8080 · Player client at :3000 · Admin UI at :3001 · Database connections · Redis connectivity · Nginx gateway routing
-**Red Flags:** Unhealthy containers · Restart loops · Connection refused · Port conflicts
+1. **SERVICE HEALTH** — `docker compose ps`, container health, port connectivity
+2. **BACKEND RUNTIME** — `docker compose logs gameserver` for errors/tracebacks/500s, SQLAlchemy/Alembic issues
+3. **FRONTEND BUILD** — `npm run build` for both UIs, TypeScript errors, console errors
+4. **API INTEGRITY** — Auth flow, endpoint responses, CORS, WebSocket connectivity
+5. **DATABASE STATE** — `alembic current` vs head, schema/model consistency, FK integrity
+6. **GAME MECHANICS** — Trading, combat, planets, ships, first login, ranking — all functional?
 
-#### Track 2: BACKEND RUNTIME — Any Server Errors?
-**Check:** `docker compose logs gameserver` for `Error` / `Traceback` / `500` · SQLAlchemy errors · Import failures · Missing model attributes · Async/sync session mismatches · Alembic migration state
-**Red Flags:** Stack traces · "column does not exist" · ImportError · 500 responses
+**Severity:** CRITICAL (service down) · HIGH (features broken) · WARNING (mock data, silent failures) · OK (healthy)
 
-#### Track 3: FRONTEND BUILD — Do Apps Compile?
-**Check:** `npm run build` for player-client and admin-ui · TypeScript errors · Missing imports · Broken component references · Console errors in browser · API endpoint mismatches (wrong paths, wrong auth token keys)
-**Red Flags:** Build failures · Runtime crashes (blank pages) · Network errors in console
-
-#### Track 4: API INTEGRITY — Do Endpoints Return Correct Data?
-**Check:** Key API endpoints respond correctly · Auth flow works (login → token → authenticated requests) · Admin endpoints require admin role · Data shape matches frontend expectations · CORS headers correct · WebSocket connections succeed
-**Red Flags:** 401/403 on valid tokens · Wrong response shapes · CORS blocks · WebSocket disconnect
-
-#### Track 5: DATABASE STATE — Is Schema Consistent?
-**Check:** `alembic current` matches head · All model columns exist in actual tables · No orphaned migrations · Foreign key integrity · Index existence · Data consistency (player.team_id references valid teams, etc.)
-**Red Flags:** Schema/model mismatches (like station_id vs port_id) · Failed migrations · Missing columns
-
-#### Track 6: GAME MECHANICS — Are Core Systems Working?
-**Check:** Trading endpoints work · Combat resolution succeeds · Planet colonization functional · Ship movement works · First login conversation completes · Genesis device deployment · Ranking points awarded · Economy dashboard shows real data
-**Red Flags:** Hardcoded mock data in production paths · Silent failures · Features that return success but don't persist
-
-### Severity Guide
-
-| Severity | Meaning |
-|----------|---------|
-| CRITICAL | Service won't start, game unplayable, data corruption (missing columns, import failures, build crashes) |
-| HIGH | Degraded — services run but key features broken (endpoints 500ing, blank pages, auth failures) |
-| WARNING | Unusual — monitor (mock data fallbacks, silent error swallowing, stale tokens) |
-| OK | Healthy — all checks pass |
-
-### Diagnostic Report
-
-Output: Overall verdict (CRITICAL / DEGRADED / HEALTHY) · Top 3 findings by impact · Track summary table · Recommended actions with specific file:line references · Plain-English summary.
+**Output:** Verdict (CRITICAL/DEGRADED/HEALTHY) · Top 3 findings · Track summary · Fix recommendations with file:line refs.
 
 ---
 
@@ -515,31 +484,31 @@ Launch one subagent per category. Each reads the listed spec files + correspondi
 
 | # | Category | Spec Files (Source of Truth) | Code Zone | Last Known Coverage |
 |---|----------|----------------------------|-----------|-------------------|
-| 1 | **Trading & Economy** | `SPECS/Resources.aispec`, `SPECS/GameMechanics.aispec`, `FEATURES/ECONOMY/PORT_TRADING.md`, `API/v1/trading.aispec` (31 endpoints) | `routes/trading.py`, `services/trading_service.py`, `models/station.py`, `models/market_transaction.py` | 95% |
-| 2 | **Combat System** | `SPECS/GameMechanics.aispec`, `FEATURES/GAMEPLAY/COMBAT_MECHANICS.md`, `FEATURES/GAMEPLAY/LARGE_SCALE_COMBAT.md`, `API/v1/combat.aispec` (6 endpoints) | `routes/combat.py`, `routes/player_combat.py`, `services/combat_service.py`, `models/combat_log.py` | 75% |
-| 3 | **Ships & Fleet** | `SPECS/Ships.aispec` (9 types, attack costs, equipment slots, insurance), `API/v1/fleets-drones.aispec` (29 endpoints) | `models/ship.py`, `services/ship_service.py`, `routes/fleets.py`, `routes/drones.py` | 80% |
-| 4 | **Planetary Systems** | `FEATURES/PLANETS/PLANETARY_COLONIZATION.md`, `FEATURES/PLANETS/CITADEL_SYSTEM.md`, `FEATURES/PLANETS/TERRAFORMING.md`, `FEATURES/PLANETS/PLANETARY_DEFENSE.md`, `FEATURES/GALAXY/GENESIS_DEVICES.md`, `API/v1/sectors-planets.aispec` | `models/planet.py`, `services/planetary_service.py`, `services/terraforming_service.py`, `services/genesis_service.py`, `routes/planets.py` | 60% |
-| 5 | **Player Progression** | `SPECS/Ranking.aispec` (18 ranks, medals, bonuses), `FEATURES/GAMEPLAY/RANKING_SYSTEM.md`, `FEATURES/GAMEPLAY/REPUTATION_SYSTEM.md` | `services/ranking_service.py`, `services/faction_service.py`, `models/reputation.py` | 30% |
-| 6 | **AI Systems (ARIA)** | `FEATURES/AI_SYSTEMS/ARIA.md` (477 lines), `FEATURES/AI_SYSTEMS/AI_SECURITY_SYSTEM.md`, `FEATURES/GAMEPLAY/FIRST_LOGIN.md` | `services/aria_personal_intelligence_service.py`, `services/ai_dialogue_service.py`, `services/first_login_service.py`, `models/aria_personal_intelligence.py` | 60% |
-| 7 | **Teams & Factions** | `FEATURES/GAMEPLAY/TEAM_SYSTEMS.md`, `FEATURES/GAMEPLAY/FACTION_SYSTEM.md`, `API/v1/teams.aispec` (18 endpoints), `API/v1/factions-messages.aispec` | `services/team_service.py`, `services/faction_service.py`, `routes/teams.py`, `routes/factions.py` | 80% |
-| 8 | **Galaxy & Navigation** | `FEATURES/GALAXY/GALAXY_GENERATION.md`, `FEATURES/GALAXY/WARP_GATES.md` (878 lines), `SPECS/GameConcepts.aispec` (5300 sectors) | `services/galaxy_service.py`, `services/movement_service.py`, `models/sector.py`, `models/warp_tunnel.py` | 95% |
-| 9 | **Auth & Security** | `SPECS/AuthSystem.aispec` (464 lines), `API/v1/auth.aispec` (24 endpoints) | `auth/jwt.py`, `auth/oauth.py`, `routes/auth.py`, `routes/mfa.py` | 100% |
-| 10 | **Infrastructure** | `SPECS/Architecture.aispec`, `SPECS/WebSocket.aispec` (25+ events), `SPECS/Database.aispec`, `FEATURES/INFRASTRUCTURE/MULTI_REGIONAL*.md`, `API/v1/infrastructure.aispec` | `docker-compose.yml`, `services/websocket_service.py`, `core/config.py`, `services/regional_governance_service.py` | 95% |
-| 11 | **Admin Interface** | `FEATURES/WEB_INTERFACES/ADMIN_UI.md`, `API/v1/admin.aispec` (123 endpoints) | `services/admin-ui/src/components/pages/` (20 pages) | 90% |
-| 12 | **Player Interface** | `FEATURES/WEB_INTERFACES/PLAYER_UI.md`, `FEATURES/ECONOMY/TRADEDOCK_SHIPYARD.md` | `services/player-client/src/` (components, contexts, pages) | 85% |
+| 1 | **Trading & Economy** | `SPECS/Resources.aispec`, `SPECS/GameMechanics.aispec`, `FEATURES/ECONOMY/PORT_TRADING.md` | `routes/trading.py`, `services/trading_service.py`, `models/station.py` | 80% |
+| 2 | **Combat System** | `SPECS/GameMechanics.aispec`, `FEATURES/GAMEPLAY/COMBAT_MECHANICS.md`, `FEATURES/GAMEPLAY/LARGE_SCALE_COMBAT.md` | `services/combat_service.py`, `routes/player_combat.py`, `models/combat_log.py` | 75% |
+| 3 | **Ships & Fleet** | `SPECS/Ships.aispec` (9 types, attack costs, equipment, insurance) | `models/ship.py`, `services/ship_upgrade_service.py`, `routes/fleets.py` | 90% |
+| 4 | **Planetary Systems** | `FEATURES/PLANETS/` (colonization, citadel, terraforming, defense, genesis) | `services/planetary_service.py`, `services/citadel_service.py`, `services/terraforming_service.py`, `services/genesis_service.py` | 70% |
+| 5 | **Player Progression** | `SPECS/Ranking.aispec`, `FEATURES/GAMEPLAY/RANKING_SYSTEM.md`, `FEATURES/GAMEPLAY/REPUTATION_SYSTEM.md` | `services/ranking_service.py`, `services/medal_service.py`, `services/personal_reputation_service.py`, `services/bounty_service.py` | 75% |
+| 6 | **AI Systems (ARIA)** | `FEATURES/AI_SYSTEMS/ARIA.md`, `FEATURES/AI_SYSTEMS/AI_SECURITY_SYSTEM.md`, `FEATURES/GAMEPLAY/FIRST_LOGIN.md` | `services/aria_personal_intelligence_service.py`, `services/first_login_service.py` | 80% |
+| 7 | **Teams & Factions** | `FEATURES/GAMEPLAY/TEAM_SYSTEMS.md`, `FEATURES/GAMEPLAY/FACTION_SYSTEM.md` | `services/team_service.py`, `services/faction_service.py`, `routes/teams.py` | 75% |
+| 8 | **Galaxy & Navigation** | `FEATURES/GALAXY/GALAXY_GENERATION.md`, `FEATURES/GALAXY/WARP_GATES.md` (878 lines) | `services/galaxy_service.py`, `services/movement_service.py`, `models/warp_tunnel.py` | 85% |
+| 9 | **Auth & Security** | `SPECS/AuthSystem.aispec` (464 lines) | `auth/jwt.py`, `auth/oauth.py`, `routes/auth.py`, `routes/mfa.py` | 95% |
+| 10 | **Infrastructure** | `SPECS/Architecture.aispec`, `SPECS/WebSocket.aispec`, `SPECS/Database.aispec` | `docker-compose.yml`, `services/websocket_service.py`, `core/config.py` | 90% |
+| 11 | **Admin Interface** | `FEATURES/WEB_INTERFACES/ADMIN_UI.md` | `services/admin-ui/src/components/pages/` (28 pages) | 70% |
+| 12 | **Player Interface** | `FEATURES/WEB_INTERFACES/PLAYER_UI.md`, `FEATURES/ECONOMY/TRADEDOCK_SHIPYARD.md` | `services/player-client/src/` (70+ components) | 78% |
 
-### Known Gaps (from STATUS/ files)
+### Known Gaps (updated 2026-03-17)
 
-| STATUS File | System | Key Missing Pieces |
-|-------------|--------|-------------------|
-| `STATUS/RANKING_STATUS.md` | Ranking | 18-rank hierarchy not implemented, only 10-tier simple version exists |
-| `STATUS/CITADEL_STATUS.md` | Citadel | Entire 5-level citadel upgrade system missing |
-| `STATUS/ARIA_IMPLEMENTATION_AUDIT.md` | ARIA | Turn bonuses not applied, consciousness evolution not integrated |
-| `STATUS/SHIPS_AUDIT.md` | Ships | `attack_turn_cost` anti-griefing not enforced, equipment slots missing |
-| `STATUS/GENESIS_DEVICE_STATUS.md` | Genesis | Basic implementation exists, spec requires more complex mechanics |
-| `STATUS/TERRAFORMING_STATUS.md` | Terraforming | Service exists but habitability effects partially connected |
-| `STATUS/PLANETARY_DEFENSE_STATUS.md` | Defense | Basic levels exist, advanced systems (shield generators 1-10, orbital platforms) missing |
-| `STATUS/UNUSED_ENDPOINTS.md` | API | 19 backend endpoints awaiting frontend wiring |
+| System | Status | Remaining Work |
+|--------|--------|---------------|
+| Ranking | ✅ 18 ranks + medals + reputation + bounties | Achievement requirements for promotion |
+| Citadel | ✅ 5-level system with prerequisites + safe storage | Orbital platform construction |
+| ARIA | ✅ Turn bonuses wired, consciousness hooks in combat/trade/movement | Cross-system intelligence (colony, port) |
+| Ships | ✅ attack_turn_cost enforced, equipment slots, upgrade UI | Warp Jumper acquisition limit |
+| Terraforming | ✅ 5-level system with resource costs | Resource consumption per month |
+| Defense | ✅ 10-level shield generators | Rail guns, defense grid, scanner array |
+| Trading | ✅ Supply/demand pricing, race conditions fixed | Haggling system, port ownership |
+| Combat | ⚠️ Escape mechanics + weapon modifiers added | Fleet/large-scale battles |
 
 ### Audit Grading Rubric
 
@@ -580,29 +549,12 @@ Red Mode is a **security-focused audit and hardening protocol** that performs an
 
 Launch all 6 as subagents in parallel. **All read-only.**
 
-#### Track 1: AUTHENTICATION & AUTHORIZATION
-**Check:** JWT validation on all protected endpoints · Token expiry enforced · Refresh token rotation · OAuth state parameter validation · Admin-only endpoints verify admin role · No auth bypass paths (mock tokens, hardcoded credentials) · Password hashing uses Argon2id · Rate limiting on login (5 attempts → 15 min lockout per `AuthSystem.aispec`)
-**Spec Reference:** `SPECS/AuthSystem.aispec`, `API/v1/auth.aispec`
-
-#### Track 2: API SECURITY
-**Check:** Input validation on all endpoints (Pydantic schemas) · SQL injection prevention (parameterized queries via SQLAlchemy) · No raw SQL strings · CORS configuration restrictive · Rate limiting on sensitive endpoints · Request size limits · No sensitive data in URLs/logs · Proper HTTP status codes (401 vs 403)
-**Spec Reference:** `SPECS/GameServer.aispec`
-
-#### Track 3: DATA PROTECTION
-**Check:** No secrets in source code (API keys, passwords, JWT secrets) · Environment variables for all credentials · Database credentials not in docker-compose defaults · SSL/TLS for external connections · PII handling (player emails, IPs) · No sensitive data in console.log · Redis password configured · Backup encryption
-**Spec Reference:** `SPECS/Database.aispec`, `SPECS/Architecture.aispec`
-
-#### Track 4: WEBSOCKET SECURITY
-**Check:** JWT validation on WebSocket connect · Message authentication (HMAC signatures) · Rate limiting per connection (100 msg/s per `WebSocket.aispec`) · No message spoofing possible · Graceful handling of malformed messages · Connection limits per user · Heartbeat timeout enforcement
-**Spec Reference:** `SPECS/WebSocket.aispec`
-
-#### Track 5: GAME ECONOMY INTEGRITY
-**Check:** Credit duplication impossible · Trading price manipulation prevented · Market crash protection · Bot trading detection · Resource generation within defined bounds (`Resources.aispec` price ranges) · Turn manipulation blocked · Genesis device rate limits enforced · Drone count within ship limits
-**Spec Reference:** `SPECS/Resources.aispec`, `SPECS/Ships.aispec`, `SPECS/GameMechanics.aispec`
-
-#### Track 6: MULTI-TENANT ISOLATION
-**Check:** Player data isolation (no cross-player data leaks) · Regional data boundaries enforced · Team membership verified before access · Admin endpoints don't leak non-admin data · WebSocket messages scoped correctly (sector/team/global) · No IDOR vulnerabilities (accessing resources by guessing IDs)
-**Spec Reference:** `SPECS/Architecture.aispec`, `FEATURES/INFRASTRUCTURE/MULTI_REGIONAL*.md`
+1. **AUTHENTICATION & AUTHORIZATION** — JWT validation, token expiry, OAuth state, admin gating, Argon2id, rate limiting
+2. **API SECURITY** — Pydantic validation, SQL injection prevention, CORS, rate limits, error sanitization
+3. **DATA PROTECTION** — No secrets in code, env vars for credentials, no PII in logs, Redis auth
+4. **WEBSOCKET SECURITY** — JWT on connect, rate limiting (100 msg/s), heartbeat timeout, message scoping
+5. **GAME ECONOMY INTEGRITY** — Race condition locks (`with_for_update`), price bounds, turn manipulation prevention
+6. **MULTI-TENANT ISOLATION** — IDOR prevention, team membership checks, regional boundaries, admin data scoping
 
 ### Severity Classification
 
