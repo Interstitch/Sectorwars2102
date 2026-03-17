@@ -15,7 +15,7 @@ from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.services.player_combat_service import PlayerCombatService
 
-router = APIRouter(prefix="/combat", tags=["player-combat"])
+router = APIRouter(prefix="/api/combat", tags=["player-combat"])
 
 
 # Request/Response Models
@@ -114,7 +114,7 @@ async def get_combat_status(
     
     try:
         status = service.get_combat_status(combat_id)
-        
+
         return CombatStatusResponse(
             status=status["status"],
             rounds=[CombatRound(**round_data) for round_data in status["rounds"]],
@@ -125,3 +125,45 @@ async def get_combat_status(
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+class RetreatResponse(BaseModel):
+    """Response from retreat attempt."""
+    success: bool
+    message: str
+    retreatChance: Optional[int] = None
+
+
+@router.post("/{combatId}/retreat", response_model=RetreatResponse)
+async def attempt_retreat(
+    combatId: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_async_session)
+):
+    """Attempt to retreat from an ongoing combat."""
+    service = PlayerCombatService(db)
+
+    try:
+        combat_id = UUID(combatId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid combat ID format")
+
+    # Verify player is involved in this combat
+    from src.models.combat_log import CombatLog
+    combat = db.query(CombatLog).filter(CombatLog.id == combat_id).first()
+    if not combat:
+        raise HTTPException(status_code=404, detail="Combat not found")
+
+    if combat.attacker_id != player.id and combat.defender_id != player.id:
+        raise HTTPException(status_code=403, detail="You are not involved in this combat")
+
+    result = service.attempt_retreat(
+        combat_id=combat_id,
+        player_id=player.id
+    )
+
+    return RetreatResponse(
+        success=result["success"],
+        message=result["message"],
+        retreatChance=result.get("retreatChance")
+    )

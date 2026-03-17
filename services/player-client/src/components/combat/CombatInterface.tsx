@@ -10,7 +10,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useGame } from '../../contexts/GameContext';
 import { gameAPI } from '../../services/api';
 import { InputValidator, SecurityAudit } from '../../utils/security/inputValidation';
-import { formatShipType } from '../../utils/formatters';
 import './combat-interface.css';
 
 // Define types locally since we're removing mocks
@@ -72,7 +71,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
   onCombatEnd,
   onClose
 }) => {
-  const { playerState, currentShip, currentSector, refreshPlayerState } = useGame();
+  const { playerState, currentShip, refreshPlayerState } = useGame();
   
   // Combat state
   const [combatId, setCombatId] = useState<string | null>(null);
@@ -189,13 +188,63 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
     }
   }, [playerState, refreshPlayerState, onCombatEnd]);
   
+  // Retreat state
+  const [isRetreating, setIsRetreating] = useState(false);
+  const [retreatMessage, setRetreatMessage] = useState<string | null>(null);
+
   // Attempt retreat
   const attemptRetreat = useCallback(async () => {
-    if (!combatId || !playerState || combatStatus?.status === 'completed') return;
-    
-    // TODO: Implement retreat mechanics when API is available
-    console.log('Retreat attempt - not yet implemented');
-  }, [combatId, playerState, combatStatus]);
+    if (!combatId || !playerState || combatStatus?.status === 'completed' || isRetreating) return;
+
+    setIsRetreating(true);
+    setRetreatMessage(null);
+    setError(null);
+
+    try {
+      const result = await gameAPI.combat.retreat(combatId);
+
+      if (result.success) {
+        // Retreat succeeded
+        setRetreatMessage(result.message || 'Retreat successful!');
+        setAnimationState('defending');
+
+        // Refresh combat status to reflect the escaped outcome
+        const updatedStatus = await gameAPI.combat.getStatus(combatId);
+        if (updatedStatus) {
+          setCombatStatus(updatedStatus);
+        }
+
+        // Refresh player state and notify parent
+        refreshPlayerState();
+
+        // Navigate away after a brief delay
+        setTimeout(() => {
+          if (onClose) {
+            onClose();
+          }
+        }, 2000);
+      } else {
+        // Retreat failed
+        setRetreatMessage(result.message || 'Retreat failed! You must keep fighting.');
+        setAnimationState('defending');
+        setTimeout(() => setAnimationState('idle'), 500);
+
+        // Refresh combat status to show damage from failed retreat
+        const updatedStatus = await gameAPI.combat.getStatus(combatId);
+        if (updatedStatus) {
+          setCombatStatus(updatedStatus);
+          if (updatedStatus.status === 'completed') {
+            handleCombatEnd(updatedStatus);
+          }
+        }
+      }
+    } catch (err) {
+      setError('Failed to attempt retreat. Please try again.');
+      console.error('Retreat attempt failed:', err);
+    } finally {
+      setIsRetreating(false);
+    }
+  }, [combatId, playerState, combatStatus, isRetreating, refreshPlayerState, onClose, handleCombatEnd]);
   
   // Calculate health percentages
   const getHealthPercentage = (current: number, max: number = 100): number => {
@@ -208,112 +257,14 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
   const targetHealth = latestRound?.targetHealth ?? 100;
   
   if (!target) {
-    const sectorHazard = currentSector?.hazard_level ?? 0;
-    const playersInSector = (currentSector?.players_present || []).filter(
-      (p: any) => p.id !== playerState?.id && p.player_id !== playerState?.id
-    );
-    const hasThreats = playersInSector.length > 0 || sectorHazard > 5;
-
     return (
-      <div className="combat-interface no-target-detailed">
-        <div className="combat-header">
-          <h2>COMBAT & WEAPONS</h2>
-          {onClose && (
-            <button className="close-btn" onClick={onClose}>×</button>
-          )}
-        </div>
-
-        {/* Sector Threat Assessment */}
-        <div className="threat-assessment">
-          <div className={`threat-status ${hasThreats ? 'alert' : 'clear'}`}>
-            <div className="threat-icon">{hasThreats ? '!' : '\u2713'}</div>
-            <div className="threat-text">
-              <h3>{hasThreats ? 'CONTACTS DETECTED' : 'SECTOR CLEAR'}</h3>
-              <p>{hasThreats
-                ? `${playersInSector.length} vessel${playersInSector.length !== 1 ? 's' : ''} detected in sector. Stay alert.`
-                : 'No hostile contacts detected. All systems nominal.'
-              }</p>
-            </div>
-          </div>
-          {currentSector && (
-            <div className="sector-threat-level">
-              <span className="threat-label">SECTOR THREAT LEVEL</span>
-              <div className="threat-bar">
-                <div
-                  className={`threat-bar-fill ${sectorHazard > 7 ? 'critical' : sectorHazard > 4 ? 'elevated' : 'low'}`}
-                  style={{ width: `${sectorHazard * 10}%` }}
-                />
-              </div>
-              <span className="threat-value">{sectorHazard}/10</span>
-            </div>
-          )}
-        </div>
-
-        <div className="readiness-grid">
-          {/* Ship Combat Readiness */}
-          <div className="readiness-panel">
-            <h4>SHIP COMBAT READINESS</h4>
-            {currentShip ? (
-              <div className="readiness-stats">
-                <div className="stat-row">
-                  <span className="stat-label">Vessel</span>
-                  <span className="stat-value">{currentShip.name}</span>
-                </div>
-                <div className="stat-row">
-                  <span className="stat-label">Class</span>
-                  <span className="stat-value">{formatShipType(currentShip.type)}</span>
-                </div>
-                <div className="stat-row">
-                  <span className="stat-label">Attack Rating</span>
-                  <span className="stat-value highlight">{currentShip.combat?.attack_rating ?? 0}</span>
-                </div>
-                <div className="stat-row">
-                  <span className="stat-label">Defense Rating</span>
-                  <span className="stat-value highlight">{currentShip.combat?.defense_rating ?? 0}</span>
-                </div>
-                <div className="stat-row">
-                  <span className="stat-label">Shield Strength</span>
-                  <span className="stat-value">{currentShip.combat?.shields ?? currentShip.combat?.shield_points ?? 'N/A'}</span>
-                </div>
-                <div className="stat-row">
-                  <span className="stat-label">Hull Integrity</span>
-                  <span className="stat-value">{currentShip.combat?.hull ?? currentShip.combat?.hull_points ?? 'N/A'}</span>
-                </div>
-              </div>
-            ) : (
-              <p className="no-data">No ship data available</p>
-            )}
-          </div>
-
-          {/* Drone Status */}
-          <div className="readiness-panel">
-            <h4>DRONE STATUS</h4>
-            <div className="readiness-stats">
-              <div className="stat-row">
-                <span className="stat-label">Attack Drones</span>
-                <span className="stat-value highlight">{currentShip?.combat?.attack_drones ?? playerState?.attack_drones ?? 0}</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">Defense Drones</span>
-                <span className="stat-value highlight">{currentShip?.combat?.defense_drones ?? playerState?.defense_drones ?? 0}</span>
-              </div>
-            </div>
-
-            <h4 style={{ marginTop: '20px' }}>SECTOR CONTACTS</h4>
-            {playersInSector.length > 0 ? (
-              <div className="contacts-list">
-                {playersInSector.map((player: any, index: number) => (
-                  <div key={player.id || player.player_id || index} className="contact-entry">
-                    <span className="contact-name">{player.name || player.username || 'Unknown Vessel'}</span>
-                    <span className="contact-type">{player.ship_type ? formatShipType(player.ship_type) : 'Ship'}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="no-data">No other vessels in sector</p>
-            )}
-          </div>
-        </div>
+      <div className="combat-interface no-target">
+        <p>No combat target selected</p>
+        {onClose && (
+          <button className="cockpit-btn secondary" onClick={onClose}>
+            Close
+          </button>
+        )}
       </div>
     );
   }
@@ -331,12 +282,19 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
           {error}
         </div>
       )}
+
+      {retreatMessage && (
+        <div className={`combat-retreat-message ${retreatMessage.includes('successful') ? 'success' : 'failure'}`}>
+          <span className="retreat-icon">{retreatMessage.includes('successful') ? '🚀' : '⚔️'}</span>
+          {retreatMessage}
+        </div>
+      )}
       
       <div className="combat-main">
         {/* Player Status */}
         <div className="combatant player">
           <h3>{currentShip?.name || 'Your Ship'}</h3>
-          <div className="ship-type">{currentShip?.type ? formatShipType(currentShip.type) : 'Unknown'}</div>
+          <div className="ship-type">{currentShip?.type || 'Unknown'}</div>
           
           <div className="health-bar">
             <div 
@@ -390,11 +348,12 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
                       >
                         DEPLOY DRONES
                       </button>
-                      <button 
+                      <button
                         className={`action-btn retreat ${selectedAction === 'retreat' ? 'active' : ''}`}
                         onClick={attemptRetreat}
+                        disabled={isRetreating}
                       >
-                        ATTEMPT RETREAT
+                        {isRetreating ? 'RETREATING...' : 'ATTEMPT RETREAT'}
                       </button>
                     </div>
                   </>

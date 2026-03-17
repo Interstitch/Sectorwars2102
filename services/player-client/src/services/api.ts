@@ -43,6 +43,9 @@ export const combatAPI = {
   getStatus: (combatId: string) =>
     apiRequest(`/api/combat/${combatId}/status`),
 
+  retreat: (combatId: string) =>
+    apiRequest(`/api/combat/${combatId}/retreat`, { method: 'POST' }),
+
   // Drone management
   deployDrones: (sectorId: string, droneCount: number) =>
     apiRequest('/api/drones/deploy', {
@@ -217,9 +220,6 @@ export const teamAPI = {
       method: 'POST',
       body: JSON.stringify(data)
     }),
-
-  getTreaties: (teamId: string) =>
-    apiRequest(`/api/teams/${teamId}/treaties`),
 
   proposeTreaty: (teamId: string, data: any) =>
     apiRequest(`/api/teams/${teamId}/treaties/propose`, {

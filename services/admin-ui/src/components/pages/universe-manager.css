@@ -674,3 +674,129 @@ h2, h3, h4 {
     padding: 8px 12px;
   }
 }
+
+/* Galaxy Map Styles */
+.galaxy-map-container {
+  position: relative;
+  background: #0a0a1a;
+  border-radius: 8px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  overflow: hidden;
+}
+
+.galaxy-map-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(10, 10, 30, 0.9);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.map-control-btn {
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #93c5fd;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+
+.map-control-btn:hover {
+  background: rgba(59, 130, 246, 0.4);
+}
+
+.map-info {
+  margin-left: auto;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.galaxy-map-legend {
+  display: flex;
+  gap: 16px;
+  padding: 6px 12px;
+  background: rgba(10, 10, 30, 0.8);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.15);
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-ring {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 2px solid;
+  background: transparent;
+}
+
+.galaxy-map-viewport {
+  width: 100%;
+  height: 500px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.galaxy-map-viewport svg {
+  transition: transform 0.05s linear;
+}
+
+.galaxy-map-tooltip {
+  position: absolute;
+  background: rgba(15, 15, 35, 0.95);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: #e5e7eb;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 100;
+  min-width: 160px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.tooltip-title {
+  font-weight: bold;
+  color: #93c5fd;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.tooltip-name {
+  color: #d1d5db;
+  margin-bottom: 6px;
+}
+
+.tooltip-type,
+.tooltip-coords,
+.tooltip-hazard {
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+.tooltip-feature {
+  color: #22c55e;
+  font-weight: 500;
+  margin-top: 2px;
+}
