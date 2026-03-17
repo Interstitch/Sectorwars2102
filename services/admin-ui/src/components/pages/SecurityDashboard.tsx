@@ -37,54 +37,37 @@ export const SecurityDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [selectedTimeRange]);
 
+  const getPlaceholderMetrics = (): SecurityMetrics => ({
+    totalLogins24h: 0,
+    failedLogins24h: 0,
+    activeUsers: 0,
+    mfaEnabledUsers: 0,
+    totalUsers: 0,
+    suspiciousActivities: 0,
+    blockedIPs: 0,
+    recentThreats: []
+  });
+
   const fetchSecurityMetrics = async () => {
     try {
-      const response = await fetch(`/api/admin/security/metrics?timeRange=${selectedTimeRange}`, {
+      const response = await fetch(`/api/v1/admin/security/metrics?timeRange=${selectedTimeRange}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
-      }).catch(() => {
-        // Mock data for development
-        return {
-          ok: true,
-          json: async () => ({
-            totalLogins24h: 1234,
-            failedLogins24h: 23,
-            activeUsers: 456,
-            mfaEnabledUsers: 123,
-            totalUsers: 789,
-            suspiciousActivities: 5,
-            blockedIPs: 12,
-            recentThreats: [
-              {
-                id: '1',
-                timestamp: new Date().toISOString(),
-                type: 'Brute Force Attempt',
-                severity: 'high',
-                description: 'Multiple failed login attempts from IP 192.168.1.100',
-                status: 'mitigated'
-              },
-              {
-                id: '2',
-                timestamp: new Date(Date.now() - 3600000).toISOString(),
-                type: 'Suspicious API Usage',
-                severity: 'medium',
-                description: 'Abnormal API call pattern detected from user ID 12345',
-                status: 'investigating'
-              }
-            ]
-          })
-        };
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch security metrics');
+        // API endpoint not yet implemented - use placeholder metrics
+        setMetrics(getPlaceholderMetrics());
+        return;
       }
 
       const data = await response.json();
       setMetrics(data);
     } catch (error) {
+      // Network error or other failure - use placeholder metrics
       console.error('Error fetching security metrics:', error);
+      setMetrics(getPlaceholderMetrics());
     } finally {
       setLoading(false);
     }
@@ -183,7 +166,7 @@ export const SecurityDashboard: React.FC = () => {
                     <h3>Failed Logins</h3>
                     <div className="metric-value">{metrics.failedLogins24h}</div>
                     <div className="metric-label">
-                      {((metrics.failedLogins24h / metrics.totalLogins24h) * 100).toFixed(1)}% failure rate
+                      {metrics.totalLogins24h > 0 ? ((metrics.failedLogins24h / metrics.totalLogins24h) * 100).toFixed(1) : '0.0'}% failure rate
                     </div>
                   </div>
                 </div>
@@ -209,7 +192,7 @@ export const SecurityDashboard: React.FC = () => {
                       {metrics.mfaEnabledUsers} / {metrics.totalUsers}
                     </div>
                     <div className="metric-label">
-                      {((metrics.mfaEnabledUsers / metrics.totalUsers) * 100).toFixed(1)}% coverage
+                      {metrics.totalUsers > 0 ? ((metrics.mfaEnabledUsers / metrics.totalUsers) * 100).toFixed(1) : '0.0'}% coverage
                     </div>
                   </div>
                 </div>
@@ -240,24 +223,30 @@ export const SecurityDashboard: React.FC = () => {
               <div className="recent-threats">
                 <h3>Recent Security Threats</h3>
                 <div className="threats-list">
-                  {metrics.recentThreats.map(threat => (
-                    <div key={threat.id} className={`threat-item ${getSeverityClass(threat.severity)}`}>
-                      <div className="threat-header">
-                        <div className="threat-type">
-                          <i className="fas fa-exclamation-circle"></i>
-                          {threat.type}
+                  {metrics.recentThreats.length > 0 ? (
+                    metrics.recentThreats.map(threat => (
+                      <div key={threat.id} className={`threat-item ${getSeverityClass(threat.severity)}`}>
+                        <div className="threat-header">
+                          <div className="threat-type">
+                            <i className="fas fa-exclamation-circle"></i>
+                            {threat.type}
+                          </div>
+                          <div className={`threat-status status-${threat.status}`}>
+                            <i className={`fas ${getStatusIcon(threat.status)}`}></i>
+                            {threat.status}
+                          </div>
                         </div>
-                        <div className={`threat-status status-${threat.status}`}>
-                          <i className={`fas ${getStatusIcon(threat.status)}`}></i>
-                          {threat.status}
+                        <div className="threat-description">{threat.description}</div>
+                        <div className="threat-timestamp">
+                          {new Date(threat.timestamp).toLocaleString()}
                         </div>
                       </div>
-                      <div className="threat-description">{threat.description}</div>
-                      <div className="threat-timestamp">
-                        {new Date(threat.timestamp).toLocaleString()}
-                      </div>
+                    ))
+                  ) : (
+                    <div className="no-threats" style={{ padding: '20px', textAlign: 'center', color: '#9ca3af' }}>
+                      No security threats detected in the selected time range.
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </>

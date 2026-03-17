@@ -28,18 +28,42 @@ const StationsManager: React.FC = () => {
   const [filterClass, setFilterClass] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
-  
+  const [totalStations, setTotalStations] = useState(0);
+  const [serverPageSize] = useState(500);
+
   // Modal states
   const [selectedPort, setSelectedPort] = useState<Station | null>(null);
   const [showPortModal, setShowPortModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'add'>('view');
 
-  const fetchPorts = async () => {
+  const fetchPorts = async (offset = 0) => {
     try {
       setLoading(true);
-      const response = await api.get('/api/v1/admin/stations');
-      setPorts(response.data.stations || []);
+      const response = await api.get(`/api/v1/admin/stations?limit=${serverPageSize}&offset=${offset}`);
+      const newStations = response.data.stations || [];
+      const total = response.data.total || 0;
+      setTotalStations(total);
+
+      if (offset === 0) {
+        // If we got all stations in one request, great; otherwise fetch remaining
+        if (newStations.length < total) {
+          // Fetch all remaining stations
+          const allStations = [...newStations];
+          let currentOffset = serverPageSize;
+          while (currentOffset < total) {
+            const nextResponse = await api.get(`/api/v1/admin/stations?limit=${serverPageSize}&offset=${currentOffset}`);
+            const nextStations = nextResponse.data.stations || [];
+            allStations.push(...nextStations);
+            currentOffset += serverPageSize;
+          }
+          setPorts(allStations);
+        } else {
+          setPorts(newStations);
+        }
+      } else {
+        setPorts(prev => [...prev, ...newStations]);
+      }
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to fetch stations');
@@ -176,7 +200,7 @@ const StationsManager: React.FC = () => {
         </div>
 
         <div className="results-info">
-          <span>{filteredPorts.length} of {ports.length} stations</span>
+          <span>{filteredPorts.length} of {totalStations} stations</span>
         </div>
       </div>
 

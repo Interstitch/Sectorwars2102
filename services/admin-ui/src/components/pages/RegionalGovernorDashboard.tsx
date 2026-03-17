@@ -81,8 +81,9 @@ interface Treaty {
 }
 
 const RegionalGovernorDashboard: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [region, setRegion] = useState<Region | null>(null);
+  const [allRegions, setAllRegions] = useState<Region[]>([]);
   const [stats, setStats] = useState<RegionalStats | null>(null);
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [elections, setElections] = useState<Election[]>([]);
@@ -90,6 +91,7 @@ const RegionalGovernorDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'governance' | 'economy' | 'policies' | 'elections' | 'diplomacy' | 'culture'>('overview');
+  const isAdmin = user?.is_admin || false;
 
   // Policy creation state
   const [showPolicyForm, setShowPolicyForm] = useState(false);
@@ -140,6 +142,7 @@ const RegionalGovernorDashboard: React.FC = () => {
 
   const loadRegionInfo = async () => {
     try {
+      // First try to load the user's own region
       const response = await fetch('/api/v1/regions/my-region', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -155,9 +158,52 @@ const RegionalGovernorDashboard: React.FC = () => {
         setGovernanceConfig({
           governance_type: data.governance_type,
           voting_threshold: data.voting_threshold,
-          election_frequency_days: data.election_frequency_days,
+          election_frequency_days: data.election_frequency_days || 90,
           constitutional_text: data.constitutional_text || ''
         });
+        return;
+      }
+
+      // If the user doesn't own a region but is admin, fetch all regions
+      if (isAdmin) {
+        const adminResponse = await fetch('/api/v1/admin/regions', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (adminResponse.ok) {
+          const adminData = await adminResponse.json();
+          const regions = adminData.regions || [];
+          setAllRegions(regions);
+          if (regions.length > 0) {
+            // Use the first region as default view
+            const firstRegion = regions[0];
+            setRegion({
+              ...firstRegion,
+              owner_id: firstRegion.owner_id || '',
+              subscription_tier: firstRegion.subscription_tier || 'free',
+              voting_threshold: firstRegion.voting_threshold || 0.51,
+              economic_specialization: firstRegion.economic_specialization || '',
+              active_players_30d: firstRegion.active_players_30d || 0,
+              total_trade_volume: firstRegion.total_trade_volume || 0,
+              starting_ship: firstRegion.starting_ship || 'basic',
+              constitutional_text: firstRegion.constitutional_text || '',
+              language_pack: firstRegion.language_pack || {},
+              aesthetic_theme: firstRegion.aesthetic_theme || {},
+              trade_bonuses: firstRegion.trade_bonuses || {},
+            });
+            setEconomicConfig({
+              tax_rate: firstRegion.tax_rate || 0.10,
+              starting_credits: firstRegion.starting_credits || 1000,
+              trade_bonuses: firstRegion.trade_bonuses || {},
+              economic_specialization: firstRegion.economic_specialization || ''
+            });
+            setGovernanceConfig({
+              governance_type: firstRegion.governance_type || 'autocracy',
+              voting_threshold: firstRegion.voting_threshold || 0.51,
+              election_frequency_days: firstRegion.election_frequency_days || 90,
+              constitutional_text: firstRegion.constitutional_text || ''
+            });
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to load region info:', err);
@@ -382,6 +428,22 @@ const RegionalGovernorDashboard: React.FC = () => {
     return labels[type] || type;
   };
 
+  const handleRegionSelect = (selectedRegion: Region) => {
+    setRegion(selectedRegion);
+    setEconomicConfig({
+      tax_rate: selectedRegion.tax_rate || 0.10,
+      starting_credits: selectedRegion.starting_credits || 1000,
+      trade_bonuses: selectedRegion.trade_bonuses || {},
+      economic_specialization: selectedRegion.economic_specialization || ''
+    });
+    setGovernanceConfig({
+      governance_type: selectedRegion.governance_type || 'autocracy',
+      voting_threshold: selectedRegion.voting_threshold || 0.51,
+      election_frequency_days: 90,
+      constitutional_text: selectedRegion.constitutional_text || ''
+    });
+  };
+
   if (!region) {
     return (
       <div className="regional-governor-dashboard">
@@ -399,6 +461,23 @@ const RegionalGovernorDashboard: React.FC = () => {
         <div className="region-info">
           <h2>{region.display_name}</h2>
           <p>Governance Type: {getGovernanceTypeLabel(region.governance_type)} | Status: {region.status}</p>
+          {isAdmin && allRegions.length > 1 && (
+            <div style={{ marginTop: '8px' }}>
+              <label style={{ marginRight: '8px', color: '#9ca3af' }}>View Region:</label>
+              <select
+                value={region.id}
+                onChange={(e) => {
+                  const selected = allRegions.find(r => r.id === e.target.value);
+                  if (selected) handleRegionSelect(selected);
+                }}
+                style={{ padding: '4px 8px', borderRadius: '4px', background: '#1f2937', color: '#e5e7eb', border: '1px solid #374151' }}
+              >
+                {allRegions.map(r => (
+                  <option key={r.id} value={r.id}>{r.display_name || r.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
