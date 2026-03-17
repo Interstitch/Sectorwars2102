@@ -74,6 +74,9 @@ test-results/
 *.log
 logs/
 
+# Local dev scripts (contain personal info / VM credentials)
+dev-scripts/
+
 # Project specific
 generated-icon.png
 
