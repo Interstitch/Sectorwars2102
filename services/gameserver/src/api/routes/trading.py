@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Dict, Any
 from datetime import datetime, UTC
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.core.database import get_db
 from src.auth.dependencies import get_current_user, get_current_player
@@ -14,6 +14,12 @@ from src.models.sector import Sector
 from src.models.ship import Ship
 from src.models.market_transaction import MarketTransaction, MarketPrice, TransactionType
 from src.services.trading_service import TradingService
+from src.services.ranking_service import RankingService
+from src.services.medal_service import MedalService
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/trading", tags=["trading"])
 
@@ -21,7 +27,7 @@ router = APIRouter(prefix="/trading", tags=["trading"])
 class TradeRequest(BaseModel):
     station_id: str
     resource_type: str
-    quantity: int
+    quantity: int = Field(..., gt=0, le=100000, description="Must be between 1 and 100,000")
 
 
 class StationDockRequest(BaseModel):
@@ -45,16 +51,19 @@ async def buy_resource(
     # Verify player is docked at this port
     if not current_player.is_docked:
         raise HTTPException(status_code=400, detail="You must be docked at a station to trade")
-    
+
     # Get the station
     station = db.query(Station).filter(Station.id == trade_request.station_id).first()
     if not station:
         raise HTTPException(status_code=404, detail="Station not found")
-    
+
     # Verify player is in the same sector as the station
     if current_player.current_sector_id != station.sector_id:
         raise HTTPException(status_code=400, detail="You must be in the same sector as the station")
-    
+
+    # Lock player row to prevent race conditions on concurrent trades
+    current_player = db.query(Player).filter(Player.id == current_player.id).with_for_update().first()
+
     # Get current ship
     current_ship = db.query(Ship).filter(
         Ship.id == current_player.current_ship_id,
@@ -62,7 +71,7 @@ async def buy_resource(
     ).first()
     if not current_ship:
         raise HTTPException(status_code=404, detail="No active ship found")
-    
+
     # Get market price for this resource
     market_price = db.query(MarketPrice).filter(
         MarketPrice.station_id == trade_request.station_id,
@@ -70,17 +79,23 @@ async def buy_resource(
     ).first()
     if not market_price:
         raise HTTPException(status_code=404, detail="Resource not available at this port")
-    
+
     # Check if port has enough quantity
     if market_price.quantity < trade_request.quantity:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"Station only has {market_price.quantity} units available"
         )
-    
+
+    # Apply rank trading discount to buy price
+    bonuses = RankingService.get_rank_bonuses(current_player.military_rank)
+    discount_pct = bonuses["trading_discount_percent"] / 100.0
+    discounted_price = market_price.buy_price * (1 - discount_pct)
+    effective_buy_price = max(1, int(discounted_price))  # Floor at 1 credit
+
     # Calculate total cost
-    total_cost = market_price.buy_price * trade_request.quantity
-    
+    total_cost = effective_buy_price * trade_request.quantity
+
     # Check if player has enough credits
     if current_player.credits < total_cost:
         raise HTTPException(
@@ -126,26 +141,82 @@ async def buy_resource(
             transaction_type=TransactionType.BUY,
             commodity=trade_request.resource_type,
             quantity=trade_request.quantity,
-            unit_price=market_price.buy_price,
+            unit_price=effective_buy_price,
             total_value=total_cost,
             timestamp=datetime.now(UTC)
         )
         db.add(transaction)
-        
+
+        # Award rank points for trading volume
+        rank_awarded = None
+        try:
+            trade_points = RankingService.calculate_trading_points(total_cost)
+            if trade_points > 0:
+                ranking_service = RankingService(db)
+                rank_awarded = ranking_service.award_rank_points(
+                    current_player.id, trade_points, "trading_volume"
+                )
+        except Exception as e:
+            logger.error("Failed to award rank points for buy trade: %s", e)
+
+        # ARIA consciousness + medal hooks
+        try:
+            current_player.aria_total_interactions += 1
+            # Check consciousness thresholds (50→L2, 150→L3, 400→L4, 1000→L5)
+            thresholds = {50: (2, 1.1), 150: (3, 1.2), 400: (4, 1.35), 1000: (5, 1.5)}
+            for threshold, (level, multiplier) in thresholds.items():
+                if current_player.aria_total_interactions >= threshold and current_player.aria_consciousness_level < level:
+                    current_player.aria_consciousness_level = level
+                    current_player.aria_bonus_multiplier = multiplier
+            # Check trading medals
+            trade_count = db.query(MarketTransaction).filter(
+                MarketTransaction.player_id == current_player.id
+            ).count()
+            medal_service = MedalService(db)
+            medal_service.check_trading_medals(current_player.id, trade_count, current_player.credits)
+        except Exception as e:
+            logger.error("Failed ARIA/medal hooks for buy trade: %s", e)
+
+        # Record ARIA trade memory (best-effort, don't block trade)
+        try:
+            trade_memory = {
+                "station_name": station.name if station else "Unknown",
+                "action": "buy",
+                "commodity": trade_request.resource_type,
+                "quantity": trade_request.quantity,
+                "total_value": total_cost,
+            }
+            if not current_player.settings:
+                current_player.settings = {}
+            pending = current_player.settings.get("pending_aria_memories", [])
+            pending.append({"type": "trade", "data": trade_memory})
+            # Keep only last 10 pending memories
+            current_player.settings["pending_aria_memories"] = pending[-10:]
+            flag_modified(current_player, "settings")
+        except Exception as e:
+            logger.debug("ARIA trade memory recording skipped: %s", e)
+
         db.commit()
-        
-        return {
+
+        response = {
             "message": f"Successfully bought {trade_request.quantity} units of {trade_request.resource_type}",
             "transaction": {
                 "resource": trade_request.resource_type,
                 "quantity": trade_request.quantity,
-                "unit_price": market_price.buy_price,
+                "unit_price": effective_buy_price,
+                "base_price": market_price.buy_price,
+                "rank_discount_percent": bonuses["trading_discount_percent"],
                 "total_cost": total_cost,
                 "remaining_credits": current_player.credits,
                 "remaining_cargo_space": current_ship.cargo.get('capacity', 50) - current_ship.cargo.get('used', 0)
             }
         }
-        
+        if rank_awarded and rank_awarded.get("success") and rank_awarded.get("points_awarded", 0) > 0:
+            response["rank_points_awarded"] = rank_awarded["points_awarded"]
+            if rank_awarded.get("promoted"):
+                response["promoted_to"] = rank_awarded["new_rank"]
+        return response
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Trade failed: {str(e)}")
@@ -159,11 +230,14 @@ async def sell_resource(
     current_player: Player = Depends(get_current_player)
 ):
     """Sell a resource to a station"""
-    
+
     # Verify player is docked at this port
     if not current_player.is_docked:
         raise HTTPException(status_code=400, detail="You must be docked at a station to trade")
-    
+
+    # Lock player row to prevent race conditions on concurrent trades
+    current_player = db.query(Player).filter(Player.id == current_player.id).with_for_update().first()
+
     # Get the station
     station = db.query(Station).filter(Station.id == trade_request.station_id).first()
     if not station:
@@ -201,9 +275,15 @@ async def sell_resource(
     if not market_price:
         raise HTTPException(status_code=404, detail="Station doesn't trade this resource")
     
+    # Apply rank trading bonus to sell price
+    bonuses = RankingService.get_rank_bonuses(current_player.military_rank)
+    bonus_pct = bonuses["trading_discount_percent"] / 100.0
+    boosted_price = market_price.sell_price * (1 + bonus_pct)
+    effective_sell_price = int(boosted_price)
+
     # Calculate total earnings
-    total_earnings = market_price.sell_price * trade_request.quantity
-    
+    total_earnings = effective_sell_price * trade_request.quantity
+
     # Execute the trade
     try:
         # Update player credits
@@ -232,27 +312,83 @@ async def sell_resource(
             transaction_type=TransactionType.SELL,
             commodity=trade_request.resource_type,
             quantity=trade_request.quantity,
-            unit_price=market_price.sell_price,
+            unit_price=effective_sell_price,
             total_value=total_earnings,
             timestamp=datetime.now(UTC)
         )
         db.add(transaction)
 
+        # Award rank points for trading volume
+        rank_awarded = None
+        try:
+            trade_points = RankingService.calculate_trading_points(total_earnings)
+            if trade_points > 0:
+                ranking_service = RankingService(db)
+                rank_awarded = ranking_service.award_rank_points(
+                    current_player.id, trade_points, "trading_volume"
+                )
+        except Exception as e:
+            logger.error("Failed to award rank points for sell trade: %s", e)
+
+        # ARIA consciousness + medal hooks
+        try:
+            current_player.aria_total_interactions += 1
+            # Check consciousness thresholds (50→L2, 150→L3, 400→L4, 1000→L5)
+            thresholds = {50: (2, 1.1), 150: (3, 1.2), 400: (4, 1.35), 1000: (5, 1.5)}
+            for threshold, (level, multiplier) in thresholds.items():
+                if current_player.aria_total_interactions >= threshold and current_player.aria_consciousness_level < level:
+                    current_player.aria_consciousness_level = level
+                    current_player.aria_bonus_multiplier = multiplier
+            # Check trading medals
+            trade_count = db.query(MarketTransaction).filter(
+                MarketTransaction.player_id == current_player.id
+            ).count()
+            medal_service = MedalService(db)
+            medal_service.check_trading_medals(current_player.id, trade_count, current_player.credits)
+        except Exception as e:
+            logger.error("Failed ARIA/medal hooks for sell trade: %s", e)
+
+        # Record ARIA trade memory (best-effort, don't block trade)
+        try:
+            trade_memory = {
+                "station_name": station.name if station else "Unknown",
+                "action": "sell",
+                "commodity": trade_request.resource_type,
+                "quantity": trade_request.quantity,
+                "total_value": total_earnings,
+            }
+            if not current_player.settings:
+                current_player.settings = {}
+            pending = current_player.settings.get("pending_aria_memories", [])
+            pending.append({"type": "trade", "data": trade_memory})
+            # Keep only last 10 pending memories
+            current_player.settings["pending_aria_memories"] = pending[-10:]
+            flag_modified(current_player, "settings")
+        except Exception as e:
+            logger.debug("ARIA trade memory recording skipped: %s", e)
+
         db.commit()
 
         remaining = current_ship.cargo.get('contents', {}).get(trade_request.resource_type, 0)
-        return {
+        response = {
             "message": f"Successfully sold {trade_request.quantity} units of {trade_request.resource_type}",
             "transaction": {
                 "resource": trade_request.resource_type,
                 "quantity": trade_request.quantity,
-                "unit_price": market_price.sell_price,
+                "unit_price": effective_sell_price,
+                "base_price": market_price.sell_price,
+                "rank_bonus_percent": bonuses["trading_discount_percent"],
                 "total_earnings": total_earnings,
                 "new_credits": current_player.credits,
                 "remaining_cargo": remaining
             }
         }
-        
+        if rank_awarded and rank_awarded.get("success") and rank_awarded.get("points_awarded", 0) > 0:
+            response["rank_points_awarded"] = rank_awarded["points_awarded"]
+            if rank_awarded.get("promoted"):
+                response["promoted_to"] = rank_awarded["new_rank"]
+        return response
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Trade failed: {str(e)}")
@@ -305,15 +441,18 @@ async def dock_at_station(
     current_player: Player = Depends(get_current_player)
 ):
     """Dock at a station"""
-    
+
     # Define docking turn cost
     DOCKING_TURN_COST = 1
-    
+
+    # Lock player row to prevent concurrent turn deduction races
+    current_player = db.query(Player).filter(Player.id == current_player.id).with_for_update().first()
+
     # Get the station
     station = db.query(Station).filter(Station.id == dock_request.station_id).first()
     if not station:
         raise HTTPException(status_code=404, detail="Station not found")
-    
+
     # Verify player is in the same sector as the station
     if current_player.current_sector_id != station.sector_id:
         raise HTTPException(status_code=400, detail="You must be in the same sector as the station")
@@ -368,10 +507,13 @@ async def undock_from_port(
     current_player: Player = Depends(get_current_player)
 ):
     """Undock from current port"""
-    
+
     # Define undocking turn cost
     UNDOCKING_TURN_COST = 1
-    
+
+    # Lock player row to prevent concurrent turn deduction races
+    current_player = db.query(Player).filter(Player.id == current_player.id).with_for_update().first()
+
     if not current_player.is_docked:
         raise HTTPException(status_code=400, detail="You are not currently docked at a station")
     

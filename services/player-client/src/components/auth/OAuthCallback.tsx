@@ -17,31 +17,16 @@ const OAuthCallback: React.FC = () => {
       try {
         // Parse the URL search params
         const params = new URLSearchParams(location.search);
-        console.log('OAuth callback URL search params:', location.search);
-        console.log('Raw params:', Object.fromEntries(params.entries()));
-        
+
         const accessToken = params.get('access_token');
         const refreshToken = params.get('refresh_token');
         const userId = params.get('user_id');
         // Check for new user indicators either from query param or in session storage
         const isNewUser = params.get('is_new_user') === 'true' || sessionStorage.getItem('oauth_register') === 'true';
 
-        console.log('OAuth callback parameters:', { 
-          accessToken: accessToken ? 'present' : 'missing',
-          refreshToken: refreshToken ? 'present' : 'missing',
-          userId: userId ? 'present' : 'missing',
-          isNewUser
-        });
-
         if (!accessToken || !refreshToken || !userId) {
           throw new Error(`Invalid OAuth callback parameters: accessToken=${Boolean(accessToken)}, refreshToken=${Boolean(refreshToken)}, userId=${Boolean(userId)}`);
         }
-
-        console.log('OAuth callback received tokens:', { 
-          accessToken: accessToken.substring(0, 5) + '...',
-          refreshToken: refreshToken.substring(0, 5) + '...',
-          userId
-        });
 
         // Store tokens in localStorage
         localStorage.setItem('accessToken', accessToken);
@@ -66,19 +51,10 @@ const OAuthCallback: React.FC = () => {
 
         // Force a reload of authentication state in the AuthContext
         try {
-          console.log('Attempting to refresh token through AuthContext...');
           await authRefreshToken();
-          console.log('AuthContext refresh token succeeded');
-        } catch (refreshError) {
-          console.error('Failed to refresh token through AuthContext:', refreshError);
+        } catch {
           // Continue anyway, as we'll do a full page reload
         }
-        
-        // Let's check what happens with the auth tokens
-        console.log('Stored tokens for debug:');
-        console.log('Access token (substring):', localStorage.getItem('accessToken')?.substring(0, 20) + '...');
-        console.log('Refresh token (substring):', localStorage.getItem('refreshToken')?.substring(0, 10) + '...');
-        console.log('User ID:', localStorage.getItem('userId'));
         
         // Set a sessionStorage flag to track the redirect
         sessionStorage.setItem('oauth_redirect_completed', 'true');
@@ -86,10 +62,8 @@ const OAuthCallback: React.FC = () => {
         // Create a function to directly navigate to the dashboard with the token
         const navigateWithToken = () => {
           try {
-            // First, make sure the token is correctly set in localStorage
-            console.log('Verifying token data is correctly stored in localStorage...');
+            // Make sure the token is correctly set in localStorage
             if (localStorage.getItem('accessToken') !== accessToken) {
-              console.log('Token mismatch! Resetting localStorage values...');
               localStorage.setItem('accessToken', accessToken);
               localStorage.setItem('refreshToken', refreshToken);
               localStorage.setItem('userId', userId);
@@ -98,8 +72,6 @@ const OAuthCallback: React.FC = () => {
               axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
             }
             
-            // No need to use URL parameters - instead direct to game page
-            console.log('Directly navigating to game dashboard...');
             window.location.href = '/game';
           } catch (err) {
             console.error('Error during navigation:', err);

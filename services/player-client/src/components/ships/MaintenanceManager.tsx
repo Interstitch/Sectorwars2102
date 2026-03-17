@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Ship } from '../../types/game';
 import { InputValidator } from '../../utils/security/inputValidation';
+import { formatShipType } from '../../utils/formatters';
 import './maintenance-manager.css';
 
 interface MaintenanceItem {
@@ -235,7 +236,7 @@ const MaintenanceManager: React.FC<MaintenanceManagerProps> = ({
         <h3>Ship Maintenance</h3>
         <div className="ship-status">
           <span className="ship-name">{ship.name}</span>
-          <span className="ship-type">{ship.type}</span>
+          <span className="ship-type">{formatShipType(ship.type)}</span>
         </div>
       </div>
 

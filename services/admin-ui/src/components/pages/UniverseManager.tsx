@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAdmin } from '../../contexts/AdminContext';
 import SectorDetail from '../universe/SectorDetail';
@@ -30,6 +30,15 @@ const UniverseManager: React.FC = () => {
   const [showGalaxyGenerator, setShowGalaxyGenerator] = useState(false);
   const [selectedSector, setSelectedSector] = useState<any>(null);
   
+  // Galaxy map state
+  const [mapOffset, setMapOffset] = useState({ x: 0, y: 0 });
+  const [mapZoom, setMapZoom] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [hoveredSector, setHoveredSector] = useState<any>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+
   // Galaxy configuration state
   const [galaxyConfig, setGalaxyConfig] = useState({
     name: 'New Galaxy',
@@ -428,6 +437,177 @@ const UniverseManager: React.FC = () => {
     </div>
   );
 
+  // Galaxy map event handlers
+  const handleMapWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setMapZoom(prev => Math.max(0.1, Math.min(10, prev * delta)));
+  }, []);
+
+  const handleMapMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button === 0) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - mapOffset.x, y: e.clientY - mapOffset.y });
+    }
+  }, [mapOffset]);
+
+  const handleMapMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDragging) {
+      setMapOffset({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  }, [isDragging, dragStart]);
+
+  const handleMapMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Render galaxy map visualization
+  const renderGalaxyMap = () => {
+    if (sectors.length === 0) {
+      return (
+        <div className="no-sectors">
+          <p>No sectors found. Generate a galaxy first!</p>
+        </div>
+      );
+    }
+
+    const mapWidth = 800;
+    const mapHeight = 600;
+
+    // Calculate bounds from sector coordinates
+    const xCoords = sectors.map((s: any) => s.x_coord);
+    const yCoords = sectors.map((s: any) => s.y_coord);
+    const minX = Math.min(...xCoords);
+    const maxX = Math.max(...xCoords);
+    const minY = Math.min(...yCoords);
+    const maxY = Math.max(...yCoords);
+
+    const rangeX = maxX - minX || 1;
+    const rangeY = maxY - minY || 1;
+    const padding = 40;
+
+    // Map sector coords to SVG coords
+    const toSvgX = (x: number) => padding + ((x - minX) / rangeX) * (mapWidth - 2 * padding);
+    const toSvgY = (y: number) => padding + ((y - minY) / rangeY) * (mapHeight - 2 * padding);
+
+    // Get color based on sector type
+    const getSectorColor = (type: string) => {
+      switch (type?.toUpperCase()) {
+        case 'VOID': return '#6b7280';
+        case 'NEBULA': return '#8b5cf6';
+        case 'STANDARD': return '#3b82f6';
+        default: return '#3b82f6';
+      }
+    };
+
+    return (
+      <div className="galaxy-map-container" ref={mapContainerRef}>
+        <div className="galaxy-map-controls">
+          <button onClick={() => setMapZoom(prev => Math.min(10, prev * 1.3))} className="map-control-btn">+</button>
+          <button onClick={() => setMapZoom(prev => Math.max(0.1, prev * 0.7))} className="map-control-btn">-</button>
+          <button onClick={() => { setMapZoom(1); setMapOffset({ x: 0, y: 0 }); }} className="map-control-btn">Reset</button>
+          <span className="map-info">{sectors.length} sectors | Zoom: {mapZoom.toFixed(1)}x</span>
+        </div>
+        <div className="galaxy-map-legend">
+          <span className="legend-item"><span className="legend-dot" style={{ background: '#3b82f6' }}></span> Standard</span>
+          <span className="legend-item"><span className="legend-dot" style={{ background: '#6b7280' }}></span> Void</span>
+          <span className="legend-item"><span className="legend-dot" style={{ background: '#8b5cf6' }}></span> Nebula</span>
+          <span className="legend-item"><span className="legend-ring" style={{ borderColor: '#22c55e' }}></span> Planet</span>
+          <span className="legend-item"><span className="legend-ring" style={{ borderColor: '#eab308' }}></span> Port</span>
+        </div>
+        <div
+          className="galaxy-map-viewport"
+          onWheel={handleMapWheel}
+          onMouseDown={handleMapMouseDown}
+          onMouseMove={handleMapMouseMove}
+          onMouseUp={handleMapMouseUp}
+          onMouseLeave={handleMapMouseUp}
+          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        >
+          <svg
+            width={mapWidth}
+            height={mapHeight}
+            viewBox={`0 0 ${mapWidth} ${mapHeight}`}
+            style={{
+              transform: `translate(${mapOffset.x}px, ${mapOffset.y}px) scale(${mapZoom})`,
+              transformOrigin: 'center center'
+            }}
+          >
+            {/* Background */}
+            <rect x="0" y="0" width={mapWidth} height={mapHeight} fill="#0a0a1a" rx="4" />
+
+            {/* Grid lines */}
+            {Array.from({ length: 11 }, (_, i) => {
+              const x = padding + (i / 10) * (mapWidth - 2 * padding);
+              const y = padding + (i / 10) * (mapHeight - 2 * padding);
+              return (
+                <g key={`grid-${i}`}>
+                  <line x1={x} y1={padding} x2={x} y2={mapHeight - padding} stroke="#1a1a3a" strokeWidth="0.5" />
+                  <line x1={padding} y1={y} x2={mapWidth - padding} y2={y} stroke="#1a1a3a" strokeWidth="0.5" />
+                </g>
+              );
+            })}
+
+            {/* Sector dots */}
+            {sectors.map((sector: any) => {
+              const cx = toSvgX(sector.x_coord);
+              const cy = toSvgY(sector.y_coord);
+              const color = getSectorColor(sector.type);
+              const dotRadius = 3 / Math.max(1, mapZoom * 0.5);
+
+              return (
+                <g
+                  key={sector.id}
+                  onMouseEnter={(e) => {
+                    setHoveredSector(sector);
+                    const rect = mapContainerRef.current?.getBoundingClientRect();
+                    if (rect) {
+                      setTooltipPos({ x: e.clientX - rect.left + 10, y: e.clientY - rect.top - 10 });
+                    }
+                  }}
+                  onMouseLeave={() => setHoveredSector(null)}
+                  onClick={() => handleSectorClick(sector)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {/* Planet ring */}
+                  {sector.has_planet && (
+                    <circle cx={cx} cy={cy} r={dotRadius + 3} fill="none" stroke="#22c55e" strokeWidth="1" opacity="0.7" />
+                  )}
+                  {/* Port ring */}
+                  {sector.has_port && (
+                    <circle cx={cx} cy={cy} r={dotRadius + 5} fill="none" stroke="#eab308" strokeWidth="1" opacity="0.7" />
+                  )}
+                  {/* Sector dot */}
+                  <circle cx={cx} cy={cy} r={dotRadius} fill={color} opacity="0.85" />
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Tooltip */}
+        {hoveredSector && (
+          <div
+            className="galaxy-map-tooltip"
+            style={{ left: tooltipPos.x, top: tooltipPos.y }}
+          >
+            <div className="tooltip-title">Sector {hoveredSector.sector_id}</div>
+            <div className="tooltip-name">{hoveredSector.name}</div>
+            <div className="tooltip-type">Type: {hoveredSector.type}</div>
+            <div className="tooltip-coords">Coords: ({hoveredSector.x_coord}, {hoveredSector.y_coord}, {hoveredSector.z_coord})</div>
+            <div className="tooltip-hazard">Hazard: {hoveredSector.hazard_level?.toFixed(1)}</div>
+            {hoveredSector.has_port && <div className="tooltip-feature">Has Port</div>}
+            {hoveredSector.has_planet && <div className="tooltip-feature">Has Planet</div>}
+            {hoveredSector.has_warp_tunnel && <div className="tooltip-feature">Has Warp Tunnel</div>}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Render sectors grid
   const renderSectorsGrid = () => {
     console.log('Rendering sectors grid, sectors:', sectors);
@@ -525,11 +705,7 @@ const UniverseManager: React.FC = () => {
                 <div className="universe-content">
                   {activeTab === 'galaxy' && renderGalaxyOverview()}
                   {activeTab === 'sectors' && renderSectorsGrid()}
-                  {activeTab === 'map' && (
-                    <div className="galaxy-map-placeholder">
-                      <p>Galaxy Map visualization coming soon...</p>
-                    </div>
-                  )}
+                  {activeTab === 'map' && renderGalaxyMap()}
                 </div>
               </>
             )}

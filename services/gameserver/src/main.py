@@ -65,7 +65,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -139,6 +139,20 @@ async def startup_event():
         logger.error(f"Admin user initialization failed: {e}")
         # Don't crash the server if admin creation fails
 
+    # Start WebSocket heartbeat cleanup background task
+    import asyncio
+    async def _heartbeat_cleanup_loop():
+        """Periodically disconnect stale WebSocket connections."""
+        from src.services.websocket_service import connection_manager
+        while True:
+            await asyncio.sleep(30)
+            try:
+                await connection_manager.cleanup_stale_connections(timeout_seconds=300)
+            except Exception as e:
+                logger.warning(f"Heartbeat cleanup error: {e}")
+
+    asyncio.create_task(_heartbeat_cleanup_loop())
+
     logger.info("Sectorwars 2102 Game Server started successfully")
 
 
@@ -193,6 +207,14 @@ async def health_check():
 
 # Setup error handling
 setup_error_handling(app)
+
+# Setup security middleware (rate limiting, input validation, security headers, audit logging)
+try:
+    from src.api.middleware.security import setup_security_middleware
+    setup_security_middleware(app)
+    logger.info("Security middleware registered successfully")
+except Exception as e:
+    logger.warning(f"Failed to register security middleware: {e}")
 
 if __name__ == "__main__":
     import uvicorn

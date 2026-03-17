@@ -5,10 +5,10 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 
-from src.core.database import get_async_session
+from src.core.database import get_db
 from src.auth.dependencies import get_current_admin_user
 from src.models.game_event import GameEvent, EventTemplate, EventEffect, EventParticipation, EventType, EventStatus
-from src.models.player import Player
+from src.models.user import User
 
 router = APIRouter(prefix="/admin/events", tags=["events"])
 
@@ -71,7 +71,7 @@ async def get_events(
     status_filter: Optional[str] = Query(None),
     type_filter: Optional[str] = Query(None),
     search_term: Optional[str] = Query(None),
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get paginated events with filters"""
@@ -80,10 +80,16 @@ async def get_events(
     
     # Apply filters
     if status_filter and status_filter != "all":
-        query = query.filter(GameEvent.status == status_filter)
-    
+        try:
+            query = query.filter(GameEvent.status == EventStatus(status_filter))
+        except ValueError:
+            pass  # Invalid status filter, ignore
+
     if type_filter and type_filter != "all":
-        query = query.filter(GameEvent.event_type == type_filter)
+        try:
+            query = query.filter(GameEvent.event_type == EventType(type_filter))
+        except ValueError:
+            pass  # Invalid type filter, ignore
     
     if search_term:
         query = query.filter(
@@ -122,8 +128,8 @@ async def get_events(
         ).count()
         
         # Get creator name
-        creator = db.query(Player).filter(Player.id == event.created_by_id).first()
-        creator_name = creator.user.username if creator and creator.user else "System"
+        creator = db.query(User).filter(User.id == event.created_by).first()
+        creator_name = creator.username if creator else "System"
         
         event_responses.append(GameEventResponse(
             id=str(event.id),
@@ -151,7 +157,7 @@ async def get_events(
 
 @router.get("/stats", response_model=EventStatsResponse)
 async def get_event_stats(
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get event statistics"""
@@ -179,7 +185,7 @@ async def get_event_stats(
 
 @router.get("/templates", response_model=List[EventTemplateResponse])
 async def get_event_templates(
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_admin = Depends(get_current_admin_user)
 ):
     """Get available event templates"""
@@ -215,13 +221,10 @@ async def get_event_templates(
 @router.post("/", response_model=GameEventResponse)
 async def create_event(
     event_data: CreateEventRequest,
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_admin = Depends(get_current_admin_user)
 ):
     """Create a new game event"""
-    
-    # Get the admin's player record for creator tracking
-    admin_player = db.query(Player).filter(Player.user_id == current_admin.id).first()
     
     # Create the event
     new_event = GameEvent(
@@ -232,7 +235,7 @@ async def create_event(
         start_time=event_data.start_time,
         end_time=event_data.end_time,
         affected_regions=event_data.affected_regions,
-        created_by_id=admin_player.id if admin_player else None,
+        created_by=current_admin.id,
         created_at=datetime.utcnow()
     )
     
@@ -266,8 +269,6 @@ async def create_event(
         for effect in effects
     ]
     
-    creator_name = admin_player.user.username if admin_player and admin_player.user else "System"
-    
     return GameEventResponse(
         id=str(new_event.id),
         title=new_event.title,
@@ -280,7 +281,7 @@ async def create_event(
         effects=effect_responses,
         participation_count=0,
         rewards_distributed=0,
-        created_by=creator_name,
+        created_by=current_admin.username,
         created_at=new_event.created_at
     )
 
@@ -289,7 +290,7 @@ async def create_event(
 async def update_event(
     event_id: str,
     event_data: CreateEventRequest,
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_admin = Depends(get_current_admin_user)
 ):
     """Update an existing event"""
@@ -339,8 +340,8 @@ async def update_event(
         EventParticipation.event_id == event.id
     ).count()
     
-    creator = db.query(Player).filter(Player.id == event.created_by_id).first()
-    creator_name = creator.user.username if creator and creator.user else "System"
+    creator = db.query(User).filter(User.id == event.created_by).first()
+    creator_name = creator.username if creator else "System"
     
     return GameEventResponse(
         id=str(event.id),
@@ -362,7 +363,7 @@ async def update_event(
 @router.post("/{event_id}/activate")
 async def activate_event(
     event_id: str,
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_admin = Depends(get_current_admin_user)
 ):
     """Activate a scheduled event"""
@@ -381,7 +382,7 @@ async def activate_event(
     effects = db.query(EventEffect).filter(EventEffect.event_id == event.id).all()
     for effect in effects:
         effect.is_active = True
-        effect.activated_at = datetime.utcnow()
+        effect.applied_at = datetime.utcnow()
     
     db.commit()
     
@@ -391,7 +392,7 @@ async def activate_event(
 @router.post("/{event_id}/deactivate")
 async def deactivate_event(
     event_id: str,
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_admin = Depends(get_current_admin_user)
 ):
     """Deactivate an active event"""
@@ -400,17 +401,16 @@ async def deactivate_event(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     
-    if event.status != EventStatus.ACTIVE:
-        raise HTTPException(status_code=400, detail="Only active events can be deactivated")
-    
-    event.status = EventStatus.COMPLETED
+    if event.status not in (EventStatus.ACTIVE, EventStatus.SCHEDULED):
+        raise HTTPException(status_code=400, detail="Only active or scheduled events can be deactivated")
+
+    event.status = EventStatus.CANCELLED if event.status == EventStatus.SCHEDULED else EventStatus.COMPLETED
     event.actual_end_time = datetime.utcnow()
     
     # Deactivate all effects
     effects = db.query(EventEffect).filter(EventEffect.event_id == event.id).all()
     for effect in effects:
         effect.is_active = False
-        effect.deactivated_at = datetime.utcnow()
     
     db.commit()
     
@@ -420,7 +420,7 @@ async def deactivate_event(
 @router.delete("/{event_id}")
 async def delete_event(
     event_id: str,
-    db: Session = Depends(get_async_session),
+    db: Session = Depends(get_db),
     current_admin = Depends(get_current_admin_user)
 ):
     """Delete an event (only if not active)"""

@@ -153,7 +153,6 @@ const TacticalPlanner: React.FC<TacticalPlannerProps> = ({
     }
 
     // In a real implementation, this would call an API to simulate combat outcomes
-    console.log('Simulating plan:', plan);
     alert(`Simulation for "${plan.name}" would show:\n- Win probability\n- Expected damage taken\n- Resource consumption\n- Time to victory`);
   }, [canPerformAction]);
 

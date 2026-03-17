@@ -43,6 +43,9 @@ export const combatAPI = {
   getStatus: (combatId: string) =>
     apiRequest(`/api/combat/${combatId}/status`),
 
+  retreat: (combatId: string) =>
+    apiRequest(`/api/combat/${combatId}/retreat`, { method: 'POST' }),
+
   // Drone management
   deployDrones: (sectorId: string, droneCount: number) =>
     apiRequest('/api/drones/deploy', {
@@ -369,7 +372,7 @@ export const shipAPI = {
   getMaintenanceStatus: (shipId: string) =>
     apiRequest(`/api/ships/${shipId}/maintenance`),
 
-  scheduleMainenance: (shipId: string, components: any[]) =>
+  scheduleMaintenance: (shipId: string, components: any[]) =>
     apiRequest(`/api/ships/${shipId}/maintenance`, {
       method: 'POST',
       body: JSON.stringify({ components })
@@ -477,6 +480,87 @@ export const playerAPI = {
   }
 };
 
+// Ranking & Reputation APIs
+export const rankingAPI = {
+  getRank: () =>
+    apiRequest('/api/v1/ranking/rank'),
+
+  getMedals: () =>
+    apiRequest('/api/v1/ranking/medals'),
+
+  getDefinitions: () =>
+    apiRequest('/api/v1/ranking/definitions'),
+
+  getReputation: () =>
+    apiRequest('/api/v1/ranking/reputation'),
+
+  getPublicLeaderboard: (category: string = 'rank_points', limit: number = 20) =>
+    apiRequest(`/api/v1/ranking/leaderboard/public?category=${category}&limit=${limit}`),
+
+  getProgress: () =>
+    apiRequest('/api/v1/ranking/progress'),
+};
+
+// Bounty APIs
+export const bountyAPI = {
+  place: (targetId: string, amount: number) =>
+    apiRequest('/api/v1/ranking/bounties/place', {
+      method: 'POST',
+      body: JSON.stringify({ target_id: targetId, amount }),
+    }),
+
+  getOnTarget: (playerId: string) =>
+    apiRequest(`/api/v1/ranking/bounties/target/${playerId}`),
+
+  getAvailable: (limit: number = 20) =>
+    apiRequest(`/api/v1/ranking/bounties/available?limit=${limit}`),
+};
+
+// Citadel APIs
+export const citadelAPI = {
+  getInfo: (planetId: string) =>
+    apiRequest(`/api/planets/${planetId}/citadel`),
+
+  upgrade: (planetId: string) =>
+    apiRequest(`/api/planets/${planetId}/citadel/upgrade`, { method: 'POST' }),
+
+  deposit: (planetId: string, amount: number) =>
+    apiRequest(`/api/planets/${planetId}/citadel/deposit`, {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    }),
+
+  withdraw: (planetId: string, amount: number) =>
+    apiRequest(`/api/planets/${planetId}/citadel/withdraw`, {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    }),
+};
+
+// Ship Upgrade APIs (real backend endpoints)
+export const shipUpgradeAPI = {
+  getUpgrades: (shipId: string) =>
+    apiRequest(`/api/v1/ships/${shipId}/upgrades`),
+
+  purchaseUpgrade: (shipId: string, upgradeType: string) =>
+    apiRequest(`/api/v1/ships/${shipId}/upgrades/purchase`, {
+      method: 'POST',
+      body: JSON.stringify({ upgrade_type: upgradeType }),
+    }),
+
+  installEquipment: (shipId: string, equipmentKey: string) =>
+    apiRequest(`/api/v1/ships/${shipId}/equipment/install`, {
+      method: 'POST',
+      body: JSON.stringify({ equipment_key: equipmentKey }),
+    }),
+
+  uninstallEquipment: (shipId: string, equipmentKey: string) =>
+    apiRequest(`/api/v1/ships/${shipId}/equipment/uninstall`, {
+      method: 'POST',
+      body: JSON.stringify({ equipment_key: equipmentKey }),
+    }),
+};
+
 // Export all APIs
 export const gameAPI = {
   combat: combatAPI,
@@ -487,5 +571,9 @@ export const gameAPI = {
   message: messageAPI,
   ship: shipAPI,
   trading: tradingAPI,
-  player: playerAPI
+  player: playerAPI,
+  ranking: rankingAPI,
+  bounty: bountyAPI,
+  citadel: citadelAPI,
+  shipUpgrade: shipUpgradeAPI,
 };

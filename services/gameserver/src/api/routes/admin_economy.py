@@ -2,15 +2,21 @@
 Admin Economy Dashboard API routes
 """
 
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel, Field
+from datetime import datetime
 
-from src.core.database import get_async_session
+from src.core.database import get_db
 from src.auth.dependencies import require_admin
 from src.models.user import User
+from src.models.market_transaction import MarketPrice, MarketTransaction, EconomicMetrics
+from src.models.station import Station
+from src.models.sector import Sector
+from src.models.player import Player
 from src.services.economy_analytics_service import EconomyAnalyticsService
 
 
@@ -23,26 +29,23 @@ class MarketInterventionRequest(BaseModel):
     parameters: dict = Field(..., description="Intervention-specific parameters")
 
 
-class MarketDataResponse(BaseModel):
-    timeframe: str
-    start_time: str
-    end_time: str
-    summary: dict
-    price_trends: list
-    top_trading_ports: list
-    resource_distribution: dict
-    filters_applied: dict
+class MarketDataItem(BaseModel):
+    station_id: str
+    port_name: str
+    sector_name: str
+    commodity: str
+    buy_price: int
+    sell_price: int
+    quantity: int
+    last_updated: str
 
 
 class EconomicMetricsResponse(BaseModel):
-    timestamp: str
-    latest_metrics: dict
-    inflation: dict
-    liquidity: dict
-    wealth_distribution: dict
-    market_velocity: float
-    economic_indicators: dict
-    health_score: float
+    total_trade_volume: int
+    total_credits_in_circulation: int
+    average_profit_margin: float
+    most_traded_commodity: str
+    economic_health_score: float
 
 
 class PriceAlertResponse(BaseModel):
@@ -50,15 +53,15 @@ class PriceAlertResponse(BaseModel):
     timestamp: str
     alert_type: str
     severity: str
-    station_id: Optional[str]
-    port_name: Optional[str]
-    sector_id: Optional[str]
-    resource_type: Optional[str]
-    player_id: Optional[str]
-    player_name: Optional[str]
-    description: Optional[str]
+    station_id: Optional[str] = None
+    port_name: Optional[str] = None
+    sector_id: Optional[str] = None
+    resource_type: Optional[str] = None
+    player_id: Optional[str] = None
+    player_name: Optional[str] = None
+    description: Optional[str] = None
     recommended_action: str
-    
+
     class Config:
         extra = "allow"  # Allow additional fields
 
@@ -72,33 +75,57 @@ class InterventionResponse(BaseModel):
     message: str
 
 
-@router.get("/market-data", response_model=MarketDataResponse)
+@router.get("/market-data", response_model=List[MarketDataItem])
 async def get_market_data(
-    timeframe: str = Query("24h", description="Timeframe: 1h, 6h, 24h, 7d, 30d"),
-    resource_type: Optional[str] = Query(None, description="Filter by resource type"),
-    sector_id: Optional[UUID] = Query(None, description="Filter by sector"),
+    commodity_filter: Optional[str] = Query(None, description="Filter by commodity type"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of results"),
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """
-    Get comprehensive market data for the admin dashboard.
-    
-    This endpoint provides:
-    - Transaction summaries and volumes
-    - Price trends over time
-    - Top trading ports by volume
-    - Resource distribution statistics
-    
+    Get current market prices across all ports for the admin economy dashboard.
+
+    Returns a flat list of market data items with station, commodity, and pricing info.
+
     **Required permissions**: Admin access
     """
     try:
-        analytics_service = EconomyAnalyticsService(db)
-        market_data = analytics_service.get_market_data(
-            timeframe=timeframe,
-            resource_type=resource_type,
-            sector_id=sector_id
+        # Query market prices with station and sector information
+        query = (
+            db.query(
+                MarketPrice.station_id,
+                MarketPrice.commodity,
+                MarketPrice.buy_price,
+                MarketPrice.sell_price,
+                MarketPrice.quantity,
+                MarketPrice.updated_at,
+                Station.name.label('port_name'),
+                Station.sector_id,
+                Sector.name.label('sector_name'),
+            )
+            .join(Station, MarketPrice.station_id == Station.id)
+            .outerjoin(Sector, Station.sector_uuid == Sector.id)
         )
-        return MarketDataResponse(**market_data)
+
+        if commodity_filter:
+            query = query.filter(MarketPrice.commodity == commodity_filter)
+
+        results = query.limit(limit).all()
+
+        market_data = []
+        for row in results:
+            market_data.append(MarketDataItem(
+                station_id=str(row.station_id),
+                port_name=row.port_name or "Unknown Port",
+                sector_name=row.sector_name or "Unknown Sector",
+                commodity=row.commodity,
+                buy_price=row.buy_price,
+                sell_price=row.sell_price,
+                quantity=row.quantity,
+                last_updated=row.updated_at.isoformat() if row.updated_at else datetime.utcnow().isoformat()
+            ))
+
+        return market_data
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -108,26 +135,64 @@ async def get_market_data(
 
 @router.get("/metrics", response_model=EconomicMetricsResponse)
 async def get_economic_metrics(
+    time_period: Optional[str] = Query("24h", description="Time period for metrics"),
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """
     Get key economic health metrics.
-    
-    This endpoint provides:
-    - Overall economic indicators (GDP, money supply)
-    - Inflation rates by resource type
-    - Market liquidity analysis
-    - Wealth distribution (Gini coefficient)
-    - Market velocity measurements
-    - Overall health score (0-100)
-    
+
+    Returns summary metrics including trade volume, credits in circulation,
+    profit margins, and economic health score.
+
     **Required permissions**: Admin access
     """
     try:
-        analytics_service = EconomyAnalyticsService(db)
-        metrics = analytics_service.get_economic_metrics()
-        return EconomicMetricsResponse(**metrics)
+        # Try to get latest stored metrics first
+        latest_metrics = db.query(EconomicMetrics).order_by(
+            EconomicMetrics.date.desc()
+        ).first()
+
+        if latest_metrics:
+            return EconomicMetricsResponse(
+                total_trade_volume=latest_metrics.total_trade_volume or 0,
+                total_credits_in_circulation=latest_metrics.total_credits_in_circulation or 0,
+                average_profit_margin=latest_metrics.average_profit_margin or 0.0,
+                most_traded_commodity=latest_metrics.most_traded_commodity or "None",
+                economic_health_score=latest_metrics.economic_health_score * 100 if latest_metrics.economic_health_score else 50.0
+            )
+        else:
+            # Calculate live metrics if no stored metrics exist
+            total_credits = (
+                db.query(func.sum(Player.credits))
+                .filter(Player.is_active == True)
+                .scalar() or 0
+            )
+
+            # Get trade volume from recent transactions
+            trade_volume = (
+                db.query(func.sum(MarketTransaction.total_value))
+                .scalar() or 0
+            )
+
+            # Find most traded commodity
+            most_traded = (
+                db.query(
+                    MarketTransaction.commodity,
+                    func.count(MarketTransaction.id).label('count')
+                )
+                .group_by(MarketTransaction.commodity)
+                .order_by(func.count(MarketTransaction.id).desc())
+                .first()
+            )
+
+            return EconomicMetricsResponse(
+                total_trade_volume=int(trade_volume),
+                total_credits_in_circulation=int(total_credits),
+                average_profit_margin=0.0,
+                most_traded_commodity=most_traded.commodity if most_traded else "None",
+                economic_health_score=50.0
+            )
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -139,19 +204,19 @@ async def get_economic_metrics(
 async def get_price_alerts(
     threshold_percent: float = Query(10.0, description="Alert threshold percentage", ge=1.0, le=100.0),
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """
     Get price anomalies and market manipulation alerts.
-    
+
     This endpoint monitors for:
     - Significant price spikes or crashes
     - Potential market manipulation patterns
     - Wash trading detection
     - Abnormal trading volumes
-    
+
     Alerts are sorted by severity (critical, high, medium, low).
-    
+
     **Required permissions**: Admin access
     """
     try:
@@ -169,41 +234,41 @@ async def get_price_alerts(
 async def perform_market_intervention(
     request: MarketInterventionRequest,
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """
     Perform market intervention actions.
-    
+
     Available intervention types:
-    
+
     1. **price_adjustment**: Adjust prices by percentage
        - Parameters: resource_type, adjustment_percent, port_ids (optional)
-    
+
     2. **inject_liquidity**: Add resources to specific ports
        - Parameters: station_id, resources (dict of resource_type: amount)
-    
+
     3. **freeze_trading**: Temporarily halt trading
        - Parameters: duration_minutes, resources (list), port_ids (list)
-    
+
     4. **reset_market**: Reset prices to baseline values
        - Parameters: resource_type
-    
+
     All interventions are logged in the audit trail.
-    
+
     **Required permissions**: Admin access
     """
     try:
         analytics_service = EconomyAnalyticsService(db)
-        
+
         # Add admin ID to parameters for audit logging
         parameters = request.parameters.copy()
         parameters['admin_id'] = admin.id
-        
+
         result = analytics_service.perform_market_intervention(
             intervention_type=request.intervention_type,
             parameters=parameters
         )
-        
+
         return InterventionResponse(**result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -217,23 +282,23 @@ async def perform_market_intervention(
 @router.get("/dashboard-summary")
 async def get_dashboard_summary(
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """
     Get a comprehensive summary for the economy dashboard.
-    
+
     Combines key metrics from all economy endpoints for a quick overview.
-    
+
     **Required permissions**: Admin access
     """
     try:
         analytics_service = EconomyAnalyticsService(db)
-        
+
         # Get all data
         market_data = analytics_service.get_market_data(timeframe="24h")
         metrics = analytics_service.get_economic_metrics()
         alerts = analytics_service.get_price_alerts(threshold_percent=10.0)
-        
+
         # Count alerts by severity
         alert_counts = {
             "critical": len([a for a in alerts if a.get('severity') == 'critical']),
@@ -241,7 +306,7 @@ async def get_dashboard_summary(
             "medium": len([a for a in alerts if a.get('severity') == 'medium']),
             "low": len([a for a in alerts if a.get('severity') == 'low'])
         }
-        
+
         return {
             "timestamp": metrics['timestamp'],
             "health_score": metrics['health_score'],

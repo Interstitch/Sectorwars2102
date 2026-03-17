@@ -113,6 +113,14 @@ class NexusGenerationService:
             generation_stats["total_warp_tunnels"] = warp_tunnel_count
             logger.info(f"Created {warp_tunnel_count} warp tunnels")
 
+            # Create MarketPrice entries for all generated stations
+            logger.info("Creating market prices for Central Nexus stations...")
+            market_prices_created = await self._create_market_prices_for_nexus_stations(
+                session, str(nexus_region.id)
+            )
+            generation_stats["market_prices_created"] = market_prices_created
+            logger.info(f"Created {market_prices_created} market price entries")
+
             # NOTE: Don't commit here - let the caller handle transaction management
             # This avoids async/sync context issues when called from sync endpoints
             await session.flush()  # Flush changes to get IDs
@@ -479,6 +487,99 @@ class NexusGenerationService:
             "max_population": max_population
         }
     
+
+    async def _create_market_prices_for_nexus_stations(
+        self, session: AsyncSession, region_id: str
+    ) -> int:
+        """Create MarketPrice entries for all stations in the Central Nexus region.
+
+        The trading endpoint reads from market_prices table, so every station
+        needs MarketPrice rows for each commodity it trades.
+        Nexus stations are created via bulk insert without commodities JSONB,
+        so we derive market prices from the station class trading patterns.
+        """
+        from src.models.market_transaction import MarketPrice
+        from src.models.station import StationClass
+
+        # Query all stations in this region
+        result = await session.execute(
+            select(Station).where(Station.region_id == region_id)
+        )
+        stations = result.scalars().all()
+
+        if not stations:
+            return 0
+
+        # Base commodity definitions
+        base_commodities = {
+            "ore": {"base_price": 15, "quantity": 1000, "capacity": 5000},
+            "organics": {"base_price": 18, "quantity": 800, "capacity": 3000},
+            "equipment": {"base_price": 35, "quantity": 500, "capacity": 2000},
+            "fuel": {"base_price": 12, "quantity": 1500, "capacity": 4000},
+            "luxury_goods": {"base_price": 100, "quantity": 200, "capacity": 800},
+            "gourmet_food": {"base_price": 80, "quantity": 150, "capacity": 600},
+            "exotic_technology": {"base_price": 250, "quantity": 50, "capacity": 200},
+            "colonists": {"base_price": 50, "quantity": 100, "capacity": 500},
+        }
+
+        # Trading patterns by station class
+        trading_patterns = {
+            StationClass.CLASS_0: {"buys": ["special_goods"], "sells": ["special_goods", "colonists"]},
+            StationClass.CLASS_1: {"buys": ["ore"], "sells": ["organics", "equipment"]},
+            StationClass.CLASS_2: {"buys": ["organics"], "sells": ["ore", "equipment"]},
+            StationClass.CLASS_3: {"buys": ["equipment"], "sells": ["ore", "organics"]},
+            StationClass.CLASS_4: {"buys": [], "sells": ["ore", "organics", "equipment", "fuel"]},
+            StationClass.CLASS_5: {"buys": ["ore", "organics", "equipment", "fuel"], "sells": []},
+            StationClass.CLASS_6: {"buys": ["ore", "organics"], "sells": ["equipment", "fuel"]},
+            StationClass.CLASS_7: {"buys": ["equipment", "fuel"], "sells": ["ore", "organics"]},
+            StationClass.CLASS_8: {"buys": ["ore", "organics", "equipment", "fuel"], "sells": []},
+            StationClass.CLASS_9: {"buys": [], "sells": ["ore", "organics", "equipment", "fuel"]},
+            StationClass.CLASS_10: {"buys": ["gourmet_food"], "sells": ["luxury_goods", "exotic_technology"]},
+            StationClass.CLASS_11: {"buys": ["exotic_technology"], "sells": ["equipment", "fuel"]},
+        }
+
+        prices_created = 0
+
+        for station in stations:
+            pattern = trading_patterns.get(station.station_class, {"buys": [], "sells": []})
+            buys_list = pattern.get("buys", [])
+            sells_list = pattern.get("sells", [])
+
+            for commodity_name, commodity_info in base_commodities.items():
+                is_buy = commodity_name in buys_list
+                is_sell = commodity_name in sells_list
+
+                if not is_buy and not is_sell:
+                    continue
+
+                base_price = commodity_info["base_price"]
+                quantity = commodity_info["quantity"]
+
+                # Calculate buy/sell prices with spread
+                if is_buy and is_sell:
+                    buy_price = int(base_price * 0.85)
+                    sell_price = int(base_price * 1.15)
+                elif is_buy:
+                    buy_price = int(base_price * 1.1)
+                    sell_price = int(base_price * 1.5)
+                    quantity = int(quantity * 0.2)  # Buyers have low stock
+                else:
+                    buy_price = int(base_price * 0.5)
+                    sell_price = int(base_price * 0.9)
+                    quantity = int(quantity * random.uniform(0.5, 0.8))
+
+                market_price = MarketPrice(
+                    station_id=station.id,
+                    commodity=commodity_name,
+                    quantity=quantity,
+                    buy_price=buy_price,
+                    sell_price=sell_price
+                )
+                session.add(market_price)
+                prices_created += 1
+
+        await session.flush()
+        return prices_created
 
     async def _generate_warp_tunnels(self, session: AsyncSession, region_id: str) -> int:
         """Generate warp tunnels for Central Nexus with SPARSE density (0.3x multiplier).

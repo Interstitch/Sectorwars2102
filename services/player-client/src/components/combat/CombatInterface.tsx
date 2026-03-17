@@ -193,7 +193,7 @@ export const CombatInterface: React.FC<CombatInterfaceProps> = ({
     if (!combatId || !playerState || combatStatus?.status === 'completed') return;
     
     // TODO: Implement retreat mechanics when API is available
-    console.log('Retreat attempt - not yet implemented');
+    console.warn('Retreat attempt - not yet implemented');
   }, [combatId, playerState, combatStatus]);
   
   // Calculate health percentages

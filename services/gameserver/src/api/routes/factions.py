@@ -229,9 +229,49 @@ async def accept_mission(
             detail="Mission not found or not available to you"
         )
     
-    # TODO: Implement mission acceptance logic
-    # This would involve creating a player_missions table to track accepted missions
-    
+    # Track accepted missions in the player's settings JSONB field
+    player_settings = current_player.settings or {}
+    accepted_missions = player_settings.get("accepted_missions", [])
+
+    # Check if player already accepted this mission
+    if any(m.get("mission_id") == request.mission_id for m in accepted_missions):
+        raise HTTPException(
+            status_code=409,
+            detail="You have already accepted this mission"
+        )
+
+    # Check max concurrent missions (limit to 5)
+    active_missions = [m for m in accepted_missions if m.get("status") == "active"]
+    if len(active_missions) >= 5:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot accept more than 5 missions at a time"
+        )
+
+    # Record the accepted mission
+    accepted_missions.append({
+        "mission_id": request.mission_id,
+        "faction_id": str(faction_id),
+        "title": mission.title,
+        "mission_type": mission.mission_type,
+        "status": "active",
+        "accepted_at": datetime.utcnow().isoformat(),
+        "credit_reward": mission.credit_reward,
+        "reputation_reward": mission.reputation_reward,
+        "target_sector_id": str(mission.target_sector_id) if mission.target_sector_id else None,
+        "cargo_type": mission.cargo_type,
+        "cargo_quantity": mission.cargo_quantity,
+        "expires_at": mission.expires_at.isoformat() if mission.expires_at else None
+    })
+
+    player_settings["accepted_missions"] = accepted_missions
+    current_player.settings = player_settings
+
+    # Use flag_modified to ensure SQLAlchemy detects the JSONB change
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(current_player, "settings")
+    db.commit()
+
     return {
         "success": True,
         "message": f"Mission '{mission.title}' accepted",

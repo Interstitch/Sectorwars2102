@@ -53,49 +53,19 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ filters = {}, on
         sortOrder
       });
 
-      const response = await fetch(`/api/admin/audit/logs?${queryParams}`, {
+      const response = await fetch(`/api/v1/admin/audit/logs?${queryParams}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
-      }).catch(() => {
-        // Mock response for development
-        const mockLogs: AuditLog[] = Array.from({ length: 50 }, (_, i) => ({
-          id: `log-${page}-${i}`,
-          timestamp: new Date(Date.now() - i * 60000).toISOString(),
-          userId: `user-${Math.floor(Math.random() * 10)}`,
-          username: ['admin', 'operator1', 'operator2', 'moderator'][Math.floor(Math.random() * 4)],
-          action: ['login', 'logout', 'update_ship', 'delete_player', 'market_intervention', 'ban_player'][Math.floor(Math.random() * 6)],
-          resource: ['auth', 'ships', 'players', 'economy', 'security'][Math.floor(Math.random() * 5)],
-          resourceId: Math.random() > 0.5 ? `res-${Math.floor(Math.random() * 1000)}` : undefined,
-          details: {
-            previous_value: Math.random() > 0.5 ? 'old_value' : undefined,
-            new_value: Math.random() > 0.5 ? 'new_value' : undefined,
-            reason: Math.random() > 0.3 ? 'Administrative action' : undefined
-          },
-          ipAddress: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          status: ['success', 'failure', 'warning'][Math.floor(Math.random() * 3)] as 'success' | 'failure' | 'warning',
-          duration: Math.floor(Math.random() * 1000)
-        }));
-
-        return {
-          ok: true,
-          json: async () => ({
-            logs: mockLogs,
-            total: 500,
-            page,
-            totalPages: 10
-          })
-        };
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch audit logs');
+        throw new Error('Failed to load audit logs');
       }
 
       const data = await response.json();
-      setLogs(data.logs);
-      setTotalPages(data.totalPages);
+      setLogs(data.logs || []);
+      setTotalPages(data.totalPages || 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -239,6 +209,14 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ filters = {}, on
                 </tr>
               </thead>
               <tbody>
+                {logs.length === 0 && (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>
+                      <i className="fas fa-clipboard-list" style={{ fontSize: '2rem', marginBottom: '12px', display: 'block' }}></i>
+                      No audit logs found.
+                    </td>
+                  </tr>
+                )}
                 {logs.map(log => (
                   <tr key={log.id} className={getStatusClass(log.status)}>
                     <td className="timestamp">

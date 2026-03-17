@@ -2,13 +2,17 @@
 Team management API routes
 """
 
+import logging
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
-from src.core.database import get_async_session
+logger = logging.getLogger(__name__)
+
+from src.core.database import get_db
 from src.auth.dependencies import get_current_player
 from src.models.player import Player
 from src.models.team import TeamRecruitmentStatus
@@ -109,7 +113,7 @@ class PermissionsResponse(BaseModel):
 async def create_team(
     request: CreateTeamRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Create a new team"""
     try:
@@ -146,13 +150,14 @@ async def create_team(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create team: {str(e)}")
+        logger.error("Failed to create team: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to create team")
 
 
 @router.get("/{team_id}", response_model=TeamResponse)
 async def get_team(
     team_id: UUID,
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get team details"""
     team_service = TeamService(db)
@@ -188,7 +193,7 @@ async def update_team(
     team_id: UUID,
     request: UpdateTeamRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Update team details (leader/officer only)"""
     try:
@@ -236,14 +241,15 @@ async def update_team(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update team: {str(e)}")
+        logger.error("Failed to update team: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to update team")
 
 
 @router.delete("/{team_id}")
 async def delete_team(
     team_id: UUID,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Delete team (leader only)"""
     try:
@@ -253,13 +259,14 @@ async def delete_team(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete team: {str(e)}")
+        logger.error("Failed to delete team: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to delete team")
 
 
 @router.get("/{team_id}/members", response_model=List[TeamMemberResponse])
 async def get_team_members(
     team_id: UUID,
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get all team members"""
     team_service = TeamService(db)
@@ -273,7 +280,7 @@ async def invite_player(
     team_id: UUID,
     request: InvitePlayerRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Invite a player to the team"""
     try:
@@ -287,14 +294,15 @@ async def invite_player(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to invite player: {str(e)}")
+        logger.error("Failed to invite player: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to invite player")
 
 
 @router.post("/join", response_model=TeamResponse)
 async def join_team(
     request: JoinTeamRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Join a team (via invitation or direct for open teams)"""
     try:
@@ -331,13 +339,14 @@ async def join_team(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to join team: {str(e)}")
+        logger.error("Failed to join team: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to join team")
 
 
 @router.post("/leave")
 async def leave_team(
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Leave current team"""
     try:
@@ -347,7 +356,8 @@ async def leave_team(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to leave team: {str(e)}")
+        logger.error("Failed to leave team: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to leave team")
 
 
 @router.delete("/{team_id}/members/{member_id}")
@@ -355,7 +365,7 @@ async def remove_member(
     team_id: UUID,
     member_id: UUID,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Remove a member from the team"""
     try:
@@ -369,7 +379,8 @@ async def remove_member(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to remove member: {str(e)}")
+        logger.error("Failed to remove member: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to remove member")
 
 
 @router.put("/{team_id}/members/{member_id}/role", response_model=TeamMemberResponse)
@@ -378,7 +389,7 @@ async def update_member_role(
     member_id: UUID,
     request: UpdateRoleRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Update a member's role (leader only)"""
     try:
@@ -411,14 +422,15 @@ async def update_member_role(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update role: {str(e)}")
+        logger.error("Failed to update role: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to update role")
 
 
 @router.get("/{team_id}/permissions", response_model=PermissionsResponse)
 async def get_user_permissions(
     team_id: UUID,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get current player's permissions in the team"""
     team_service = TeamService(db)
@@ -431,7 +443,7 @@ async def transfer_leadership(
     team_id: UUID,
     new_leader_id: UUID,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Transfer team leadership to another member"""
     try:
@@ -449,7 +461,8 @@ async def transfer_leadership(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to transfer leadership: {str(e)}")
+        logger.error("Failed to transfer leadership: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to transfer leadership")
 
 
 # Treasury Management Endpoints
@@ -490,7 +503,7 @@ async def deposit_to_treasury(
     team_id: UUID,
     request: DepositRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Deposit resources to team treasury"""
     try:
@@ -505,7 +518,8 @@ async def deposit_to_treasury(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to deposit: {str(e)}")
+        logger.error("Failed to deposit: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to deposit")
 
 
 @router.post("/{team_id}/treasury/withdraw")
@@ -513,7 +527,7 @@ async def withdraw_from_treasury(
     team_id: UUID,
     request: WithdrawRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Withdraw resources from team treasury"""
     try:
@@ -528,7 +542,8 @@ async def withdraw_from_treasury(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to withdraw: {str(e)}")
+        logger.error("Failed to withdraw: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to withdraw")
 
 
 @router.post("/{team_id}/treasury/transfer")
@@ -536,7 +551,7 @@ async def transfer_to_player(
     team_id: UUID,
     request: TransferRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Transfer resources from treasury to a specific player"""
     try:
@@ -552,23 +567,30 @@ async def transfer_to_player(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to transfer: {str(e)}")
+        logger.error("Failed to transfer: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to transfer")
 
 
 @router.get("/{team_id}/treasury", response_model=TreasuryBalanceResponse)
 async def get_treasury_balance(
     team_id: UUID,
-    db: Session = Depends(get_async_session)
+    current_player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
 ):
-    """Get team treasury balance"""
+    """Get team treasury balance (requires team membership)"""
+    # Verify player is a member of this team
+    if not current_player.team_id or str(current_player.team_id) != str(team_id):
+        raise HTTPException(status_code=403, detail="You are not a member of this team")
+
     try:
         team_service = TeamService(db)
         balance = team_service.get_treasury_balance(team_id)
         return TreasuryBalanceResponse(**balance)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Team not found")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get treasury balance: {str(e)}")
+        logger.error(f"Failed to get treasury balance: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get treasury balance")
 
 
 # Team Communication Endpoints
@@ -597,7 +619,7 @@ async def get_team_messages(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Get team messages"""
     # Verify player is a team member
@@ -641,7 +663,7 @@ async def send_team_message(
     team_id: UUID,
     request: SendMessageRequest,
     player: Player = Depends(get_current_player),
-    db: Session = Depends(get_async_session)
+    db: Session = Depends(get_db)
 ):
     """Send a message to the team"""
     # Verify player is a team member
@@ -652,13 +674,12 @@ async def send_team_message(
         raise HTTPException(status_code=403, detail="You are not a member of this team")
     
     # Send message
-    message_service = MessageService(db)
-    message = message_service.send_message(
+    message = await MessageService.send_message(
+        db=db,
         sender_id=player.id,
         team_id=team_id,
         subject=request.subject,
         content=request.content,
-        message_type="team",
         priority=request.priority
     )
     
@@ -673,3 +694,184 @@ async def send_team_message(
         priority=message.priority,
         is_read=False
     )
+
+
+# ==========================================
+# Team War Endpoints
+# ==========================================
+
+class DeclareWarRequest(BaseModel):
+    target_team_id: str
+    reason: str = Field(default="", max_length=500)
+
+
+class CeasefireRequest(BaseModel):
+    target_team_id: str
+
+
+class WarEntry(BaseModel):
+    target_team_id: str
+    declared_by: str
+    declared_at: str
+    reason: str
+    status: str
+    score: dict
+
+
+@router.post("/{team_id}/wars/declare")
+async def declare_war(
+    team_id: UUID,
+    request: DeclareWarRequest,
+    current_player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """Declare war on another team. Requires team leader."""
+    from src.models.team import Team
+    # Lock both teams to prevent concurrent war declaration races
+    team = db.query(Team).filter(Team.id == team_id).with_for_update().first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if team.leader_id != current_player.id:
+        raise HTTPException(status_code=403, detail="Only team leader can declare war")
+
+    # Lock target team
+    target_id = request.target_team_id
+    try:
+        target_team = db.query(Team).filter(Team.id == UUID(target_id)).with_for_update().first()
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid target team ID")
+    if not target_team:
+        raise HTTPException(status_code=404, detail="Target team not found")
+
+    # Cannot declare war on yourself
+    if str(team_id) == target_id:
+        raise HTTPException(status_code=400, detail="Cannot declare war on your own team")
+
+    # Store war declaration in member_roles JSONB (used as general metadata store)
+    from sqlalchemy.orm.attributes import flag_modified
+    if not team.member_roles:
+        team.member_roles = {}
+    wars = team.member_roles.get("active_wars", [])
+
+    # Check not already at war with this team
+    if any(w["target_team_id"] == target_id for w in wars):
+        raise HTTPException(status_code=400, detail="Already at war with this team")
+
+    war_entry = {
+        "target_team_id": target_id,
+        "declared_by": str(current_player.id),
+        "declared_at": datetime.utcnow().isoformat(),
+        "reason": request.reason,
+        "status": "active",
+        "score": {"us": 0, "them": 0},
+    }
+    wars.append(war_entry)
+    team.member_roles["active_wars"] = wars
+    flag_modified(team, "member_roles")
+
+    # Also record the war on the target team side
+    if not target_team.member_roles:
+        target_team.member_roles = {}
+    target_wars = target_team.member_roles.get("active_wars", [])
+    target_war_entry = {
+        "target_team_id": str(team_id),
+        "declared_by": str(current_player.id),
+        "declared_at": datetime.utcnow().isoformat(),
+        "reason": request.reason,
+        "status": "active",
+        "score": {"us": 0, "them": 0},
+    }
+    target_wars.append(target_war_entry)
+    target_team.member_roles["active_wars"] = target_wars
+    flag_modified(target_team, "member_roles")
+
+    db.commit()
+
+    return {"success": True, "message": "War declared", "war": war_entry}
+
+
+@router.get("/{team_id}/wars", response_model=List[WarEntry])
+async def list_wars(
+    team_id: UUID,
+    status: Optional[str] = Query(None, pattern="^(active|ceased)$"),
+    db: Session = Depends(get_db)
+):
+    """List wars for a team, optionally filtered by status."""
+    team_service = TeamService(db)
+    team = team_service.get_team(team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+
+    wars = (team.member_roles or {}).get("active_wars", [])
+
+    if status:
+        wars = [w for w in wars if w.get("status") == status]
+
+    return wars
+
+
+@router.post("/{team_id}/wars/ceasefire")
+async def ceasefire(
+    team_id: UUID,
+    request: CeasefireRequest,
+    current_player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """End a war via ceasefire. Requires leader of either involved team."""
+    team_service = TeamService(db)
+    team = team_service.get_team(team_id)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+
+    target_id = request.target_team_id
+    try:
+        target_team = team_service.get_team(UUID(target_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid target team ID")
+    if not target_team:
+        raise HTTPException(status_code=404, detail="Target team not found")
+
+    # Verify the requesting player is leader of either team
+    is_leader_of_team = team.leader_id == current_player.id
+    is_leader_of_target = target_team.leader_id == current_player.id
+    if not is_leader_of_team and not is_leader_of_target:
+        raise HTTPException(status_code=403, detail="Only a leader of either team can request ceasefire")
+
+    from sqlalchemy.orm.attributes import flag_modified
+
+    # Update war status on the declaring team side
+    wars = (team.member_roles or {}).get("active_wars", [])
+    war_found = False
+    for w in wars:
+        if w["target_team_id"] == target_id and w["status"] == "active":
+            w["status"] = "ceased"
+            w["ceased_at"] = datetime.utcnow().isoformat()
+            w["ceased_by"] = str(current_player.id)
+            war_found = True
+            break
+
+    if not war_found:
+        raise HTTPException(status_code=404, detail="No active war found between these teams")
+
+    if not team.member_roles:
+        team.member_roles = {}
+    team.member_roles["active_wars"] = wars
+    flag_modified(team, "member_roles")
+
+    # Update war status on the target team side
+    target_wars = (target_team.member_roles or {}).get("active_wars", [])
+    for w in target_wars:
+        if w["target_team_id"] == str(team_id) and w["status"] == "active":
+            w["status"] = "ceased"
+            w["ceased_at"] = datetime.utcnow().isoformat()
+            w["ceased_by"] = str(current_player.id)
+            break
+
+    if not target_team.member_roles:
+        target_team.member_roles = {}
+    target_team.member_roles["active_wars"] = target_wars
+    flag_modified(target_team, "member_roles")
+
+    db.commit()
+
+    return {"success": True, "message": "Ceasefire declared", "ceased_by": str(current_player.id)}

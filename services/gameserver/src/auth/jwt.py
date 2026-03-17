@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, UTC
 from typing import Any, Dict, Optional, Union
 import uuid
@@ -8,6 +9,8 @@ from sqlalchemy.orm import Session
 
 from src.core.config import settings
 from src.models.refresh_token import RefreshToken
+
+logger = logging.getLogger(__name__)
 
 
 def create_access_token(subject: Union[str, Any], expires_delta: Optional[timedelta] = None) -> str:
@@ -46,14 +49,12 @@ def create_refresh_token(subject: Union[str, Any], db: Session) -> str:
 
 def create_tokens(user_id: str, db: Session) -> tuple[str, str]:
     """Create both access and refresh tokens."""
-    print(f"Creating tokens for user ID: {user_id}")
-    
+    logger.debug("Creating tokens for user")
+
     access_token = create_access_token(user_id)
     refresh_token = create_refresh_token(user_id, db)
-    
-    # SECURITY: Never log tokens in production - only log success/failure
-    if settings.DEVELOPMENT_MODE:
-        print(f"Generated tokens for user: {user_id}")
+
+    logger.debug("Tokens created successfully")
     
     return access_token, refresh_token
 

@@ -108,7 +108,6 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   // Connection management
   const connect = useCallback(() => {
     if (token) {
-      console.log('WebSocket: Initiating connection with token');
       websocketService.connect(token);
     } else {
       console.warn('WebSocket: No token available for connection');
@@ -116,12 +115,10 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   }, [token]);
 
   const disconnect = useCallback(() => {
-    console.log('WebSocket: Disconnecting');
     websocketService.disconnect();
   }, []);
 
   const reconnect = useCallback(() => {
-    console.log('WebSocket: Reconnecting');
     disconnect();
     setTimeout(connect, 1000);
   }, [connect, disconnect]);
@@ -198,10 +195,8 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       setIsConnected(connected);
       if (connected) {
         setConnectionStatus('Connected');
-        console.log('WebSocket: Connection established');
       } else {
         setConnectionStatus(details?.reason || 'Disconnected');
-        console.log('WebSocket: Connection lost');
         
         // Clear real-time data when disconnected
         setSectorPlayers([]);
@@ -340,7 +335,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         default:
           // Only log truly unhandled message types, not ones handled by specific handlers
           if (!['sector_players', 'connection_status', 'chat_message', 'player_entered_sector', 'player_left_sector', 'notification'].includes(message.type)) {
-            console.log('WebSocket: Unhandled message type:', message.type);
+            console.warn('WebSocket: Unhandled message type:', message.type);
           }
       }
     };
@@ -359,10 +354,8 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   // Auto-connect when user is authenticated
   useEffect(() => {
     if (user && token) {
-      console.log('WebSocket: User authenticated, connecting...');
       connect();
     } else {
-      console.log('WebSocket: User not authenticated, disconnecting...');
       disconnect();
     }
 

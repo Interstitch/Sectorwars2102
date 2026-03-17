@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Body
 from fastapi.security import OAuth2PasswordRequestForm
@@ -7,11 +8,13 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.orm import Session
 from jose import JWTError
 
+logger = logging.getLogger(__name__)
+
 from src.auth.jwt import create_tokens, decode_token
 from src.auth.dependencies import get_current_user
 from src.models.user import User
 from src.models.admin_credentials import AdminCredentials
-from src.auth.oauth import GitHubOAuth, GoogleOAuth, SteamAuth, get_oauth_user, create_oauth_user
+from src.auth.oauth import GitHubOAuth, GoogleOAuth, SteamAuth, get_oauth_user, create_oauth_user, _validate_oauth_state
 from src.core.database import get_db
 from src.core.config import settings
 from src.models.refresh_token import RefreshToken
@@ -172,7 +175,7 @@ async def login_direct(
         mfa_enabled = mfa_service.is_mfa_enabled(str(user.id))
     except Exception as e:
         # MFA table might not exist yet, disable MFA for now
-        print(f"MFA service error (table may not exist): {e}")
+        logger.warning("MFA service error (table may not exist): %s", e)
         # Rollback the current transaction to avoid transaction errors
         db.rollback()
         mfa_enabled = False
@@ -574,17 +577,6 @@ async def login_github(request: Request, register: bool = False):
         else:
             base = f"{api_base_url}{settings.API_V1_STR}"
 
-        # Debug information about what we're using
-        host = request.headers.get("host", "")
-        scheme = request.headers.get("x-forwarded-proto", "https")
-        print(f"Codespaces detected. Original request host: {host}, scheme: {scheme}")
-        print(f"Using configured API_BASE_URL instead: {api_base_url}")
-        
-        # Debug all request headers to help understand the tunneling mechanism
-        print("All request headers:")
-        for header_name, header_value in request.headers.items():
-            print(f"  {header_name}: {header_value}")
-
         # Always use the API_BASE_URL setting for Codespaces
         redirect_uri = f"{base}/auth/github/callback?register={register}"
     else:
@@ -596,27 +588,24 @@ async def login_github(request: Request, register: bool = False):
 
         redirect_uri = f"{base}/auth/github/callback?register={register}"
 
-    # Debug information
-    print(f"GitHub OAuth redirect URI: {redirect_uri}")
-    print(f"Environment detected: {settings.detect_environment()}")
-    print(f"GitHub Client ID: {settings.GITHUB_CLIENT_ID}")
-    print(f"Request host: {request.headers.get('host', '')}")
-    print(f"X-Forwarded-Host: {request.headers.get('x-forwarded-host', 'Not set')}")
-    print(f"X-Forwarded-Proto: {request.headers.get('x-forwarded-proto', 'Not set')}")
-    print(f"Request method: {request.method}")
-    print(f"Request URL: {request.url}")
-    print(f"API Base URL: {settings.get_api_base_url()}")
-    print(f"CODESPACE_NAME env: {os.environ.get('CODESPACE_NAME', 'Not set')}")
+    logger.debug("GitHub OAuth redirect URI configured (env=%s)", settings.detect_environment())
 
     authorization_url = GitHubOAuth.get_authorization_url(redirect_uri)
     return RedirectResponse(authorization_url)
 
 
 @router.get("/github/callback")
-async def github_callback(request: Request, code: str, register: bool = False, db: Session = Depends(get_db)):
+async def github_callback(request: Request, code: str, register: bool = False, state: Optional[str] = None, db: Session = Depends(get_db)):
     """
     Process GitHub OAuth callback.
     """
+    # Validate OAuth state parameter (CSRF protection)
+    if not _validate_oauth_state(state):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or expired OAuth state. Please try logging in again.",
+        )
+
     # Use the auto-detected API base URL
     api_base_url = settings.get_api_base_url()
 
@@ -624,9 +613,7 @@ async def github_callback(request: Request, code: str, register: bool = False, d
     callback_url = str(request.url)
 
     # Detailed debug for the callback
-    print(f"Raw callback URL received: {callback_url}")
-    print(f"GitHub Codespaces detected: {settings.detect_environment() == 'codespaces'}")
-    print(f"GitHub OAuth code received: {code}")
+    logger.debug("GitHub OAuth callback received (env=%s)", settings.detect_environment())
 
     # For Codespaces, use the same URL that was used in the initial request
     if settings.detect_environment() == "codespaces":
@@ -637,18 +624,10 @@ async def github_callback(request: Request, code: str, register: bool = False, d
         else:
             base = f"{api_base_url}{settings.API_V1_STR}"
 
-        # Debug information about what we're using
-        host = request.headers.get("host", "")
-        scheme = request.headers.get("x-forwarded-proto", "https")
-        print(f"Codespaces callback. Original host header: {host}, scheme: {scheme}")
-        print(f"Using configured API_BASE_URL instead: {api_base_url}")
-
         # Always use the API_BASE_URL setting for Codespaces
         redirect_uri = f"{base}/auth/github/callback?register={register}"
-        print(f"Codespaces redirect_uri: {redirect_uri}")
     else:
         # Include the registration flag in the redirect URI
-        # Remove any duplicate api prefix if present in the base_url
         if api_base_url.endswith(settings.API_V1_STR):
             base = api_base_url
         else:
@@ -656,8 +635,7 @@ async def github_callback(request: Request, code: str, register: bool = False, d
 
         redirect_uri = f"{base}/auth/github/callback?register={register}"
 
-    # Debug information
-    print(f"GitHub OAuth callback URI: {redirect_uri}")
+    logger.debug("GitHub OAuth callback URI configured")
 
     try:
         # Exchange code for token and get user info
@@ -680,84 +658,36 @@ async def github_callback(request: Request, code: str, register: bool = False, d
                 from src.auth.oauth import create_player_for_user
                 await create_player_for_user(db, user)
                 db.commit()
-                print(f"Created Player record for existing OAuth user: {user.username}")
+                logger.info("Created Player record for existing OAuth user: %s", user.username)
 
         # Create tokens and update last login
         access_token, refresh_token = create_tokens(str(user.id), db)
         update_user_last_login(db, str(user.id))
 
         # Get the frontend URL for the OAuth callback page
-        # Use the get_frontend_url() method instead of the property directly
         frontend_base = settings.get_frontend_url()
         frontend_url = f"{frontend_base}/oauth-callback?access_token={access_token}&refresh_token={refresh_token}&user_id={user.id}&is_new_user={is_new_user}"
 
-        # Debug information - more verbose
-        print(f"==== OAuth Callback Debug ====")
-        print(f"Redirecting to frontend URL: {frontend_url}")
-        print(f"Is new user: {is_new_user}")
-        print(f"Access token provided: {bool(access_token)}")
-        print(f"Refresh token provided: {bool(refresh_token)}")
-        print(f"User ID provided: {bool(user.id)}")
-        print(f"Frontend URL from settings: {settings.FRONTEND_URL}")
-        print(f"Codespace environment: {settings.detect_environment() == 'codespaces'}")
-        print(f"============================")
+        logger.debug("OAuth callback: is_new_user=%s, tokens_issued=True", is_new_user)
 
         # Ensure our redirect is absolute
         if not frontend_url.startswith(('http://', 'https://')):
-            print(f"WARNING: Frontend URL is not absolute: {frontend_url}")
-            # Try to fix it
+            logger.warning("Frontend URL is not absolute, attempting fix")
             if settings.detect_environment() == 'codespaces':
-                # Extract codespace name
-                import os
                 codespace_name = os.environ.get('CODESPACE_NAME', '')
                 if codespace_name:
                     frontend_url = f"https://{codespace_name}-3000.app.github.dev/oauth-callback?access_token={access_token}&refresh_token={refresh_token}&user_id={user.id}&is_new_user={is_new_user}"
-                    print(f"Fixed frontend URL to: {frontend_url}")
 
-        # Redirect to the frontend with the tokens
-        print(f"Final redirect URL: {frontend_url}")
         return RedirectResponse(frontend_url)
 
     except Exception as e:
-        # Log the full error for debugging
         import traceback
-        error_details = traceback.format_exc()
-        print(f"GitHub OAuth error: {str(e)}")
-        print(f"Error details: {error_details}")
+        logger.error("GitHub OAuth error: %s\n%s", str(e), traceback.format_exc())
 
-        # Return a user-friendly error page with debugging information
-        error_html = f"""
-<html>
-    <head>
-        <title>OAuth Error</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }}
-            .error {{ background: #ffeeee; border: 1px solid #ffaaaa; padding: 15px; border-radius: 5px; }}
-            .debug {{ background: #eeeeff; border: 1px solid #aaaaff; padding: 15px; border-radius: 5px; margin-top: 20px; }}
-            code {{ background: #f0f0f0; padding: 2px 5px; border-radius: 3px; }}
-        </style>
-    </head>
-    <body>
-        <h1>OAuth Authentication Error</h1>
-        <div class="error">
-            <h3>Error: {str(e)}</h3>
-            <p>There was a problem authenticating with GitHub. Please try again or contact support.</p>
-        </div>
-        <div class="debug">
-            <h3>Debug Information</h3>
-            <ul>
-                <li>Environment: {settings.detect_environment()}</li>
-                <li>Callback URL: <code>{callback_url}</code></li>
-                <li>Redirect URI: <code>{redirect_uri}</code></li>
-                <li>Frontend URL: <code>{settings.FRONTEND_URL}</code></li>
-                <li>GitHub OAuth: <code>{"Configured" if settings.GITHUB_CLIENT_ID else "Not configured"}</code></li>
-            </ul>
-            <p>Try going back to the <a href="{settings.FRONTEND_URL}">login page</a> and trying again.</p>
-        </div>
-    </body>
-</html>
-"""
-        return HTMLResponse(content=error_html, status_code=500)
+        # Return generic error — no internal details exposed
+        frontend_base = settings.get_frontend_url()
+        error_redirect = f"{frontend_base}/login?error=oauth_failed"
+        return RedirectResponse(error_redirect)
 
 
 @router.get("/google")
@@ -777,15 +707,14 @@ async def login_google(request: Request, register: bool = False):
 
     redirect_uri = f"{base}/auth/google/callback?register={register}"
 
-    # Debug information
-    print(f"Google OAuth redirect URI: {redirect_uri}")
+    logger.debug("Google OAuth redirect URI configured")
 
     authorization_url = GoogleOAuth.get_authorization_url(redirect_uri)
     return RedirectResponse(authorization_url)
 
 
 @router.get("/google/callback")
-async def google_callback(request: Request, code: str, register: bool = False, db: Session = Depends(get_db)):
+async def google_callback(request: Request, code: str, register: bool = False, state: Optional[str] = None, db: Session = Depends(get_db)):
     """
     Process Google OAuth callback.
     """
@@ -801,8 +730,14 @@ async def google_callback(request: Request, code: str, register: bool = False, d
 
     redirect_uri = f"{base}/auth/google/callback?register={register}"
 
-    # Debug information
-    print(f"Google OAuth callback URI: {redirect_uri}")
+    # Validate OAuth state parameter (CSRF protection)
+    if not _validate_oauth_state(state):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or expired OAuth state. Please try logging in again.",
+        )
+
+    logger.debug("Google OAuth callback URI configured")
 
     # Exchange code for tokens and get user info
     token_data = await GoogleOAuth.exchange_code_for_token(code, redirect_uri)
@@ -824,9 +759,6 @@ async def google_callback(request: Request, code: str, register: bool = False, d
     frontend_base = settings.get_frontend_url()
     frontend_url = f"{frontend_base}/oauth-callback?access_token={access_token}&refresh_token={refresh_token}&user_id={user.id}&is_new_user={is_new_user}"
 
-    # Debug information
-    print(f"Redirecting to frontend URL: {frontend_url}")
-
     return RedirectResponse(frontend_url)
 
 
@@ -835,11 +767,8 @@ async def login_steam(request: Request, register: bool = False):
     """
     Redirect to Steam authentication page.
     """
-    # Use the auto-detected API base URL
     api_base_url = settings.get_api_base_url()
 
-    # Pass the registration flag in the callback URL
-    # Remove any duplicate api prefix if present in the base_url
     if api_base_url.endswith(settings.API_V1_STR):
         base = api_base_url
     else:
@@ -847,8 +776,7 @@ async def login_steam(request: Request, register: bool = False):
 
     redirect_uri = f"{base}/auth/steam/callback?register={register}"
 
-    # Debug information
-    print(f"Steam OAuth redirect URI: {redirect_uri}")
+    logger.debug("Steam OAuth redirect URI configured")
 
     authorization_url = SteamAuth.get_authorization_url(redirect_uri)
     return RedirectResponse(authorization_url)
@@ -859,11 +787,9 @@ async def steam_callback(request: Request, register: bool = False, db: Session =
     """
     Process Steam authentication callback.
     """
-    # Verify response and get Steam ID
     steam_id = await SteamAuth.verify_response(request)
 
-    # Debug information
-    print(f"Steam ID received: {steam_id}")
+    logger.debug("Steam authentication callback received")
 
     # Get Steam user info
     user_data = await SteamAuth.get_user_info(steam_id)
@@ -883,8 +809,5 @@ async def steam_callback(request: Request, register: bool = False, db: Session =
     # Use auto-detected frontend URL
     frontend_base = settings.get_frontend_url()
     frontend_url = f"{frontend_base}/oauth-callback?access_token={access_token}&refresh_token={refresh_token}&user_id={user.id}&is_new_user={is_new_user}"
-
-    # Debug information
-    print(f"Redirecting to frontend URL: {frontend_url}")
 
     return RedirectResponse(frontend_url)

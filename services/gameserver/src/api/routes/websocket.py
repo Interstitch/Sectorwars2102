@@ -1,20 +1,45 @@
 import json
 import asyncio
+import time
+from collections import defaultdict
 from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Dict
 import logging
 
+from pydantic import BaseModel, Field as PydanticField
 from src.core.database import get_db
 from src.auth.dependencies import get_current_user_from_token, get_current_admin_user
 from src.models.user import User
 from src.models.player import Player
 from src.services.websocket_service import connection_manager, handle_websocket_message, handle_admin_websocket_message
 
+
+class BroadcastRequest(BaseModel):
+    content: str = PydanticField(..., max_length=5000, description="Broadcast message content")
+    priority: str = PydanticField(default="normal", description="Message priority")
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
+
+# Per-connection rate limiter: max 100 messages per second
+_ws_rate_limits: Dict[str, list] = defaultdict(list)
+WS_RATE_LIMIT = 100  # messages per window
+WS_RATE_WINDOW = 1.0  # seconds
+
+
+def _check_ws_rate_limit(user_id: str) -> bool:
+    """Return True if under rate limit, False if exceeded."""
+    now = time.monotonic()
+    timestamps = _ws_rate_limits[user_id]
+    # Purge old entries
+    _ws_rate_limits[user_id] = [t for t in timestamps if now - t < WS_RATE_WINDOW]
+    if len(_ws_rate_limits[user_id]) >= WS_RATE_LIMIT:
+        return False
+    _ws_rate_limits[user_id].append(now)
+    return True
 
 
 @router.websocket("/connect")
@@ -67,12 +92,20 @@ async def websocket_endpoint(
             while True:
                 # Wait for messages from client
                 data = await websocket.receive_text()
-                
+
+                # Rate limit: 100 msg/s per connection
+                if not _check_ws_rate_limit(str(user.id)):
+                    await connection_manager.send_personal_message(str(user.id), {
+                        "type": "error",
+                        "message": "Rate limit exceeded. Max 100 messages per second."
+                    })
+                    continue
+
                 try:
                     message_data = json.loads(data)
                     await handle_websocket_message(str(user.id), message_data)
                 except json.JSONDecodeError:
-                    logger.warning(f"Invalid JSON received from user {user.id}: {data}")
+                    logger.warning(f"Invalid JSON received from user {user.id}")
                     await connection_manager.send_personal_message(str(user.id), {
                         "type": "error",
                         "message": "Invalid message format"
@@ -80,7 +113,7 @@ async def websocket_endpoint(
                 except Exception as e:
                     logger.error(f"Error handling WebSocket message from user {user.id}: {e}")
                     await connection_manager.send_personal_message(str(user.id), {
-                        "type": "error", 
+                        "type": "error",
                         "message": "Error processing message"
                     })
         
@@ -95,8 +128,8 @@ async def websocket_endpoint(
         logger.error(f"WebSocket connection error: {e}")
         try:
             await websocket.close(code=4000, reason="Connection error")
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to close WebSocket cleanly: {e}")
 
 
 @router.websocket("/admin")
@@ -162,7 +195,10 @@ async def admin_websocket_endpoint(
                 
     except Exception as e:
         logger.error(f"Admin WebSocket connection error: {str(e)}")
-        await websocket.close(code=4003, reason=str(e))
+        try:
+            await websocket.close(code=4003, reason="Connection initialization failed")
+        except Exception:
+            pass
 
 
 
@@ -177,19 +213,19 @@ async def get_websocket_stats(
 
 @router.post("/broadcast")
 async def broadcast_message(
-    message_data: dict,
+    request: BroadcastRequest,
     target_type: str = "global",  # global, sector, team
     target_id: Optional[str] = None,
     current_user: User = Depends(get_current_admin_user)
 ) -> dict:
     """Broadcast a message to connected users (admin only)"""
-    
+
     message = {
         "type": "admin_broadcast",
-        "content": message_data.get("content", ""),
+        "content": request.content,
         "from": "System Administrator",
-        "timestamp": message_data.get("timestamp", ""),
-        **message_data
+        "priority": request.priority,
+        "timestamp": datetime.utcnow().isoformat(),
     }
     
     if target_type == "global":
@@ -200,7 +236,14 @@ async def broadcast_message(
         await connection_manager.broadcast_to_team(target_id, message)
     else:
         raise HTTPException(status_code=400, detail="Invalid target type or missing target_id")
-    
+
+    # Audit log admin broadcasts
+    logger.info(
+        "ADMIN_BROADCAST: admin_id=%s target=%s:%s content_length=%d",
+        current_user.id, target_type, target_id or "all",
+        len(message_data.get("content", "")),
+    )
+
     return {"message": "Broadcast sent successfully", "target_type": target_type, "target_id": target_id}
 
 

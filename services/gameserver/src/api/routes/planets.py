@@ -44,7 +44,7 @@ class DefenseUpdateRequest(BaseModel):
 
 
 class GenesisDeployRequest(BaseModel):
-    """Genesis device deployment request."""
+    """Genesis device deployment request (legacy - use /genesis/deploy instead)."""
     sectorId: str
     planetName: str = Field(..., min_length=3, max_length=50)
     planetType: str = Field(..., pattern="^(terran|oceanic|mountainous|desert|frozen)$")
@@ -164,7 +164,7 @@ async def claim_planet(
     if planet.sector_id != player.current_sector_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Planet is in sector {planet.sector_id}, but you are in sector {player.current_sector_id}"
+            detail="Planet is not accessible from your current location"
         )
 
     # Check if planet is already owned
@@ -336,7 +336,7 @@ async def land_on_planet(
     if planet.sector_id != player.current_sector_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Planet is in sector {planet.sector_id}, but you are in sector {player.current_sector_id}"
+            detail="Planet is not accessible from your current location"
         )
 
     # Check if planet is landable (not uninhabitable, gas giant, or restricted)
@@ -353,6 +353,13 @@ async def land_on_planet(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot land on a gas giant planet"
+        )
+
+    # Check if planet is still forming (genesis device)
+    if planet.formation_status == "forming":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This planet is still forming and cannot be landed on yet. Check formation status at GET /genesis/status/{planet_id}"
         )
 
     # Check if planet is unclaimed - require claiming first
@@ -434,11 +441,107 @@ async def get_owned_planets(
     """Get all planets owned by the player."""
     service = PlanetaryService(db)
     planets = service.get_player_planets(player.id)
-    
+
     return {
         "planets": planets,
         "totalPlanets": len(planets)
     }
+
+
+@router.get("/terraforming/levels")
+async def get_terraforming_levels(
+    player: Player = Depends(get_current_player),
+):
+    """Get available terraforming levels and their costs."""
+    from src.services.terraforming_service import TerraformingService
+    return TerraformingService.get_terraforming_levels()
+
+
+@router.post("/{planet_id}/shields/upgrade")
+async def upgrade_shield_generator(
+    planet_id: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """Upgrade the planet's shield generator to the next level."""
+    try:
+        pid = UUID(planet_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    service = PlanetaryService(db)
+
+    try:
+        result = service.upgrade_shield_generator(pid, player.id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{planet_id}/defenses")
+async def get_planet_defenses(
+    planet_id: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """Get detailed defense information for a planet."""
+    try:
+        pid = UUID(planet_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    service = PlanetaryService(db)
+
+    try:
+        result = service.get_defense_info(pid)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+class ConstructBuildingRequest(BaseModel):
+    """Defense building construction request."""
+    buildingType: str = Field(..., pattern="^(orbital_platform|turret_network|scanner_array)$")
+
+
+@router.get("/{planet_id}/buildings/available")
+async def get_available_buildings(
+    planet_id: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """Get defense buildings available for construction at current citadel level."""
+    from src.services.citadel_service import CitadelService
+    try:
+        pid = UUID(planet_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+    service = CitadelService(db)
+    result = service.get_available_buildings(pid)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Failed"))
+    return result
+
+
+@router.post("/{planet_id}/buildings/construct")
+async def construct_defense_building(
+    planet_id: str,
+    request: ConstructBuildingRequest,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """Construct a defense building on a planet."""
+    from src.services.citadel_service import CitadelService
+    try:
+        pid = UUID(planet_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+    service = CitadelService(db)
+    result = service.build_defense_building(pid, player.id, request.buildingType)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Construction failed"))
+    db.commit()
+    return result
 
 
 @router.get("/{planetId}")
@@ -546,25 +649,38 @@ async def update_defenses(
 
 
 @router.post("/genesis/deploy")
-async def deploy_genesis_device(
+async def deploy_genesis_device_legacy(
     request: GenesisDeployRequest,
     player: Player = Depends(get_current_player),
     db: Session = Depends(get_db)
 ):
-    """Deploy a genesis device to create a new planet."""
+    """
+    Deploy a genesis device to create a new planet (legacy endpoint).
+
+    This endpoint is kept for backward compatibility.
+    Use POST /genesis/deploy with the new tiered system instead.
+    """
+    from src.services.genesis_service import GenesisService
+
+    genesis_service = GenesisService(db)
+
     try:
-        sector_id = UUID(request.sectorId)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid sector ID format")
-    
-    service = PlanetaryService(db)
-    
-    try:
-        result = service.deploy_genesis_device(
+        # Parse sector_id: accept both UUID strings and integer sector numbers
+        try:
+            sector_uuid = UUID(request.sectorId)
+            # Look up the integer sector_id from the UUID
+            from src.models.sector import Sector
+            sector = db.query(Sector).filter(Sector.id == sector_uuid).first()
+            if not sector:
+                raise HTTPException(status_code=400, detail="Sector not found")
+            sector_num = sector.sector_id
+        except ValueError:
+            sector_num = int(request.sectorId)
+
+        result = genesis_service.deploy_genesis_device(
             player_id=player.id,
-            sector_id=sector_id,
-            planet_name=request.planetName,
-            planet_type=request.planetType
+            sector_id=sector_num,
+            tier="basic",
         )
         return result
     except ValueError as e:
@@ -610,9 +726,104 @@ async def get_siege_status(
         raise HTTPException(status_code=400, detail="Invalid planet ID format")
     
     service = PlanetaryService(db)
-    
+
     try:
         result = service.get_siege_status(planet_id, player.id)
         return result
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# Citadel Endpoints
+
+class CitadelDepositRequest(BaseModel):
+    amount: int = Field(..., gt=0)
+
+
+class CitadelWithdrawRequest(BaseModel):
+    amount: int = Field(..., gt=0)
+
+
+@router.get("/{planetId}/citadel")
+async def get_citadel_info(
+    planetId: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Get citadel information for a planet."""
+    try:
+        planet_id = UUID(planetId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    from src.services.citadel_service import CitadelService
+    service = CitadelService(db)
+    result = service.get_citadel_info(planet_id, player.id)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Failed to get citadel info"))
+    return result
+
+
+@router.post("/{planetId}/citadel/upgrade")
+async def upgrade_citadel(
+    planetId: str,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Start a citadel upgrade on a planet."""
+    try:
+        planet_id = UUID(planetId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    from src.services.citadel_service import CitadelService
+    service = CitadelService(db)
+    result = service.start_upgrade(planet_id, player.id)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Citadel upgrade failed"))
+    db.commit()
+    return result
+
+
+@router.post("/{planetId}/citadel/deposit")
+async def citadel_deposit(
+    planetId: str,
+    request: CitadelDepositRequest,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Deposit credits into the citadel's safe storage."""
+    try:
+        planet_id = UUID(planetId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    from src.services.citadel_service import CitadelService
+    service = CitadelService(db)
+    result = service.deposit_to_safe(planet_id, player.id, request.amount)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Deposit failed"))
+    db.commit()
+    return result
+
+
+@router.post("/{planetId}/citadel/withdraw")
+async def citadel_withdraw(
+    planetId: str,
+    request: CitadelWithdrawRequest,
+    player: Player = Depends(get_current_player),
+    db: Session = Depends(get_db),
+):
+    """Withdraw credits from the citadel's safe storage."""
+    try:
+        planet_id = UUID(planetId)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid planet ID format")
+
+    from src.services.citadel_service import CitadelService
+    service = CitadelService(db)
+    result = service.withdraw_from_safe(planet_id, player.id, request.amount)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Withdrawal failed"))
+    db.commit()
+    return result

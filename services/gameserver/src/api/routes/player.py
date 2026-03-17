@@ -10,6 +10,7 @@ from src.models.ship import Ship
 from src.models.sector import Sector
 from src.models.warp_tunnel import WarpTunnel
 from src.services.movement_service import MovementService
+from src.services.ranking_service import RankingService
 
 router = APIRouter(
     prefix="/player",
@@ -22,6 +23,7 @@ class PlayerStateResponse(BaseModel):
     username: str
     credits: int
     turns: int
+    max_turns: int = 1000
     current_sector_id: int
     is_docked: bool
     is_landed: bool
@@ -98,12 +100,25 @@ async def get_player_state(
     player: Player = Depends(get_current_player),
     db: Session = Depends(get_db)
 ):
-    """Get current player state including credits, turns, ship, and location"""
+    """Get current player state including credits, turns, ship, and location.
+
+    Also triggers a daily turn refresh if the player's turns have not been
+    reset today.  The refresh incorporates both the military-rank bonus and
+    the ARIA consciousness multiplier.
+    """
+    # Check for daily turn refresh (rank bonus + ARIA multiplier applied)
+    ranking_service = RankingService(db)
+    ranking_service.refresh_daily_turns(player)
+    db.commit()
+
+    max_turns = RankingService.calculate_max_turns(player)
+
     return PlayerStateResponse(
         id=str(player.id),
         username=player.username,
         credits=player.credits,
         turns=player.turns,
+        max_turns=max_turns,
         current_sector_id=player.current_sector_id,
         is_docked=player.is_docked,
         is_landed=player.is_landed,
@@ -128,13 +143,15 @@ async def get_player_ships(
     
     ship_responses = []
     for ship in ships:
+        cargo_data = ship.cargo or {}
+        cargo_capacity = cargo_data.get('capacity', 50)
         ship_responses.append(ShipResponse(
             id=str(ship.id),
             name=ship.name,
             type=ship.type.value if hasattr(ship.type, 'value') else str(ship.type),
             sector_id=ship.sector_id,
-            cargo=ship.cargo or {},
-            cargo_capacity=getattr(ship, 'cargo_capacity', 1000),  # Default if missing
+            cargo=cargo_data,
+            cargo_capacity=cargo_capacity,
             current_speed=ship.current_speed,
             base_speed=ship.base_speed,
             combat=ship.combat or {},
@@ -167,13 +184,15 @@ async def get_current_ship(
             detail="Current ship not found"
         )
     
+    cargo_data = ship.cargo or {}
+    cargo_capacity = cargo_data.get('capacity', 50)
     return ShipResponse(
         id=str(ship.id),
         name=ship.name,
         type=ship.type.value if hasattr(ship.type, 'value') else str(ship.type),
         sector_id=ship.sector_id,
-        cargo=ship.cargo or {},
-        cargo_capacity=getattr(ship, 'cargo_capacity', 1000),
+        cargo=cargo_data,
+        cargo_capacity=cargo_capacity,
         current_speed=ship.current_speed,
         base_speed=ship.base_speed,
         combat=ship.combat or {},

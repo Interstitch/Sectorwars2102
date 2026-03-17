@@ -1,0 +1,542 @@
+/* Rank Display */
+.rank-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.rank-display.rank-loading,
+.rank-display.rank-error {
+  justify-content: center;
+  color: #888;
+  min-height: 60px;
+}
+
+.rank-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #444;
+  border-top-color: #4a9eff;
+  border-radius: 50%;
+  animation: rank-spin 0.8s linear infinite;
+}
+
+@keyframes rank-spin {
+  to { transform: rotate(360deg); }
+}
+
+.rank-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid #888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.rank-level {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.rank-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rank-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rank-tier {
+  font-size: 0.7rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rank-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  margin: 4px 0 2px;
+  overflow: hidden;
+}
+
+.rank-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.rank-next {
+  font-size: 0.7rem;
+  color: #aaa;
+}
+
+.rank-next.rank-max {
+  color: #00ffff;
+  font-style: italic;
+}
+
+.rank-bonuses {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.bonus-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.bonus-icon {
+  font-size: 0.9rem;
+}
+
+.bonus-value {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #44ff44;
+}
+
+.bonus-label {
+  font-size: 0.6rem;
+  color: #666;
+  text-transform: uppercase;
+}
+
+/* Medal Showcase */
+.medal-showcase {
+  padding: 16px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 8px;
+}
+
+.medal-showcase.medal-loading,
+.medal-showcase.medal-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: #888;
+}
+
+.medal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.medal-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #fff;
+}
+
+.medal-count {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.medal-categories {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.medal-cat-btn {
+  padding: 4px 10px;
+  border: 1px solid #444;
+  border-radius: 12px;
+  background: transparent;
+  color: #aaa;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.medal-cat-btn:hover {
+  border-color: #666;
+  color: #fff;
+}
+
+.medal-cat-btn.active {
+  border-color: #4a9eff;
+  color: #4a9eff;
+  background: rgba(74, 158, 255, 0.1);
+}
+
+.medal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.medal-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.medal-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.medal-card.earned {
+  border-color: rgba(255, 215, 0, 0.3);
+  background: rgba(255, 215, 0, 0.05);
+}
+
+.medal-card.unearned {
+  opacity: 0.45;
+}
+
+.medal-card.unearned:hover {
+  opacity: 0.7;
+}
+
+.medal-icon {
+  font-size: 1.8rem;
+  margin-bottom: 4px;
+}
+
+.medal-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #ddd;
+  line-height: 1.2;
+}
+
+.medal-card.unearned .medal-name {
+  color: #666;
+}
+
+.medal-date {
+  font-size: 0.6rem;
+  color: #888;
+  margin-top: 2px;
+}
+
+.medal-tooltip {
+  position: fixed;
+  z-index: 1000;
+  padding: 10px 14px;
+  background: #1a1a2e;
+  border: 1px solid #4a9eff;
+  border-radius: 6px;
+  max-width: 220px;
+  pointer-events: none;
+}
+
+.medal-tooltip h4 {
+  margin: 0 0 4px;
+  font-size: 0.85rem;
+  color: #fff;
+}
+
+.medal-tooltip p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #aaa;
+  line-height: 1.3;
+}
+
+.medal-tooltip .tooltip-category {
+  font-size: 0.65rem;
+  color: #4a9eff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+/* Leaderboard */
+.leaderboard {
+  padding: 16px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 8px;
+}
+
+.leaderboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.leaderboard-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #fff;
+}
+
+.leaderboard-total {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.leaderboard-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  gap: 8px;
+}
+
+.leaderboard-loading { color: #888; }
+.leaderboard-error { color: #ff6b6b; }
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.leaderboard-table thead th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #334155;
+  color: #888;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+}
+
+.leaderboard-table tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
+}
+
+.leaderboard-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.leaderboard-table tbody tr.current-player {
+  background: rgba(74, 158, 255, 0.12);
+  border-left: 2px solid #4a9eff;
+}
+
+.leaderboard-table td {
+  padding: 8px;
+  color: #ddd;
+}
+
+.col-pos { width: 40px; text-align: center; color: #888; }
+.col-score { text-align: right; font-variant-numeric: tabular-nums; }
+
+.leaderboard-empty {
+  text-align: center;
+  color: #666;
+  padding: 24px 8px;
+}
+
+.leaderboard-your-rank {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(74, 158, 255, 0.08);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #aaa;
+  text-align: center;
+}
+
+.leaderboard-your-rank strong {
+  color: #4a9eff;
+}
+
+/* Rank Progress */
+.rank-progress {
+  padding: 16px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 8px;
+}
+
+.rank-progress.rank-progress-loading,
+.rank-progress.rank-progress-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: #888;
+  gap: 8px;
+}
+
+.rank-progress-header {
+  margin-bottom: 14px;
+}
+
+.rank-progress-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #fff;
+}
+
+.rank-progress-ranks {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.rank-progress-current,
+.rank-progress-next {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rank-progress-label {
+  font-size: 0.65rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rank-progress-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.rank-progress-tier {
+  font-size: 0.7rem;
+  color: #888;
+}
+
+.rank-progress-pts {
+  font-size: 0.72rem;
+  color: #aaa;
+}
+
+.rank-progress-arrow {
+  font-size: 1.2rem;
+  color: #555;
+}
+
+.rank-progress-max {
+  font-size: 0.85rem;
+  color: #00ffff;
+  font-style: italic;
+}
+
+.rank-progress .rank-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.rank-progress .rank-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.rank-progress-pct {
+  font-size: 0.72rem;
+  color: #888;
+  text-align: right;
+  margin-top: 2px;
+  margin-bottom: 14px;
+}
+
+.rank-progress-reqs h4,
+.rank-progress-stats h4 {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: #ccc;
+}
+
+.req-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.req-item.met { color: #44ff44; }
+.req-item.unmet { color: #ff6b6b; }
+
+.req-icon { font-size: 0.9rem; flex-shrink: 0; }
+
+.req-name {
+  flex: 1;
+  color: #ddd;
+}
+
+.req-value {
+  font-variant-numeric: tabular-nums;
+  color: #aaa;
+  font-size: 0.75rem;
+}
+
+.rank-progress-stats {
+  margin-top: 14px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+}
+
+.stat-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.stat-label {
+  font-size: 0.65rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}

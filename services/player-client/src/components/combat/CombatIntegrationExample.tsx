@@ -48,15 +48,6 @@ export const CombatIntegrationExample: React.FC = () => {
   
   // Handle combat end
   const handleCombatEnd = (result: any) => {
-    console.log('Combat ended:', result);
-    
-    if (result.winner === 'attacker') {
-      // Handle victory
-      console.log('Victory! Loot:', result.loot);
-    } else {
-      // Handle defeat
-      console.log('Defeated - escape pod activated');
-    }
     
     // Clear combat target after a delay
     setTimeout(() => {
@@ -121,9 +112,7 @@ export const CombatIntegrationExample: React.FC = () => {
           <h4>Combat Drone Controls:</h4>
           <DroneManager 
             combatMode={true}
-            onDroneAction={(action, count) => {
-              console.log(`Combat drone action: ${action} ${count} drones`);
-            }}
+            onDroneAction={() => {}}
           />
         </div>
       )}

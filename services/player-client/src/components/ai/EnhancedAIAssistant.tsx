@@ -255,10 +255,130 @@ const EnhancedAIAssistant: React.FC<EnhancedAIAssistantProps> = ({
     });
   }, []);
 
-  // Fetch AI recommendations (simplified for WebSocket)
+  // Fetch AI recommendations from the API with client-side fallback
   const fetchRecommendations = useCallback(async () => {
-    // Mock recommendations for now - in full implementation would come via WebSocket
-    setRecommendations([]);
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        generateClientSideRecommendations();
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/ai/recommendations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          system_types: selectedSystems.length > 0 ? selectedSystems : ['trading'],
+          max_recommendations: 5
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setRecommendations(data);
+          return;
+        }
+      }
+
+      // If API returned empty or failed, try the trading-specific endpoint
+      const tradingResponse = await fetch(`${API_BASE_URL}/ai/recommendations?limit=5`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (tradingResponse.ok) {
+        const tradingData = await tradingResponse.json();
+        if (Array.isArray(tradingData) && tradingData.length > 0) {
+          // Map trading recommendations to the AIRecommendation format
+          const mapped: AIRecommendation[] = tradingData.map((rec: any) => ({
+            id: rec.id || String(Math.random()),
+            category: 'trading' as const,
+            recommendation_type: rec.type || 'trade_opportunity',
+            title: rec.reasoning?.substring(0, 60) || 'Trading Opportunity',
+            summary: rec.reasoning || 'A trading opportunity has been identified.',
+            priority: rec.priority || 3,
+            risk_assessment: (rec.risk_level || 'medium') as AIRecommendation['risk_assessment'],
+            confidence: rec.confidence || 0.7,
+            expected_outcome: {
+              type: 'profit',
+              value: rec.expected_profit || 0,
+              currency: 'credits',
+              probability: rec.confidence || 0.7
+            },
+            expires_at: rec.expires_at || new Date(Date.now() + 3600000).toISOString(),
+            security_clearance_required: 'standard'
+          }));
+          setRecommendations(mapped);
+          return;
+        }
+      }
+
+      // If both API calls returned nothing, generate client-side recommendations
+      generateClientSideRecommendations();
+    } catch (error) {
+      console.warn('Failed to fetch AI recommendations, using client-side fallback:', error);
+      generateClientSideRecommendations();
+    }
+  }, [selectedSystems, API_BASE_URL]);
+
+  // Generate simple client-side recommendations based on available context
+  const generateClientSideRecommendations = useCallback(() => {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 3600000).toISOString();
+
+    const contextualTips: AIRecommendation[] = [
+      {
+        id: `tip-trading-${now.getTime()}`,
+        category: 'trading',
+        recommendation_type: 'general_tip',
+        title: 'Explore Nearby Trade Routes',
+        summary: 'Check ports in adjacent sectors for price differences. Buying low and selling high across sectors is the fastest way to build credits.',
+        priority: 3,
+        risk_assessment: 'low',
+        confidence: 0.8,
+        expected_outcome: { type: 'profit', value: 5000, currency: 'credits', probability: 0.7 },
+        expires_at: expiresAt,
+        security_clearance_required: 'standard'
+      },
+      {
+        id: `tip-combat-${now.getTime()}`,
+        category: 'combat',
+        recommendation_type: 'readiness_check',
+        title: 'Check Your Ship Readiness',
+        summary: 'Make sure your ship is repaired and stocked with drones before entering hostile sectors. A well-prepared ship survives longer.',
+        priority: 2,
+        risk_assessment: 'very_low',
+        confidence: 0.9,
+        expected_outcome: { type: 'survival', value: 1, currency: 'status' },
+        expires_at: expiresAt,
+        security_clearance_required: 'standard'
+      },
+      {
+        id: `tip-strategic-${now.getTime()}`,
+        category: 'strategic',
+        recommendation_type: 'strategic_advice',
+        title: 'Expand Your Influence',
+        summary: 'Consider colonizing unowned planets to generate passive income and establish territorial control in key sectors.',
+        priority: 2,
+        risk_assessment: 'medium',
+        confidence: 0.75,
+        expected_outcome: { type: 'profit', value: 10000, currency: 'credits', probability: 0.5 },
+        expires_at: expiresAt,
+        security_clearance_required: 'standard'
+      }
+    ];
+
+    // Filter tips based on selected systems
+    const filtered = contextualTips.filter(tip =>
+      selectedSystems.length === 0 || selectedSystems.includes(tip.category)
+    );
+
+    setRecommendations(filtered.slice(0, 3));
   }, [selectedSystems]);
 
   // Input sanitization

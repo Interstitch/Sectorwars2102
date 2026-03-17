@@ -14,7 +14,8 @@ SHIP_SPECIFICATIONS = {
     ShipType.ESCAPE_POD: {
         "base_cost": 0,
         "speed": 0.25,
-        "turn_cost": 4,  # High turn cost for slow movement
+        "turn_cost": 10,  # Very high turn cost - escape pods are not meant for travel
+        "attack_turn_cost": 10000,  # Effectively prevents combat from escape pods
         "max_cargo": 50,
         "max_colonists": 1,
         "max_drones": 0,
@@ -52,6 +53,7 @@ SHIP_SPECIFICATIONS = {
         "base_cost": 10000,
         "speed": 1.0,
         "turn_cost": 1,
+        "attack_turn_cost": 12,  # Light combat vessel
         "max_cargo": 500,
         "max_colonists": 5,
         "max_drones": 2,
@@ -89,6 +91,7 @@ SHIP_SPECIFICATIONS = {
         "base_cost": 50000,
         "speed": 0.5,
         "turn_cost": 2,
+        "attack_turn_cost": 20,  # Slow, heavy hauler
         "max_cargo": 1000,
         "max_colonists": 10,
         "max_drones": 2,
@@ -126,6 +129,7 @@ SHIP_SPECIFICATIONS = {
         "base_cost": 30000,
         "speed": 2.0,
         "turn_cost": 1,
+        "attack_turn_cost": 8,  # Fast but light combat
         "max_cargo": 200,
         "max_colonists": 2,
         "max_drones": 0,
@@ -163,6 +167,7 @@ SHIP_SPECIFICATIONS = {
         "base_cost": 25000,
         "speed": 2.5,
         "turn_cost": 1,
+        "attack_turn_cost": 5,  # Fast strike capability
         "max_cargo": 100,
         "max_colonists": 1,
         "max_drones": 1,
@@ -200,6 +205,7 @@ SHIP_SPECIFICATIONS = {
         "base_cost": 100000,
         "speed": 0.4,
         "turn_cost": 3,
+        "attack_turn_cost": 35,  # Not meant for combat
         "max_cargo": 1000,
         "max_colonists": 50,
         "max_drones": 2,
@@ -237,6 +243,7 @@ SHIP_SPECIFICATIONS = {
         "base_cost": 70000,
         "speed": 1.0,
         "turn_cost": 1,
+        "attack_turn_cost": 18,  # Primary combat vessel
         "max_cargo": 400,
         "max_colonists": 8,
         "max_drones": 6,
@@ -274,6 +281,7 @@ SHIP_SPECIFICATIONS = {
         "base_cost": 150000,
         "speed": 0.75,
         "turn_cost": 2,
+        "attack_turn_cost": 45,  # Massive fleet combat vessel
         "max_cargo": 800,
         "max_colonists": 20,
         "max_drones": 12,
@@ -311,6 +319,7 @@ SHIP_SPECIFICATIONS = {
         "base_cost": 500000,
         "speed": 0.0,  # Uses quantum jump instead
         "turn_cost": 1,
+        "attack_turn_cost": 100,  # Specialized vessel, poor combat
         "max_cargo": 200,
         "max_colonists": 3,
         "max_drones": 0,

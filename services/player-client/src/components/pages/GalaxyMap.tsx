@@ -43,9 +43,9 @@ const GalaxyMap: React.FC = () => {
       setLocalSectors([]);
       setConnections([]);
       
-      // Add current sector
+      // Add current sector (use sector_id for the numeric display ID, not id which is UUID)
       const currentSectorObj: MapSector = {
-        id: currentSector.id,
+        id: currentSector.sector_id,
         name: currentSector.name,
         type: currentSector.type,
         x: 0,
@@ -58,15 +58,21 @@ const GalaxyMap: React.FC = () => {
       const newSectors: MapSector[] = [currentSectorObj];
       const newConnections: MapConnection[] = [];
       
-      // Add directly connected sectors (warps)
+      // Track sector IDs already added to avoid duplicate React keys
+      const addedSectorIds = new Set<number>([currentSector.sector_id]);
+
+      // Add directly connected sectors (warps), skipping duplicates of current sector
       if (availableMoves.warps && availableMoves.warps.length) {
-        availableMoves.warps.forEach((warp, index) => {
+        const filteredWarps = availableMoves.warps.filter(
+          warp => !addedSectorIds.has(warp.sector_id)
+        );
+        filteredWarps.forEach((warp, index) => {
           // Layout in a circle around current sector
-          const angle = (2 * Math.PI * index) / availableMoves.warps.length;
+          const angle = (2 * Math.PI * index) / filteredWarps.length;
           const radius = 150;
           const x = Math.cos(angle) * radius;
           const y = Math.sin(angle) * radius;
-          
+
           newSectors.push({
             id: warp.sector_id,
             name: warp.name,
@@ -77,25 +83,30 @@ const GalaxyMap: React.FC = () => {
             isDiscovered: true,
             isCurrent: false
           });
-          
+
+          addedSectorIds.add(warp.sector_id);
+
           newConnections.push({
-            from: currentSector.id,
+            from: currentSector.sector_id,
             to: warp.sector_id,
             isTunnel: false,
             isOneWay: false // Assuming bidirectional by default
           });
         });
       }
-      
-      // Add warp tunnel connections
+
+      // Add warp tunnel connections, skipping duplicates of current sector or warps
       if (availableMoves.tunnels && availableMoves.tunnels.length) {
-        availableMoves.tunnels.forEach((tunnel, index) => {
+        const filteredTunnels = availableMoves.tunnels.filter(
+          tunnel => !addedSectorIds.has(tunnel.sector_id)
+        );
+        filteredTunnels.forEach((tunnel, index) => {
           // Layout tunnels further out
-          const angle = (2 * Math.PI * index) / availableMoves.tunnels.length;
+          const angle = (2 * Math.PI * index) / filteredTunnels.length;
           const radius = 300;
           const x = Math.cos(angle) * radius;
           const y = Math.sin(angle) * radius;
-          
+
           newSectors.push({
             id: tunnel.sector_id,
             name: tunnel.name,
@@ -106,9 +117,11 @@ const GalaxyMap: React.FC = () => {
             isDiscovered: true,
             isCurrent: false
           });
-          
+
+          addedSectorIds.add(tunnel.sector_id);
+
           newConnections.push({
-            from: currentSector.id,
+            from: currentSector.sector_id,
             to: tunnel.sector_id,
             isTunnel: true,
             isOneWay: false // Could use tunnel.tunnel_type to determine this
@@ -164,8 +177,9 @@ const GalaxyMap: React.FC = () => {
   };
   
   const handleTravelClick = () => {
-    if (selectedSector && selectedSector.id !== currentSector?.id) {
+    if (selectedSector && selectedSector.id !== currentSector?.sector_id) {
       moveToSector(selectedSector.id);
+      setSelectedSector(null);
     }
   };
   
@@ -233,14 +247,14 @@ const GalaxyMap: React.FC = () => {
                 onSectorSelect={(sector) => {
                   // Convert from full Sector to MapSector for compatibility
                   const mapSector: MapSector = {
-                    id: sector.id,
+                    id: sector.sector_id,
                     name: sector.name,
                     type: (sector as any).sector_type || 'normal',
                     x: 0, // Position handled by 3D renderer
                     y: 0,
                     isConnected: true,
                     isDiscovered: true,
-                    isCurrent: sector.id === currentSector?.id
+                    isCurrent: sector.sector_id === currentSector?.sector_id
                   };
                   setSelectedSector(mapSector);
                 }}
@@ -337,7 +351,7 @@ const GalaxyMap: React.FC = () => {
         
         {selectedSector && (
           <div className="sector-details-panel">
-            <h3>{selectedSector.isCurrent ? 'Current Location' : 'Selected Sector'}</h3>
+            <h3>{selectedSector.id === currentSector?.sector_id ? 'Current Location' : 'Selected Sector'}</h3>
             <div className="sector-info">
               <div className="sector-name">
                 Sector {selectedSector.id}: {selectedSector.name}
@@ -345,14 +359,18 @@ const GalaxyMap: React.FC = () => {
               <div className="sector-type">
                 {selectedSector.type}
               </div>
-              {!selectedSector.isCurrent && selectedSector.isConnected && (
-                <button 
+              {selectedSector.id !== currentSector?.sector_id && selectedSector.isConnected ? (
+                <button
                   className="travel-button"
                   onClick={handleTravelClick}
                 >
                   Travel to Sector
                 </button>
-              )}
+              ) : selectedSector.id === currentSector?.sector_id ? (
+                <div className="current-sector-badge">
+                  Current Sector
+                </div>
+              ) : null}
             </div>
           </div>
         )}

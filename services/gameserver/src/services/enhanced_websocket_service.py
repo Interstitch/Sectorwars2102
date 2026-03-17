@@ -14,6 +14,7 @@ import json
 import asyncio
 import hashlib
 import hmac
+import os
 import time
 from typing import Dict, List, Set, Optional, Any, Union
 from datetime import datetime, timedelta, UTC
@@ -23,6 +24,8 @@ from uuid import uuid4
 import logging
 
 from fastapi import WebSocket, WebSocketDisconnect, HTTPException
+from jose import jwt as jose_jwt
+from jose.exceptions import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 import redis.asyncio as redis
@@ -35,8 +38,11 @@ from src.services.enhanced_ai_service import EnhancedAIService
 from src.services.realtime_market_service import RealTimeMarketService, get_market_service
 from src.services.redis_pubsub_service import RedisPubSubService, get_pubsub_service
 from src.models.player import Player
+from src.models.user import User
 from src.models.market_transaction import MarketTransaction
 from src.models.ai_trading import AIMarketPrediction
+from src.core.config import settings
+from src.core.database import AsyncSessionLocal
 from src.core.security import verify_password
 
 logger = logging.getLogger(__name__)
@@ -99,8 +105,8 @@ class EnhancedWebSocketService:
         # Market data subscriptions
         self.market_subscriptions: Dict[str, Set[str]] = defaultdict(set)  # player_id -> commodities
         
-        # Message signing secret (should come from environment)
-        self.message_secret = "FOUNDATION_SPRINT_SECRET_KEY"  # TODO: Move to config
+        # Message signing secret loaded from environment/config
+        self.message_secret = os.environ.get("WS_MESSAGE_SECRET", settings.JWT_SECRET)
         
         logger.info("Enhanced WebSocket Service initialized for Foundation Sprint")
     
@@ -843,18 +849,105 @@ class EnhancedWebSocketService:
         return hmac.compare_digest(signature, expected_signature)
     
     async def _validate_auth_token(self, player_id: str, auth_token: str) -> bool:
-        """Validate authentication token"""
-        # TODO: Implement actual JWT validation
-        return True  # Simplified for now
-    
+        """Validate authentication token using JWT verification"""
+        try:
+            # Decode and verify the JWT token
+            payload = jose_jwt.decode(
+                auth_token, settings.JWT_SECRET, algorithms=["HS256"]
+            )
+
+            # Verify the token has a subject claim
+            user_id: str = payload.get("sub")
+            if user_id is None:
+                logger.warning(f"JWT token missing 'sub' claim for player {player_id}")
+                return False
+
+            # Verify the token hasn't expired (jose handles this, but be explicit)
+            exp = payload.get("exp")
+            if exp is not None and datetime.fromtimestamp(exp, tz=UTC) < datetime.now(UTC):
+                logger.warning(f"JWT token expired for player {player_id}")
+                return False
+
+            # Verify the user_id from token maps to the claimed player_id
+            async with AsyncSessionLocal() as db:
+                stmt = select(Player.id).where(Player.user_id == user_id)
+                result = await db.execute(stmt)
+                token_player_id = result.scalar_one_or_none()
+
+                if token_player_id is None:
+                    logger.warning(f"No player found for user_id {user_id} from token")
+                    return False
+
+                if str(token_player_id) != player_id:
+                    logger.warning(
+                        f"Token user mismatch: token player {token_player_id} != claimed {player_id}"
+                    )
+                    return False
+
+            return True
+
+        except JWTError as e:
+            logger.warning(f"JWT validation failed for player {player_id}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error validating auth token for player {player_id}: {e}")
+            return False
+
     async def _load_player_permissions(self, player_id: str) -> Set[str]:
-        """Load player permissions from database"""
-        # TODO: Load actual permissions
-        return {"trading", "ai_access", "automation"}  # Default permissions
-    
+        """Load player permissions from database based on player role and status"""
+        base_permissions = {"trading"}  # All players can trade
+        try:
+            async with AsyncSessionLocal() as db:
+                stmt = (
+                    select(Player, User)
+                    .join(User, Player.user_id == User.id)
+                    .where(Player.id == player_id)
+                )
+                result = await db.execute(stmt)
+                row = result.first()
+
+                if row is None:
+                    logger.warning(f"Player {player_id} not found for permissions lookup")
+                    return base_permissions
+
+                player, user = row
+
+                # Grant permissions based on player/user status
+                if user.is_admin:
+                    base_permissions.add("admin")
+                    base_permissions.add("automation")
+
+                if player.is_active:
+                    base_permissions.add("ai_access")
+
+                if player.is_galactic_citizen:
+                    base_permissions.add("automation")
+
+                return base_permissions
+
+        except Exception as e:
+            logger.error(f"Error loading permissions for player {player_id}: {e}")
+            return base_permissions
+
     async def _get_player_username(self, player_id: str) -> str:
-        """Get player username"""
-        # TODO: Load from database
+        """Get player username from database"""
+        try:
+            async with AsyncSessionLocal() as db:
+                stmt = (
+                    select(Player.nickname, User.username)
+                    .join(User, Player.user_id == User.id)
+                    .where(Player.id == player_id)
+                )
+                result = await db.execute(stmt)
+                row = result.first()
+
+                if row is not None:
+                    nickname, username = row
+                    return nickname or username
+
+        except Exception as e:
+            logger.error(f"Error loading username for player {player_id}: {e}")
+
         return f"Player_{player_id[:8]}"
     
     # =============================================================================

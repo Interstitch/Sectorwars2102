@@ -480,8 +480,8 @@ Be strict but fair in your analysis. The guard is trained to spot lies and incon
         secure_context = {
             "task": "analyze_player_response",
             "context": {
-                "claimed_ship": context.claimed_ship.value,
-                "actual_ship": context.actual_ship.value,
+                "claimed_ship": context.claimed_ship.value.replace("_", " ").title(),
+                "actual_ship": context.actual_ship.value.replace("_", " ").title(),
                 "guard_mood": context.guard_mood.value,
                 "inconsistencies_count": len(context.inconsistencies),
                 "dialogue_turn": len(context.dialogue_history),
@@ -538,8 +538,8 @@ If making a final decision:
         secure_data = {
             "task": "generate_guard_response",
             "context": {
-                "claimed_ship": context.claimed_ship.value,
-                "actual_ship": context.actual_ship.value,
+                "claimed_ship": context.claimed_ship.value.replace("_", " ").title(),
+                "actual_ship": context.actual_ship.value.replace("_", " ").title(),
                 "guard_mood": analysis.suggested_guard_mood.value,
                 "dialogue_turn": len(context.dialogue_history) + 1,
                 "security_level": "standard"

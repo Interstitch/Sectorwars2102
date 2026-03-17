@@ -12,6 +12,13 @@ from typing import List, Dict, Any
 from src.models.first_login import ShipChoice
 
 
+def _humanize_ship_name(enum_name: str) -> str:
+    """Convert database enum name to natural display name.
+    e.g. 'ESCAPE_POD' -> 'Escape Pod', 'FAST_COURIER' -> 'Fast Courier'
+    """
+    return enum_name.replace("_", " ").title()
+
+
 # Detailed ship specifications for AI context
 SHIP_SPECIFICATIONS = {
     "ESCAPE_POD": {
@@ -162,13 +169,16 @@ FORMATTING REQUIREMENTS:
 
 Be direct. Stay in character. Make it feel alive."""
 
+        # Convert enum names to natural display names for the AI
+        ship_display_names = [_humanize_ship_name(s) for s in available_ships]
+
         user_prompt = f"""Generate the opening scene and question.
 
-Available ships in this area: {', '.join(available_ships)}
+Available ships in this docking area: {', '.join(ship_display_names)}
 
 The player is approaching. They look like they just came out of cryo-sleep (memory hazy).
 
-Write your opening dialogue naturally. Show your personality through word choice and tone.
+Write your opening dialogue naturally. Show your personality through word choice and tone. Refer to ships by their common names (e.g. "Escape Pod", "Fast Courier"), never as database codes.
 
 IMPORTANT: Write as natural speech, NOT numbered lists or bullet points. Just the dialogue."""
 
@@ -221,11 +231,13 @@ IMPORTANT: Write as natural speech, NOT numbered lists or bullet points. Just th
             contradictions_text = f"\n\nCONTRADICTIONS DETECTED:\n" + "\n".join(f"- {c}" for c in detected_contradictions)
 
         # Get ship specifications for context
+        # Ensure claimed_ship is human-readable (may arrive as enum name or display name)
+        claimed_ship_display = _humanize_ship_name(claimed_ship) if "_" in claimed_ship else claimed_ship
         ship_specs = SHIP_SPECIFICATIONS.get(claimed_ship, {})
         ship_context = ""
         if ship_specs:
             ship_context = f"""
-SHIP THEY'RE CLAIMING ({claimed_ship}):
+SHIP THEY'RE CLAIMING ({claimed_ship_display}):
 - Market Value: {ship_specs.get('market_value', 'Unknown')}
 - Cargo Capacity: {ship_specs.get('cargo_capacity', 'Unknown')}
 - Max Speed: {ship_specs.get('max_speed', 'Unknown')}
@@ -241,7 +253,7 @@ Use these specs to ask SPECIFIC questions:
 - Ask about certifications/licenses if mentioned in special_notes
 """
 
-        system_prompt = f"""You are {guard_title} {guard_name}, continuing to question someone claiming to own a {claimed_ship} (Tier {ship_tier} ship - higher tier = more valuable/rare).
+        system_prompt = f"""You are {guard_title} {guard_name}, continuing to question someone claiming to own a {claimed_ship_display} (Tier {ship_tier} ship - higher tier = more valuable/rare).
 {ship_context}
 YOUR PERSONALITY:
 - Trait: {guard_trait}
@@ -392,6 +404,10 @@ Stay in character. Be conversational."""
             for exchange in conversation_history if exchange['player']
         ])
 
+        # Ensure ship names are human-readable
+        claimed_display = _humanize_ship_name(claimed_ship) if "_" in claimed_ship else claimed_ship
+        awarded_display = _humanize_ship_name(awarded_ship) if "_" in awarded_ship else awarded_ship
+
         system_prompt = f"""You are {guard_title} {guard_name} delivering your final verdict.
 
 YOUR PERSONALITY:
@@ -399,8 +415,8 @@ YOUR PERSONALITY:
 
 THE VERDICT:
 - Outcome: {outcome_type}
-- They claimed: {claimed_ship}
-- They're getting: {awarded_ship}
+- They claimed: {claimed_display}
+- They're getting: {awarded_display}
 - Final Score: {final_score:.2f}/1.00
 - Negotiation Skill: {negotiation_skill}
 
@@ -428,7 +444,7 @@ Be human. Be in-character. Make it memorable."""
         user_prompt = f"""Deliver your final verdict as {guard_name}.
 
 Outcome: {outcome_type}
-Awarded Ship: {awarded_ship}
+Awarded Ship: {awarded_display}
 
 Write naturally. Reference their story. Stay in character.
 

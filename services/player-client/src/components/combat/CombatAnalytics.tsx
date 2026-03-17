@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { gameAPI } from '../../services/api';
 import './combat-analytics.css';
 
 interface CombatStats {
@@ -51,73 +50,45 @@ const CombatAnalytics: React.FC<CombatAnalyticsProps> = ({
   const [selectedMetric, setSelectedMetric] = useState<'winRate' | 'damage' | 'efficiency'>('winRate');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load combat statistics
+  // Load combat statistics from API
   useEffect(() => {
     const loadStats = async () => {
       setIsLoading(true);
       try {
-        // In a real implementation, this would fetch from the API
-        // For now, we'll generate mock data
-        const mockStats: CombatStats = {
-          totalBattles: 127,
-          victories: 89,
-          defeats: 32,
-          draws: 6,
-          totalDamageDealt: 458920,
-          totalDamageReceived: 298450,
-          totalDronesDeployed: 342,
-          totalDronesLost: 87,
-          averageBattleDuration: 4.7,
-          favoriteTarget: 'shields',
-          mostDamagingWeapon: 'Plasma Cannon',
-          killDeathRatio: 2.78
-        };
-
-        const mockWeaponStats: WeaponStats[] = [
-          {
-            weaponType: 'Plasma Cannon',
-            shotsFirered: 1247,
-            hits: 982,
-            misses: 265,
-            accuracy: 78.7,
-            totalDamage: 234500,
-            criticalHits: 147
-          },
-          {
-            weaponType: 'Missile Launcher',
-            shotsFirered: 423,
-            hits: 387,
-            misses: 36,
-            accuracy: 91.5,
-            totalDamage: 178300,
-            criticalHits: 52
-          },
-          {
-            weaponType: 'Laser Turret',
-            shotsFirered: 3421,
-            hits: 2456,
-            misses: 965,
-            accuracy: 71.8,
-            totalDamage: 46120,
-            criticalHits: 234
-          }
-        ];
-
-        // Generate performance history
-        const history: TimeBasedMetric[] = [];
-        const days = timeRange === 'day' ? 24 : timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 365;
-        for (let i = 0; i < days; i++) {
-          history.push({
-            timestamp: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
-            value: Math.random() * 100
-          });
+        // Attempt to fetch combat stats from the API
+        const token = localStorage.getItem('accessToken');
+        const baseUrl = import.meta.env.VITE_API_URL || window.location.origin;
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
         }
 
-        setStats(mockStats);
-        setWeaponStats(mockWeaponStats);
-        setPerformanceHistory(history.reverse());
+        const response = await fetch(`${baseUrl}/api/v1/combat/stats?player_id=${playerId}&time_range=${timeRange}`, { headers });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.totalBattles > 0) {
+            setStats(data);
+            setWeaponStats(data.weaponStats || []);
+            setPerformanceHistory(data.performanceHistory || []);
+          } else {
+            // API returned but no combat data
+            setStats(null);
+            setWeaponStats([]);
+            setPerformanceHistory([]);
+          }
+        } else {
+          // API endpoint not available or returned error - show empty state
+          console.warn('Combat stats endpoint not available:', response.status);
+          setStats(null);
+          setWeaponStats([]);
+          setPerformanceHistory([]);
+        }
       } catch (error) {
         console.error('Failed to load combat statistics:', error);
+        setStats(null);
+        setWeaponStats([]);
+        setPerformanceHistory([]);
       } finally {
         setIsLoading(false);
       }
@@ -175,7 +146,8 @@ const CombatAnalytics: React.FC<CombatAnalyticsProps> = ({
   if (!stats || !derivedMetrics) {
     return (
       <div className="combat-analytics no-data">
-        <p>No combat data available for the selected time range.</p>
+        <h3>Combat Analytics</h3>
+        <p>No combat data available yet. Engage in combat to see your statistics here.</p>
       </div>
     );
   }

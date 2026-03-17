@@ -131,9 +131,23 @@ class Planet(Base):
     siege_started_at = Column(DateTime(timezone=True), nullable=True)
     siege_attacker_id = Column(UUID(as_uuid=True), nullable=True)
     
+    # Citadel system
+    citadel_level = Column(Integer, nullable=False, default=0)  # 0-5
+    citadel_upgrading = Column(Boolean, nullable=False, default=False)
+    citadel_upgrade_started_at = Column(DateTime(timezone=True), nullable=True)
+    citadel_upgrade_complete_at = Column(DateTime(timezone=True), nullable=True)
+    citadel_safe_credits = Column(BigInteger, nullable=False, default=0)
+    citadel_safe_max = Column(BigInteger, nullable=False, default=0)
+    citadel_drone_capacity = Column(Integer, nullable=False, default=0)
+    citadel_max_population = Column(BigInteger, nullable=False, default=0)
+
     # Genesis device information
     genesis_created = Column(Boolean, nullable=False, default=False)
     genesis_device_id = Column(UUID(as_uuid=True), ForeignKey("genesis_devices.id"), nullable=True)
+    genesis_tier = Column(String(20), nullable=True)  # basic / enhanced / advanced
+    formation_status = Column(String(20), nullable=True)  # forming / complete
+    formation_started_at = Column(DateTime(timezone=True), nullable=True)
+    formation_complete_at = Column(DateTime(timezone=True), nullable=True)
     
     # Regional association
     region_id = Column(UUID(as_uuid=True), ForeignKey("regions.id"), nullable=True)

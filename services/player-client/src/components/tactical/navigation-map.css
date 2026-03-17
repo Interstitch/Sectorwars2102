@@ -111,6 +111,17 @@
   animation: indicator-pulse 1.5s ease-in-out infinite;
 }
 
+.warp-prompt {
+  text-shadow: 0 0 8px #00d9ff, 0 0 4px rgba(0, 0, 0, 0.9);
+  font-family: monospace;
+  letter-spacing: 0.08em;
+  animation: label-appear 0.2s ease-out;
+}
+
+.node-circle.moving {
+  opacity: 0.6;
+}
+
 @keyframes indicator-pulse {
   0%, 100% {
     opacity: 1;

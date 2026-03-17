@@ -520,5 +520,79 @@ class PlayerCombatService:
                 attacker = self.db.query(Player).filter(Player.id == combat_log.attacker_id).first()
                 if attacker:
                     attacker.credits += loot_credits
-                    
+
                 combat_log.credits_looted = loot_credits
+
+    def attempt_retreat(
+        self,
+        combat_id: UUID,
+        player_id: UUID
+    ) -> Dict[str, Any]:
+        """
+        Attempt to retreat from an ongoing combat.
+
+        Retreat success is based on ship speed and combat round count.
+        Earlier rounds are harder to retreat from. Faster ships have
+        better retreat chances.
+        """
+        combat_log = self.db.query(CombatLog).filter(CombatLog.id == combat_id).first()
+        if not combat_log:
+            return {
+                "success": False,
+                "message": "Combat not found"
+            }
+
+        # Verify player is the attacker in this combat
+        if combat_log.attacker_id != player_id:
+            return {
+                "success": False,
+                "message": "Only the attacker can retreat"
+            }
+
+        # Cannot retreat from completed combat
+        if combat_log.outcome != CombatOutcome.ONGOING:
+            return {
+                "success": False,
+                "message": "Combat is already over"
+            }
+
+        # Get attacker's ship for speed-based retreat calculation
+        attacker_ship = self.db.query(Ship).filter(
+            Ship.id == combat_log.attacker_ship_id
+        ).first()
+
+        # Base retreat chance starts at 30% and increases with rounds fought
+        rounds_fought = combat_log.rounds_fought or 0
+        base_chance = 0.30 + (rounds_fought * 0.10)  # +10% per round
+
+        # Speed bonus: faster ships retreat more easily
+        speed_bonus = 0.0
+        if attacker_ship and attacker_ship.speed:
+            speed_bonus = min(0.20, attacker_ship.speed / 500)  # Up to 20% bonus
+
+        retreat_chance = min(0.90, base_chance + speed_bonus)  # Cap at 90%
+
+        if random.random() < retreat_chance:
+            # Retreat successful
+            combat_log.outcome = CombatOutcome.ESCAPED
+            combat_log.ended_at = datetime.utcnow()
+            combat_log.combat_duration = int(
+                (combat_log.ended_at - combat_log.timestamp).total_seconds()
+            )
+
+            self.db.commit()
+
+            return {
+                "success": True,
+                "message": "Retreat successful! You escaped the combat.",
+                "retreatChance": round(retreat_chance * 100)
+            }
+        else:
+            # Retreat failed - defender gets a free attack round
+            self._simulate_combat_round(combat_log)
+
+            return {
+                "success": False,
+                "message": "Retreat failed! The enemy landed a hit as you tried to flee.",
+                "retreatChance": round(retreat_chance * 100)
+            }

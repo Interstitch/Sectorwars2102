@@ -41,6 +41,12 @@ class Player(Base):
     military_rank = Column(String(50), nullable=False, default="Recruit")  # Current rank
     rank_points = Column(Integer, nullable=False, default=0)  # Points toward next rank
 
+    # ARIA consciousness tracking
+    aria_bonus_multiplier = Column(Float, nullable=False, default=1.0)  # 1.0x to 1.5x
+    aria_consciousness_level = Column(Integer, nullable=False, default=1)  # 1-5
+    aria_relationship_score = Column(Integer, nullable=False, default=25)  # 0-100
+    aria_total_interactions = Column(Integer, nullable=False, default=0)
+
     current_ship_id = Column(UUID(as_uuid=True), ForeignKey("ships.id", ondelete="SET NULL"), nullable=True)
     home_sector_id = Column(Integer, nullable=False, default=1)
     current_sector_id = Column(Integer, nullable=False, default=1)

@@ -4,6 +4,7 @@ import { websocketService, WebSocketEvents } from '../services/websocket';
 
 interface WebSocketContextValue {
   isConnected: boolean;
+  hasGivenUp: boolean;
   subscribe: <K extends keyof WebSocketEvents>(
     event: K,
     handler: WebSocketEvents[K]
@@ -32,9 +33,12 @@ interface WebSocketProviderProps {
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
   const { user, token } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
+  const [hasGivenUp, setHasGivenUp] = useState(false);
 
   useEffect(() => {
     if (user && token) {
+      setHasGivenUp(false);
+
       // Connect to WebSocket when user is authenticated
       websocketService.connect(token)
         .then(() => {
@@ -42,17 +46,26 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
           console.log('WebSocket connected successfully');
         })
         .catch(error => {
-          console.error('Failed to connect WebSocket:', error);
+          console.warn('WebSocket connection unavailable:', error);
           setIsConnected(false);
         });
+
+      // Listen for when reconnection is abandoned
+      const unsubGaveUp = websocketService.onGaveUp(() => {
+        setHasGivenUp(true);
+      });
 
       // Set up connection status monitoring
       const checkConnection = setInterval(() => {
         setIsConnected(websocketService.isConnected());
+        if (websocketService.hasGivenUp()) {
+          setHasGivenUp(true);
+        }
       }, 5000);
 
       return () => {
         clearInterval(checkConnection);
+        unsubGaveUp();
         websocketService.disconnect();
         setIsConnected(false);
       };
@@ -60,6 +73,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       // Disconnect when user logs out
       websocketService.disconnect();
       setIsConnected(false);
+      setHasGivenUp(false);
     }
   }, [user, token]);
 
@@ -83,6 +97,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
   const value: WebSocketContextValue = {
     isConnected,
+    hasGivenUp,
     subscribe,
     unsubscribe,
     send

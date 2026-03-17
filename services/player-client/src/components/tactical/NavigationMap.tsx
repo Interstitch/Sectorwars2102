@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import './navigation-map.css';
 
 interface Sector {
@@ -37,7 +37,17 @@ const NavigationMap: React.FC<NavigationMapProps> = ({
   const svgRef = useRef<SVGSVGElement>(null);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [hoveredNode, setHoveredNode] = useState<number | null>(null);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
   const animationRef = useRef<number>();
+
+  // Stable reference to onNavigate to avoid stale closures
+  const onNavigateRef = useRef(onNavigate);
+  onNavigateRef.current = onNavigate;
+
+  // Stable reference to availableMoves
+  const availableMovesRef = useRef(availableMoves);
+  availableMovesRef.current = availableMoves;
 
   // Initialize nodes with force-directed layout
   useEffect(() => {
@@ -81,16 +91,25 @@ const NavigationMap: React.FC<NavigationMapProps> = ({
     });
 
     setNodes(newNodes);
+    setIsSimulating(true);
   }, [sectors, currentSectorId, availableMoves, width, height]);
 
-  // Force-directed graph simulation
+  // Force-directed graph simulation - stops when settled
   useEffect(() => {
-    if (nodes.length === 0) return;
+    if (nodes.length === 0 || !isSimulating) return;
+
+    let frameCount = 0;
+    const maxFrames = 120; // Stop after ~2 seconds even if not fully settled
+    let settled = false;
 
     const simulate = () => {
+      if (settled) return;
+      frameCount++;
+
       setNodes(prevNodes => {
         const updatedNodes = [...prevNodes];
         const alpha = 0.1; // Damping factor
+        let totalVelocity = 0;
 
         updatedNodes.forEach((node, i) => {
           // Skip current sector (always centered)
@@ -137,6 +156,9 @@ const NavigationMap: React.FC<NavigationMapProps> = ({
           node.vx *= 0.85;
           node.vy *= 0.85;
 
+          // Track total velocity to detect settling
+          totalVelocity += Math.abs(node.vx) + Math.abs(node.vy);
+
           // Update position
           node.x += node.vx;
           node.y += node.vy;
@@ -149,26 +171,45 @@ const NavigationMap: React.FC<NavigationMapProps> = ({
           if (node.y > height - margin) node.y = height - margin;
         });
 
+        // Stop simulation when nodes have settled or max frames reached
+        if (totalVelocity < 0.5 || frameCount >= maxFrames) {
+          // Zero out all velocities for a clean stop
+          updatedNodes.forEach(node => {
+            node.vx = 0;
+            node.vy = 0;
+          });
+          settled = true;
+          // Schedule simulation stop (can't call setState during state updater)
+          setTimeout(() => setIsSimulating(false), 0);
+        }
+
         return updatedNodes;
       });
 
-      animationRef.current = requestAnimationFrame(simulate);
+      if (!settled) {
+        animationRef.current = requestAnimationFrame(simulate);
+      }
     };
 
     simulate();
 
     return () => {
+      settled = true;
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [nodes.length, currentSectorId, width, height]);
+  }, [nodes.length, isSimulating, currentSectorId, width, height]);
 
-  const handleNodeClick = (sectorId: number) => {
-    if (availableMoves.includes(sectorId)) {
-      onNavigate(sectorId);
+  const handleNodeClick = useCallback((sectorId: number) => {
+    if (isMoving) return;
+    if (availableMovesRef.current.includes(sectorId)) {
+      setIsMoving(true);
+      onNavigateRef.current(sectorId);
+      // Reset moving state after a delay (in case navigation fails silently)
+      setTimeout(() => setIsMoving(false), 3000);
     }
-  };
+  }, [isMoving]);
 
   // Get node color based on sector type
   const getNodeColor = (sector: Sector, isCurrent: boolean, isAvailable: boolean) => {
@@ -254,7 +295,27 @@ const NavigationMap: React.FC<NavigationMapProps> = ({
                   fill={nodeColor}
                   opacity={isCurrent ? 0.3 : isHovered ? 0.2 : 0}
                   className="node-glow"
+                  style={{ pointerEvents: 'none' }}
                 />
+
+                {/* Invisible larger hit target for easier clicking */}
+                {isAvailable && (
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={nodeSize + 10}
+                    fill="transparent"
+                    stroke="none"
+                    style={{ cursor: 'pointer' }}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleNodeClick(node.id);
+                    }}
+                    onMouseEnter={() => setHoveredNode(node.id)}
+                    onMouseLeave={() => setHoveredNode(null)}
+                  />
+                )}
 
                 {/* Node circle */}
                 <circle
@@ -264,10 +325,16 @@ const NavigationMap: React.FC<NavigationMapProps> = ({
                   fill={nodeColor}
                   stroke={isCurrent ? '#00ff41' : isAvailable ? '#00d9ff' : '#444'}
                   strokeWidth={isCurrent ? 3 : 2}
-                  className={`node-circle ${isAvailable ? 'available' : ''} ${isCurrent ? 'current' : ''}`}
+                  className={`node-circle ${isAvailable ? 'available' : ''} ${isCurrent ? 'current' : ''} ${isMoving ? 'moving' : ''}`}
                   onMouseEnter={() => setHoveredNode(node.id)}
                   onMouseLeave={() => setHoveredNode(null)}
-                  onClick={() => handleNodeClick(node.id)}
+                  onPointerDown={(e) => {
+                    if (isAvailable) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleNodeClick(node.id);
+                    }
+                  }}
                   style={{ cursor: isAvailable ? 'pointer' : 'default' }}
                 />
 
@@ -284,6 +351,22 @@ const NavigationMap: React.FC<NavigationMapProps> = ({
                     style={{ pointerEvents: 'none' }}
                   >
                     {node.sector.name}
+                  </text>
+                )}
+
+                {/* Warp prompt on hover for available sectors */}
+                {isAvailable && isHovered && !isCurrent && (
+                  <text
+                    x={node.x}
+                    y={node.y - nodeSize - 8}
+                    textAnchor="middle"
+                    className="warp-prompt"
+                    fill="#00d9ff"
+                    fontSize="9"
+                    fontWeight="bold"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {isMoving ? '⟐ WARPING...' : '▶ CLICK TO WARP'}
                   </text>
                 )}
 

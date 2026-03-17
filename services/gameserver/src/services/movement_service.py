@@ -11,6 +11,7 @@ from src.models.sector import Sector, sector_warps
 from src.models.warp_tunnel import WarpTunnel, WarpTunnelStatus
 from src.models.combat import CombatResult
 from src.models.combat_log import CombatLog
+from sqlalchemy.orm.attributes import flag_modified
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +27,17 @@ class MovementService:
         Move a player to a destination sector.
         Returns a dict with success status, message, and turn cost.
         """
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+        # Lock player row to prevent concurrent movement race conditions
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             return {"success": False, "message": "Player not found", "turn_cost": 0}
-        
+
+        # Block movement if player is docked at a port or landed on a planet
+        if player.is_docked:
+            return {"success": False, "message": "You must undock before moving to another sector", "turn_cost": 0}
+        if player.is_landed:
+            return {"success": False, "message": "You must leave the planet before moving to another sector", "turn_cost": 0}
+
         # Ensure player has an active ship
         if not player.current_ship:
             return {"success": False, "message": "No active ship selected", "turn_cost": 0}
@@ -370,10 +378,12 @@ class MovementService:
         """Execute a player's movement to a destination sector."""
         old_sector_id = player.current_sector_id
         
-        # Update player position
+        # Update player position and clear all location state
         player.current_sector_id = destination_sector_id
         player.is_docked = False  # Player is no longer docked at a port
         player.is_landed = False  # Player is no longer landed on a planet
+        player.current_port_id = None  # Clear dangling port reference
+        player.current_planet_id = None  # Clear dangling planet reference
         
         # Update ship position
         if player.current_ship:
@@ -381,7 +391,18 @@ class MovementService:
         
         # Consume turns
         player.turns -= turn_cost
-        
+
+        # ARIA consciousness hook — movement counts as interaction
+        try:
+            player.aria_total_interactions += 1
+            thresholds = {50: (2, 1.1), 150: (3, 1.2), 400: (4, 1.35), 1000: (5, 1.5)}
+            for threshold, (level, multiplier) in thresholds.items():
+                if player.aria_total_interactions >= threshold and player.aria_consciousness_level < level:
+                    player.aria_consciousness_level = level
+                    player.aria_bonus_multiplier = multiplier
+        except Exception as e:
+            logger.error("Failed ARIA hook during movement: %s", e)
+
         # Updates player's presence in sector records
         self._update_player_presence(player, old_sector_id, destination_sector_id)
         
@@ -414,15 +435,16 @@ class MovementService:
         
         if old_sector:
             # Remove player from old sector's players_present
-            players_present = old_sector.players_present
+            players_present = list(old_sector.players_present or [])
             player_entry = next((p for p in players_present if p.get("player_id") == str(player.id)), None)
             if player_entry:
                 players_present.remove(player_entry)
-                old_sector.players_present = players_present
-        
+            old_sector.players_present = players_present
+            flag_modified(old_sector, 'players_present')
+
         if new_sector:
             # Add player to new sector's players_present
-            players_present = new_sector.players_present
+            players_present = list(new_sector.players_present or [])
             player_entry = {
                 "player_id": str(player.id),
                 "username": player.username,
@@ -432,14 +454,15 @@ class MovementService:
                 "team_id": str(player.team_id) if player.team_id else None,
                 "arrived_at": datetime.now().isoformat()
             }
-            
+
             # Check if player is already in the list (shouldn't be, but safety check)
             existing = next((p for p in players_present if p.get("player_id") == str(player.id)), None)
             if existing:
                 players_present.remove(existing)
-            
+
             players_present.append(player_entry)
             new_sector.players_present = players_present
+            flag_modified(new_sector, 'players_present')
     
     def _check_for_encounters(self, player: Player, sector_id: int) -> List[Dict[str, Any]]:
         """Check for encounters upon entering a sector."""

@@ -27,32 +27,12 @@ export const MFASetup: React.FC<MFASetupProps> = ({ onSetupComplete, onCancel })
     setError(null);
     
     try {
-      // In production, this would call the actual API
       const response = await fetch('/api/auth/mfa/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
-      }).catch(() => {
-        // Mock response for development
-        return {
-          ok: true,
-          json: async () => ({
-            secret: 'JBSWY3DPEHPK3PXP',
-            qrCodeUrl: `otpauth://totp/SectorWars:${user?.username}?secret=JBSWY3DPEHPK3PXP&issuer=SectorWars2102`,
-            backupCodes: [
-              'a1b2c3d4e5',
-              'f6g7h8i9j0',
-              'k1l2m3n4o5',
-              'p6q7r8s9t0',
-              'u1v2w3x4y5',
-              'z6a7b8c9d0',
-              'e1f2g3h4i5',
-              'j6k7l8m9n0'
-            ]
-          })
-        };
       });
 
       if (!response.ok) {
@@ -80,12 +60,7 @@ export const MFASetup: React.FC<MFASetupProps> = ({ onSetupComplete, onCancel })
     setError(null);
 
     try {
-      await confirmMFASetup(verificationCode, secret).catch(() => {
-        // Mock successful verification for development
-        if (verificationCode !== '123456') {
-          throw new Error('Invalid code - use 123456 for testing');
-        }
-      });
+      await confirmMFASetup(verificationCode, secret);
 
       setStep('backup');
     } catch (err) {

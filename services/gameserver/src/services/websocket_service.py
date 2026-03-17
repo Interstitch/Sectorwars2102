@@ -501,9 +501,59 @@ class ConnectionManager:
     
     async def update_admin_subscriptions(self, admin_id: str, event_types: List[str]):
         """Update which events an admin wants to receive"""
+        # Whitelist allowed admin event types
+        ALLOWED_ADMIN_EVENTS = {
+            "combat_update", "economy_update", "fleet_update",
+            "player_statistics", "sector_update", "system_alert",
+        }
+        filtered = [e for e in event_types if e in ALLOWED_ADMIN_EVENTS]
         if admin_id in self.admin_metadata:
-            self.admin_metadata[admin_id]["subscriptions"] = set(event_types)
-            logger.info(f"Admin {admin_id} subscribed to events: {event_types}")
+            self.admin_metadata[admin_id]["subscriptions"] = set(filtered)
+            logger.info(f"Admin {admin_id} subscribed to events: {filtered}")
+
+    async def cleanup_stale_connections(self, timeout_seconds: int = 300):
+        """Disconnect connections that haven't sent a heartbeat within timeout.
+        Should be called periodically (e.g., every 30 seconds from a background task).
+        """
+        now = datetime.now(UTC)
+        stale_users = []
+
+        for user_id, metadata in list(self.connection_metadata.items()):
+            last_hb = metadata.get("last_heartbeat")
+            if last_hb and (now - last_hb).total_seconds() > timeout_seconds:
+                stale_users.append(user_id)
+
+        for user_id in stale_users:
+            logger.info(f"Disconnecting stale WebSocket: user {user_id} (heartbeat timeout)")
+            ws = self.active_connections.get(user_id)
+            if ws:
+                try:
+                    await ws.close(code=4008, reason="Heartbeat timeout")
+                except Exception:
+                    pass
+            await self.disconnect(user_id)
+
+        # Also clean stale admins
+        stale_admins = []
+        for admin_id, metadata in list(self.admin_metadata.items()):
+            last_hb = metadata.get("last_heartbeat")
+            if last_hb and (now - last_hb).total_seconds() > timeout_seconds:
+                stale_admins.append(admin_id)
+
+        for admin_id in stale_admins:
+            logger.info(f"Disconnecting stale admin WebSocket: {admin_id}")
+            ws = self.admin_connections.get(admin_id)
+            if ws:
+                try:
+                    await ws.close(code=4008, reason="Heartbeat timeout")
+                except Exception:
+                    pass
+            await self.disconnect_admin(admin_id)
+
+        if stale_users or stale_admins:
+            logger.info(f"Cleaned up {len(stale_users)} stale user + {len(stale_admins)} admin connections")
+
+        return len(stale_users) + len(stale_admins)
 
 
 # Global connection manager instance
@@ -549,7 +599,15 @@ async def handle_websocket_message(user_id: str, message_data: Dict[str, Any]):
         elif target_type == "team":
             team_id = metadata.get("team_id")
             if team_id:
-                await connection_manager.broadcast_to_team(team_id, chat_message, exclude_user=user_id)
+                # Revalidate team membership before broadcasting
+                # (player may have been removed since WebSocket connected)
+                if user_id in connection_manager.team_connections.get(team_id, set()):
+                    await connection_manager.broadcast_to_team(team_id, chat_message, exclude_user=user_id)
+                else:
+                    await connection_manager.send_personal_message(user_id, {
+                        "type": "error",
+                        "message": "You are no longer a member of this team"
+                    })
         
         elif target_type == "global":
             await connection_manager.broadcast_global(chat_message, exclude_user=user_id)

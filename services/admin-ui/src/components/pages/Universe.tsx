@@ -236,7 +236,7 @@ const Universe: React.FC = () => {
       const response = await fetch('/api/v1/admin/ports/update-stock-levels', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
           'Content-Type': 'application/json'
         }
       });

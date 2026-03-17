@@ -15,10 +15,36 @@ import logging
 from src.models.player import Player
 from src.models.planet import Planet, player_planets
 from src.models.sector import Sector
+from src.models.ship import Ship
 from src.models.genesis_device import GenesisDevice, GenesisType, GenesisStatus, PlanetFormation
 from src.models.team import Team
 
 logger = logging.getLogger(__name__)
+
+# Siege configuration constants
+SIEGE_TURNS_THRESHOLD = 3       # Consecutive turns enemies must be present to trigger siege
+SIEGE_MORALE_LOSS_PER_TURN = 5  # Morale % lost per turn under siege
+SIEGE_PRODUCTION_PENALTY = 0.25 # 25% production reduction during siege
+DEFENSE_UPGRADE_COST = 1000     # Credits per defense level
+DEFENSE_MAX_LEVEL = 10          # Maximum defense level
+DEFENSE_DAMAGE_REDUCTION_PER_LEVEL = 0.10  # 10% damage reduction per level
+
+# Shield Generator Levels (0-10)
+# Uses planet.defense_shields to track generator level, planet.shields for strength
+SHIELD_GENERATOR_MAX_LEVEL = 10
+SHIELD_GENERATOR_LEVELS = {
+    0: {"name": "No Shields", "strength": 0, "regen_per_hour": 0, "cost": 0},
+    1: {"name": "Basic Shield", "strength": 1000, "regen_per_hour": 100, "cost": 50000},
+    2: {"name": "Reinforced Shield", "strength": 2500, "regen_per_hour": 250, "cost": 100000},
+    3: {"name": "Military Shield", "strength": 5000, "regen_per_hour": 500, "cost": 200000},
+    4: {"name": "Advanced Shield", "strength": 10000, "regen_per_hour": 1000, "cost": 350000},
+    5: {"name": "Heavy Shield", "strength": 15000, "regen_per_hour": 1500, "cost": 500000},
+    6: {"name": "Fortress Shield", "strength": 25000, "regen_per_hour": 2500, "cost": 750000},
+    7: {"name": "Citadel Shield", "strength": 35000, "regen_per_hour": 3500, "cost": 1000000},
+    8: {"name": "Planetary Shield", "strength": 50000, "regen_per_hour": 5000, "cost": 1500000},
+    9: {"name": "Quantum Shield", "strength": 65000, "regen_per_hour": 6500, "cost": 2000000},
+    10: {"name": "Impervious Shield", "strength": 75000, "regen_per_hour": 7500, "cost": 3000000},
+}
 
 
 class PlanetaryService:
@@ -143,8 +169,8 @@ class PlanetaryService:
         # Calculate upgrade cost
         cost = self._calculate_upgrade_cost(building_type, current_level, target_level)
         
-        # Check if player can afford
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+        # Lock player for credit deduction
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if player.credits < cost["credits"]:
             raise ValueError("Insufficient credits for upgrade")
             
@@ -348,7 +374,7 @@ class PlanetaryService:
         }
         
     def get_siege_status(self, planet_id: UUID, player_id: UUID) -> Dict[str, Any]:
-        """Get siege status of a planet."""
+        """Get siege status of a planet with live detection."""
         # Verify ownership
         planet = self.db.query(Planet).join(
             player_planets,
@@ -359,38 +385,480 @@ class PlanetaryService:
                 player_planets.c.player_id == player_id
             )
         ).first()
-        
+
         if not planet:
             raise ValueError("Planet not found or not owned by player")
-            
-        # Check if planet is under siege
-        # For now, return not under siege
-        # TODO: Implement siege mechanics
-        
+
+        # Run siege detection to get current state
+        siege_info = self._detect_siege(planet, player_id)
+
+        if not planet.under_siege:
+            return {
+                "underSiege": False,
+                "siegeDetails": None,
+                "morale": planet.morale,
+                "defenseLevel": planet.defense_level or 0,
+                "isVulnerable": planet.morale <= 0
+            }
+
         return {
-            "underSiege": False,
-            "siegeDetails": None
+            "underSiege": True,
+            "siegeDetails": {
+                "siegeStartedAt": planet.siege_started_at.isoformat() if planet.siege_started_at else None,
+                "siegeTurns": planet.siege_turns,
+                "attackerId": str(planet.siege_attacker_id) if planet.siege_attacker_id else None,
+                "enemyShips": siege_info.get("enemy_ship_count", 0),
+                "effects": {
+                    "moraleLossPerTurn": SIEGE_MORALE_LOSS_PER_TURN,
+                    "productionPenalty": f"{int(SIEGE_PRODUCTION_PENALTY * 100)}%",
+                    "populationGrowthHalted": True,
+                    "tradeDisrupted": True
+                }
+            },
+            "morale": planet.morale,
+            "defenseLevel": planet.defense_level or 0,
+            "isVulnerable": planet.morale <= 0
         }
-        
+
+    def check_and_update_siege(self, planet_id: UUID) -> Dict[str, Any]:
+        """
+        Check siege conditions for a planet and update its state.
+        This should be called during turn processing.
+        Returns the updated siege state.
+        """
+        planet = self.db.query(Planet).filter(Planet.id == planet_id).first()
+        if not planet:
+            raise ValueError("Planet not found")
+
+        # Get the planet owner ID
+        owner_record = self.db.query(player_planets.c.player_id).filter(
+            player_planets.c.planet_id == planet_id
+        ).first()
+
+        if not owner_record:
+            # Unowned planet cannot be sieged
+            return {"underSiege": False, "changed": False}
+
+        owner_id = owner_record[0]
+        siege_info = self._detect_siege(planet, owner_id)
+
+        return {
+            "underSiege": planet.under_siege,
+            "changed": siege_info.get("state_changed", False),
+            "morale": planet.morale,
+            "isVulnerable": planet.morale <= 0
+        }
+
+    def apply_siege_effects(self, planet_id: UUID) -> Dict[str, Any]:
+        """
+        Apply per-turn siege effects to a planet.
+        Call this during turn processing for planets under siege.
+        Returns the effects that were applied.
+        """
+        planet = self.db.query(Planet).filter(Planet.id == planet_id).first()
+        if not planet:
+            raise ValueError("Planet not found")
+
+        if not planet.under_siege:
+            return {"applied": False, "reason": "Planet is not under siege"}
+
+        effects_applied = {}
+
+        # 1. Morale decreases by SIEGE_MORALE_LOSS_PER_TURN per turn
+        old_morale = planet.morale
+        # Higher defense level reduces morale loss
+        defense_reduction = (planet.defense_level or 0) * 0.05  # 5% less morale loss per defense level
+        effective_morale_loss = max(1, int(SIEGE_MORALE_LOSS_PER_TURN * (1.0 - defense_reduction)))
+        planet.morale = max(0, planet.morale - effective_morale_loss)
+        effects_applied["moraleLoss"] = old_morale - planet.morale
+        effects_applied["newMorale"] = planet.morale
+
+        # 2. Population growth halted (handled in _calculate_production_rates via siege check)
+        effects_applied["populationGrowthHalted"] = True
+
+        # 3. Production reduced by 25% (handled in _calculate_production_rates via siege check)
+        effects_applied["productionReduced"] = True
+        effects_applied["productionPenalty"] = f"{int(SIEGE_PRODUCTION_PENALTY * 100)}%"
+
+        # 4. Check if planet becomes vulnerable (morale at 0)
+        if planet.morale <= 0:
+            effects_applied["vulnerable"] = True
+            logger.warning(
+                f"Planet {planet.name} (id={planet.id}) morale has dropped to 0 - "
+                f"planet is now vulnerable to capture"
+            )
+
+        # Increment siege turn counter
+        planet.siege_turns = (planet.siege_turns or 0) + 1
+        effects_applied["siegeTurns"] = planet.siege_turns
+
+        self.db.commit()
+
+        return {
+            "applied": True,
+            "effects": effects_applied
+        }
+
+    def upgrade_defense(
+        self,
+        planet_id: UUID,
+        player_id: UUID
+    ) -> Dict[str, Any]:
+        """
+        Upgrade a planet's defense level by one.
+        Costs DEFENSE_UPGRADE_COST credits per level.
+        Max defense level is DEFENSE_MAX_LEVEL.
+        Each level adds DEFENSE_DAMAGE_REDUCTION_PER_LEVEL damage reduction during siege.
+        """
+        # Verify ownership
+        planet = self.db.query(Planet).join(
+            player_planets,
+            Planet.id == player_planets.c.planet_id
+        ).filter(
+            and_(
+                Planet.id == planet_id,
+                player_planets.c.player_id == player_id
+            )
+        ).first()
+
+        if not planet:
+            raise ValueError("Planet not found or not owned by player")
+
+        current_level = planet.defense_level or 0
+
+        if current_level >= DEFENSE_MAX_LEVEL:
+            raise ValueError(f"Defense is already at maximum level ({DEFENSE_MAX_LEVEL})")
+
+        # Cost scales with level: base_cost * (current_level + 1)
+        upgrade_cost = DEFENSE_UPGRADE_COST * (current_level + 1)
+
+        # Lock player for credit deduction
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
+        if not player:
+            raise ValueError("Player not found")
+
+        if player.credits < upgrade_cost:
+            raise ValueError(
+                f"Insufficient credits. Need {upgrade_cost}, have {player.credits}"
+            )
+
+        # Deduct credits and upgrade
+        player.credits -= upgrade_cost
+        new_level = current_level + 1
+        planet.defense_level = new_level
+
+        # Calculate new damage reduction
+        damage_reduction = new_level * DEFENSE_DAMAGE_REDUCTION_PER_LEVEL
+
+        self.db.commit()
+        self.db.refresh(planet)
+        self.db.refresh(player)
+
+        return {
+            "success": True,
+            "defenseLevel": new_level,
+            "maxLevel": DEFENSE_MAX_LEVEL,
+            "damageReduction": f"{int(damage_reduction * 100)}%",
+            "creditsCost": upgrade_cost,
+            "creditsRemaining": player.credits,
+            "nextUpgradeCost": DEFENSE_UPGRADE_COST * (new_level + 1) if new_level < DEFENSE_MAX_LEVEL else None
+        }
+
+    def upgrade_shield_generator(
+        self,
+        planet_id: UUID,
+        player_id: UUID
+    ) -> Dict[str, Any]:
+        """
+        Upgrade a planet's shield generator by one level.
+
+        Shield generators provide planetary shields that absorb damage during
+        attacks and sieges. Each level increases shield strength, regeneration
+        rate, and cost. Uses planet.defense_shields to track the generator level
+        and planet.shields for the current shield strength value.
+
+        Levels 0-10, with costs ranging from 50,000 to 3,000,000 credits.
+        """
+        # Lock planet + verify ownership to prevent concurrent upgrade races
+        planet = self.db.query(Planet).join(
+            player_planets,
+            Planet.id == player_planets.c.planet_id
+        ).filter(
+            and_(
+                Planet.id == planet_id,
+                player_planets.c.player_id == player_id
+            )
+        ).with_for_update().first()
+
+        if not planet:
+            raise ValueError("Planet not found or not owned by player")
+
+        current_level = planet.defense_shields or 0
+
+        if current_level >= SHIELD_GENERATOR_MAX_LEVEL:
+            raise ValueError(
+                f"Shield generator is already at maximum level ({SHIELD_GENERATOR_MAX_LEVEL})"
+            )
+
+        next_level = current_level + 1
+        next_level_info = SHIELD_GENERATOR_LEVELS[next_level]
+        upgrade_cost = next_level_info["cost"]
+
+        # Lock player for credit deduction
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
+        if not player:
+            raise ValueError("Player not found")
+
+        if player.credits < upgrade_cost:
+            raise ValueError(
+                f"Insufficient credits. Need {upgrade_cost:,}, have {player.credits:,}"
+            )
+
+        # Deduct credits and upgrade
+        player.credits -= upgrade_cost
+        planet.defense_shields = next_level
+        planet.shields = next_level_info["strength"]
+
+        self.db.commit()
+        self.db.refresh(planet)
+        self.db.refresh(player)
+
+        # Determine next upgrade info (if not at max)
+        further_upgrade_cost = None
+        if next_level < SHIELD_GENERATOR_MAX_LEVEL:
+            further_upgrade_cost = SHIELD_GENERATOR_LEVELS[next_level + 1]["cost"]
+
+        logger.info(
+            f"Shield generator upgraded to level {next_level} "
+            f"({next_level_info['name']}) on planet {planet.name} (id={planet.id})"
+        )
+
+        return {
+            "success": True,
+            "shieldGenerator": {
+                "level": next_level,
+                "maxLevel": SHIELD_GENERATOR_MAX_LEVEL,
+                "name": next_level_info["name"],
+                "strength": next_level_info["strength"],
+                "regenPerHour": next_level_info["regen_per_hour"],
+            },
+            "creditsCost": upgrade_cost,
+            "creditsRemaining": player.credits,
+            "nextUpgradeCost": further_upgrade_cost,
+        }
+
+    def get_defense_info(self, planet_id: UUID) -> Dict[str, Any]:
+        """
+        Get comprehensive defense information for a planet.
+
+        Returns shield generator status, defense level, turret and fighter
+        counts, and the cost to upgrade shields to the next level.
+        Does not require ownership -- useful for scouting and admin views.
+        """
+        planet = self.db.query(Planet).filter(Planet.id == planet_id).first()
+        if not planet:
+            raise ValueError("Planet not found")
+
+        # Shield generator info
+        shield_level = planet.defense_shields or 0
+        shield_info = SHIELD_GENERATOR_LEVELS.get(shield_level, SHIELD_GENERATOR_LEVELS[0])
+
+        # Next level upgrade cost
+        next_upgrade_cost = None
+        next_level_info = None
+        if shield_level < SHIELD_GENERATOR_MAX_LEVEL:
+            next_level_info = SHIELD_GENERATOR_LEVELS[shield_level + 1]
+            next_upgrade_cost = next_level_info["cost"]
+
+        # Defense level info
+        defense_level = planet.defense_level or 0
+        damage_reduction = defense_level * DEFENSE_DAMAGE_REDUCTION_PER_LEVEL
+
+        return {
+            "planetId": str(planet.id),
+            "planetName": planet.name,
+            "shieldGenerator": {
+                "level": shield_level,
+                "maxLevel": SHIELD_GENERATOR_MAX_LEVEL,
+                "name": shield_info["name"],
+                "strength": shield_info["strength"],
+                "currentShields": planet.shields or 0,
+                "regenPerHour": shield_info["regen_per_hour"],
+                "nextUpgrade": {
+                    "level": shield_level + 1,
+                    "name": next_level_info["name"],
+                    "strength": next_level_info["strength"],
+                    "regenPerHour": next_level_info["regen_per_hour"],
+                    "cost": next_upgrade_cost,
+                } if next_level_info else None,
+            },
+            "defenseLevel": defense_level,
+            "maxDefenseLevel": DEFENSE_MAX_LEVEL,
+            "damageReduction": f"{int(damage_reduction * 100)}%",
+            "turrets": planet.defense_turrets or 0,
+            "fighters": planet.defense_fighters or 0,
+        }
+
+    def lift_siege(self, planet_id: UUID) -> Dict[str, Any]:
+        """
+        Lift a siege from a planet. Called when:
+        - Enemy ships leave the sector
+        - Planet owner wins combat in the sector
+        """
+        planet = self.db.query(Planet).filter(Planet.id == planet_id).first()
+        if not planet:
+            raise ValueError("Planet not found")
+
+        if not planet.under_siege:
+            return {"success": True, "message": "Planet was not under siege"}
+
+        planet.under_siege = False
+        planet.siege_started_at = None
+        planet.siege_attacker_id = None
+        planet.siege_turns = 0
+
+        self.db.commit()
+
+        logger.info(f"Siege lifted on planet {planet.name} (id={planet.id})")
+
+        return {
+            "success": True,
+            "message": f"Siege on {planet.name} has been lifted",
+            "currentMorale": planet.morale
+        }
+
     # Helper methods
+
+    def _detect_siege(self, planet: Planet, owner_id: UUID) -> Dict[str, Any]:
+        """
+        Detect whether a planet should be under siege based on
+        enemy ship presence in the planet's sector.
+
+        Siege conditions:
+        1. Enemy ships are in the planet's sector
+        2. The planet owner is NOT present in the sector
+        3. Enemies have been present for SIEGE_TURNS_THRESHOLD+ consecutive turns
+
+        Updates the planet's siege state and returns detection info.
+        """
+        result = {"state_changed": False, "enemy_ship_count": 0}
+
+        # Find enemy ships in the planet's sector
+        # An enemy is any player who is not the planet owner
+        # and not on the same team as the planet owner
+        owner = self.db.query(Player).filter(Player.id == owner_id).first()
+        if not owner:
+            return result
+
+        # Get all ships in the planet's sector that don't belong to the owner
+        enemy_ships = self.db.query(Ship).filter(
+            and_(
+                Ship.sector_id == planet.sector_id,
+                Ship.owner_id != owner_id,
+                Ship.is_active == True,
+                Ship.is_destroyed == False
+            )
+        ).all()
+
+        # Filter out teammates if owner is on a team
+        if owner.team_id:
+            # Get team member IDs
+            team_member_ids = [
+                p.id for p in self.db.query(Player.id).filter(
+                    Player.team_id == owner.team_id
+                ).all()
+            ]
+            enemy_ships = [s for s in enemy_ships if s.owner_id not in team_member_ids]
+
+        result["enemy_ship_count"] = len(enemy_ships)
+
+        # Check if planet owner is present in the sector
+        owner_present = owner.current_sector_id == planet.sector_id
+
+        if len(enemy_ships) > 0 and not owner_present:
+            # Enemies are present and owner is absent
+            if not planet.under_siege:
+                # Track escalation toward siege via siege_turns counter
+                planet.siege_turns = (planet.siege_turns or 0) + 1
+
+                if planet.siege_turns >= SIEGE_TURNS_THRESHOLD:
+                    # Siege begins
+                    planet.under_siege = True
+                    planet.siege_started_at = datetime.utcnow()
+                    # Record the first enemy ship's owner as the attacker
+                    planet.siege_attacker_id = enemy_ships[0].owner_id
+                    result["state_changed"] = True
+                    logger.info(
+                        f"Siege begun on planet {planet.name} (id={planet.id}) "
+                        f"by player {planet.siege_attacker_id} with {len(enemy_ships)} ships"
+                    )
+            # If already under siege, state stays the same (effects applied by apply_siege_effects)
+        else:
+            # No enemies present, or owner is present -- lift siege if active
+            if planet.under_siege:
+                planet.under_siege = False
+                planet.siege_started_at = None
+                planet.siege_attacker_id = None
+                planet.siege_turns = 0
+                result["state_changed"] = True
+                logger.info(f"Siege lifted on planet {planet.name} (id={planet.id})")
+            elif planet.siege_turns and planet.siege_turns > 0:
+                # Reset turn counter if enemies left before siege triggered
+                planet.siege_turns = 0
+                result["state_changed"] = True
+
+        self.db.commit()
+        return result
     
     def _format_planet_data(self, planet: Planet) -> Dict[str, Any]:
         """Format planet data for API response."""
         sector = planet.sector if planet.sector else None
-        
-        # Calculate production rates
+
+        # Calculate production rates (siege effects are factored in automatically)
         production_rates = self._calculate_production_rates(planet)
-        
+
         # Get building data
         buildings = self._get_buildings_data(planet)
-        
+
         # Calculate unused colonists
         total_allocated = (
             (planet.fuel_allocation or 0) +
             (planet.organics_allocation or 0) +
             (planet.equipment_allocation or 0)
         )
-        
+
+        # Build siege details if under siege
+        siege_details = None
+        if planet.under_siege:
+            siege_details = {
+                "siegeStartedAt": planet.siege_started_at.isoformat() if planet.siege_started_at else None,
+                "siegeTurns": planet.siege_turns or 0,
+                "attackerId": str(planet.siege_attacker_id) if planet.siege_attacker_id else None,
+                "effects": {
+                    "moraleLossPerTurn": SIEGE_MORALE_LOSS_PER_TURN,
+                    "productionPenalty": f"{int(SIEGE_PRODUCTION_PENALTY * 100)}%",
+                    "populationGrowthHalted": True,
+                    "tradeDisrupted": True
+                }
+            }
+
+        # Calculate defense power and damage reduction
+        defense_level = planet.defense_level or 0
+        damage_reduction = defense_level * DEFENSE_DAMAGE_REDUCTION_PER_LEVEL
+
+        # Calculate habitability effects
+        habitability_effects = self.get_habitability_effects(planet)
+
+        # Build terraforming details if active
+        terraforming_details = None
+        if planet.terraforming_active:
+            terraforming_details = {
+                "active": True,
+                "target": planet.terraforming_target,
+                "progress": round(planet.terraforming_progress or 0.0, 2),
+                "startedAt": planet.terraforming_start_time.isoformat() if planet.terraforming_start_time else None
+            }
+
         return {
             "id": str(planet.id),
             "name": planet.name,
@@ -398,7 +866,15 @@ class PlanetaryService:
             "sectorName": sector.name if sector else "Unknown",
             "planetType": planet.planet_type or "terran",
             "colonists": planet.colonists,
-            "maxColonists": planet.max_colonists,
+            "maxColonists": habitability_effects["effectiveMaxColonists"],
+            "baseMaxColonists": habitability_effects["baseMaxColonists"],
+            "habitability": {
+                "score": planet.habitability_score,
+                "effectiveMaxColonists": habitability_effects["effectiveMaxColonists"],
+                "growthMultiplier": habitability_effects["growthMultiplier"],
+                "moraleBonus": habitability_effects["moraleBonus"]
+            },
+            "morale": planet.morale,
             "productionRates": production_rates,
             "allocations": {
                 "fuel": planet.fuel_allocation or 0,
@@ -410,44 +886,93 @@ class PlanetaryService:
             "defenses": {
                 "turrets": planet.defense_turrets or 0,
                 "shields": planet.defense_shields or 0,
-                "drones": planet.defense_drones or 0
+                "drones": planet.defense_drones or 0,
+                "defenseLevel": defense_level,
+                "maxDefenseLevel": DEFENSE_MAX_LEVEL,
+                "damageReduction": f"{int(damage_reduction * 100)}%"
             },
-            "underSiege": False,  # TODO: Implement siege detection
-            "siegeDetails": None
+            "terraforming": terraforming_details,
+            "underSiege": planet.under_siege,
+            "siegeDetails": siege_details,
+            "isVulnerable": planet.morale <= 0
         }
         
     def _calculate_production_rates(self, planet: Planet) -> Dict[str, float]:
-        """Calculate production rates based on allocations and buildings."""
+        """Calculate production rates based on allocations, buildings, habitability, and siege state."""
         base_rate = 10  # Base production per colonist per day
-        
+
         # Get building levels
         factory_level = planet.factory_level or 0
         farm_level = planet.farm_level or 0
         mine_level = planet.mine_level or 0
-        
+
         # Calculate rates with building bonuses
         fuel_rate = (planet.fuel_allocation or 0) * base_rate * (1 + mine_level * 0.1)
         organics_rate = (planet.organics_allocation or 0) * base_rate * (1 + farm_level * 0.1)
         equipment_rate = (planet.equipment_allocation or 0) * base_rate * (1 + factory_level * 0.1)
-        
-        # Colonist growth rate (1% per day base)
-        colonist_rate = planet.colonists * 0.01
-        
+
+        # Colonist growth rate (1% per day base), scaled by habitability
+        habitability = max(planet.habitability_score or 0, 1)
+        habitability_multiplier = habitability / 100.0
+        colonist_rate = planet.colonists * 0.01 * habitability_multiplier
+
         # Apply specialization bonuses
         if planet.specialization:
             bonuses = self._calculate_specialization_bonuses(planet.specialization)
             production_bonus = bonuses["production"]
-            
+
             fuel_rate *= production_bonus.get("fuel", 1.0)
             organics_rate *= production_bonus.get("organics", 1.0)
             equipment_rate *= production_bonus.get("equipment", 1.0)
             colonist_rate *= production_bonus.get("colonists", 1.0)
-            
+
+        # Apply siege effects
+        if planet.under_siege:
+            # Production output reduced by 25%
+            siege_multiplier = 1.0 - SIEGE_PRODUCTION_PENALTY
+            fuel_rate *= siege_multiplier
+            organics_rate *= siege_multiplier
+            equipment_rate *= siege_multiplier
+            # Population growth halted during siege
+            colonist_rate = 0.0
+
         return {
             "fuel": round(fuel_rate, 2),
             "organics": round(organics_rate, 2),
             "equipment": round(equipment_rate, 2),
             "colonists": round(colonist_rate, 2)
+        }
+
+    def get_habitability_effects(self, planet: Planet) -> Dict[str, Any]:
+        """
+        Calculate the effects of habitability on a planet's capacity and morale.
+
+        Effects:
+        - Max population capacity: base_capacity * (habitability / 100)
+        - Population growth rate: multiplied by (habitability / 100)
+        - Colony morale bonus: +1% per 10 habitability points above 50
+        """
+        habitability = max(planet.habitability_score or 0, 0)
+        habitability_ratio = habitability / 100.0
+
+        # Max population capacity scaled by habitability
+        base_max_colonists = planet.max_colonists or 10000
+        effective_max_colonists = int(base_max_colonists * habitability_ratio)
+
+        # Population growth multiplier
+        growth_multiplier = habitability_ratio
+
+        # Morale bonus: +1% per 10 habitability points above 50
+        morale_bonus = 0
+        if habitability > 50:
+            morale_bonus = int((habitability - 50) / 10)
+
+        return {
+            "habitabilityScore": habitability,
+            "effectiveMaxColonists": effective_max_colonists,
+            "baseMaxColonists": base_max_colonists,
+            "growthMultiplier": round(growth_multiplier, 2),
+            "moraleBonus": morale_bonus
         }
         
     def _get_buildings_data(self, planet: Planet) -> List[Dict[str, Any]]:

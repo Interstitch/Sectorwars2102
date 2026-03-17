@@ -156,7 +156,6 @@ export class EnhancedWebSocketService {
         if (!this.ws) return reject(new Error('WebSocket not initialized'));
         
         this.ws.onopen = () => {
-          console.log('🚀 WebSocket connected successfully');
           this.authenticate().then(() => {
             this.startHeartbeat();
             this.reconnectAttempts = 0;
@@ -185,7 +184,6 @@ export class EnhancedWebSocketService {
     }
     
     this.isAuthenticated = false;
-    console.log('🔌 WebSocket disconnected');
   }
 
   // Authentication
@@ -253,7 +251,6 @@ export class EnhancedWebSocketService {
 
     await this.sendChannelMessage('market_update', subscription);
     this.subscriptions.add('market_data');
-    console.log('📈 Subscribed to market data:', validatedCommodities);
   }
 
   async subscribeToUniversePulse(): Promise<void> {
@@ -270,7 +267,6 @@ export class EnhancedWebSocketService {
 
     await this.sendChannelMessage('universe_pulse', subscription);
     this.subscriptions.add('universe_activity');
-    console.log('🌌 Subscribed to universe pulse');
   }
 
   async subscribeToTradingSignals(): Promise<void> {
@@ -287,7 +283,6 @@ export class EnhancedWebSocketService {
 
     await this.sendChannelMessage('trading_signal', subscription);
     this.subscriptions.add('trading_signals');
-    console.log('🤖 Subscribed to AI trading signals');
   }
 
   // Message Handling
@@ -317,7 +312,7 @@ export class EnhancedWebSocketService {
     };
 
     this.ws.onclose = (event) => {
-      console.log(`🔌 WebSocket closed: ${event.code} - ${event.reason}`);
+      console.warn(`WebSocket closed: ${event.code} - ${event.reason}`);
       this.isAuthenticated = false;
       this.stopHeartbeat();
       
@@ -384,17 +379,14 @@ export class EnhancedWebSocketService {
       marketData.commodity = this.sanitizeString(marketData.commodity);
     }
     
-    console.log('📊 Market update received:', marketData);
   }
 
   private handleUniversePulse(message: RealTimeMessage): void {
     const activity: UniverseActivity = message.data;
-    console.log('🌟 Universe activity:', activity);
   }
 
   private handleTradingSignal(message: RealTimeMessage): void {
     const signal: TradingRecommendation = message.data;
-    console.log('💰 Trading signal:', signal);
     
     // Show notification for high-priority signals
     if (signal.priority >= 4) {
@@ -403,7 +395,6 @@ export class EnhancedWebSocketService {
   }
 
   private handleAIAlert(message: RealTimeMessage): void {
-    console.log('🤖 AI Alert:', message.data);
   }
 
   // Secure Messaging
@@ -504,7 +495,7 @@ export class EnhancedWebSocketService {
     const delay = this.reconnectDelay[this.reconnectAttempts] || 16000;
     this.reconnectAttempts++;
 
-    console.log(`🔄 Attempting reconnection #${this.reconnectAttempts} in ${delay}ms`);
+    console.warn(`WebSocket: Attempting reconnection #${this.reconnectAttempts} in ${delay}ms`);
     
     setTimeout(() => {
       this.connect().catch((error) => {

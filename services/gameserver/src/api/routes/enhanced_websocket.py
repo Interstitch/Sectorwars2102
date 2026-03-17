@@ -21,7 +21,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 import redis.asyncio as redis
 
-from src.core.database import get_async_db, get_async_session
+from sqlalchemy.orm import Session
+from src.core.database import get_async_db, get_async_session, get_db
 from src.auth.dependencies import get_current_user, validate_websocket_token
 from src.services.enhanced_websocket_service import get_enhanced_websocket_service
 from src.services.audit_service import AuditService
@@ -189,28 +190,43 @@ async def enhanced_trading_websocket(
                 player_id=player_id,
                 details={"endpoint": "enhanced_trading"}
             )
-        except:
-            pass  # Don't fail on audit log error during cleanup
+        except Exception as e:
+            logger.warning(f"Failed to log WebSocket disconnect audit event: {e}")
 
 
 @router.websocket("/market-stream")
 async def public_market_stream(
     websocket: WebSocket,
-    commodities: str = Query("ALL", description="Comma-separated commodity list")
+    token: str = Query(..., description="JWT authentication token"),
+    commodities: str = Query("ALL", description="Comma-separated commodity list"),
+    db: Session = Depends(get_db)
 ):
     """
-    Public WebSocket endpoint for real-time market data streaming
-    No authentication required, read-only market data
-    
+    Authenticated WebSocket endpoint for real-time market data streaming.
+    Requires JWT token. Read-only market data.
+
     Features:
     - Real-time price updates
     - Market trends and volumes
     - AI predictions (public data only)
-    
-    Rate limited to prevent abuse
     """
     client_ip = websocket.client.host if websocket.client else "unknown"
-    
+
+    # Authenticate before accepting connection
+    if not token:
+        await websocket.close(code=4001, reason="Authentication token required")
+        return
+
+    try:
+        from src.auth.dependencies import get_current_user_from_token
+        user = await get_current_user_from_token(token, db)
+        if not user:
+            await websocket.close(code=4001, reason="Invalid authentication token")
+            return
+    except Exception:
+        await websocket.close(code=4001, reason="Authentication failed")
+        return
+
     try:
         await websocket.accept()
         
@@ -264,9 +280,9 @@ async def public_market_stream(
                 try:
                     # Non-blocking receive to check connection
                     await websocket.receive_text()
-                except:
-                    pass
-                    
+                except Exception as e:
+                    logger.warning(f"Failed to check WebSocket client heartbeat: {e}")
+
         except WebSocketDisconnect:
             logger.info(f"Public market stream disconnected from {client_ip}")
             

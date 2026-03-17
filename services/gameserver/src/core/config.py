@@ -1,7 +1,12 @@
+import logging
 import os
 from typing import Optional
 from pydantic import PostgresDsn, Field
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
 
 # Note: DATABASE_URL validation will happen in the Settings class below
 # which properly loads from .env files using Pydantic
@@ -12,7 +17,7 @@ class Settings(BaseSettings):
     API_BASE_URL: str = os.environ.get("API_BASE_URL", "")  # Empty string to auto-detect
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
-    DEBUG: bool = os.environ.get("DEBUG", "True").lower() == "true"
+    DEBUG: bool = os.environ.get("DEBUG", "False").lower() == "true"
     
     # Test and development mode flags
     TESTING: bool = os.environ.get("TESTING", "False").lower() == "true"
@@ -44,6 +49,11 @@ class Settings(BaseSettings):
             raise ValueError("ADMIN_PASSWORD environment variable is required")
         if len(self.ADMIN_PASSWORD) < 12:
             raise ValueError("ADMIN_PASSWORD must be at least 12 characters for security")
+        if "dev_only_not_for_production" in self.REDIS_URL:
+            logger.warning(
+                "SECURITY WARNING: REDIS_URL is using the default dev-only password. "
+                "Set REDIS_URL with a strong password for production deployments."
+            )
     
     # AI Provider Configuration
     OPENAI_API_KEY: Optional[str] = os.environ.get("OPENAI_API_KEY")
@@ -99,7 +109,7 @@ class Settings(BaseSettings):
     SQLALCHEMY_MAX_OVERFLOW: int = 20
     
     # Redis Configuration
-    REDIS_URL: str = os.environ.get("REDIS_URL", "redis://:redis_secure_password_123@localhost:6379/0")
+    REDIS_URL: str = os.environ.get("REDIS_URL", "redis://:dev_only_not_for_production@localhost:6379/0")
     REDIS_CACHE_TTL: int = int(os.environ.get("REDIS_CACHE_TTL", "3600"))  # 1 hour default
     REDIS_SESSION_TTL: int = int(os.environ.get("REDIS_SESSION_TTL", "86400"))  # 24 hours default
 
@@ -140,12 +150,12 @@ class Settings(BaseSettings):
         # If explicitly set through FRONTEND_URL environment variable, use that
         if os.environ.get("FRONTEND_URL"):
             frontend_url = os.environ.get("FRONTEND_URL")
-            print(f"Using explicitly set FRONTEND_URL from environment: {frontend_url}")
+            logger.debug("Using explicitly set FRONTEND_URL from environment")
             return frontend_url
 
         # Auto-detect based on environment
         env_type = self.detect_environment()
-        print(f"Auto-detecting frontend URL for environment: {env_type}")
+        logger.debug("Auto-detecting frontend URL for environment: %s", env_type)
 
         if env_type == "codespaces":
             # For Codespaces, construct URL from environment variables
@@ -157,15 +167,15 @@ class Settings(BaseSettings):
                 # Full domain format with official GitHub Codespaces domain
                 # Include port in the hostname for Codespaces URLs
                 frontend_url = f"https://{codespace_name}-3000.{github_codespaces_port_forwarding_domain}"
-                print(f"Using modern Codespaces URL format: {frontend_url}")
+                logger.debug("Using modern Codespaces URL format")
                 return frontend_url
             elif codespace_name:
                 # Legacy/default format with port in the hostname
                 frontend_url = f"https://{codespace_name}-3000.app.github.dev"
-                print(f"Using legacy Codespaces URL format: {frontend_url}")
+                logger.debug("Using legacy Codespaces URL format")
                 return frontend_url
             else:
-                print("WARNING: In Codespaces environment but CODESPACE_NAME not set!")
+                logger.warning("In Codespaces environment but CODESPACE_NAME not set")
 
         elif env_type == "replit":
             # For Replit, derive from the API URL but on port 3000
@@ -174,12 +184,12 @@ class Settings(BaseSettings):
             repl_owner = os.environ.get("REPL_OWNER")
             if repl_slug and repl_owner:
                 frontend_url = f"https://{repl_slug}.{repl_owner}.repl.co:3000"
-                print(f"Using Replit URL format: {frontend_url}")
+                logger.debug("Using Replit URL format")
                 return frontend_url
 
         # Default for local development
         frontend_url = "http://localhost:3000"
-        print(f"Using default frontend URL: {frontend_url}")
+        logger.debug("Using default frontend URL: localhost:3000")
         return frontend_url
 
     def get_db_url(self) -> str:

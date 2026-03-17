@@ -59,6 +59,8 @@ class AdminWebSocketService {
   private connected = false;
   private shouldReconnect = true;
   private reconnectTimeoutId: NodeJS.Timeout | null = null;
+  private _gaveUp = false;
+  private onGaveUpCallbacks: Set<() => void> = new Set();
 
   constructor() {
     this.setupEventListeners();
@@ -85,31 +87,25 @@ class AdminWebSocketService {
   }
 
   private getWebSocketUrl(): string {
-    // Get the current protocol and host
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    
-    // Check for GitHub Codespaces environment
+
+    // Check for GitHub Codespaces environment - connect directly to gameserver
     if (host.includes('.app.github.dev')) {
       console.log('Admin WebSocket: GitHub Codespaces detected - using direct gameserver WebSocket');
-      // Replace port 3001 with 8080 for gameserver
       const gameserverHost = host.replace('-3001.app.github.dev', '-8080.app.github.dev');
       return `${protocol}//${gameserverHost}/api/v1/ws/admin`;
     }
-    
-    // Check if we're in development
-    if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
-      // Use direct gameserver URL
-      return `ws://localhost:8080/api/v1/ws/admin`;
-    }
-    
-    // For other environments - default to localhost gameserver
-    return `ws://localhost:8080/api/v1/ws/admin`;
+
+    // For all other environments (localhost, Tailscale IP, etc.),
+    // use the current host and let the Vite dev proxy forward to gameserver
+    return `${protocol}//${host}/api/v1/ws/admin`;
   }
 
   async connect(token: string): Promise<void> {
     this.token = token;
     this.shouldReconnect = true;
+    this._gaveUp = false;
 
     if (!this.token) {
       console.error('Admin WebSocket: No authentication token provided');
@@ -300,7 +296,9 @@ class AdminWebSocketService {
 
   private scheduleReconnect(): void {
     if (!this.shouldReconnect || this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log('Admin WebSocket: Max reconnection attempts reached');
+      console.log('Admin WebSocket: Max reconnection attempts reached, giving up');
+      this._gaveUp = true;
+      this.onGaveUpCallbacks.forEach(cb => { try { cb(); } catch {} });
       return;
     }
 
@@ -323,6 +321,17 @@ class AdminWebSocketService {
       clearTimeout(this.reconnectTimeoutId);
       this.reconnectTimeoutId = null;
     }
+  }
+
+  /** Returns true when max reconnect attempts were exhausted */
+  hasGivenUp(): boolean {
+    return this._gaveUp;
+  }
+
+  /** Register a callback for when reconnection is abandoned */
+  onGaveUp(cb: () => void): () => void {
+    this.onGaveUpCallbacks.add(cb);
+    return () => { this.onGaveUpCallbacks.delete(cb); };
   }
 
   // Compatibility method for smooth transition

@@ -1,8 +1,11 @@
 """Configuration for Region Manager service"""
 
+import logging
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -10,20 +13,20 @@ class Settings(BaseSettings):
     
     # Database configuration
     DATABASE_URL: str = os.environ.get(
-        "DATABASE_URL", 
-        "postgresql://nexus_admin:nexus_secure_password_123@central-nexus-db:5432/central_nexus"
+        "DATABASE_URL",
+        "postgresql://nexus_admin:dev_only_not_for_production@central-nexus-db:5432/central_nexus"
     )
-    
+
     # Database superuser for creating regional databases
     DB_HOST: str = os.environ.get("DB_HOST", "central-nexus-db")
     DB_PORT: int = int(os.environ.get("DB_PORT", "5432"))
     DB_SUPERUSER: str = os.environ.get("DB_SUPERUSER", "nexus_admin")
-    DB_SUPERUSER_PASSWORD: str = os.environ.get("DB_SUPERUSER_PASSWORD", "nexus_secure_password_123")
-    
+    DB_SUPERUSER_PASSWORD: str = os.environ.get("DB_SUPERUSER_PASSWORD", "dev_only_not_for_production")
+
     # Redis configuration
     REDIS_URL: str = os.environ.get(
-        "REDIS_URL", 
-        "redis://:redis_secure_password_123@redis-nexus:6379"
+        "REDIS_URL",
+        "redis://:dev_only_not_for_production@redis-nexus:6379"
     )
     
     # Docker configuration
@@ -31,7 +34,7 @@ class Settings(BaseSettings):
     
     # Service configuration
     ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
-    JWT_SECRET: str = os.environ.get("JWT_SECRET", "your-super-secret-jwt-key-change-in-production")
+    JWT_SECRET: str = os.environ.get("JWT_SECRET", "dev_only_not_for_production_jwt_secret_key")
     
     # Regional limits
     MAX_REGIONS_PER_USER: int = int(os.environ.get("MAX_REGIONS_PER_USER", "5"))
@@ -65,8 +68,31 @@ class Settings(BaseSettings):
     NEXUS_API_KEY: Optional[str] = os.environ.get("NEXUS_API_KEY")
     
     # Security
-    REGION_API_KEY: str = os.environ.get("REGION_API_KEY", "region-manager-secure-key-123")
+    REGION_API_KEY: str = os.environ.get("REGION_API_KEY", "dev_only_not_for_production_region_key")
     
+    def check_dev_defaults(self):
+        """Log warnings if dev-only default values are being used."""
+        if "dev_only_not_for_production" in self.JWT_SECRET:
+            logger.warning(
+                "SECURITY WARNING: JWT_SECRET is using the default dev-only value. "
+                "Set JWT_SECRET to a strong secret for production deployments."
+            )
+        if "dev_only_not_for_production" in self.REGION_API_KEY:
+            logger.warning(
+                "SECURITY WARNING: REGION_API_KEY is using the default dev-only value. "
+                "Set REGION_API_KEY to a strong key for production deployments."
+            )
+        if "dev_only_not_for_production" in self.DATABASE_URL:
+            logger.warning(
+                "SECURITY WARNING: DATABASE_URL is using the default dev-only password. "
+                "Set DATABASE_URL with a strong password for production deployments."
+            )
+        if "dev_only_not_for_production" in self.REDIS_URL:
+            logger.warning(
+                "SECURITY WARNING: REDIS_URL is using the default dev-only password. "
+                "Set REDIS_URL with a strong password for production deployments."
+            )
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -81,4 +107,5 @@ def get_settings() -> Settings:
     global _settings
     if _settings is None:
         _settings = Settings()
+        _settings.check_dev_defaults()
     return _settings

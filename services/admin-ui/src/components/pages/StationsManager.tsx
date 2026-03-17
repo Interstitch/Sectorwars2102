@@ -387,8 +387,8 @@ const PortModal: React.FC<PortModalProps> = ({ port, mode, onClose, onSave }) =>
             <div className="form-group">
               <label>Port Class</label>
               <select
-                value={formData.port_class}
-                onChange={(e) => setFormData({ ...formData, port_class: e.target.value })}
+                value={formData.station_type}
+                onChange={(e) => setFormData({ ...formData, station_type: e.target.value })}
                 disabled={isReadOnly}
                 required
               >
@@ -541,7 +541,7 @@ const AddPortModal: React.FC<AddPortModalProps> = ({ onClose, onSave }) => {
   const [formData, setFormData] = useState({
     name: '',
     sector_id: '',
-    port_class: 'CLASS_1',
+    station_type: 'CLASS_1',
     trade_volume: 1000,
     max_capacity: 5000,
     security_level: 50,
@@ -674,8 +674,8 @@ const AddPortModal: React.FC<AddPortModalProps> = ({ onClose, onSave }) => {
             <div className="form-group">
               <label>Port Class *</label>
               <select
-                value={formData.port_class}
-                onChange={(e) => setFormData({ ...formData, port_class: e.target.value })}
+                value={formData.station_type}
+                onChange={(e) => setFormData({ ...formData, station_type: e.target.value })}
                 required
               >
                 <option value="CLASS_0">CLASS_0 - Sol System</option>

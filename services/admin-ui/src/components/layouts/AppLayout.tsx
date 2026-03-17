@@ -6,7 +6,7 @@ import Sidebar from './Sidebar';
 
 const AppLayout: React.FC = () => {
   const { isLoading, isAuthenticated } = useAuth();
-  const { isConnected } = useWebSocket();
+  const { isConnected, hasGivenUp } = useWebSocket();
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [loadingTimeout, setLoadingTimeout] = useState<boolean>(false);
@@ -122,8 +122,8 @@ const AppLayout: React.FC = () => {
       )}
 
       <main className="main-content">
-        {/* WebSocket connection status */}
-        {isAuthenticated && !isLoginPage && (
+        {/* WebSocket connection status - only show when connected or actively reconnecting */}
+        {isAuthenticated && !isLoginPage && !hasGivenUp && (
           <div className="connection-status" style={{
             position: 'fixed',
             bottom: '20px',

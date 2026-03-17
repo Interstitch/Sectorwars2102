@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Ship } from '../../types/game';
 import { InputValidator } from '../../utils/security/inputValidation';
+import { formatShipType } from '../../utils/formatters';
 import './fleet-coordination.css';
 
 interface FleetShip extends Ship {
@@ -342,7 +343,7 @@ const FleetCoordination: React.FC<FleetCoordinationProps> = ({
                       <div className="ship-info">
                         <div className="info-row">
                           <span>Type:</span>
-                          <span>{ship.type}</span>
+                          <span>{formatShipType(ship.type)}</span>
                         </div>
                         <div className="info-row">
                           <span>Location:</span>
@@ -646,7 +647,7 @@ const FleetCoordination: React.FC<FleetCoordinationProps> = ({
                   const ship = playerShips.find(s => s.id === shipId);
                   return ship ? (
                     <option key={ship.id} value={ship.id}>
-                      {ship.name} ({ship.type})
+                      {ship.name} ({formatShipType(ship.type)})
                     </option>
                   ) : null;
                 })}

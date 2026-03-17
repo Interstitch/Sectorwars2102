@@ -44,17 +44,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
   const getApiUrl = () => {
     // If an environment variable is explicitly set, use it
     if (import.meta.env.VITE_API_URL) {
-      console.log('Using VITE_API_URL:', import.meta.env.VITE_API_URL);
       return import.meta.env.VITE_API_URL;
     }
 
-    const windowUrl = window.location.origin;
-    console.log('Current window URL:', windowUrl);
-
     // Always use the current origin to leverage Vite proxy in Docker environments
     // This ensures all API calls go through the Vite dev server proxy
-    console.log('Using current origin with Vite proxy for Docker environment');
-    return window.location.origin;  // Use current origin, which will use the proxy
+    return window.location.origin;
   };
   
   // Initialize axios with API URL - use useMemo-like pattern with ref to avoid recalculation
@@ -99,7 +94,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
     // Check if user is already authenticated - only run once
     const checkAuth = async () => {
       if (authCheckPerformed.current) {
-        console.log('Auth check already performed, skipping');
         return;
       }
       authCheckPerformed.current = true;
@@ -110,16 +104,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
         try {
           // Check if the token is already in headers - if not, add it
           if (axios.defaults.headers.common['Authorization'] !== `Bearer ${accessToken}`) {
-            console.log('Setting axios authorization header');
             axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
           }
 
           // Standard approach - verify token by getting user profile
-          console.log('Using standard /me endpoint with', apiUrl);
           const response = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
-          
-          // Successfully got user data - update state
-          console.log('Auth check successful - user data retrieved');
           setUser(response.data);
         } catch (error) {
           console.error('Failed to validate token:', error);
@@ -131,7 +120,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
             // If refresh succeeded, try again to get user data
             const response = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
             setUser(response.data);
-            console.log('Auth successful after token refresh');
           } catch (refreshError) {
             console.error('Token refresh failed, clearing auth data:', refreshError);
             localStorage.removeItem('accessToken');
@@ -139,8 +127,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
             axios.defaults.headers.common['Authorization'] = '';
           }
         }
-      } else {
-        console.log('No access token found in localStorage');
       }
 
       setIsLoading(false);
@@ -159,11 +145,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
     setIsLoading(true);
 
     try {
-      console.log('Attempting login with API URL:', apiUrl);
-
       // Try standard JSON endpoint
       try {
-        console.log('Trying JSON login endpoint...');
         const response = await axios.post<AuthResponse>(`${apiUrl}/api/v1/auth/login/json`, {
           username,
           password,
@@ -188,13 +171,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
         // Get user data
         const userResponse = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
         setUser(userResponse.data);
-        console.log('Login successful with JSON endpoint');
         return;
       } catch (jsonError) {
-        console.warn('JSON login attempt failed:', jsonError);
-
         // If JSON login fails, try form-based login as fallback
-        console.log('Trying form-based login as fallback...');
 
         // Create form data
         const formData = new FormData();
@@ -222,9 +201,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
           // Get user data
           const userResponse = await axios.get<User>(`${apiUrl}/api/v1/auth/me`);
           setUser(userResponse.data);
-          console.log('Login successful with form-based endpoint');
         } catch (formError) {
-          console.warn('Form-based login attempt failed:', formError);
           throw formError;
         }
       }
@@ -240,16 +217,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
     setIsLoading(true);
 
     try {
-      console.log('Attempting registration with API URL:', apiUrl);
-
       // Register user
       await axios.post<AuthResponse>(`${apiUrl}/api/v1/auth/register`, {
         username,
         email,
         password,
       });
-
-      console.log('Registration successful, attempting login');
 
       // After registration, automatically log in
       await login(username, password);
@@ -272,9 +245,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
         window.location.hostname.includes('github.dev')) {
       // Get the codespace name from the hostname
       const hostname = window.location.hostname;
-      console.log('GitHub Codespaces environment detected for OAuth');
-      console.log(`Hostname: ${hostname}`);
-      
+
       // Extract the codespace name from the hostname
       // Format is like: super-duper-carnival-qppjvq94q9vcxwqp-3000.app.github.dev
       // We want: super-duper-carnival-qppjvq94q9vcxwqp
@@ -282,17 +253,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
       const hostnamePart = parts[0]; // e.g., super-duper-carnival-qppjvq94q9vcxwqp-3000
       const lastDashIndex = hostnamePart.lastIndexOf('-');
       const codespaceName = lastDashIndex !== -1 ? hostnamePart.substring(0, lastDashIndex) : hostnamePart;
-      console.log(`Codespace name extracted: ${codespaceName}`);
-      
+
       // Construct the URL directly to the gameserver port
       oauthUrl = `https://${codespaceName}-8080.app.github.dev/api/v1/auth/${provider}`;
-      console.log(`Using direct URL for OAuth login in Codespaces: ${oauthUrl}`);
     } else {
       // For non-Codespaces environments
       oauthUrl = `${apiUrl}/api/v1/auth/${provider}`;
     }
-
-    console.log(`Redirecting to OAuth URL: ${oauthUrl}`);
     window.location.href = oauthUrl;
   };
 
@@ -308,34 +275,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
         window.location.hostname.includes('github.dev')) {
       // Get the codespace name from the hostname
       const hostname = window.location.hostname;
-      console.log('GitHub Codespaces environment detected for OAuth registration');
-      console.log(`Hostname: ${hostname}`);
-      
+
       // Extract the codespace name from the hostname
-      // Format is like: super-duper-carnival-qppjvq94q9vcxwqp-3000.app.github.dev
-      // We want: super-duper-carnival-qppjvq94q9vcxwqp
       const parts = hostname.split('.');
-      const hostnamePart = parts[0]; // e.g., super-duper-carnival-qppjvq94q9vcxwqp-3000
+      const hostnamePart = parts[0];
       const lastDashIndex = hostnamePart.lastIndexOf('-');
       const codespaceName = lastDashIndex !== -1 ? hostnamePart.substring(0, lastDashIndex) : hostnamePart;
-      console.log(`Codespace name extracted: ${codespaceName}`);
-      
+
       // Construct the URL directly to the gameserver port
       oauthUrl = `https://${codespaceName}-8080.app.github.dev/api/v1/auth/${provider}?register=true`;
-      console.log(`Using direct URL for OAuth registration in Codespaces: ${oauthUrl}`);
     } else {
       // For non-Codespaces environments
       oauthUrl = `${apiUrl}/api/v1/auth/${provider}?register=true`;
     }
-
-    console.log(`Redirecting to OAuth URL for registration: ${oauthUrl}`);
     window.location.href = oauthUrl;
   };
   
   const refreshToken = async () => {
     // If already refreshing, return the existing promise to prevent race conditions
     if (isRefreshing && refreshPromise) {
-      console.log('Token refresh already in progress, waiting for existing refresh...');
       return refreshPromise;
     }
 
@@ -349,8 +307,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
       setIsRefreshing(true);
       
       try {
-        console.log('Starting token refresh with token:', storedRefreshToken.substring(0, 20) + '...');
-        
         const response = await axios.post<AuthResponse>(
           `${apiUrl}/api/v1/auth/refresh`,
           { refresh_token: storedRefreshToken },
@@ -358,8 +314,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }: AuthProv
         );
         
         const { access_token, refresh_token } = response.data;
-        
-        console.log('Token refresh successful, updating tokens');
         
         // Store new tokens
         localStorage.setItem('accessToken', access_token);

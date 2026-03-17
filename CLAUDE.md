@@ -114,66 +114,46 @@ git push origin master                                # Deploy changes
 
 ### GCP Development VM (Primary Environment)
 
-Docker containers run on a remote GCP VM, accessed securely via Tailscale. Max develops locally on his MacBook with Claude Code + Chrome browser automation.
+Docker containers run on a remote GCP VM, accessed securely via Tailscale. Development happens locally on MacBook with Claude Code + Chrome browser automation.
 
 **GCP Instance Details**:
-- **VM Name**: `sectorwars-dev`
-- **Project**: `sectorwars2102`
-- **Zone**: `us-central1-a`
+- **VM Name**: See `dev-scripts/` (local, gitignored)
 - **Machine Type**: `e2-standard-4` (4 vCPU, 16GB RAM, spot/preemptible)
 - **Disk**: 50GB pd-balanced, Debian 12
-- **Tailscale IP**: `100.64.208.28` (no public IP exposed for service ports)
-- **SSH**: `ssh mrathbone@100.64.208.28`
-- **Auto-Shutdown**: 11 PM CT daily via GCP instance schedule (`sectorwars-auto-stop`)
-- **Firewall**: `deny-sectorwars-services` blocks public access to ports 3000/3001/8080/5433
+- **Access**: Via Tailscale VPN (no public IP exposed for service ports)
+- **Auto-Shutdown**: 11 PM CT daily via GCP instance schedule
+- **Firewall**: Blocks public access to ports 3000/3001/8080/5433
 - **Cost**: ~$0.04/hr (spot), roughly $80/month at 8hrs/day
 
 **Services Running on VM** (via `docker compose --profile development`):
-- Player Client: http://100.64.208.28:3000 (React/TypeScript frontend)
-- Admin UI: http://100.64.208.28:3001 (React/TypeScript admin interface)
-- Game Server: http://100.64.208.28:8080 (FastAPI/Python backend)
+- Player Client: `http://<TAILSCALE_IP>:3000` (React/TypeScript frontend)
+- Admin UI: `http://<TAILSCALE_IP>:3001` (React/TypeScript admin interface)
+- Game Server: `http://<TAILSCALE_IP>:8080` (FastAPI/Python backend)
 - Database: PostgreSQL 15 (postgres:15-alpine, internal port 5432)
 - Redis Cache: Redis 7 (internal port 6379)
 - Nginx Gateway: Reverse proxy (healthy)
 - Region Manager: Regional coordination service
 
-**Repo on VM**: `/home/mrathbone/sectorwars2102/`
-**VM .env**: Copied from local, URLs adjusted to Tailscale IP
+**VM Management**: See local `dev-scripts/` directory (gitignored — contains VM IPs and credentials).
 
-**VM Management Scripts** (run from MacBook):
-```bash
-./dev-scripts/vm-start.sh                        # Start VM, wait for Tailscale
-./dev-scripts/vm-stop.sh                         # Stop VM (saves cost)
-./dev-scripts/vm-sync.sh                         # Rsync code to VM (excludes node_modules, .git)
-```
+**Git Workflow**:
+- **`dev` branch**: All development work. Commit freely, push to sync to VM.
+- **`master` branch**: Tested, validated code only. Merge from dev when ready.
+- VM tracks `origin/dev` — sync script pushes and pulls automatically.
+- Containers volume-mount source from VM repo, so changes hot-reload on pull.
 
-**VM SSH & Docker Commands**:
+**VM Docker Commands** (on VM via SSH):
 ```bash
-ssh mrathbone@100.64.208.28                      # SSH into VM via Tailscale
 docker compose --profile development up -d       # Start all containers
 docker compose --profile development logs -f     # Follow logs
 docker compose --profile development down        # Stop containers
 ```
 
-**GCloud Commands** (from MacBook):
-```bash
-gcloud compute instances start sectorwars-dev --project=sectorwars2102 --zone=us-central1-a
-gcloud compute instances stop sectorwars-dev --project=sectorwars2102 --zone=us-central1-a
-gcloud compute ssh sectorwars-dev --project=sectorwars2102 --zone=us-central1-a  # Fallback SSH
-```
-
 **Important Notes**:
 - Tailscale must be running on MacBook to access VM services
-- MacBook Tailscale device: `shoudens-mbpro` (100.118.237.67)
 - VM has public IP for outbound internet (Docker pulls, Tailscale DERP) but service ports are firewalled
 - Spot VM may be preempted with 30s notice — data persists on disk
 - After VM restart: Tailscale auto-starts, but `docker compose up -d` must be run manually
-
-### Legacy Environment (Codespaces)
-
-Previously ran on GitHub Codespaces with port forwarding. The `.env.example` still references Codespaces URLs. When using Codespaces instead of GCP:
-- `./dev-scripts/start-unified.sh` starts all services
-- URLs use Codespaces port forwarding pattern
 
 **DOCKER COMPOSE PROFILES**:
 ```bash
@@ -208,19 +188,14 @@ docker compose config                            # Show resolved configuration
 - **Project**: Sectorwars2102 - Web-based space trading simulation game
 - **Architecture**: Multi-regional microservices with Docker Compose orchestration
 - **Tech Stack**: Node.js, Docker, PostgreSQL, FastAPI, React, TypeScript
-- **Recent Major Changes**: Multi-regional architecture, i18n system, trading interface improvements, GCP dev VM with Tailscale
-- **Last Updated**: 2026-03-15
+- **Recent Major Changes**: Security hardening (30+ vulns fixed), VIOLET spec alignment (reputation, bounties, shields, terraforming, ARIA hooks, price dynamics), dependency updates, MFA backdoor removed
+- **Last Updated**: 2026-03-17
+- **VIOLET Score**: ~69% overall (12 categories), targeting 80%+ all categories
 
 ## 🔧 ESSENTIAL COMMANDS REFERENCE
 
 ```bash
-# VM Lifecycle (from MacBook)
-./dev-scripts/vm-start.sh                            # Start GCP VM + wait for Tailscale
-./dev-scripts/vm-stop.sh                             # Stop GCP VM
-./dev-scripts/vm-sync.sh                             # Rsync code changes to VM
-
-# SSH into VM
-ssh mrathbone@100.64.208.28                          # Via Tailscale
+# VM Lifecycle (from MacBook) — see dev-scripts/ (local, gitignored)
 
 # Development Workflow (ON VM via SSH)
 docker compose --profile development up -d           # Start all services
@@ -279,9 +254,344 @@ npx playwright test -c e2e_tests/playwright.config.ts
 - Bug escape rate minimized
 - Time per phase optimized through learning
 
+## 🎨 Operational Modes — Color Gate Protocol
+
+### Color Gate — Mandatory Triage Before Any Mode
+
+**RULE**: Before launching any mode, run the Color Gate to determine which protocol applies.
+
+**The Decision Fork — One Question:**
+
+> *"Has this capability ever worked in this project, or does it not exist yet?"*
+
+| Answer | Color | Protocol | What It Means |
+|--------|-------|----------|---------------|
+| "It worked before, now it doesn't" | BLUE | Diagnostic Triage | Something broke — find and fix the regression |
+| "It never existed / it's additive" | GREEN | Feature Gap Resolution | Something's missing — design and build it |
+
+**Activation Trigger Routing:**
+
+| Trigger | Route | Gate Needed? |
+|---------|-------|-------------|
+| "blue mode" / "diagnose" / "something's broken" | BLUE | No — explicit request |
+| "green mode" / "feature gap" / "build this" | GREEN | No — explicit request |
+| "gold mode" / "polish" / "quality sweep" | GOLD | No — explicit request |
+| "violet mode" / "vision audit" / "align to spec" | VIOLET | No — explicit request |
+| "red mode" / "security audit" / "security sweep" | RED | No — explicit request |
+| "amber mode" / "translation quality" / "i18n sweep" | AMBER | No — explicit request |
+| "500 error" / "page won't load" / "not working" | BLUE | No — clear regression |
+| "add support for..." / "I want the game to..." | GREEN | No — clear additive |
+| "something's off" / "X isn't right" | GATE | **Yes** — ask before routing |
+
 ---
+
+## BLUE MODE — Diagnostic Triage Protocol
+
+### What Is Blue Mode?
+
+Like a hospital "Code Blue," this protocol launches a full diagnostic sweep across all services — backend, frontend, database, WebSocket, admin UI — all in parallel, all read-only.
+
+**RULE**: Launch **6 parallel investigation tracks** as subagents. Every track is **strictly read-only**. Synthesize results into a diagnostic report with verdict and actionable next steps.
+
+**Activation Triggers**: "blue mode" / "diagnose" / "run diagnostics" / "something's broken" / "500 error"
+
+### The 6 Parallel Investigation Tracks
+
+Launch all 6 as subagents in parallel. **All read-only.**
+
+1. **SERVICE HEALTH** — `docker compose ps`, container health, port connectivity
+2. **BACKEND RUNTIME** — `docker compose logs gameserver` for errors/tracebacks/500s, SQLAlchemy/Alembic issues
+3. **FRONTEND BUILD** — `npm run build` for both UIs, TypeScript errors, console errors
+4. **API INTEGRITY** — Auth flow, endpoint responses, CORS, WebSocket connectivity
+5. **DATABASE STATE** — `alembic current` vs head, schema/model consistency, FK integrity
+6. **GAME MECHANICS** — Trading, combat, planets, ships, first login, ranking — all functional?
+
+**Severity:** CRITICAL (service down) · HIGH (features broken) · WARNING (mock data, silent failures) · OK (healthy)
+
+**Output:** Verdict (CRITICAL/DEGRADED/HEALTHY) · Top 3 findings · Track summary · Fix recommendations with file:line refs.
+
+---
+
+## GREEN MODE — Feature Gap Resolution Protocol
+
+### What Is Green Mode?
+
+Green Mode resolves **feature gaps** — capabilities that should exist but don't. Unlike Blue Mode (diagnostics), Green Mode designs and builds new functionality through a 6-stage process.
+
+**RULE**: Follow all 6 stages in order. Do NOT skip stages.
+
+**Activation Triggers**: Color Gate routes GREEN · "green mode" / "feature gap" · Additive functionality requests
+
+### The 6 Stages
+
+#### Stage 1: GAP ANALYSIS — Define What's Missing
+Articulate what exists vs what's needed:
+- **Current behavior**: [What happens now]
+- **Expected behavior**: [What should happen]
+- **Constraints**: [What must NOT change — multiplayer sync, existing save data, other features, API compatibility]
+
+#### Stage 2: CODEBASE EXPLORATION — Understand the System
+Read-only exploration. Identify affected files across services:
+
+| Service | Key Locations |
+|---------|---------------|
+| Game Server | `services/gameserver/src/api/routes/` — API endpoints |
+| | `services/gameserver/src/services/` — business logic |
+| | `services/gameserver/src/models/` — SQLAlchemy models |
+| Player Client | `services/player-client/src/components/` — React components |
+| | `services/player-client/src/contexts/` — state management |
+| Admin UI | `services/admin-ui/src/components/pages/` — admin pages |
+| | `services/admin-ui/src/contexts/` — admin state |
+| Database | `services/gameserver/alembic/versions/` — migrations |
+| Docs | `DOCS/` — AISPEC files documenting systems |
+
+Output: Relevant files · Current code path · Existing patterns to follow · Impact assessment
+
+#### Stage 3: DESIGN — Architecture & Edge Cases (Approval Required)
+Design before coding. Consider:
+- Architecture and data flow across services
+- Database schema changes (need Alembic migration?)
+- API design (RESTful, consistent with existing patterns)
+- Frontend component structure and state management
+- Security implications (auth, authorization, input validation)
+- Multi-regional implications
+- Edge cases (missing data, concurrent access, race conditions)
+
+**Checkpoint (REQUIRED)**: Samantha approves before any code is written.
+
+#### Stage 4: PLAN — Implementation Steps
+Turn design into numbered checklist via `EnterPlanMode`. Cover: dependency-ordered changes, migration planning, API design, frontend wiring, verification steps.
+
+#### Stage 5: IMPLEMENT — Execute the Plan
+Follow approved plan. Dispatch parallel subagents if plan has **4+ files across multiple services**.
+
+**Rules during implementation:**
+- Follow existing patterns in each service
+- Backend: FastAPI routes, SQLAlchemy models, Pydantic schemas
+- Frontend: React hooks, TypeScript strict, existing context patterns
+- Use `Promise.allSettled` for resilient multi-endpoint fetches
+- Never generate mock data or fallback implementations
+- Commit after every completed task with conventional format
+
+#### Stage 6: VERIFY — Confirm Gap Closed
+ALL must pass:
+1. Backend: `docker compose exec gameserver poetry run pytest` — no new failures
+2. Frontend: `npm run build` for both player-client and admin-ui — no errors
+3. API endpoints respond correctly (test via curl or browser)
+4. Existing features still work (no regressions)
+5. Database migrations apply cleanly
+
+---
+
+## GOLD MODE — Polish Protocol
+
+### What Is Gold Mode?
+
+Gold Mode is a **proactive codebase quality sweep** using **subagents** in orchestrated waves. Each pass: analyze wave (read-only subagents per zone) → checkpoint → fix wave → verify. Unlike Blue (reactive) or Green (additive), Gold is preventive maintenance.
+
+**Activation Triggers**: "gold mode" / "polish" / "quality sweep" / "clean up"
+
+### Zone Partitioning
+
+Files in the same service/subsystem stay together. No two subagents write to the same file.
+
+| Zone | Covers |
+|------|--------|
+| GAMESERVER-ROUTES | `services/gameserver/src/api/routes/` — all API route files |
+| GAMESERVER-SERVICES | `services/gameserver/src/services/` — business logic |
+| GAMESERVER-MODELS | `services/gameserver/src/models/` + `src/core/` + `src/auth/` |
+| PLAYER-CLIENT | `services/player-client/src/` — all frontend code |
+| ADMIN-UI | `services/admin-ui/src/` — all admin interface code |
+| INFRASTRUCTURE | `docker-compose.yml`, Dockerfiles, nginx, scripts, configs |
+
+### The 8 Issue Categories
+
+| # | Category | Sev | Detection Pattern |
+|---|----------|-----|-------------------|
+| 1 | DEAD-CODE | LOW | Unused functions, unreachable code, commented-out blocks |
+| 2 | MOCK-DATA | HIGH | Hardcoded fake data, placeholder arrays, mock fallbacks |
+| 3 | STUB | MED | console.log-only handlers, TODO markers, `pass` bodies |
+| 4 | ERROR-HANDLING | MED | Bare `except: pass`, missing error states, silent failures |
+| 5 | SECURITY-GAP | HIGH | Missing auth checks, hardcoded secrets, XSS/injection vectors |
+| 6 | TYPE-SAFETY | LOW | `any` types in TypeScript, wrong localStorage keys, field mismatches |
+| 7 | API-MISMATCH | HIGH | Frontend calls endpoint that doesn't exist, wrong response shapes |
+| 8 | ASYNC-SYNC | HIGH | `get_async_session` with sync `.query()`, wrong DB session type |
+
+### The Convergent Loop
+
+1. **Analyze wave**: Launch subagents per zone (read-only). Each scans against the 8 categories.
+2. **Fix wave**: Launch subagents per zone. Each applies approved fixes.
+3. **Verify**: Builds succeed, no new errors, tests pass.
+4. **Convergence**: Findings decreased → next pass. Stalled or pass 4 → HALT.
+
+**Verdict:** PRISTINE (0 issues pass 1) · POLISHED (resolved by pass 3) · ACCEPTABLE (≤5 LOW remaining) · NEEDS ATTENTION (unresolved HIGH)
+
+---
+
+## VIOLET MODE — Spec Compliance & Construction Protocol
+
+### What Is Violet Mode?
+
+Violet Mode is a **spec-driven audit + construction protocol** that compares the AISPEC design documents against the actual codebase, grades every system, and builds what's missing. Violet treats the AISPEC documents in `DOCS/` as the source of truth.
+
+**RULE**: Violet Mode is **explicit-only**. Uses subagents in two phases: audit (read-only), then build in dependency-ordered waves. Max 3 passes.
+
+**Activation Triggers**: "violet mode" / "vision audit" / "spec compliance" / "align to spec"
+
+### Documentation Architecture (7 Layers)
+
+The `DOCS/` directory contains ~100 files across 7 interconnected layers:
+
+| Layer | Path | Purpose | Files |
+|-------|------|---------|-------|
+| **SPECS** | `DOCS/SPECS/*.aispec` | AI-optimized quick reference | 11 core AISPEC files |
+| **API** | `DOCS/API/v1/*.aispec` | Endpoint contracts (355/358 documented) | 8 API spec files |
+| **FEATURES** | `DOCS/FEATURES/` | Game design & business requirements | 34 feature docs |
+| **ARCHITECTURE** | `DOCS/ARCHITECTURE/data-models/` | Technical schema & data models | 26 model docs |
+| **STATUS** | `DOCS/STATUS/` | Live implementation tracking & audits | 10 status files |
+| **TOOLS** | `DOCS/_TOOLS/` | Auto-discovery & validation scripts | 3 Python scripts |
+| **README** | `DOCS/README.md` | Master index of all documentation | 1 file |
+
+### Audit Categories & Spec-to-Code Mapping
+
+Launch one subagent per category. Each reads the listed spec files + corresponding code files.
+
+| # | Category | Spec Files (Source of Truth) | Code Zone | Last Known Coverage |
+|---|----------|----------------------------|-----------|-------------------|
+| 1 | **Trading & Economy** | `SPECS/Resources.aispec`, `SPECS/GameMechanics.aispec`, `FEATURES/ECONOMY/PORT_TRADING.md` | `routes/trading.py`, `services/trading_service.py`, `models/station.py` | 80% |
+| 2 | **Combat System** | `SPECS/GameMechanics.aispec`, `FEATURES/GAMEPLAY/COMBAT_MECHANICS.md`, `FEATURES/GAMEPLAY/LARGE_SCALE_COMBAT.md` | `services/combat_service.py`, `routes/player_combat.py`, `models/combat_log.py` | 75% |
+| 3 | **Ships & Fleet** | `SPECS/Ships.aispec` (9 types, attack costs, equipment, insurance) | `models/ship.py`, `services/ship_upgrade_service.py`, `routes/fleets.py` | 90% |
+| 4 | **Planetary Systems** | `FEATURES/PLANETS/` (colonization, citadel, terraforming, defense, genesis) | `services/planetary_service.py`, `services/citadel_service.py`, `services/terraforming_service.py`, `services/genesis_service.py` | 70% |
+| 5 | **Player Progression** | `SPECS/Ranking.aispec`, `FEATURES/GAMEPLAY/RANKING_SYSTEM.md`, `FEATURES/GAMEPLAY/REPUTATION_SYSTEM.md` | `services/ranking_service.py`, `services/medal_service.py`, `services/personal_reputation_service.py`, `services/bounty_service.py` | 75% |
+| 6 | **AI Systems (ARIA)** | `FEATURES/AI_SYSTEMS/ARIA.md`, `FEATURES/AI_SYSTEMS/AI_SECURITY_SYSTEM.md`, `FEATURES/GAMEPLAY/FIRST_LOGIN.md` | `services/aria_personal_intelligence_service.py`, `services/first_login_service.py` | 80% |
+| 7 | **Teams & Factions** | `FEATURES/GAMEPLAY/TEAM_SYSTEMS.md`, `FEATURES/GAMEPLAY/FACTION_SYSTEM.md` | `services/team_service.py`, `services/faction_service.py`, `routes/teams.py` | 75% |
+| 8 | **Galaxy & Navigation** | `FEATURES/GALAXY/GALAXY_GENERATION.md`, `FEATURES/GALAXY/WARP_GATES.md` (878 lines) | `services/galaxy_service.py`, `services/movement_service.py`, `models/warp_tunnel.py` | 85% |
+| 9 | **Auth & Security** | `SPECS/AuthSystem.aispec` (464 lines) | `auth/jwt.py`, `auth/oauth.py`, `routes/auth.py`, `routes/mfa.py` | 95% |
+| 10 | **Infrastructure** | `SPECS/Architecture.aispec`, `SPECS/WebSocket.aispec`, `SPECS/Database.aispec` | `docker-compose.yml`, `services/websocket_service.py`, `core/config.py` | 90% |
+| 11 | **Admin Interface** | `FEATURES/WEB_INTERFACES/ADMIN_UI.md` | `services/admin-ui/src/components/pages/` (28 pages) | 70% |
+| 12 | **Player Interface** | `FEATURES/WEB_INTERFACES/PLAYER_UI.md`, `FEATURES/ECONOMY/TRADEDOCK_SHIPYARD.md` | `services/player-client/src/` (70+ components) | 78% |
+
+### Known Gaps (updated 2026-03-17)
+
+| System | Status | Remaining Work |
+|--------|--------|---------------|
+| Ranking | ✅ 18 ranks + medals + reputation + bounties | Achievement requirements for promotion |
+| Citadel | ✅ 5-level system with prerequisites + safe storage | Orbital platform construction |
+| ARIA | ✅ Turn bonuses wired, consciousness hooks in combat/trade/movement | Cross-system intelligence (colony, port) |
+| Ships | ✅ attack_turn_cost enforced, equipment slots, upgrade UI | Warp Jumper acquisition limit |
+| Terraforming | ✅ 5-level system with resource costs | Resource consumption per month |
+| Defense | ✅ 10-level shield generators | Rail guns, defense grid, scanner array |
+| Trading | ✅ Supply/demand pricing, race conditions fixed | Haggling system, port ownership |
+| Combat | ⚠️ Escape mechanics + weapon modifiers added | Fleet/large-scale battles |
+
+### Audit Grading Rubric
+
+**4 Dimensions:** Coverage (0-100%), Depth (STUB/SHALLOW/ADEQUATE/DEEP), Fidelity (LOW/MED/HIGH), Quality (LOW/MED/HIGH)
+
+**Grades:** COMPLETE (≥90% coverage, ADEQUATE+ depth) · PARTIAL (40-89%) · SKELETAL (<40%) · MISSING (<10%)
+
+**Max score:** 12 auditable categories × 3 points = **36 points**
+
+### The Convergent Audit-Build Loop
+
+**Phase 1 — AUDIT**: Launch subagents per category (up to 12). Each reads the listed spec files + corresponding code, returns scorecard with grade and specific gaps.
+
+**Phase 2 — BUILD** in dependency order:
+1. **MODELS** — database schema must exist first
+2. **SERVICES** — business logic depends on models
+3. **ROUTES** — API endpoints depend on services
+4. **FRONTEND** — UI depends on API
+5. **DOCS** — update STATUS files and AISPEC files to reflect new reality
+
+**Convergence:** Max 3 passes. Score must improve each pass. Build priority: MISSING → SKELETAL → PARTIAL.
+
+**Verdict:** ALIGNED (score ≥ 32/36, all COMPLETE or PARTIAL) · CONVERGING (score ≥ 24 AND improving) · DRIFTING (score 12-23 OR any MISSING remain) · MISALIGNED (score < 12 OR stalled)
+
+---
+
+## RED MODE — Security Audit & Hardening Protocol
+
+### What Is Red Mode?
+
+Red Mode is a **security-focused audit and hardening protocol** that performs an OWASP-style review across all services, maps the attack surface, identifies vulnerabilities, and fixes them. Unlike GOLD (general quality), RED focuses exclusively on security posture.
+
+**RULE**: Red Mode is **explicit-only**. Launch **6 parallel security tracks** as subagents (read-only scan), then fix in priority order. Max 2 passes.
+
+**Activation Triggers**: "red mode" / "security audit" / "security sweep" / "pentest" / "harden"
+
+### The 6 Security Tracks
+
+Launch all 6 as subagents in parallel. **All read-only.**
+
+1. **AUTHENTICATION & AUTHORIZATION** — JWT validation, token expiry, OAuth state, admin gating, Argon2id, rate limiting
+2. **API SECURITY** — Pydantic validation, SQL injection prevention, CORS, rate limits, error sanitization
+3. **DATA PROTECTION** — No secrets in code, env vars for credentials, no PII in logs, Redis auth
+4. **WEBSOCKET SECURITY** — JWT on connect, rate limiting (100 msg/s), heartbeat timeout, message scoping
+5. **GAME ECONOMY INTEGRITY** — Race condition locks (`with_for_update`), price bounds, turn manipulation prevention
+6. **MULTI-TENANT ISOLATION** — IDOR prevention, team membership checks, regional boundaries, admin data scoping
+
+### Severity Classification
+
+| Severity | Meaning | SLA |
+|----------|---------|-----|
+| CRITICAL | Active exploit possible — auth bypass, data leak, RCE | Fix immediately |
+| HIGH | Exploitable with effort — IDOR, privilege escalation, injection | Fix this session |
+| MEDIUM | Defense gap — missing rate limit, weak validation, hardcoded defaults | Fix this sprint |
+| LOW | Hygiene — verbose errors, debug endpoints, console.log with data | Fix when convenient |
+
+### Fix Priority
+
+After scan, fix in this order:
+1. **CRITICAL** — All critical findings fixed before moving on
+2. **HIGH** — All high findings fixed
+3. **MEDIUM** — Best-effort within session
+4. **LOW** — Document for future cleanup
+
+### Verdict Scale
+
+| Verdict | Criteria |
+|---------|----------|
+| HARDENED | 0 CRITICAL, 0 HIGH, ≤3 MEDIUM |
+| SECURE | 0 CRITICAL, ≤2 HIGH |
+| EXPOSED | Any CRITICAL remaining |
+| COMPROMISED | Multiple CRITICAL + active exploit paths |
+
+---
+
+## AMBER MODE — Translation & i18n Quality Protocol
+
+### What Is Amber Mode?
+
+Amber Mode audits the internationalization system across both player-client and admin-ui, checking translation coverage, missing keys, format consistency, and locale-specific rendering issues.
+
+**RULE**: Amber Mode is **explicit-only**. Max 3 passes.
+
+**Activation Triggers**: "amber mode" / "translation quality" / "i18n sweep"
+
+### Audit Scope
+
+| Area | Check |
+|------|-------|
+| Translation files | All locale JSON files have consistent key sets |
+| Missing keys | Keys in English not present in other languages |
+| Format specifiers | Interpolation variables match across languages |
+| Component usage | All user-visible strings use i18n hooks (no hardcoded English) |
+| RTL support | Layout handles right-to-left languages if needed |
+| Date/Number formatting | Locale-aware formatting used consistently |
+
+### The Loop
+
+1. **Scan**: Subagents audit translation files and component usage
+2. **Fix**: Add missing keys, fix format mismatches, extract hardcoded strings
+3. **Verify**: All keys present, builds pass, no hardcoded strings remain
+4. **Convergence**: Issues must decrease each pass
+
+**Verdict:** PRISTINE · POLISHED · ACCEPTABLE · NEEDS ATTENTION
+
+---
+
 *Sectorwars2102: Multi-Regional Space Trading Game Platform*
-*Last Updated: 2026-03-15*
+*Last Updated: 2026-03-17*
 
 **Notes**:
 - Never name components with the word "enhanced" or "improved" without first asking Max

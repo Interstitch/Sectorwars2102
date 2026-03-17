@@ -1,541 +1,580 @@
 """
-Market Prediction Engine using Prophet for Time Series Forecasting
+Market Prediction Engine using Statistical Analysis
 
-This module implements actual machine learning algorithms for predicting
-commodity prices in the Sectorwars2102 game using Facebook Prophet.
+This module implements market price prediction for the Sectorwars2102 game
+using moving averages, standard deviations, and trend detection.
+No ML libraries required -- pure statistical methods.
 """
 
 import logging
-import pandas as pd
-import numpy as np
+import math
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
+from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, desc
-import asyncio
-import pickle
-import os
-from pathlib import Path
+from sqlalchemy import select, and_, desc, func
 
-try:
-    from prophet import Prophet
-    from sklearn.metrics import mean_absolute_error, mean_squared_error
-    PROPHET_AVAILABLE = True
-except ImportError:
-    PROPHET_AVAILABLE = False
-    logging.warning("Prophet not available - market prediction will use fallback methods")
-
-from src.models.market_transaction import MarketTransaction
-from src.models.ai_trading import AIMarketPrediction, AIModelPerformance, AITrainingData
+from src.models.market_transaction import MarketTransaction, MarketPrice, PriceHistory
 from src.models.station import Station
-
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class PricePrediction:
+    """A single commodity price prediction."""
+    commodity: str
+    station_id: str
+    current_price: float
+    predicted_price: float
+    price_change_pct: float
+    trend: str  # "rising", "falling", "stable"
+    confidence: float  # 0.0 to 1.0
+    volatility: float
+    lower_bound: float
+    upper_bound: float
+    prediction_horizon_hours: int
+    factors: List[str]
+    timestamp: datetime
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "commodity": self.commodity,
+            "station_id": self.station_id,
+            "current_price": self.current_price,
+            "predicted_price": self.predicted_price,
+            "price_change_pct": self.price_change_pct,
+            "trend": self.trend,
+            "confidence": self.confidence,
+            "volatility": self.volatility,
+            "lower_bound": self.lower_bound,
+            "upper_bound": self.upper_bound,
+            "prediction_horizon_hours": self.prediction_horizon_hours,
+            "factors": self.factors,
+            "timestamp": self.timestamp.isoformat(),
+        }
+
+
+@dataclass
+class TradeOpportunity:
+    """A buy-low / sell-high opportunity identified by the prediction engine."""
+    commodity: str
+    buy_station_id: str
+    buy_sector_id: int
+    buy_price: float
+    sell_station_id: str
+    sell_sector_id: int
+    sell_price: float
+    profit_per_unit: float
+    confidence: float
+    reasoning: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "commodity": self.commodity,
+            "buy_station_id": self.buy_station_id,
+            "buy_sector_id": self.buy_sector_id,
+            "buy_price": self.buy_price,
+            "sell_station_id": self.sell_station_id,
+            "sell_sector_id": self.sell_sector_id,
+            "sell_price": self.sell_price,
+            "profit_per_unit": self.profit_per_unit,
+            "confidence": self.confidence,
+            "reasoning": self.reasoning,
+        }
+
+
 class MarketPredictionEngine:
     """
-    Advanced market prediction engine using Prophet for time series forecasting
+    Statistical market prediction engine.
+
+    Uses moving averages, standard deviation bands, and linear trend detection
+    to predict commodity prices and identify trading opportunities.
     """
-    
-    def __init__(self, model_storage_path: str = None):
-        if model_storage_path is None:
-            # Use environment variable if set, otherwise default to container path
-            model_storage_path = os.environ.get("MODEL_STORAGE_PATH", "/app/data/ml_models")
-        self.model_storage_path = Path(model_storage_path)
-        self.model_storage_path.mkdir(parents=True, exist_ok=True)
-        self.models: Dict[str, Prophet] = {}
-        self.prediction_horizon_hours = [1, 6, 12, 24, 48]  # Multiple prediction horizons
-        self.min_data_points = 10  # Minimum data points for training
-        
-    async def train_commodity_model(
-        self,
-        db: AsyncSession,
-        commodity_id: str,
-        sector_id: Optional[str] = None
-    ) -> bool:
-        """
-        Train Prophet model for a specific commodity
-        """
-        try:
-            if not PROPHET_AVAILABLE:
-                logger.warning("Prophet not available - skipping model training")
-                return False
-                
-            # Get historical market data
-            training_data = await self._get_training_data(db, commodity_id, sector_id)
-            
-            if len(training_data) < self.min_data_points:
-                logger.info(f"Insufficient data for commodity {commodity_id} - need at least {self.min_data_points} points")
-                return False
-            
-            # Prepare data for Prophet
-            df = pd.DataFrame(training_data)
-            df['ds'] = pd.to_datetime(df['timestamp'])
-            df['y'] = df['price'].astype(float)
-            
-            # Create and configure Prophet model
-            model = Prophet(
-                growth='linear',
-                seasonality_mode='multiplicative',
-                yearly_seasonality=False,
-                weekly_seasonality=True,
-                daily_seasonality=True,
-                changepoint_prior_scale=0.05,  # Flexibility in trend changes
-                seasonality_prior_scale=10.0,  # Strength of seasonality
-                holidays_prior_scale=10.0,
-                interval_width=0.8  # 80% confidence interval
-            )
-            
-            # Add custom seasonalities for game-specific patterns
-            model.add_seasonality(name='hourly', period=1, fourier_order=3)  # Hourly patterns
-            
-            # Add external regressors if available
-            if 'volume' in df.columns:
-                model.add_regressor('volume')
-            if 'player_count' in df.columns:
-                model.add_regressor('player_count')
-            
-            # Train the model
-            logger.info(f"Training Prophet model for commodity {commodity_id}")
-            model.fit(df)
-            
-            # Validate model performance
-            performance_metrics = await self._validate_model(model, df)
-            
-            # Save model to disk
-            model_key = f"{commodity_id}_{sector_id or 'global'}"
-            model_path = self.model_storage_path / f"{model_key}_prophet.pkl"
-            
-            with open(model_path, 'wb') as f:
-                pickle.dump(model, f)
-            
-            # Cache in memory
-            self.models[model_key] = model
-            
-            # Save performance metrics to database
-            await self._save_model_performance(db, commodity_id, sector_id, performance_metrics)
-            
-            logger.info(f"Successfully trained model for {commodity_id} with MAE: {performance_metrics['mae']:.2f}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error training model for commodity {commodity_id}: {e}")
-            return False
-    
+
+    # Core commodities traded in the game
+    COMMODITIES = [
+        "ore", "organics", "equipment", "fuel",
+        "luxury_goods", "gourmet_food", "exotic_technology", "colonists",
+    ]
+
+    def __init__(self):
+        self.short_window = 5   # Short-term moving average window
+        self.long_window = 20   # Long-term moving average window
+        self.model_version = "statistical_1.0.0"
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
     async def predict_prices(
         self,
         db: AsyncSession,
-        commodity_id: str,
-        sector_id: Optional[str] = None,
-        hours_ahead: int = 24
-    ) -> Optional[Dict[str, Any]]:
+        commodity: str,
+        station_id: Optional[str] = None,
+        hours_ahead: int = 24,
+    ) -> Optional[PricePrediction]:
         """
-        Generate price predictions for a commodity using trained Prophet model
-        """
-        try:
-            if not PROPHET_AVAILABLE:
-                return await self._fallback_prediction(db, commodity_id, sector_id, hours_ahead)
-            
-            model_key = f"{commodity_id}_{sector_id or 'global'}"
-            
-            # Load model if not in cache
-            if model_key not in self.models:
-                model_path = self.model_storage_path / f"{model_key}_prophet.pkl"
-                if model_path.exists():
-                    with open(model_path, 'rb') as f:
-                        self.models[model_key] = pickle.load(f)
-                else:
-                    # Train model if it doesn't exist
-                    success = await self.train_commodity_model(db, commodity_id, sector_id)
-                    if not success:
-                        return await self._fallback_prediction(db, commodity_id, sector_id, hours_ahead)
-            
-            model = self.models.get(model_key)
-            if not model:
-                logger.warning(f"No model available for {model_key}")
-                return await self._fallback_prediction(db, commodity_id, sector_id, hours_ahead)
-            
-            # Create future dataframe
-            future_periods = max(1, hours_ahead)
-            future = model.make_future_dataframe(periods=future_periods, freq='H')
-            
-            # Add external regressors if model expects them
-            if 'volume' in model.extra_regressors:
-                # Use recent average volume
-                recent_volume = await self._get_recent_volume(db, commodity_id, sector_id)
-                future['volume'] = recent_volume
-            
-            if 'player_count' in model.extra_regressors:
-                # Use current player count in sector
-                player_count = await self._get_player_count(db, sector_id)
-                future['player_count'] = player_count
-            
-            # Generate predictions
-            forecast = model.predict(future)
-            
-            # Extract prediction for target time
-            target_row = forecast.iloc[-1] if hours_ahead <= len(forecast) else forecast.iloc[-1]
-            
-            prediction_data = {
-                'predicted_price': float(target_row['yhat']),
-                'lower_bound': float(target_row['yhat_lower']),
-                'upper_bound': float(target_row['yhat_upper']),
-                'confidence_interval': 0.8,  # Prophet default
-                'trend': float(target_row['trend']),
-                'seasonal': float(target_row.get('seasonal', 0)),
-                'prediction_horizon': hours_ahead,
-                'model_version': getattr(model, 'version', '1.0.0'),
-                'timestamp': datetime.utcnow()
-            }
-            
-            # Calculate prediction confidence based on historical performance
-            model_performance = await self._get_model_performance(db, commodity_id, sector_id)
-            if model_performance:
-                prediction_data['confidence_interval'] = min(0.95, model_performance.get('accuracy', 0.8))
-            
-            # Save prediction to database
-            await self._save_prediction(db, commodity_id, sector_id, prediction_data)
-            
-            return prediction_data
-            
-        except Exception as e:
-            logger.error(f"Error predicting prices for commodity {commodity_id}: {e}")
-            return await self._fallback_prediction(db, commodity_id, sector_id, hours_ahead)
-    
-    async def batch_predict_all_commodities(
-        self,
-        db: AsyncSession,
-        sector_id: Optional[str] = None
-    ) -> Dict[str, Dict[str, Any]]:
-        """
-        Generate predictions for all active commodities in a sector
+        Predict future price for a commodity at a station (or globally).
+
+        Uses:
+        1. Exponential moving average for trend direction
+        2. Standard-deviation bands for confidence intervals
+        3. Linear regression slope for price change magnitude
         """
         try:
-            # Get all unique commodities traded in sector
-            commodities = await self._get_active_commodities(db, sector_id)
-            
-            predictions = {}
-            for commodity_id in commodities:
-                prediction = await self.predict_prices(db, commodity_id, sector_id)
-                if prediction:
-                    predictions[commodity_id] = prediction
-                    
-                # Add small delay to prevent overwhelming the system
-                await asyncio.sleep(0.1)
-            
-            logger.info(f"Generated predictions for {len(predictions)} commodities")
-            return predictions
-            
-        except Exception as e:
-            logger.error(f"Error in batch prediction: {e}")
-            return {}
-    
-    async def retrain_all_models(self, db: AsyncSession) -> int:
-        """
-        Retrain all models with latest data
-        """
-        try:
-            # Get all unique commodity-sector combinations
-            combinations = await self._get_all_commodity_sector_combinations(db)
-            
-            successful_trains = 0
-            for commodity_id, sector_id in combinations:
-                success = await self.train_commodity_model(db, commodity_id, sector_id)
-                if success:
-                    successful_trains += 1
-                    
-                # Add delay between training runs
-                await asyncio.sleep(0.5)
-            
-            logger.info(f"Successfully retrained {successful_trains}/{len(combinations)} models")
-            return successful_trains
-            
-        except Exception as e:
-            logger.error(f"Error retraining models: {e}")
-            return 0
-    
-    # Private helper methods
-    
-    async def _get_training_data(
-        self,
-        db: AsyncSession,
-        commodity_id: str,
-        sector_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
-        """
-        Get historical market data for training
-        """
-        try:
-            # Query market transactions for this commodity
-            query = select(MarketTransaction).where(
-                MarketTransaction.commodity_id == commodity_id
-            ).order_by(MarketTransaction.created_at)
-            
-            if sector_id:
-                query = query.where(MarketTransaction.sector_id == sector_id)
-            
-            # Limit to last 30 days of data
-            cutoff_date = datetime.utcnow() - timedelta(days=30)
-            query = query.where(MarketTransaction.created_at >= cutoff_date)
-            
-            result = await db.execute(query)
-            transactions = result.scalars().all()
-            
-            training_data = []
-            for tx in transactions:
-                training_data.append({
-                    'timestamp': tx.created_at,
-                    'price': float(tx.price_per_unit),
-                    'volume': tx.quantity,
-                    'transaction_type': tx.transaction_type
-                })
-            
-            # Aggregate hourly if we have too much data
-            if len(training_data) > 1000:
-                training_data = self._aggregate_hourly(training_data)
-            
-            return training_data
-            
-        except Exception as e:
-            logger.error(f"Error getting training data: {e}")
-            return []
-    
-    def _aggregate_hourly(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Aggregate transaction data into hourly buckets
-        """
-        df = pd.DataFrame(data)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        df.set_index('timestamp', inplace=True)
-        
-        # Resample to hourly averages
-        hourly = df.resample('H').agg({
-            'price': 'mean',
-            'volume': 'sum'
-        }).dropna()
-        
-        return [
-            {
-                'timestamp': idx,
-                'price': row['price'],
-                'volume': row['volume']
-            }
-            for idx, row in hourly.iterrows()
-        ]
-    
-    async def _validate_model(self, model: 'Prophet', df: pd.DataFrame) -> Dict[str, float]:
-        """
-        Validate model performance using cross-validation
-        """
-        try:
-            if len(df) < 20:  # Need enough data for validation
-                return {'mae': 0.0, 'mse': 0.0, 'accuracy': 0.5}
-            
-            # Simple train/test split
-            split_point = int(len(df) * 0.8)
-            train_df = df[:split_point]
-            test_df = df[split_point:]
-            
-            # Train on subset
-            val_model = Prophet()
-            val_model.fit(train_df)
-            
-            # Predict on test set
-            future = val_model.make_future_dataframe(periods=len(test_df), freq='H')
-            forecast = val_model.predict(future)
-            
-            # Calculate metrics
-            actual = test_df['y'].values
-            predicted = forecast['yhat'][-len(actual):].values
-            
-            mae = mean_absolute_error(actual, predicted)
-            mse = mean_squared_error(actual, predicted)
-            
-            # Calculate accuracy as percentage of predictions within 10% of actual
-            within_threshold = np.abs((predicted - actual) / actual) < 0.1
-            accuracy = np.mean(within_threshold)
-            
-            return {
-                'mae': float(mae),
-                'mse': float(mse),
-                'accuracy': float(accuracy)
-            }
-            
-        except Exception as e:
-            logger.error(f"Error validating model: {e}")
-            return {'mae': 0.0, 'mse': 0.0, 'accuracy': 0.5}
-    
-    async def _save_model_performance(
-        self,
-        db: AsyncSession,
-        commodity_id: str,
-        sector_id: Optional[str],
-        metrics: Dict[str, float]
-    ) -> None:
-        """
-        Save model performance metrics to database
-        """
-        try:
-            performance = AIModelPerformance(
-                model_type='prophet_price_prediction',
-                model_version='1.0.0',
-                commodity_id=commodity_id,
-                sector_id=sector_id,
-                accuracy_score=metrics['accuracy'],
-                precision_score=1.0 - (metrics['mae'] / 100),  # Normalize MAE to precision
-                recall_score=metrics['accuracy'],
-                f1_score=metrics['accuracy'],
-                training_data_size=0,  # Will be updated separately
-                performance_metadata={
-                    'mae': metrics['mae'],
-                    'mse': metrics['mse'],
-                    'validation_date': datetime.utcnow().isoformat()
-                }
-            )
-            
-            db.add(performance)
-            await db.commit()
-            
-        except Exception as e:
-            logger.error(f"Error saving model performance: {e}")
-    
-    async def _get_model_performance(
-        self,
-        db: AsyncSession,
-        commodity_id: str,
-        sector_id: Optional[str]
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Get latest model performance metrics
-        """
-        try:
-            query = select(AIModelPerformance).where(
-                and_(
-                    AIModelPerformance.commodity_id == commodity_id,
-                    AIModelPerformance.sector_id == sector_id,
-                    AIModelPerformance.model_type == 'prophet_price_prediction'
+            prices = await self._get_price_series(db, commodity, station_id)
+
+            if len(prices) < 3:
+                return self._insufficient_data_prediction(
+                    commodity, station_id or "global", hours_ahead
                 )
-            ).order_by(desc(AIModelPerformance.created_at)).limit(1)
-            
-            result = await db.execute(query)
-            performance = result.scalar_one_or_none()
-            
-            if performance:
-                return {
-                    'accuracy': performance.accuracy_score,
-                    'mae': performance.performance_metadata.get('mae', 0.0),
-                    'mse': performance.performance_metadata.get('mse', 0.0)
-                }
-            
-            return None
-            
+
+            current_price = prices[-1]
+
+            # Calculate moving averages
+            short_ma = self._exponential_moving_average(prices, self.short_window)
+            long_ma = self._exponential_moving_average(prices, self.long_window)
+
+            # Calculate volatility (standard deviation of returns)
+            volatility = self._calculate_volatility(prices)
+
+            # Detect trend via linear regression on recent prices
+            recent = prices[-min(len(prices), self.long_window):]
+            slope, intercept = self._linear_regression(recent)
+
+            # Determine trend direction from MA crossover + slope
+            trend = self._determine_trend(short_ma, long_ma, slope)
+
+            # Project price using slope
+            steps_ahead = max(1, hours_ahead)
+            raw_prediction = current_price + slope * steps_ahead
+
+            # Dampen extreme predictions towards the long-term mean
+            long_term_mean = sum(prices) / len(prices)
+            mean_reversion_factor = 0.3  # 30 % pull towards mean
+            predicted_price = (
+                raw_prediction * (1 - mean_reversion_factor)
+                + long_term_mean * mean_reversion_factor
+            )
+            predicted_price = max(1.0, predicted_price)  # floor at 1 credit
+
+            # Confidence decreases with horizon and volatility
+            base_confidence = max(0.2, 1.0 - volatility)
+            horizon_decay = max(0.3, 1.0 - (hours_ahead / 168))  # decays over a week
+            data_quality = min(1.0, len(prices) / 30)  # more data = higher confidence
+            confidence = round(base_confidence * horizon_decay * data_quality, 3)
+
+            # Bounds based on volatility
+            spread = current_price * volatility * math.sqrt(hours_ahead / 24)
+            lower_bound = max(1.0, predicted_price - spread)
+            upper_bound = predicted_price + spread
+
+            price_change_pct = (
+                ((predicted_price - current_price) / current_price) * 100
+                if current_price > 0 else 0.0
+            )
+
+            factors = self._identify_factors(
+                prices, short_ma, long_ma, volatility, trend
+            )
+
+            return PricePrediction(
+                commodity=commodity,
+                station_id=station_id or "global",
+                current_price=round(current_price, 2),
+                predicted_price=round(predicted_price, 2),
+                price_change_pct=round(price_change_pct, 2),
+                trend=trend,
+                confidence=confidence,
+                volatility=round(volatility, 4),
+                lower_bound=round(lower_bound, 2),
+                upper_bound=round(upper_bound, 2),
+                prediction_horizon_hours=hours_ahead,
+                factors=factors,
+                timestamp=datetime.utcnow(),
+            )
+
         except Exception as e:
-            logger.error(f"Error getting model performance: {e}")
+            logger.error(f"Error predicting prices for {commodity}: {e}")
             return None
-    
-    async def _save_prediction(
+
+    async def batch_predict(
         self,
         db: AsyncSession,
-        commodity_id: str,
-        sector_id: Optional[str],
-        prediction_data: Dict[str, Any]
-    ) -> None:
+        station_id: Optional[str] = None,
+        hours_ahead: int = 24,
+    ) -> Dict[str, PricePrediction]:
+        """Generate predictions for all commodities at a station."""
+        predictions: Dict[str, PricePrediction] = {}
+        for commodity in self.COMMODITIES:
+            pred = await self.predict_prices(db, commodity, station_id, hours_ahead)
+            if pred:
+                predictions[commodity] = pred
+        return predictions
+
+    async def find_opportunities(
+        self,
+        db: AsyncSession,
+        min_profit_margin: float = 0.10,
+        limit: int = 10,
+    ) -> List[TradeOpportunity]:
         """
-        Save prediction to database
+        Scan all stations for buy-low / sell-high opportunities.
+
+        Compares current prices to their station-local moving averages to find
+        commodities priced significantly below or above average, then pairs
+        cheap-buy stations with expensive-sell stations.
         """
         try:
-            prediction = AIMarketPrediction(
-                commodity_id=commodity_id,
-                sector_id=sector_id,
-                predicted_price=prediction_data['predicted_price'],
-                confidence_interval=prediction_data['confidence_interval'],
-                prediction_horizon=prediction_data['prediction_horizon'],
-                lower_bound=prediction_data['lower_bound'],
-                upper_bound=prediction_data['upper_bound'],
-                trend_direction='rising' if prediction_data['trend'] > 0 else 'falling',
-                model_version=prediction_data['model_version'],
-                features_used=['price_history', 'volume', 'trend'],
-                expires_at=datetime.utcnow() + timedelta(hours=prediction_data['prediction_horizon'])
+            opportunities: List[TradeOpportunity] = []
+
+            # Get all operational stations with their commodities
+            query = select(Station).where(Station.is_destroyed == False)  # noqa: E712
+            result = await db.execute(query)
+            stations = result.scalars().all()
+
+            if not stations:
+                return []
+
+            # Build per-commodity price maps: {commodity: [(station, price, buys, sells)]}
+            commodity_map: Dict[str, List[Tuple[Station, float, bool, bool]]] = {}
+            for station in stations:
+                if not station.commodities:
+                    continue
+                for commodity_name, cdata in station.commodities.items():
+                    if commodity_name not in commodity_map:
+                        commodity_map[commodity_name] = []
+                    price = cdata.get("current_price", cdata.get("base_price", 0))
+                    buys = cdata.get("buys", False)
+                    sells = cdata.get("sells", False)
+                    qty = cdata.get("quantity", 0)
+                    if price > 0 and (buys or sells) and qty > 0:
+                        commodity_map[commodity_name].append(
+                            (station, float(price), buys, sells)
+                        )
+
+            # For each commodity, find profitable station pairs
+            for commodity_name, entries in commodity_map.items():
+                sellers = [(s, p) for s, p, buys, sells in entries if sells]
+                buyers = [(s, p) for s, p, buys, sells in entries if buys]
+
+                if not sellers or not buyers:
+                    continue
+
+                # Compute average price for confidence scoring
+                all_prices = [p for _, p in sellers] + [p for _, p in buyers]
+                avg_price = sum(all_prices) / len(all_prices)
+
+                for sell_station, sell_price in sellers:
+                    for buy_station, buy_price in buyers:
+                        if str(sell_station.id) == str(buy_station.id):
+                            continue
+
+                        profit = buy_price - sell_price  # buy FROM seller, sell TO buyer
+                        if sell_price <= 0:
+                            continue
+                        margin = profit / sell_price
+
+                        if margin >= min_profit_margin:
+                            # Confidence based on deviation from average
+                            price_deviation = abs(sell_price - avg_price) / avg_price
+                            confidence = max(
+                                0.3,
+                                min(1.0, 0.8 - price_deviation + margin),
+                            )
+
+                            opportunities.append(
+                                TradeOpportunity(
+                                    commodity=commodity_name,
+                                    buy_station_id=str(sell_station.id),
+                                    buy_sector_id=sell_station.sector_id,
+                                    buy_price=sell_price,
+                                    sell_station_id=str(buy_station.id),
+                                    sell_sector_id=buy_station.sector_id,
+                                    sell_price=buy_price,
+                                    profit_per_unit=profit,
+                                    confidence=round(confidence, 3),
+                                    reasoning=(
+                                        f"Buy {commodity_name} at sector {sell_station.sector_id} "
+                                        f"for {sell_price} credits, sell at sector "
+                                        f"{buy_station.sector_id} for {buy_price} credits "
+                                        f"({margin*100:.1f}% margin)"
+                                    ),
+                                )
+                            )
+
+            # Sort by profit * confidence and return top results
+            opportunities.sort(
+                key=lambda o: o.profit_per_unit * o.confidence, reverse=True
             )
-            
-            db.add(prediction)
-            await db.commit()
-            
+            return opportunities[:limit]
+
         except Exception as e:
-            logger.error(f"Error saving prediction: {e}")
-    
-    async def _fallback_prediction(
+            logger.error(f"Error finding trade opportunities: {e}")
+            return []
+
+    async def get_commodity_analysis(
         self,
         db: AsyncSession,
-        commodity_id: str,
-        sector_id: Optional[str],
-        hours_ahead: int
+        commodity: str,
+        station_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Fallback prediction method when Prophet is not available
+        Return a comprehensive analysis of a commodity's market conditions.
         """
         try:
-            # Get recent price data
-            recent_data = await self._get_training_data(db, commodity_id, sector_id)
-            
-            if not recent_data:
+            prices = await self._get_price_series(db, commodity, station_id)
+
+            if len(prices) < 2:
                 return {
-                    'predicted_price': 100.0,
-                    'confidence_interval': 0.3,
-                    'prediction_horizon': hours_ahead,
-                    'model_version': 'fallback_1.0.0'
+                    "commodity": commodity,
+                    "status": "insufficient_data",
+                    "data_points": len(prices),
                 }
-            
-            # Simple moving average prediction
-            recent_prices = [d['price'] for d in recent_data[-10:]]
-            avg_price = sum(recent_prices) / len(recent_prices)
-            
-            # Add slight random walk
-            import random
-            change_factor = 1.0 + (random.random() - 0.5) * 0.1  # ±5% random change
-            predicted_price = avg_price * change_factor
-            
+
+            current = prices[-1]
+            avg = sum(prices) / len(prices)
+            high = max(prices)
+            low = min(prices)
+            volatility = self._calculate_volatility(prices)
+            short_ma = self._exponential_moving_average(prices, self.short_window)
+            long_ma = self._exponential_moving_average(prices, self.long_window)
+            slope, _ = self._linear_regression(
+                prices[-min(len(prices), self.long_window):]
+            )
+            trend = self._determine_trend(short_ma, long_ma, slope)
+
+            # Deviation from mean
+            deviation_pct = ((current - avg) / avg * 100) if avg > 0 else 0
+
             return {
-                'predicted_price': predicted_price,
-                'confidence_interval': 0.6,
-                'prediction_horizon': hours_ahead,
-                'model_version': 'fallback_1.0.0',
-                'lower_bound': predicted_price * 0.9,
-                'upper_bound': predicted_price * 1.1
+                "commodity": commodity,
+                "station_id": station_id or "global",
+                "status": "ok",
+                "data_points": len(prices),
+                "current_price": round(current, 2),
+                "average_price": round(avg, 2),
+                "high_price": round(high, 2),
+                "low_price": round(low, 2),
+                "volatility": round(volatility, 4),
+                "trend": trend,
+                "short_ma": round(short_ma, 2),
+                "long_ma": round(long_ma, 2),
+                "deviation_from_mean_pct": round(deviation_pct, 2),
+                "slope": round(slope, 4),
+                "model_version": self.model_version,
             }
-            
+
         except Exception as e:
-            logger.error(f"Error in fallback prediction: {e}")
-            return {
-                'predicted_price': 100.0,
-                'confidence_interval': 0.3,
-                'prediction_horizon': hours_ahead,
-                'model_version': 'fallback_1.0.0'
-            }
-    
-    async def _get_active_commodities(self, db: AsyncSession, sector_id: Optional[str]) -> List[str]:
-        """Get list of active commodities"""
-        # Simplified implementation - would query actual game data
-        return ["ore", "food", "technology", "fuel", "weapons"]
-    
-    async def _get_all_commodity_sector_combinations(self, db: AsyncSession) -> List[Tuple[str, str]]:
-        """Get all commodity-sector combinations that have trading data"""
-        # Simplified implementation
-        commodities = await self._get_active_commodities(db, None)
-        sectors = ["1", "2", "3", "4", "5"]  # Example sectors
-        
-        combinations = []
-        for commodity in commodities:
-            for sector in sectors:
-                combinations.append((commodity, sector))
-        
-        return combinations
-    
-    async def _get_recent_volume(self, db: AsyncSession, commodity_id: str, sector_id: Optional[str]) -> float:
-        """Get recent average trading volume"""
-        return 100.0  # Placeholder
-    
-    async def _get_player_count(self, db: AsyncSession, sector_id: Optional[str]) -> int:
-        """Get current player count in sector"""
-        return 5  # Placeholder
+            logger.error(f"Error analysing commodity {commodity}: {e}")
+            return {"commodity": commodity, "status": "error", "message": str(e)}
+
+    # ------------------------------------------------------------------
+    # Statistical helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _exponential_moving_average(prices: List[float], window: int) -> float:
+        """
+        Compute the Exponential Moving Average (EMA) over *prices*.
+        If fewer data points than *window*, use all available data.
+        """
+        if not prices:
+            return 0.0
+        k = 2 / (min(window, len(prices)) + 1)
+        ema = prices[0]
+        for price in prices[1:]:
+            ema = price * k + ema * (1 - k)
+        return ema
+
+    @staticmethod
+    def _calculate_volatility(prices: List[float]) -> float:
+        """
+        Annualised volatility proxy: standard deviation of log-returns,
+        normalised so the result stays between 0 and 1 for practical use.
+        """
+        if len(prices) < 2:
+            return 0.0
+
+        returns = []
+        for i in range(1, len(prices)):
+            if prices[i - 1] > 0:
+                returns.append(math.log(prices[i] / prices[i - 1]))
+
+        if not returns:
+            return 0.0
+
+        mean_ret = sum(returns) / len(returns)
+        variance = sum((r - mean_ret) ** 2 for r in returns) / len(returns)
+        std_dev = math.sqrt(variance)
+
+        # Clamp to [0, 1]
+        return min(1.0, std_dev)
+
+    @staticmethod
+    def _linear_regression(
+        values: List[float],
+    ) -> Tuple[float, float]:
+        """
+        Simple ordinary-least-squares linear regression.
+        Returns (slope, intercept).
+        """
+        n = len(values)
+        if n < 2:
+            return 0.0, values[0] if values else 0.0
+
+        x_mean = (n - 1) / 2.0
+        y_mean = sum(values) / n
+
+        numerator = 0.0
+        denominator = 0.0
+        for i, y in enumerate(values):
+            numerator += (i - x_mean) * (y - y_mean)
+            denominator += (i - x_mean) ** 2
+
+        if denominator == 0:
+            return 0.0, y_mean
+
+        slope = numerator / denominator
+        intercept = y_mean - slope * x_mean
+        return slope, intercept
+
+    @staticmethod
+    def _determine_trend(short_ma: float, long_ma: float, slope: float) -> str:
+        """Classify trend from MA crossover and regression slope."""
+        if short_ma > long_ma * 1.02 and slope > 0:
+            return "rising"
+        elif short_ma < long_ma * 0.98 and slope < 0:
+            return "falling"
+        return "stable"
+
+    @staticmethod
+    def _identify_factors(
+        prices: List[float],
+        short_ma: float,
+        long_ma: float,
+        volatility: float,
+        trend: str,
+    ) -> List[str]:
+        """Produce human-readable factor descriptions."""
+        factors: List[str] = []
+        if trend == "rising":
+            factors.append("Short-term moving average above long-term (bullish crossover)")
+        elif trend == "falling":
+            factors.append("Short-term moving average below long-term (bearish crossover)")
+        else:
+            factors.append("Moving averages converging (sideways market)")
+
+        if volatility > 0.3:
+            factors.append(f"High volatility ({volatility:.1%}) -- wider prediction bands")
+        elif volatility < 0.05:
+            factors.append(f"Low volatility ({volatility:.1%}) -- stable pricing expected")
+
+        if len(prices) >= 5:
+            recent_change = (prices[-1] - prices[-5]) / prices[-5] * 100 if prices[-5] > 0 else 0
+            if abs(recent_change) > 10:
+                direction = "surge" if recent_change > 0 else "drop"
+                factors.append(
+                    f"Recent price {direction} of {abs(recent_change):.1f}% over last 5 data points"
+                )
+
+        return factors
+
+    # ------------------------------------------------------------------
+    # Data retrieval helpers
+    # ------------------------------------------------------------------
+
+    async def _get_price_series(
+        self,
+        db: AsyncSession,
+        commodity: str,
+        station_id: Optional[str] = None,
+    ) -> List[float]:
+        """
+        Retrieve historical price data for a commodity.
+
+        Prefers PriceHistory snapshots; falls back to MarketPrice current/previous
+        and finally to live Station commodity prices.
+        """
+        prices: List[float] = []
+
+        try:
+            # 1. Try PriceHistory (time-series snapshots)
+            query = select(PriceHistory.sell_price).where(
+                PriceHistory.commodity == commodity
+            ).order_by(PriceHistory.snapshot_date.asc())
+
+            if station_id:
+                query = query.where(PriceHistory.station_id == station_id)
+
+            # Last 60 data points
+            query = query.limit(60)
+
+            result = await db.execute(query)
+            rows = result.scalars().all()
+            if rows:
+                prices = [float(p) for p in rows if p and p > 0]
+
+            if len(prices) >= 3:
+                return prices
+
+            # 2. Fall back to MarketPrice current + previous
+            mp_query = select(MarketPrice).where(
+                MarketPrice.commodity == commodity
+            )
+            if station_id:
+                mp_query = mp_query.where(MarketPrice.station_id == station_id)
+
+            mp_result = await db.execute(mp_query)
+            market_prices = mp_result.scalars().all()
+
+            for mp in market_prices:
+                if mp.previous_sell_price and mp.previous_sell_price > 0:
+                    prices.append(float(mp.previous_sell_price))
+                if mp.sell_price and mp.sell_price > 0:
+                    prices.append(float(mp.sell_price))
+
+            if len(prices) >= 3:
+                return prices
+
+            # 3. Fall back to Station.commodities JSONB
+            st_query = select(Station).where(Station.is_destroyed == False)  # noqa: E712
+            if station_id:
+                st_query = st_query.where(Station.id == station_id)
+            st_result = await db.execute(st_query)
+            stations = st_result.scalars().all()
+
+            for station in stations:
+                cdata = (station.commodities or {}).get(commodity, {})
+                base = cdata.get("base_price", 0)
+                current = cdata.get("current_price", 0)
+                if base > 0:
+                    prices.append(float(base))
+                if current > 0 and current != base:
+                    prices.append(float(current))
+
+        except Exception as e:
+            logger.error(f"Error retrieving price series for {commodity}: {e}")
+
+        return prices
+
+    def _insufficient_data_prediction(
+        self, commodity: str, station_id: str, hours_ahead: int
+    ) -> PricePrediction:
+        """Return a low-confidence prediction when data is scarce."""
+        return PricePrediction(
+            commodity=commodity,
+            station_id=station_id,
+            current_price=0.0,
+            predicted_price=0.0,
+            price_change_pct=0.0,
+            trend="unknown",
+            confidence=0.1,
+            volatility=0.0,
+            lower_bound=0.0,
+            upper_bound=0.0,
+            prediction_horizon_hours=hours_ahead,
+            factors=["Insufficient historical data for reliable prediction"],
+            timestamp=datetime.utcnow(),
+        )

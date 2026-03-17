@@ -562,9 +562,12 @@ class GalaxyGenerator:
                 resource_availability=self._generate_resource_availability(port_type),
                 resource_prices=self._generate_resource_prices(port_type)
             )
-            
+
             self.db.add(market)
             self.db.flush()
+
+            # Create MarketPrice entries for the trading endpoint
+            self._create_market_prices_for_station(station)
     
     def _populate_sectors_with_planets(self, planet_probability: float, region_id: str = None) -> None:
         """Add planets to sectors based on probability (optionally filtered by region)."""
@@ -688,6 +691,9 @@ class GalaxyGenerator:
         )
         self.db.add(starter_market)
         self.db.flush()
+
+        # Create MarketPrice entries for the trading endpoint
+        self._create_market_prices_for_station(starter_station)
         logger.info("✅ Created starter station 'Terra Station' in sector")
 
     def _create_starter_planet_for_sector(self, sector: Sector) -> None:
@@ -849,6 +855,125 @@ class GalaxyGenerator:
 
         self.db.flush()
         logger.info(f"✅ Created SpaceDock in sector {spacedock_sector.sector_number} for {region.name}")
+
+    def _create_market_prices_for_station(self, station: Station) -> None:
+        """
+        Create MarketPrice entries from a station's commodities JSONB data.
+        The trading endpoint reads from market_prices table, so every station
+        needs MarketPrice rows for each commodity it buys or sells.
+        """
+        from src.models.market_transaction import MarketPrice
+
+        if not station.commodities:
+            logger.warning(f"Station {station.name} has no commodities data, skipping MarketPrice creation")
+            return
+
+        for commodity_name, commodity_data in station.commodities.items():
+            buys = commodity_data.get("buys", False)
+            sells = commodity_data.get("sells", False)
+
+            # Only create market prices for commodities the station trades
+            if not buys and not sells:
+                continue
+
+            quantity = commodity_data.get("quantity", 0)
+            base_price = commodity_data.get("base_price", 10)
+            current_price = commodity_data.get("current_price", base_price)
+
+            # Calculate buy/sell prices with a spread
+            # buy_price = what station pays players (when station buys from player)
+            # sell_price = what station charges players (when station sells to player)
+            if buys and sells:
+                buy_price = int(current_price * 0.85)  # Station buys at 85% of base
+                sell_price = int(current_price * 1.15)  # Station sells at 115% of base
+            elif buys:
+                # Station only buys - willing to pay more
+                buy_price = int(current_price * 1.1)
+                sell_price = int(current_price * 1.5)  # High sell price discourages selling to players
+            else:
+                # Station only sells - charges competitive price
+                buy_price = int(current_price * 0.5)  # Low buy price discourages buying from players
+                sell_price = int(current_price * 0.9)
+
+            market_price = MarketPrice(
+                station_id=station.id,
+                commodity=commodity_name,
+                quantity=quantity,
+                buy_price=buy_price,
+                sell_price=sell_price
+            )
+            self.db.add(market_price)
+
+        self.db.flush()
+
+    @staticmethod
+    def backfill_market_prices(db: Session) -> Dict[str, int]:
+        """
+        Backfill MarketPrice entries for all stations that are missing them.
+        This repairs the trading system for stations created before MarketPrice
+        generation was added to the galaxy generation pipeline.
+
+        Returns a dict with counts: stations_processed, prices_created, stations_skipped.
+        """
+        from src.models.market_transaction import MarketPrice
+
+        stats = {"stations_processed": 0, "prices_created": 0, "stations_skipped": 0}
+
+        # Get all stations
+        all_stations = db.query(Station).all()
+
+        for station in all_stations:
+            # Check if this station already has market prices
+            existing_count = db.query(MarketPrice).filter(
+                MarketPrice.station_id == station.id
+            ).count()
+
+            if existing_count > 0:
+                stats["stations_skipped"] += 1
+                continue
+
+            if not station.commodities:
+                stats["stations_skipped"] += 1
+                continue
+
+            stats["stations_processed"] += 1
+
+            for commodity_name, commodity_data in station.commodities.items():
+                buys = commodity_data.get("buys", False)
+                sells = commodity_data.get("sells", False)
+
+                # Only create market prices for commodities the station trades
+                if not buys and not sells:
+                    continue
+
+                quantity = commodity_data.get("quantity", 0)
+                base_price = commodity_data.get("base_price", 10)
+                current_price = commodity_data.get("current_price", base_price)
+
+                # Calculate buy/sell prices with a spread
+                if buys and sells:
+                    buy_price = int(current_price * 0.85)
+                    sell_price = int(current_price * 1.15)
+                elif buys:
+                    buy_price = int(current_price * 1.1)
+                    sell_price = int(current_price * 1.5)
+                else:
+                    buy_price = int(current_price * 0.5)
+                    sell_price = int(current_price * 0.9)
+
+                market_price = MarketPrice(
+                    station_id=station.id,
+                    commodity=commodity_name,
+                    quantity=quantity,
+                    buy_price=buy_price,
+                    sell_price=sell_price
+                )
+                db.add(market_price)
+                stats["prices_created"] += 1
+
+        db.commit()
+        logger.info(f"MarketPrice backfill complete: {stats}")
+        return stats
 
     def _ensure_region_starter_sector(self, region: Region) -> None:
         """

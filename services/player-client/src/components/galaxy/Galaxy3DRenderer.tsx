@@ -59,9 +59,9 @@ function GalaxyScene({ onSectorSelect }: { onSectorSelect?: (sector: Sector) => 
   const sectors = useMemo(() => {
     const sectorMap = new Map<number, Sector>();
     
-    // Add current sector
+    // Add current sector (use sector_id as numeric key, not id which is UUID)
     if (currentSector) {
-      sectorMap.set(currentSector.id, currentSector);
+      sectorMap.set(currentSector.sector_id, currentSector);
     }
     
     // Add sectors from available moves (create minimal Sector objects)
@@ -70,6 +70,7 @@ function GalaxyScene({ onSectorSelect }: { onSectorSelect?: (sector: Sector) => 
       if (!sectorMap.has(warp.sector_id)) {
         sectorMap.set(warp.sector_id, {
           id: warp.sector_id,
+          sector_id: warp.sector_id,
           name: warp.name,
           type: warp.type,
           hazard_level: 0,
@@ -80,11 +81,12 @@ function GalaxyScene({ onSectorSelect }: { onSectorSelect?: (sector: Sector) => 
         });
       }
     });
-    
+
     availableMoves.tunnels.forEach(tunnel => {
       if (!sectorMap.has(tunnel.sector_id)) {
         sectorMap.set(tunnel.sector_id, {
           id: tunnel.sector_id,
+          sector_id: tunnel.sector_id,
           name: tunnel.name,
           type: tunnel.type,
           hazard_level: 0,
@@ -107,19 +109,19 @@ function GalaxyScene({ onSectorSelect }: { onSectorSelect?: (sector: Sector) => 
     
     // Simple layout with current sector at center
     sectors.forEach((sector, index) => {
-      if (sector.id === currentSector?.id) {
+      if (sector.sector_id === currentSector?.sector_id) {
         // Current sector at center
-        positions.set(sector.id, new Vector3(0, 0, 0));
+        positions.set(sector.sector_id, new Vector3(0, 0, 0));
       } else {
         // Other sectors in a circle around current
         const angle = (2 * Math.PI * (index - 1)) / (sectors.length - 1);
         const radius = 50;
         const z = (Math.random() - 0.5) * 20; // Random Z variation
-        
+
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
-        
-        positions.set(sector.id, new Vector3(x, y, z));
+
+        positions.set(sector.sector_id, new Vector3(x, y, z));
       }
     });
     
@@ -134,8 +136,8 @@ function GalaxyScene({ onSectorSelect }: { onSectorSelect?: (sector: Sector) => 
 
   // Auto-focus on current sector when it changes
   useEffect(() => {
-    if (currentSector && sectorPositions.has(currentSector.id)) {
-      const position = sectorPositions.get(currentSector.id)!;
+    if (currentSector && sectorPositions.has(currentSector.sector_id)) {
+      const position = sectorPositions.get(currentSector.sector_id)!;
       // Smoothly move camera to focus on current sector
       camera.lookAt(position);
     }
@@ -159,43 +161,43 @@ function GalaxyScene({ onSectorSelect }: { onSectorSelect?: (sector: Sector) => 
       
       {/* Sector nodes */}
       {sectors.map((sector) => {
-        const position = sectorPositions.get(sector.id);
+        const position = sectorPositions.get(sector.sector_id);
         if (!position) return null;
-        
+
         // Apply LOD - skip distant sectors in low detail mode
         if (lodLevel.detail === 'low' && cameraDistance > 300) {
           const distanceToSector = camera.position.distanceTo(position);
           if (distanceToSector > 100) return null; // Cull distant sectors
         }
-        
+
         return (
           <SectorNode3D
-            key={sector.id}
+            key={sector.sector_id}
             sector={sector}
             position={position}
-            isSelected={selectedSector?.id === sector.id}
-            isCurrent={currentSector?.id === sector.id}
+            isSelected={selectedSector?.sector_id === sector.sector_id}
+            isCurrent={currentSector?.sector_id === sector.sector_id}
             onClick={handleSectorClick}
             lodLevel={lodLevel}
-            playerCount={sector.id === currentSector?.id ? sectorPlayers.length : 0}
+            playerCount={sector.sector_id === currentSector?.sector_id ? sectorPlayers.length : 0}
           />
         );
       })}
       
       {/* Connection paths between sectors */}
       {currentSector && (() => {
-        const currentPosition = sectorPositions.get(currentSector.id);
+        const currentPosition = sectorPositions.get(currentSector.sector_id);
         if (!currentPosition) return null;
-        
+
         const connections: JSX.Element[] = [];
-        
+
         // Warp connections
         availableMoves.warps.forEach((warp, index) => {
           const targetPosition = sectorPositions.get(warp.sector_id);
           if (targetPosition) {
             connections.push(
               <ConnectionPath3D
-                key={`warp-${currentSector.id}-${warp.sector_id}-${index}`}
+                key={`warp-${currentSector.sector_id}-${warp.sector_id}-${index}`}
                 start={currentPosition}
                 end={targetPosition}
                 type="warp"
@@ -204,14 +206,14 @@ function GalaxyScene({ onSectorSelect }: { onSectorSelect?: (sector: Sector) => 
             );
           }
         });
-        
+
         // Tunnel connections
         availableMoves.tunnels.forEach((tunnel, index) => {
           const targetPosition = sectorPositions.get(tunnel.sector_id);
           if (targetPosition) {
             connections.push(
               <ConnectionPath3D
-                key={`tunnel-${currentSector.id}-${tunnel.sector_id}-${index}`}
+                key={`tunnel-${currentSector.sector_id}-${tunnel.sector_id}-${index}`}
                 start={currentPosition}
                 end={targetPosition}
                 type="tunnel"
@@ -220,18 +222,18 @@ function GalaxyScene({ onSectorSelect }: { onSectorSelect?: (sector: Sector) => 
             );
           }
         });
-        
+
         return connections;
       })()}
       
       {/* Player markers */}
       {isConnected && currentSector && sectorPlayers.length > 0 && (() => {
-        const currentPosition = sectorPositions.get(currentSector.id);
+        const currentPosition = sectorPositions.get(currentSector.sector_id);
         if (!currentPosition) return null;
-        
+
         return sectorPlayers.map((player, index) => (
           <PlayerMarker3D
-            key={`${player.user_id}-${currentSector.id}`}
+            key={`${player.user_id}-${currentSector.sector_id}`}
             player={player}
             position={currentPosition.clone().add(new Vector3(
               (index - sectorPlayers.length / 2) * 2, // Spread players around sector
@@ -246,15 +248,15 @@ function GalaxyScene({ onSectorSelect }: { onSectorSelect?: (sector: Sector) => 
       {/* Selected sector info */}
       {selectedSector && lodLevel.showLabels && (
         <Html
-          position={sectorPositions.get(selectedSector.id)?.toArray() || [0, 0, 0]}
+          position={sectorPositions.get(selectedSector.sector_id)?.toArray() || [0, 0, 0]}
           center
           className="sector-info-popup"
         >
           <div className="sector-info-card">
             <h3>{selectedSector.name}</h3>
             <p>Type: {selectedSector.type}</p>
-            <p>Players: {selectedSector.id === currentSector?.id ? sectorPlayers.length : 0}</p>
-            <p>Available: {selectedSector.id === currentSector?.id ? 'Current' : 'Connected'}</p>
+            <p>Players: {selectedSector.sector_id === currentSector?.sector_id ? sectorPlayers.length : 0}</p>
+            <p>Available: {selectedSector.sector_id === currentSector?.sector_id ? 'Current' : 'Connected'}</p>
           </div>
         </Html>
       )}

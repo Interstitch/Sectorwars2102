@@ -1,15 +1,14 @@
 import { useRef, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Text, Sphere, Box, Cylinder } from '@react-three/drei';
-import { Vector3, Color } from 'three';
-import { useSpring, a } from 'react-spring';
+import { Color } from 'three';
 import * as THREE from 'three';
 
 import { Sector } from '../../contexts/GameContext';
 
 interface SectorNode3DProps {
   sector: Sector;
-  position: Vector3;
+  position: THREE.Vector3;
   isSelected: boolean;
   isCurrent: boolean;
   onClick: (sector: Sector) => void;
@@ -20,9 +19,6 @@ interface SectorNode3DProps {
   };
   playerCount: number;
 }
-
-// Animated Three.js components
-const AnimatedGroup = a.group;
 
 export default function SectorNode3D({
   sector,
@@ -83,7 +79,7 @@ export default function SectorNode3D({
         glow: true
       }
     };
-    
+
     return configs[sector.type as keyof typeof configs] || configs.normal;
   }, [sector.type]);
 
@@ -95,26 +91,38 @@ export default function SectorNode3D({
     return 1.0;
   }, [playerCount]);
 
-  // Animation springs
-  const { scale, opacity, rotationY } = useSpring({
-    scale: isSelected ? 1.3 : isCurrent ? 1.1 : hovered ? 1.05 : 1.0,
-    opacity: lodLevel.detail === 'low' ? 0.7 : 1.0,
-    rotationY: isCurrent ? Math.PI * 2 : 0,
-    config: { mass: 1, tension: 280, friction: 60 }
-  });
+  // Target values for smooth animation (lerped in useFrame)
+  const targetScale = isSelected ? 1.3 : isCurrent ? 1.1 : hovered ? 1.05 : 1.0;
+  const targetOpacity = lodLevel.detail === 'low' ? 0.7 : 1.0;
 
-  // Continuous rotation for active sectors
+  // Continuous animation via useFrame (replaces react-spring)
   useFrame((state) => {
+    // Smooth scale animation
+    if (groupRef.current) {
+      const currentScale = groupRef.current.scale.x;
+      const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.1);
+      groupRef.current.scale.setScalar(newScale);
+    }
+
+    // Continuous rotation for active sectors
     if (meshRef.current && (isCurrent || playerCount > 0)) {
       meshRef.current.rotation.x += 0.01;
       meshRef.current.rotation.z += 0.005;
     }
-    
+
     // Glow effect for special sector types
     if (meshRef.current && sectorConfig.glow && lodLevel.showEffects) {
       const time = state.clock.getElapsedTime();
       const intensity = 0.5 + Math.sin(time * 2) * 0.3;
       (meshRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity = intensity;
+    }
+
+    // Update opacity on material
+    if (meshRef.current) {
+      const mat = meshRef.current.material as THREE.MeshStandardMaterial;
+      if (mat && mat.opacity !== undefined) {
+        mat.opacity = THREE.MathUtils.lerp(mat.opacity, targetOpacity, 0.1);
+      }
     }
   });
 
@@ -139,7 +147,7 @@ export default function SectorNode3D({
   // Color calculation based on state and activity
   const finalColor = useMemo(() => {
     const baseColor = new Color(sectorConfig.color);
-    
+
     if (isCurrent) {
       return baseColor.clone().lerp(new Color('#00ff00'), 0.3);
     } else if (isSelected) {
@@ -147,7 +155,7 @@ export default function SectorNode3D({
     } else if (hovered) {
       return baseColor.clone().lerp(new Color('#ffffff'), 0.2);
     }
-    
+
     // Adjust based on activity
     return baseColor.clone().multiplyScalar(0.5 + activityIntensity * 0.5);
   }, [sectorConfig.color, isCurrent, isSelected, hovered, activityIntensity]);
@@ -160,16 +168,16 @@ export default function SectorNode3D({
   // Geometry based on sector type and LOD
   const renderGeometry = () => {
     const size = sectorConfig.scale * (lodLevel.detail === 'low' ? 0.5 : 1.0);
-    
+
     const material = (
-      <a.meshStandardMaterial
+      <meshStandardMaterial
         color={finalColor}
         emissive={emissiveColor}
         emissiveIntensity={sectorConfig.glow ? 0.3 : 0.1}
         metalness={0.3}
         roughness={0.7}
         transparent={true}
-        opacity={opacity}
+        opacity={targetOpacity}
       />
     );
 
@@ -198,7 +206,7 @@ export default function SectorNode3D({
   // Player count indicator
   const renderPlayerIndicator = () => {
     if (playerCount === 0 || !lodLevel.showEffects) return null;
-    
+
     return (
       <group position={[0, sectorConfig.scale + 1, 0]}>
         <Sphere args={[0.2, 8, 6]}>
@@ -222,7 +230,7 @@ export default function SectorNode3D({
   // Sector label
   const renderLabel = () => {
     if (!lodLevel.showLabels || lodLevel.detail === 'low') return null;
-    
+
     return (
       <Text
         position={[0, -sectorConfig.scale - 1, 0]}
@@ -241,30 +249,27 @@ export default function SectorNode3D({
   // Connection indicators (special features)
   const renderFeatureIndicators = () => {
     if (!lodLevel.showEffects || lodLevel.detail === 'low') return null;
-    
+
     const indicators = [];
-    let offset = 0;
-    
+
     // Show special features if any
     if (sector.special_features && sector.special_features.length > 0) {
       indicators.push(
-        <group key="features" position={[sectorConfig.scale + 0.5 + offset, 0, 0]}>
+        <group key="features" position={[sectorConfig.scale + 0.5, 0, 0]}>
           <Box args={[0.2, 0.2, 0.2]}>
             <meshBasicMaterial color="#ffaa00" />
           </Box>
         </group>
       );
     }
-    
+
     return indicators;
   };
 
   return (
-    <AnimatedGroup
+    <group
       ref={groupRef}
       position={position.toArray()}
-      scale={scale}
-      rotation-y={rotationY}
       onClick={handleClick}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
@@ -273,28 +278,28 @@ export default function SectorNode3D({
       <mesh ref={meshRef}>
         {renderGeometry()}
       </mesh>
-      
+
       {/* Player count indicator */}
       {renderPlayerIndicator()}
-      
+
       {/* Sector label */}
       {renderLabel()}
-      
+
       {/* Feature indicators */}
       {renderFeatureIndicators()}
-      
+
       {/* Selection ring */}
       {(isSelected || isCurrent) && lodLevel.showEffects && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[sectorConfig.scale + 0.5, sectorConfig.scale + 0.7, 32]} />
-          <meshBasicMaterial 
-            color={isCurrent ? "#00ff00" : "#ffff00"} 
-            transparent 
+          <meshBasicMaterial
+            color={isCurrent ? "#00ff00" : "#ffff00"}
+            transparent
             opacity={0.6}
             side={THREE.DoubleSide}
           />
         </mesh>
       )}
-    </AnimatedGroup>
+    </group>
   );
 }

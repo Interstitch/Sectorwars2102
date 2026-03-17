@@ -81,8 +81,9 @@ interface Treaty {
 }
 
 const RegionalGovernorDashboard: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [region, setRegion] = useState<Region | null>(null);
+  const [allRegions, setAllRegions] = useState<Region[]>([]);
   const [stats, setStats] = useState<RegionalStats | null>(null);
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [elections, setElections] = useState<Election[]>([]);
@@ -90,6 +91,7 @@ const RegionalGovernorDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'governance' | 'economy' | 'policies' | 'elections' | 'diplomacy' | 'culture'>('overview');
+  const isAdmin = user?.is_admin || false;
 
   // Policy creation state
   const [showPolicyForm, setShowPolicyForm] = useState(false);
@@ -99,6 +101,16 @@ const RegionalGovernorDashboard: React.FC = () => {
     description: '',
     proposed_changes: {}
   });
+
+  // Cultural configuration state
+  const [culturalConfig, setCulturalConfig] = useState({
+    theme: 'default',
+    motto: '',
+    traditions: '',
+    language: 'universal'
+  });
+  const [showDiplomacyModal, setShowDiplomacyModal] = useState(false);
+  const [diplomacyAction, setDiplomacyAction] = useState<'trade' | 'defense' | 'cultural' | 'message'>('trade');
 
   // Economic configuration state
   const [economicConfig, setEconomicConfig] = useState({
@@ -140,6 +152,7 @@ const RegionalGovernorDashboard: React.FC = () => {
 
   const loadRegionInfo = async () => {
     try {
+      // First try to load the user's own region
       const response = await fetch('/api/v1/regions/my-region', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -155,9 +168,52 @@ const RegionalGovernorDashboard: React.FC = () => {
         setGovernanceConfig({
           governance_type: data.governance_type,
           voting_threshold: data.voting_threshold,
-          election_frequency_days: data.election_frequency_days,
+          election_frequency_days: data.election_frequency_days || 90,
           constitutional_text: data.constitutional_text || ''
         });
+        return;
+      }
+
+      // If the user doesn't own a region but is admin, fetch all regions
+      if (isAdmin) {
+        const adminResponse = await fetch('/api/v1/admin/regions', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (adminResponse.ok) {
+          const adminData = await adminResponse.json();
+          const regions = adminData.regions || [];
+          setAllRegions(regions);
+          if (regions.length > 0) {
+            // Use the first region as default view
+            const firstRegion = regions[0];
+            setRegion({
+              ...firstRegion,
+              owner_id: firstRegion.owner_id || '',
+              subscription_tier: firstRegion.subscription_tier || 'free',
+              voting_threshold: firstRegion.voting_threshold || 0.51,
+              economic_specialization: firstRegion.economic_specialization || '',
+              active_players_30d: firstRegion.active_players_30d || 0,
+              total_trade_volume: firstRegion.total_trade_volume || 0,
+              starting_ship: firstRegion.starting_ship || 'basic',
+              constitutional_text: firstRegion.constitutional_text || '',
+              language_pack: firstRegion.language_pack || {},
+              aesthetic_theme: firstRegion.aesthetic_theme || {},
+              trade_bonuses: firstRegion.trade_bonuses || {},
+            });
+            setEconomicConfig({
+              tax_rate: firstRegion.tax_rate || 0.10,
+              starting_credits: firstRegion.starting_credits || 1000,
+              trade_bonuses: firstRegion.trade_bonuses || {},
+              economic_specialization: firstRegion.economic_specialization || ''
+            });
+            setGovernanceConfig({
+              governance_type: firstRegion.governance_type || 'autocracy',
+              voting_threshold: firstRegion.voting_threshold || 0.51,
+              election_frequency_days: firstRegion.election_frequency_days || 90,
+              constitutional_text: firstRegion.constitutional_text || ''
+            });
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to load region info:', err);
@@ -338,6 +394,83 @@ const RegionalGovernorDashboard: React.FC = () => {
     }
   };
 
+  const openDiplomacyModal = (action: 'trade' | 'defense' | 'cultural' | 'message') => {
+    setDiplomacyAction(action);
+    setShowDiplomacyModal(true);
+  };
+
+  const handleDiplomacySubmit = async (targetRegionId: string, message: string) => {
+    if (!region) return;
+    setLoading(true);
+    try {
+      const actionMap: Record<string, string> = {
+        'trade': 'trade_agreement',
+        'defense': 'defense_pact',
+        'cultural': 'cultural_exchange',
+        'message': 'diplomatic_message'
+      };
+      const response = await fetch(`/api/v1/regions/${region.id}/diplomacy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action_type: actionMap[diplomacyAction],
+          target_region_id: targetRegionId,
+          message: message
+        })
+      });
+
+      if (response.ok) {
+        alert(`Diplomatic action sent successfully!`);
+        setShowDiplomacyModal(false);
+        await loadTreaties();
+      } else {
+        const errData = await response.json().catch(() => ({ detail: 'Request failed' }));
+        setError(errData.detail || 'Failed to send diplomatic action');
+      }
+    } catch (err) {
+      setError('Network error occurred while sending diplomatic action');
+      console.error('Diplomacy error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateCulturalConfig = async () => {
+    if (!region) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/v1/regions/${region.id}/culture`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          aesthetic_theme: { ...region.aesthetic_theme, variant: culturalConfig.theme },
+          language_pack: { ...region.language_pack, variant: culturalConfig.language },
+          motto: culturalConfig.motto,
+          traditions: culturalConfig.traditions
+        })
+      });
+
+      if (response.ok) {
+        alert('Cultural settings updated successfully');
+        await loadRegionInfo();
+      } else {
+        const errData = await response.json().catch(() => ({ detail: 'Request failed' }));
+        setError(errData.detail || 'Failed to update cultural settings');
+      }
+    } catch (err) {
+      setError('Network error occurred');
+      console.error('Culture update error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatNumber = (num: number) => {
     return num?.toLocaleString() || '0';
   };
@@ -382,6 +515,22 @@ const RegionalGovernorDashboard: React.FC = () => {
     return labels[type] || type;
   };
 
+  const handleRegionSelect = (selectedRegion: Region) => {
+    setRegion(selectedRegion);
+    setEconomicConfig({
+      tax_rate: selectedRegion.tax_rate || 0.10,
+      starting_credits: selectedRegion.starting_credits || 1000,
+      trade_bonuses: selectedRegion.trade_bonuses || {},
+      economic_specialization: selectedRegion.economic_specialization || ''
+    });
+    setGovernanceConfig({
+      governance_type: selectedRegion.governance_type || 'autocracy',
+      voting_threshold: selectedRegion.voting_threshold || 0.51,
+      election_frequency_days: 90,
+      constitutional_text: selectedRegion.constitutional_text || ''
+    });
+  };
+
   if (!region) {
     return (
       <div className="regional-governor-dashboard">
@@ -399,6 +548,23 @@ const RegionalGovernorDashboard: React.FC = () => {
         <div className="region-info">
           <h2>{region.display_name}</h2>
           <p>Governance Type: {getGovernanceTypeLabel(region.governance_type)} | Status: {region.status}</p>
+          {isAdmin && allRegions.length > 1 && (
+            <div style={{ marginTop: '8px' }}>
+              <label style={{ marginRight: '8px', color: '#9ca3af' }}>View Region:</label>
+              <select
+                value={region.id}
+                onChange={(e) => {
+                  const selected = allRegions.find(r => r.id === e.target.value);
+                  if (selected) handleRegionSelect(selected);
+                }}
+                style={{ padding: '4px 8px', borderRadius: '4px', background: '#1f2937', color: '#e5e7eb', border: '1px solid #374151' }}
+              >
+                {allRegions.map(r => (
+                  <option key={r.id} value={r.id}>{r.display_name || r.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
@@ -876,23 +1042,38 @@ const RegionalGovernorDashboard: React.FC = () => {
             <div className="diplomatic-actions">
               <h4>Diplomatic Actions</h4>
               <div className="action-buttons">
-                <button className="action-button primary">Propose Trade Agreement</button>
-                <button className="action-button secondary">Negotiate Defense Pact</button>
-                <button className="action-button secondary">Cultural Exchange</button>
-                <button className="action-button neutral">Send Diplomatic Message</button>
+                <button className="action-button primary" onClick={() => openDiplomacyModal('trade')}>Propose Trade Agreement</button>
+                <button className="action-button secondary" onClick={() => openDiplomacyModal('defense')}>Negotiate Defense Pact</button>
+                <button className="action-button secondary" onClick={() => openDiplomacyModal('cultural')}>Cultural Exchange</button>
+                <button className="action-button neutral" onClick={() => openDiplomacyModal('message')}>Send Diplomatic Message</button>
               </div>
             </div>
+
+            {/* Diplomacy Modal */}
+            {showDiplomacyModal && (
+              <DiplomacyModal
+                actionType={diplomacyAction}
+                allRegions={allRegions}
+                currentRegionId={region.id}
+                onClose={() => setShowDiplomacyModal(false)}
+                onSubmit={handleDiplomacySubmit}
+                loading={loading}
+              />
+            )}
           </div>
         )}
 
         {activeTab === 'culture' && (
           <div className="culture-tab">
             <h3>Cultural Identity</h3>
-            
+
             <div className="culture-config">
               <div className="form-group">
                 <label>Regional Theme</label>
-                <select>
+                <select
+                  value={culturalConfig.theme}
+                  onChange={(e) => setCulturalConfig(prev => ({ ...prev, theme: e.target.value }))}
+                >
                   <option value="default">Default</option>
                   <option value="imperial">Imperial</option>
                   <option value="federation">Federation</option>
@@ -910,6 +1091,8 @@ const RegionalGovernorDashboard: React.FC = () => {
                   type="text"
                   placeholder="Enter your region's motto..."
                   maxLength={200}
+                  value={culturalConfig.motto}
+                  onChange={(e) => setCulturalConfig(prev => ({ ...prev, motto: e.target.value }))}
                 />
                 <small>Displayed in region information</small>
               </div>
@@ -919,13 +1102,18 @@ const RegionalGovernorDashboard: React.FC = () => {
                 <textarea
                   placeholder="Describe the cultural traditions and customs of your region..."
                   rows={4}
+                  value={culturalConfig.traditions}
+                  onChange={(e) => setCulturalConfig(prev => ({ ...prev, traditions: e.target.value }))}
                 />
                 <small>Traditions that define your region's character</small>
               </div>
 
               <div className="form-group">
                 <label>Language Settings</label>
-                <select>
+                <select
+                  value={culturalConfig.language}
+                  onChange={(e) => setCulturalConfig(prev => ({ ...prev, language: e.target.value }))}
+                >
                   <option value="universal">Universal (English)</option>
                   <option value="imperial">Imperial Latin</option>
                   <option value="techspeak">Tech Speak</option>
@@ -935,10 +1123,118 @@ const RegionalGovernorDashboard: React.FC = () => {
                 <small>Language variant used in your region</small>
               </div>
 
-              <button className="action-button primary">Update Cultural Settings</button>
+              <button
+                className="action-button primary"
+                onClick={updateCulturalConfig}
+                disabled={loading}
+              >
+                {loading ? 'Updating...' : 'Update Cultural Settings'}
+              </button>
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+// Diplomacy Modal Component
+interface DiplomacyModalProps {
+  actionType: 'trade' | 'defense' | 'cultural' | 'message';
+  allRegions: Region[];
+  currentRegionId: string;
+  onClose: () => void;
+  onSubmit: (targetRegionId: string, message: string) => void;
+  loading: boolean;
+}
+
+const DiplomacyModal: React.FC<DiplomacyModalProps> = ({ actionType, allRegions, currentRegionId, onClose, onSubmit, loading }) => {
+  const [targetRegionId, setTargetRegionId] = useState('');
+  const [message, setMessage] = useState('');
+
+  const actionLabels: Record<string, { title: string; placeholder: string }> = {
+    trade: { title: 'Propose Trade Agreement', placeholder: 'Describe the trade terms you would like to propose...' },
+    defense: { title: 'Negotiate Defense Pact', placeholder: 'Outline the mutual defense terms...' },
+    cultural: { title: 'Propose Cultural Exchange', placeholder: 'Describe the cultural exchange program...' },
+    message: { title: 'Send Diplomatic Message', placeholder: 'Enter your diplomatic message...' }
+  };
+
+  const label = actionLabels[actionType];
+  const otherRegions = allRegions.filter(r => r.id !== currentRegionId);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetRegionId) {
+      alert('Please select a target region.');
+      return;
+    }
+    if (!message.trim()) {
+      alert('Please enter a message.');
+      return;
+    }
+    onSubmit(targetRegionId, message);
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+    }} onClick={onClose}>
+      <div style={{
+        backgroundColor: '#1f2937', borderRadius: '12px', padding: '24px', maxWidth: '500px', width: '90%',
+        border: '1px solid #374151', boxShadow: '0 10px 40px rgba(0,0,0,0.4)'
+      }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h3 style={{ margin: 0, color: '#e5e7eb' }}>{label.title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', cursor: 'pointer' }}>x</button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', color: '#9ca3af', fontSize: '0.9rem' }}>Target Region</label>
+            {otherRegions.length > 0 ? (
+              <select
+                value={targetRegionId}
+                onChange={(e) => setTargetRegionId(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', background: '#111827', color: '#e5e7eb', border: '1px solid #374151' }}
+              >
+                <option value="">Select a region...</option>
+                {otherRegions.map(r => (
+                  <option key={r.id} value={r.id}>{r.display_name || r.name}</option>
+                ))}
+              </select>
+            ) : (
+              <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>No other regions available. Enter a region ID manually:</p>
+            )}
+            {otherRegions.length === 0 && (
+              <input
+                type="text"
+                value={targetRegionId}
+                onChange={(e) => setTargetRegionId(e.target.value)}
+                placeholder="Enter target region ID..."
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', background: '#111827', color: '#e5e7eb', border: '1px solid #374151', marginTop: '8px' }}
+              />
+            )}
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', color: '#9ca3af', fontSize: '0.9rem' }}>Message</label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={label.placeholder}
+              rows={4}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', background: '#111827', color: '#e5e7eb', border: '1px solid #374151', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <button type="button" onClick={onClose} className="action-button secondary">Cancel</button>
+            <button type="submit" className="action-button primary" disabled={loading}>
+              {loading ? 'Sending...' : 'Send'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

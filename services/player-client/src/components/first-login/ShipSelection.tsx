@@ -50,14 +50,13 @@ const ShipSelection: React.FC = () => {
     }
   };
 
-  // Development logging
-  console.log('[ShipSelection] Rendering with:', {
-    availableShips,
-    availableShipsLength: availableShips?.length,
-    currentPrompt: currentPrompt?.substring(0, 100),
-    sessionLoaded,
-    session: session?.session_id
-  });
+  const handleShipClick = async (ship: string) => {
+    setSelectedShip(ship);
+    // Auto-submit if the player has already typed a response
+    if (response.trim() && !isLoading) {
+      await claimShip(ship, response);
+    }
+  };
 
   return (
     <div className="ship-selection-content">
@@ -90,7 +89,7 @@ Guard: "Hold it right there! This area is restricted to registered pilots only. 
           <div 
             key={ship}
             className={`ship-option ${selectedShip === ship ? 'selected' : ''}`}
-            onClick={() => setSelectedShip(ship)}
+            onClick={() => handleShipClick(ship)}
           >
             <div className={`ship-image ${ship.toLowerCase().replace(/_/g, '-')}`}>
               <div className="fallback">{SHIP_NAMES[ship]}</div>
@@ -119,6 +118,14 @@ Guard: "Hold it right there! This area is restricted to registered pilots only. 
           placeholder="Type your response here..."
           value={response}
           onChange={(e) => setResponse(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              if (selectedShip && response.trim() && !isLoading) {
+                handleSubmit(e as unknown as React.FormEvent);
+              }
+            }
+          }}
           disabled={isLoading}
         />
         

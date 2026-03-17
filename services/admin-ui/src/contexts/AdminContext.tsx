@@ -345,12 +345,9 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
   
-  // Load clusters for a region
+  // Load clusters for a region (non-blocking: does not set global error state)
   const loadClusters = async (regionId?: string) => {
     if (!user || !user.is_admin) return;
-
-    setIsLoading(true);
-    setError(null);
 
     try {
       let url = '/admin/clusters';
@@ -364,9 +361,8 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setClusters(response.data.clusters || []);
     } catch (error) {
       console.error('Error loading clusters:', error);
-      setError('Failed to load clusters');
-    } finally {
-      setIsLoading(false);
+      // Clusters are optional/non-critical - don't set global error state
+      setClusters([]);
     }
   };
   

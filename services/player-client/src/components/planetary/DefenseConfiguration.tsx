@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useGame } from '../../contexts/GameContext';
 import { gameAPI } from '../../services/api';
 import type { Planet, PlanetDefenses } from '../../types/planetary';
 import './defense-configuration.css';
@@ -49,11 +50,12 @@ const DEFENSE_TYPES: DefenseType[] = [
   }
 ];
 
-export const DefenseConfiguration: React.FC<DefenseConfigurationProps> = ({ 
-  planet, 
+export const DefenseConfiguration: React.FC<DefenseConfigurationProps> = ({
+  planet,
   onUpdate,
-  onClose 
+  onClose
 }) => {
+  const { playerState } = useGame();
   const [defenses, setDefenses] = useState<PlanetDefenses>(planet.defenses);
   const [tempDefenses, setTempDefenses] = useState<PlanetDefenses>(planet.defenses);
   const [saving, setSaving] = useState(false);
@@ -90,8 +92,8 @@ export const DefenseConfiguration: React.FC<DefenseConfigurationProps> = ({
 
   const totalCost = calculateTotalCost();
 
-  // Check if player can afford (mock)
-  const playerCredits = 100000; // Mock value
+  // Check if player can afford using real credits from game context
+  const playerCredits = playerState?.credits ?? 0;
   const canAfford = playerCredits >= totalCost;
 
   const handleSliderChange = (type: keyof PlanetDefenses, value: number) => {

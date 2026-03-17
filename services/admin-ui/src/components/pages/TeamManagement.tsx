@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../ui/PageHeader';
-import { TeamStrengthChart } from '../charts/TeamStrengthChart';
-import { AllianceNetwork } from '../teams/AllianceNetwork';
-import { TeamAdminPanel } from '../teams/TeamAdminPanel';
 import { api } from '../../utils/auth';
 import './team-management.css';
 import './team-management-override.css';
@@ -291,8 +288,32 @@ export const TeamManagement: React.FC = () => {
                       </div>
 
                       <div className="team-strength-chart">
-                        {/* <TeamStrengthChart teams={teams} selectedTeamId={selectedTeam.id} /> */}
-                        <p>Team analytics chart placeholder</p>
+                        <h3>Team Strength Comparison</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                          {teams.slice(0, 10).map(team => {
+                            const maxRating = Math.max(...teams.map(t => t.totalCombatRating), 1);
+                            const widthPct = (team.totalCombatRating / maxRating) * 100;
+                            return (
+                              <div key={team.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ minWidth: '100px', fontSize: '0.85rem', color: team.id === selectedTeam.id ? '#60a5fa' : '#9ca3af' }}>
+                                  [{team.tag}] {team.name}
+                                </span>
+                                <div style={{ flex: 1, height: '16px', backgroundColor: '#1f2937', borderRadius: '4px', overflow: 'hidden' }}>
+                                  <div style={{
+                                    width: `${widthPct}%`,
+                                    height: '100%',
+                                    backgroundColor: team.id === selectedTeam.id ? '#3b82f6' : '#4b5563',
+                                    borderRadius: '4px',
+                                    transition: 'width 0.3s'
+                                  }} />
+                                </div>
+                                <span style={{ minWidth: '60px', textAlign: 'right', fontSize: '0.8rem', color: '#9ca3af' }}>
+                                  {team.totalCombatRating.toLocaleString()}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </>
                   )}
@@ -302,21 +323,139 @@ export const TeamManagement: React.FC = () => {
 
             {activeTab === 'alliances' && (
               <div className="alliance-section">
-                {/* <AllianceNetwork alliances={alliances} teams={teams} /> */}
-                <p>Alliance network visualization placeholder - {alliances.length} alliances found</p>
+                <h3>Alliance Network ({alliances.length} alliances)</h3>
+                {alliances.length === 0 ? (
+                  <div className="empty-state">
+                    <h3>No Alliances Found</h3>
+                    <p>There are currently no alliances between teams.</p>
+                    <p>Alliances will appear here once teams form diplomatic agreements.</p>
+                  </div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #374151', color: '#9ca3af' }}>Alliance Name</th>
+                        <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #374151', color: '#9ca3af' }}>Type</th>
+                        <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #374151', color: '#9ca3af' }}>Member Teams</th>
+                        <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #374151', color: '#9ca3af' }}>Founded</th>
+                        <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid #374151', color: '#9ca3af' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {alliances.map(alliance => (
+                        <tr key={alliance.id}>
+                          <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}><strong>{alliance.name}</strong></td>
+                          <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>
+                            <span style={{
+                              padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem',
+                              backgroundColor: alliance.type === 'mutual-defense' ? 'rgba(239, 68, 68, 0.2)' :
+                                             alliance.type === 'trade' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                              color: alliance.type === 'mutual-defense' ? '#ef4444' :
+                                     alliance.type === 'trade' ? '#22c55e' : '#3b82f6'
+                            }}>
+                              {alliance.type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>
+                            {alliance.teams.map(teamId => {
+                              const team = teams.find(t => t.id === teamId);
+                              return team ? team.name : teamId;
+                            }).join(', ')}
+                          </td>
+                          <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937', color: '#9ca3af' }}>
+                            {new Date(alliance.founded).toLocaleDateString()}
+                          </td>
+                          <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>
+                            <span style={{
+                              padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem',
+                              backgroundColor: alliance.active ? 'rgba(34, 197, 94, 0.2)' : 'rgba(156, 163, 175, 0.2)',
+                              color: alliance.active ? '#22c55e' : '#9ca3af'
+                            }}>
+                              {alliance.active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
 
             {activeTab === 'admin' && selectedTeam && (
               <div className="admin-section">
-                {/* <TeamAdminPanel
-                  team={selectedTeam}
-                  onAction={handleTeamAction}
-                /> */}
-                <h3>Team Admin Actions</h3>
-                <p>Admin panel for team: {selectedTeam.name}</p>
-                <p>Team ID: {selectedTeam.id}</p>
-                <p>Leader: {selectedTeam.leaderName}</p>
+                <h3>Admin Actions: {selectedTeam.name} [{selectedTeam.tag}]</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
+                  <div style={{ padding: '16px', background: '#1f2937', borderRadius: '8px', border: '1px solid #374151' }}>
+                    <h4 style={{ margin: '0 0 8px 0', color: '#e5e7eb' }}>Team Details</h4>
+                    <div style={{ fontSize: '0.9rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div>Team ID: <span style={{ color: '#e5e7eb' }}>{selectedTeam.id}</span></div>
+                      <div>Leader: <span style={{ color: '#e5e7eb' }}>{selectedTeam.leaderName}</span></div>
+                      <div>Members: <span style={{ color: '#e5e7eb' }}>{selectedTeam.memberCount}/{selectedTeam.maxMembers}</span></div>
+                      <div>Reputation: <span style={{ color: '#e5e7eb' }}>{selectedTeam.reputation}</span></div>
+                      <div>Status: <span style={{ color: selectedTeam.isActive ? '#22c55e' : '#ef4444' }}>{selectedTeam.isActive ? 'Active' : 'Inactive'}</span></div>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '16px', background: '#1f2937', borderRadius: '8px', border: '1px solid #374151' }}>
+                    <h4 style={{ margin: '0 0 12px 0', color: '#e5e7eb' }}>Actions</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <button
+                        style={{ padding: '8px 16px', background: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', borderRadius: '6px', cursor: 'pointer', textAlign: 'left' }}
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to ${selectedTeam.isActive ? 'deactivate' : 'activate'} team "${selectedTeam.name}"?`)) {
+                            handleTeamAction(selectedTeam.id, selectedTeam.isActive ? 'deactivate' : 'activate');
+                          }
+                        }}
+                      >
+                        {selectedTeam.isActive ? 'Deactivate Team' : 'Activate Team'}
+                      </button>
+                      <button
+                        style={{ padding: '8px 16px', background: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', borderRadius: '6px', cursor: 'pointer', textAlign: 'left' }}
+                        onClick={() => {
+                          const newLeader = prompt('Enter the new leader player ID:');
+                          if (newLeader) {
+                            if (confirm(`Transfer leadership of "${selectedTeam.name}" to player ${newLeader}?`)) {
+                              handleTeamAction(selectedTeam.id, `change_leader:${newLeader}`);
+                            }
+                          }
+                        }}
+                      >
+                        Change Team Leader
+                      </button>
+                      <button
+                        style={{ padding: '8px 16px', background: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', borderRadius: '6px', cursor: 'pointer', textAlign: 'left' }}
+                        onClick={() => {
+                          const newRep = prompt('Enter new reputation value:', String(selectedTeam.reputation));
+                          if (newRep !== null) {
+                            const repNum = parseInt(newRep);
+                            if (!isNaN(repNum)) {
+                              if (confirm(`Set reputation for "${selectedTeam.name}" to ${repNum}?`)) {
+                                handleTeamAction(selectedTeam.id, `set_reputation:${repNum}`);
+                              }
+                            } else {
+                              alert('Please enter a valid number.');
+                            }
+                          }
+                        }}
+                      >
+                        Modify Reputation
+                      </button>
+                      <button
+                        style={{ padding: '8px 16px', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', cursor: 'pointer', textAlign: 'left' }}
+                        onClick={() => {
+                          if (confirm(`WARNING: Are you sure you want to dissolve team "${selectedTeam.name}"? This action is irreversible!`)) {
+                            if (confirm(`FINAL CONFIRMATION: Dissolving "${selectedTeam.name}" will remove all members. Proceed?`)) {
+                              handleTeamAction(selectedTeam.id, 'dissolve');
+                            }
+                          }
+                        }}
+                      >
+                        Dissolve Team
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </>

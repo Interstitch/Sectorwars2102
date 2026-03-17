@@ -21,6 +21,8 @@ interface TradeCalculation {
   fitsInCargo: boolean;
 }
 
+const formatName = (name: string) => name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
 const TradingInterface: React.FC = () => {
   const {
     playerState,
@@ -29,6 +31,7 @@ const TradingInterface: React.FC = () => {
     getMarketInfo,
     buyResource,
     sellResource,
+    dockAtStation,
     stationsInSector,
     isLoading,
     error
@@ -46,6 +49,7 @@ const TradingInterface: React.FC = () => {
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
   const [tradeCalculation, setTradeCalculation] = useState<TradeCalculation | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [dockingStationId, setDockingStationId] = useState<string | null>(null);
 
   // Track which port we've already fetched market info for
   const lastFetchedPortId = useRef<string | null>(null);
@@ -152,6 +156,28 @@ const TradingInterface: React.FC = () => {
     );
   }
 
+  const handleDock = async (stationId: string) => {
+    setDockingStationId(stationId);
+    try {
+      await dockAtStation(stationId);
+      // After successful dock, select this port for trading
+      setSelectedPort(stationId);
+      addNotification({
+        title: 'Docked',
+        content: 'Successfully docked at station.',
+        level: 'success'
+      });
+    } catch (err: any) {
+      addNotification({
+        title: 'Docking Failed',
+        content: err.response?.data?.detail || err.response?.data?.message || 'Failed to dock at station.',
+        level: 'error'
+      });
+    } finally {
+      setDockingStationId(null);
+    }
+  };
+
   const handlePortChange = (stationId: string) => {
     setSelectedPort(stationId);
     setSelectedResource('');
@@ -161,6 +187,8 @@ const TradingInterface: React.FC = () => {
   const handleResourceChange = (resourceType: string) => {
     setSelectedResource(resourceType);
     setTradeQuantity(1);
+    // Directly open the trade modal so the player can immediately buy/sell
+    setShowConfirmDialog(true);
   };
 
   const handleTradeModeChange = (mode: 'buy' | 'sell') => {
@@ -216,9 +244,12 @@ const TradingInterface: React.FC = () => {
       }
 
       // Show success notification
+      const defaultMsg = tradeMode === 'buy'
+        ? `Bought ${tradeQuantity} ${selectedResource}`
+        : `Sold ${tradeQuantity} ${selectedResource}`;
       addNotification({
         title: 'Trade Successful',
-        content: result.message,
+        content: result?.message || defaultMsg,
         level: 'success'
       });
 
@@ -229,7 +260,7 @@ const TradingInterface: React.FC = () => {
     } catch (error: any) {
       addNotification({
         title: 'Trade Failed',
-        content: error.response?.data?.message || 'Failed to execute trade',
+        content: error.response?.data?.detail || error.response?.data?.message || 'Failed to execute trade',
         level: 'error'
       });
     }
@@ -270,8 +301,17 @@ const TradingInterface: React.FC = () => {
               <ul>
                 {portsInSector.map(port => (
                   <li key={port.id} className="port-item">
-                    <span className="port-name">{port.name}</span>
-                    <span className="port-type">{port.type}</span>
+                    <div className="port-info">
+                      <span className="port-name">{port.name}</span>
+                      <span className="port-type">{port.type}</span>
+                    </div>
+                    <button
+                      className="dock-button"
+                      onClick={() => handleDock(port.id)}
+                      disabled={dockingStationId !== null}
+                    >
+                      {dockingStationId === port.id ? 'Docking...' : 'Dock'}
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -357,9 +397,17 @@ const TradingInterface: React.FC = () => {
                     key={resourceType}
                     className={`resource-card ${!canTrade ? 'disabled' : ''} ${selectedResource === resourceType ? 'selected' : ''}`}
                     onClick={() => canTrade && handleResourceChange(resourceType)}
+                    role="button"
+                    tabIndex={canTrade ? 0 : -1}
+                    onKeyDown={(e) => {
+                      if (canTrade && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        handleResourceChange(resourceType);
+                      }
+                    }}
                   >
                     <div className="resource-icon">{getResourceIcon(resourceType)}</div>
-                    <div className="resource-name">{resourceType}</div>
+                    <div className="resource-name">{formatName(resourceType)}</div>
                     <div className="resource-prices">
                       <div className="buy-price">Buy: {formatCredits(resource.buy_price)}</div>
                       <div className="sell-price">Sell: {formatCredits(resource.sell_price)}</div>
@@ -370,6 +418,11 @@ const TradingInterface: React.FC = () => {
                         : `You have: ${playerAmount}`
                       }
                     </div>
+                    {canTrade && (
+                      <div className="resource-trade-hint">
+                        Click to {tradeMode}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -383,7 +436,7 @@ const TradingInterface: React.FC = () => {
             <div className="selected-resource-info">
               <span className="resource-icon-large">{getResourceIcon(selectedResource)}</span>
               <div className="resource-details">
-                <span className="resource-name-large">{selectedResource}</span>
+                <span className="resource-name-large">{formatName(selectedResource)}</span>
                 <span className="resource-price">
                   {tradeMode === 'buy'
                     ? `Buy @ ${formatCredits(marketInfo.resources[selectedResource]?.buy_price || 0)}/unit`
@@ -396,7 +449,7 @@ const TradingInterface: React.FC = () => {
               className="open-trade-modal-button"
               onClick={() => setShowConfirmDialog(true)}
             >
-              {tradeMode === 'buy' ? 'Buy' : 'Sell'} {selectedResource}
+              {tradeMode === 'buy' ? 'Buy' : 'Sell'} {formatName(selectedResource)}
             </button>
           </div>
         )}
@@ -409,7 +462,7 @@ const TradingInterface: React.FC = () => {
             <div className="trade-modal-header">
               <div className="modal-resource-info">
                 <span className="modal-resource-icon">{getResourceIcon(selectedResource)}</span>
-                <h3>{tradeMode === 'buy' ? 'Buy' : 'Sell'} {selectedResource}</h3>
+                <h3>{tradeMode === 'buy' ? 'Buy' : 'Sell'} {formatName(selectedResource)}</h3>
               </div>
               <button className="modal-close" onClick={() => setShowConfirmDialog(false)}>×</button>
             </div>

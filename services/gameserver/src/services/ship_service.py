@@ -76,21 +76,27 @@ class ShipService:
                 "defense_rating": spec.defense_rating
             },
             
+            # Combat turn cost
+            attack_turn_cost=getattr(spec, 'attack_turn_cost', None),
+
             # Genesis and equipment
             genesis_devices=0,
             max_genesis_devices=spec.max_genesis_devices,
             mines=0,
             max_mines=spec.max_drones,  # Using drones as mine capacity for simplicity
-            
+
             # Special flags for Escape Pod
             is_destroyed=False,
             is_flagship=True,  # Initially the flagship
             purchase_value=spec.base_cost,
             current_value=spec.base_cost,
-            
+
             # Initialize upgrades
-            upgrades=[],
-            
+            upgrades={},
+
+            # Initialize equipment slots
+            equipment_slots={},
+
             # Initialize insurance (none by default)
             insurance=None
         )

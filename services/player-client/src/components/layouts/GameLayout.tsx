@@ -23,7 +23,6 @@ const GameLayout: React.FC<GameLayoutProps> = ({ children }) => {
   const hasAttemptedRefresh = React.useRef(false);
   React.useEffect(() => {
     if (user && !playerState && !isLoading && !hasAttemptedRefresh.current) {
-      console.log('GameLayout: No player state detected, refreshing...');
       hasAttemptedRefresh.current = true;
       refreshPlayerState();
     }

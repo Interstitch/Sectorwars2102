@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 import httpx
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
@@ -518,9 +519,9 @@ class PayPalService:
                 logger.error("Missing required PayPal webhook headers")
                 return False
             
-            # In development mode, allow bypass with warning
-            if self.config.DEVELOPMENT_MODE:
-                logger.warning("PayPal webhook signature validation bypassed in development mode")
+            # Allow bypass only with explicit opt-in environment variable
+            if os.environ.get("PAYPAL_SKIP_WEBHOOK_VALIDATION", "").lower() == "true":
+                logger.warning("PayPal webhook signature validation bypassed - PAYPAL_SKIP_WEBHOOK_VALIDATION is set")
                 return True
             
             # For production, implement proper signature validation

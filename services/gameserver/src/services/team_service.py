@@ -4,6 +4,7 @@ Team management service for handling team operations
 
 import uuid
 import secrets
+import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
@@ -14,14 +15,47 @@ from src.models.team_member import TeamMember, TeamRole
 from src.models.player import Player
 from src.models.message import Message
 from src.services.audit_service import AuditService
-from src.services.message_service import MessageService
+
+logger = logging.getLogger(__name__)
 
 
 class TeamService:
     def __init__(self, db: Session):
         self.db = db
         self.audit_service = AuditService(db)
-        self.message_service = MessageService(db)
+
+    def _send_notification(
+        self,
+        sender_id,
+        recipient_id=None,
+        team_id=None,
+        subject=None,
+        content="",
+        priority="normal",
+        **kwargs
+    ):
+        """Send a notification message synchronously via direct DB insert.
+
+        This bypasses MessageService (which is async) so that sync TeamService
+        methods can fire notifications without needing await.
+        Extra kwargs (e.g. message_type) are silently absorbed for compatibility.
+        """
+        from uuid import uuid4
+        try:
+            msg = Message(
+                sender_id=sender_id,
+                recipient_id=recipient_id,
+                team_id=team_id,
+                subject=subject,
+                content=content,
+                message_type=kwargs.get("message_type", "team" if team_id else "player"),
+                priority=priority,
+                thread_id=uuid4(),
+            )
+            self.db.add(msg)
+            # Don't commit here -- let the caller's commit handle it
+        except Exception as e:
+            logger.warning(f"Failed to send team notification: {e}")
     
     def create_team(self, creator_id: uuid.UUID, name: str, description: str = None, tag: str = None,
                    max_members: int = 4, recruitment_status: str = TeamRecruitmentStatus.OPEN.value) -> Team:
@@ -38,7 +72,13 @@ class TeamService:
         existing_team = self.db.query(Team).filter(Team.name == name).first()
         if existing_team:
             raise ValueError("Team name already taken")
-        
+
+        # Charge team creation cost
+        TEAM_CREATION_COST = 10000
+        if creator.credits < TEAM_CREATION_COST:
+            raise ValueError(f"Need {TEAM_CREATION_COST} credits to create a team (have {creator.credits})")
+        creator.credits -= TEAM_CREATION_COST
+
         # Create the team
         team = Team(
             name=name,
@@ -211,7 +251,7 @@ class TeamService:
         
         # Send invitation message
         inviter = self.db.query(Player).filter(Player.id == inviter_id).first()
-        self.message_service.send_message(
+        self._send_notification(
             sender_id=inviter_id,
             recipient_id=target_player.id,
             subject=f"Team Invitation: {team.name}",
@@ -312,7 +352,7 @@ class TeamService:
         player.team_id = team.id
         
         # Send welcome message to team
-        self.message_service.send_message(
+        self._send_notification(
             sender_id=player_id,
             team_id=team.id,
             subject="New Team Member",
@@ -367,7 +407,7 @@ class TeamService:
             player.team_id = None
         
         # Send notification
-        self.message_service.send_message(
+        self._send_notification(
             sender_id=actor_id,
             recipient_id=member_id,
             subject="Removed from Team",
@@ -428,7 +468,7 @@ class TeamService:
                 team.leader_id = new_leader.player_id
                 
                 # Notify new leader
-                self.message_service.send_message(
+                self._send_notification(
                     sender_id=player_id,
                     recipient_id=new_leader.player_id,
                     subject="Team Leadership Transferred",
@@ -448,7 +488,7 @@ class TeamService:
         
         # Notify team
         if team:
-            self.message_service.send_message(
+            self._send_notification(
                 sender_id=player_id,
                 team_id=team.id,
                 subject="Member Left",
@@ -519,7 +559,7 @@ class TeamService:
         
         # Notify member
         player = self.db.query(Player).filter(Player.id == member_id).first()
-        self.message_service.send_message(
+        self._send_notification(
             sender_id=actor_id,
             recipient_id=member_id,
             subject="Role Updated",
@@ -611,7 +651,7 @@ class TeamService:
         new_leader.can_manage_alliances = True
         
         # Send notifications
-        self.message_service.send_message(
+        self._send_notification(
             sender_id=current_leader_id,
             team_id=team_id,
             subject="Leadership Transferred",
@@ -640,17 +680,18 @@ class TeamService:
     def deposit_to_treasury(self, team_id: uuid.UUID, player_id: uuid.UUID,
                            resource_type: str, amount: int) -> Dict[str, Any]:
         """Deposit resources to team treasury"""
-        team = self.get_team(team_id)
+        # Lock team and player rows to prevent race conditions
+        team = self.db.query(Team).filter(Team.id == team_id).with_for_update().first()
         if not team:
             raise ValueError("Team not found")
-        
+
         # Check if player is a member
         member = self._get_team_member(team_id, player_id)
         if not member:
             raise ValueError("Player is not a team member")
-        
-        # Get player
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+
+        # Get player with lock
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             raise ValueError("Player not found")
         
@@ -682,7 +723,7 @@ class TeamService:
         member.contribution_credits[resource_type] += amount
         
         # Send team notification
-        self.message_service.send_message(
+        self._send_notification(
             sender_id=player_id,
             team_id=team_id,
             subject="Treasury Deposit",
@@ -716,17 +757,18 @@ class TeamService:
     def withdraw_from_treasury(self, team_id: uuid.UUID, player_id: uuid.UUID,
                               resource_type: str, amount: int) -> Dict[str, Any]:
         """Withdraw resources from team treasury"""
-        team = self.get_team(team_id)
+        # Lock team and player rows to prevent race conditions
+        team = self.db.query(Team).filter(Team.id == team_id).with_for_update().first()
         if not team:
             raise ValueError("Team not found")
-        
+
         # Check permissions
         member = self._get_team_member(team_id, player_id)
         if not member or not member.can_manage_treasury:
             raise ValueError("Insufficient permissions to manage treasury")
-        
-        # Get player
-        player = self.db.query(Player).filter(Player.id == player_id).first()
+
+        # Get player with lock
+        player = self.db.query(Player).filter(Player.id == player_id).with_for_update().first()
         if not player:
             raise ValueError("Player not found")
         
@@ -749,7 +791,7 @@ class TeamService:
         setattr(player, resource_type, player_resource + amount)
         
         # Send team notification
-        self.message_service.send_message(
+        self._send_notification(
             sender_id=player_id,
             team_id=team_id,
             subject="Treasury Withdrawal",
@@ -825,7 +867,7 @@ class TeamService:
         actor = self.db.query(Player).filter(Player.id == actor_id).first()
         
         # Notify recipient
-        self.message_service.send_message(
+        self._send_notification(
             sender_id=actor_id,
             recipient_id=recipient.id,
             subject="Team Resource Transfer",
@@ -835,7 +877,7 @@ class TeamService:
         )
         
         # Notify team
-        self.message_service.send_message(
+        self._send_notification(
             sender_id=actor_id,
             team_id=team_id,
             subject="Treasury Transfer",
