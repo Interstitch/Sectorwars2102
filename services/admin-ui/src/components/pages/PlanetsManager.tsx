@@ -29,6 +29,7 @@ interface Planet {
 
 const PlanetsManager: React.FC = () => {
   const [planets, setPlanets] = useState<Planet[]>([]);
+  const [totalPlanets, setTotalPlanets] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,26 +43,55 @@ const PlanetsManager: React.FC = () => {
   const fetchPlanets = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/v1/admin/planets/comprehensive', {
+      // Fetch first batch with large limit to get all planets
+      const pageSize = 100;
+      const firstResponse = await api.get('/api/v1/admin/planets/comprehensive', {
         params: {
-          page: currentPage,
-          limit: itemsPerPage,
+          page: 1,
+          limit: pageSize,
           filter_type: filterType !== 'all' ? filterType : undefined,
           filter_colonized: filterType === 'colonized' ? true : filterType === 'uncolonized' ? false : undefined
         }
       });
-      setPlanets(response.data.planets || []);
+
+      const totalCount = firstResponse.data.total_count || 0;
+      const totalPages = firstResponse.data.total_pages || 1;
+      let allPlanets = firstResponse.data.planets || [];
+
+      // Fetch remaining pages if there are more
+      if (totalPages > 1) {
+        const remainingRequests = [];
+        for (let page = 2; page <= totalPages; page++) {
+          remainingRequests.push(
+            api.get('/api/v1/admin/planets/comprehensive', {
+              params: {
+                page,
+                limit: pageSize,
+                filter_type: filterType !== 'all' ? filterType : undefined,
+                filter_colonized: filterType === 'colonized' ? true : filterType === 'uncolonized' ? false : undefined
+              }
+            })
+          );
+        }
+        const remainingResponses = await Promise.all(remainingRequests);
+        for (const resp of remainingResponses) {
+          allPlanets = allPlanets.concat(resp.data.planets || []);
+        }
+      }
+
+      setPlanets(allPlanets);
+      setTotalPlanets(totalCount);
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to fetch planets');
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, filterType]);
+  }, [filterType]);
 
   useEffect(() => {
     fetchPlanets();
-  }, [currentPage, filterType, fetchPlanets]);
+  }, [filterType, fetchPlanets]);
 
   const handleViewPlanet = (planet: Planet) => {
     setSelectedPlanet(planet);
@@ -83,6 +113,7 @@ const PlanetsManager: React.FC = () => {
     try {
       await api.delete(`/api/v1/admin/planets/${planet.id}`);
       setPlanets(planets.filter(p => p.id !== planet.id));
+      setTotalPlanets(prev => Math.max(0, prev - 1));
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to delete planet');
     }
@@ -169,7 +200,7 @@ const PlanetsManager: React.FC = () => {
         </div>
 
         <div className="results-info">
-          <span>{filteredPlanets.length} of {planets.length} planets</span>
+          <span>{filteredPlanets.length} of {totalPlanets} planets</span>
         </div>
       </div>
 
