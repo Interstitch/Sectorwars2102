@@ -48,6 +48,8 @@ class RankInfoResponse(BaseModel):
     progress_percent: float
     bonuses: RankBonuses
     is_max_rank: bool
+    effective_max_turns: int = 1000
+    aria_multiplier: float = 1.0
 
 
 class RankDefinitionResponse(BaseModel):

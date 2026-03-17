@@ -7,6 +7,7 @@ point awards, promotions, and rank-based bonuses.
 
 import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -131,6 +132,130 @@ class RankingService:
             "trading_discount_percent": 0,
             "max_turns_bonus": 0,
             "combat_damage_bonus_percent": 0,
+        }
+
+    # ------------------------------------------------------------------
+    # Turn calculation & refresh
+    # ------------------------------------------------------------------
+
+    BASE_TURNS = 1000
+
+    @staticmethod
+    def calculate_max_turns(
+        player: Player,
+        base_turns: int = 1000,
+    ) -> int:
+        """Calculate the effective max turns for a player.
+
+        Combines the base turn allowance with the military-rank bonus and
+        the ARIA consciousness multiplier.
+
+        Formula:
+            max_turns = int((base_turns + rank_bonus) * aria_multiplier)
+
+        Parameters
+        ----------
+        player : Player
+            The player whose max turns we are computing.
+        base_turns : int, optional
+            The game-wide base turn allowance (default 1000).
+
+        Returns
+        -------
+        int
+            The player's effective maximum turns.
+        """
+        rank_bonuses = RankingService.get_rank_bonuses(player.military_rank)
+        rank_bonus = rank_bonuses["max_turns_bonus"]
+
+        # aria_bonus_multiplier is stored on the player (1.0 to 1.5)
+        aria_multiplier = getattr(player, "aria_bonus_multiplier", 1.0) or 1.0
+        # Clamp to spec range just in case
+        aria_multiplier = max(1.0, min(1.5, aria_multiplier))
+
+        return int((base_turns + rank_bonus) * aria_multiplier)
+
+    def refresh_daily_turns(
+        self,
+        player: Player,
+        base_turns: int = 1000,
+        force: bool = False,
+    ) -> Dict[str, Any]:
+        """Reset a player's turns to their calculated max if a daily reset is due.
+
+        The reset happens at most once per calendar day (UTC). The
+        ``Player.turn_reset_at`` column tracks when turns were last
+        refreshed.  If the player's turns are already *above* the
+        calculated max (e.g. from an admin grant), we leave them alone
+        unless ``force`` is True.
+
+        Parameters
+        ----------
+        player : Player
+            A loaded Player ORM object (must be attached to the session).
+        base_turns : int, optional
+            The game-wide base turn allowance (default 1000).
+        force : bool, optional
+            If True, reset turns even if the daily window has not elapsed.
+
+        Returns
+        -------
+        dict
+            Keys: refreshed (bool), old_turns, new_turns, max_turns,
+            rank_bonus, aria_multiplier.
+        """
+        now = datetime.now(timezone.utc)
+        max_turns = self.calculate_max_turns(player, base_turns)
+
+        # Determine whether a refresh is due
+        needs_refresh = force
+        if not needs_refresh:
+            if player.turn_reset_at is None:
+                # Player has never had a turn reset — grant one now
+                needs_refresh = True
+            else:
+                # Ensure we compare tz-aware datetimes
+                last_reset = player.turn_reset_at
+                if last_reset.tzinfo is None:
+                    last_reset = last_reset.replace(tzinfo=timezone.utc)
+                # Reset is due if the last reset was before the start of the current UTC day
+                today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                needs_refresh = last_reset < today_start
+
+        if not needs_refresh:
+            return {
+                "refreshed": False,
+                "old_turns": player.turns,
+                "new_turns": player.turns,
+                "max_turns": max_turns,
+                "rank_bonus": self.get_rank_bonuses(player.military_rank)["max_turns_bonus"],
+                "aria_multiplier": getattr(player, "aria_bonus_multiplier", 1.0) or 1.0,
+            }
+
+        old_turns = player.turns
+
+        # Only reset if the player's turns are below the max (don't punish admin grants)
+        if player.turns < max_turns or force:
+            player.turns = max_turns
+
+        player.turn_reset_at = now
+        self.db.flush()
+
+        rank_bonus = self.get_rank_bonuses(player.military_rank)["max_turns_bonus"]
+        aria_multiplier = getattr(player, "aria_bonus_multiplier", 1.0) or 1.0
+
+        logger.info(
+            "Turn refresh for player %s: %d -> %d (max=%d, rank_bonus=%d, aria=%.2f)",
+            player.id, old_turns, player.turns, max_turns, rank_bonus, aria_multiplier,
+        )
+
+        return {
+            "refreshed": True,
+            "old_turns": old_turns,
+            "new_turns": player.turns,
+            "max_turns": max_turns,
+            "rank_bonus": rank_bonus,
+            "aria_multiplier": aria_multiplier,
         }
 
     # ------------------------------------------------------------------
@@ -340,6 +465,9 @@ class RankingService:
 
         bonuses = self.get_rank_bonuses(current_rank["name"])
 
+        aria_multiplier = getattr(player, "aria_bonus_multiplier", 1.0) or 1.0
+        effective_max_turns = self.calculate_max_turns(player)
+
         return {
             "player_id": str(player.id),
             "username": player.username,
@@ -353,6 +481,8 @@ class RankingService:
             "progress_percent": round(progress_percent, 1),
             "bonuses": bonuses,
             "is_max_rank": next_rank is None,
+            "effective_max_turns": effective_max_turns,
+            "aria_multiplier": round(aria_multiplier, 2),
         }
 
     # ------------------------------------------------------------------
