@@ -202,7 +202,7 @@ class OpenAIProvider(AIProvider):
 Analyze this player response in a space station security scenario:
 
 Player's Response: "{response}"
-Claimed Ship: {context.claimed_ship.value}
+Claimed Ship: {context.claimed_ship.value.replace("_", " ").title()}
 Guard Mood: {context.guard_mood.value}
 Previous Inconsistencies: {len(context.inconsistencies)}
 
@@ -242,7 +242,7 @@ believability, claims, inconsistencies, guard_mood
         ]
 
         # Use the actual claimed ship name (what player sees) instead of mapped AIShipType
-        claimed_ship_name = context.claimed_ship_display_name or context.claimed_ship.value
+        claimed_ship_name = context.claimed_ship_display_name or context.claimed_ship.value.replace("_", " ").title()
 
         return FirstLoginAIPrompts.build_question_generation_prompt(
             guard_name=context.guard_name,
@@ -297,7 +297,7 @@ believability, claims, inconsistencies, guard_mood
         """Build prompt for question generation (legacy fallback)"""
         ship_value = self._get_ship_tier(context.claimed_ship)
         return f"""
-You are a security guard questioning someone claiming to own a {context.claimed_ship.value}.
+You are a security guard questioning someone claiming to own a {context.claimed_ship.value.replace("_", " ").title()}.
 This is a Tier {ship_value} ship (higher = more valuable/suspicious).
 
 Current situation:
