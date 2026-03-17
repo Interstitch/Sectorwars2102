@@ -35,21 +35,7 @@ export const decodeToken = (token: string): any => {
       console.error('Invalid token format:', token);
       return null;
     }
-    
-    // Handle mock tokens for testing
-    if (token.startsWith('mock-')) {
-      console.log('Mock token detected, returning test payload');
-      const now = Math.floor(Date.now() / 1000);
-      return {
-        sub: '12345',
-        username: 'admin',
-        email: 'admin@test.com',
-        is_admin: true,
-        exp: now + 3600, // 1 hour from now
-        iat: now,
-      };
-    }
-    
+
     const parts = token.split('.');
     if (parts.length !== 3) {
       console.error('Token does not have 3 parts:', token);
