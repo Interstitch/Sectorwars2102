@@ -711,6 +711,7 @@
 
 .dialogue-history {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   margin-bottom: var(--space-md);
@@ -761,6 +762,7 @@
   padding: var(--space-md);
   max-width: 85%;
   position: relative;
+  overflow: visible;
 }
 
 .npc-message::before {
@@ -804,6 +806,8 @@
   font-size: 0.95rem;
   line-height: 1.6;
   color: #e0e0e0;
+  white-space: pre-wrap;
+  overflow-y: auto;
 }
 
 /* Score badges on player messages */

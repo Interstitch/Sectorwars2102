@@ -1,6 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, ReactNode } from 'react';
 import { useFirstLogin } from '../../contexts/FirstLoginContext';
 import './first-login.css';
+
+// Convert *text* to <em>text</em> for action markers
+const formatDialogue = (text: string): ReactNode[] => {
+  const parts = text.split(/(\*[^*]+\*)/g);
+  return parts.map((part, i) =>
+    part.startsWith('*') && part.endsWith('*')
+      ? <em key={i} style={{ color: '#888', fontStyle: 'italic' }}>{part.slice(1, -1)}</em>
+      : part
+  );
+};
 
 /**
  * DialogueExchange component - Chat-style conversation interface
@@ -101,7 +111,7 @@ const DialogueExchange: React.FC = () => {
                         )}
                       </div>
                       <div className="message-text">
-                        {exchange.npc.replace(/\[(RULE-BASED|AI-ANTHROPIC|AI-OPENAI)\]\s*/, '')}
+                        {formatDialogue(exchange.npc.replace(/\[(RULE-BASED|AI-ANTHROPIC|AI-OPENAI)\]\s*/, ''))}
                       </div>
                     </div>
                   )}
@@ -155,6 +165,14 @@ const DialogueExchange: React.FC = () => {
             placeholder="Type your response to the guard..."
             value={response}
             onChange={(e) => setResponse(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (response.trim() && !isLoading) {
+                  handleSubmit(e as unknown as React.FormEvent);
+                }
+              }
+            }}
             disabled={isLoading || !!dialogueOutcome}
             rows={3}
           />
