@@ -1779,19 +1779,25 @@ class CombatService:
         target_ship.cargo = target_cargo
     
     def _transfer_planet_ownership(self, planet: Planet, new_owner: Player) -> None:
-        """Transfer ownership of a planet to a new player."""
-        # Remove current owners
-        if planet.owner:
-            for old_owner in planet.owner:
-                # This is a many-to-many relationship, so we need to update it properly
-                # In a real implementation, you'd use SQLAlchemy's relationship methods
-                pass
-        
-        # Add new owner (needs proper implementation in an actual game)
-        # For now, just setting the owner_id
-        planet.owner_id = new_owner.id
-    
+        """Transfer ownership of a planet to a new player via many-to-many."""
+        from src.models.station import player_stations
+        # Clear existing owners from the join table
+        player_planets = self.db.execute(
+            self.db.query(Planet).filter(Planet.id == planet.id).statement
+        )
+        # Use direct SQL to clear the many-to-many
+        from sqlalchemy import text
+        self.db.execute(
+            text("DELETE FROM player_planets WHERE planet_id = :pid"),
+            {"pid": str(planet.id)}
+        )
+        # Add new owner
+        self.db.execute(
+            text("INSERT INTO player_planets (player_id, planet_id) VALUES (:player_id, :planet_id)"),
+            {"player_id": str(new_owner.id), "planet_id": str(planet.id)}
+        )
+        logger.info("Planet %s ownership transferred to player %s", planet.id, new_owner.id)
+
     def _transfer_port_ownership(self, port: Station, new_owner: Player) -> None:
         """Transfer ownership of a port to a new player."""
-        # Similar to planet ownership transfer
-        station.owner_id = new_owner.id
+        port.owner_id = new_owner.id

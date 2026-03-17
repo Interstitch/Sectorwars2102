@@ -150,7 +150,8 @@ async def create_team(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create team: {str(e)}")
+        logger.error("Failed to create team: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to create team")
 
 
 @router.get("/{team_id}", response_model=TeamResponse)
@@ -240,7 +241,8 @@ async def update_team(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update team: {str(e)}")
+        logger.error("Failed to update team: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to update team")
 
 
 @router.delete("/{team_id}")
@@ -257,7 +259,8 @@ async def delete_team(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete team: {str(e)}")
+        logger.error("Failed to delete team: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to delete team")
 
 
 @router.get("/{team_id}/members", response_model=List[TeamMemberResponse])
@@ -291,7 +294,8 @@ async def invite_player(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to invite player: {str(e)}")
+        logger.error("Failed to invite player: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to invite player")
 
 
 @router.post("/join", response_model=TeamResponse)
@@ -335,7 +339,8 @@ async def join_team(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to join team: {str(e)}")
+        logger.error("Failed to join team: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to join team")
 
 
 @router.post("/leave")
@@ -351,7 +356,8 @@ async def leave_team(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to leave team: {str(e)}")
+        logger.error("Failed to leave team: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to leave team")
 
 
 @router.delete("/{team_id}/members/{member_id}")
@@ -373,7 +379,8 @@ async def remove_member(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to remove member: {str(e)}")
+        logger.error("Failed to remove member: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to remove member")
 
 
 @router.put("/{team_id}/members/{member_id}/role", response_model=TeamMemberResponse)
@@ -415,7 +422,8 @@ async def update_member_role(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update role: {str(e)}")
+        logger.error("Failed to update role: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to update role")
 
 
 @router.get("/{team_id}/permissions", response_model=PermissionsResponse)
@@ -453,7 +461,8 @@ async def transfer_leadership(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to transfer leadership: {str(e)}")
+        logger.error("Failed to transfer leadership: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to transfer leadership")
 
 
 # Treasury Management Endpoints
@@ -509,7 +518,8 @@ async def deposit_to_treasury(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to deposit: {str(e)}")
+        logger.error("Failed to deposit: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to deposit")
 
 
 @router.post("/{team_id}/treasury/withdraw")
@@ -532,7 +542,8 @@ async def withdraw_from_treasury(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to withdraw: {str(e)}")
+        logger.error("Failed to withdraw: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to withdraw")
 
 
 @router.post("/{team_id}/treasury/transfer")
@@ -556,7 +567,8 @@ async def transfer_to_player(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to transfer: {str(e)}")
+        logger.error("Failed to transfer: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to transfer")
 
 
 @router.get("/{team_id}/treasury", response_model=TreasuryBalanceResponse)
