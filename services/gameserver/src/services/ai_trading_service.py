@@ -539,7 +539,10 @@ class AITradingService:
             )
             
             if prediction:
-                return prediction['predicted_price']
+                # Support both dict and dataclass returns
+                if hasattr(prediction, 'predicted_price'):
+                    return prediction.predicted_price
+                return prediction.get('predicted_price', 0.0)
             
             # Fallback to simple prediction if Prophet fails
             if history:

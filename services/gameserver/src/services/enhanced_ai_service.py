@@ -35,19 +35,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 # Import existing ARIA foundation
 from src.services.ai_trading_service import AITradingService
-try:
-    from src.services.market_prediction_engine import MarketPredictionEngine
-except ImportError:
-    # Placeholder for MarketPredictionEngine if not yet implemented
-    class MarketPredictionEngine:
-        def __init__(self): pass
-
-try:
-    from src.services.route_optimizer import RouteOptimizer
-except ImportError:
-    # Placeholder for RouteOptimizer if not yet implemented
-    class RouteOptimizer:
-        def __init__(self): pass
+from src.services.market_prediction_engine import MarketPredictionEngine
+from src.services.route_optimizer import RouteOptimizer
 
 # Import new enhanced models
 from src.models.enhanced_ai_models import (

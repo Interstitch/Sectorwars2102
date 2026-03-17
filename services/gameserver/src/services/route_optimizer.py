@@ -1,35 +1,26 @@
 """
 Route Optimization Engine using Graph Algorithms
 
-This module implements graph-based route optimization for maximum profit
-trading routes in the Sectorwars2102 game using advanced algorithms.
+This module implements graph-based route optimization for the Sectorwars2102
+game.  It builds a sector graph from warp tunnel connections and uses
+Dijkstra's algorithm (via a priority queue) to find shortest / most-profitable
+/ safest paths.  No external ML or SciPy dependencies are required.
 """
 
 import logging
-import numpy as np
-from typing import List, Dict, Any, Optional, Tuple, Set
-from datetime import datetime, timedelta
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, desc, func
-import asyncio
 import heapq
-from dataclasses import dataclass
+import math
+from typing import List, Dict, Any, Optional, Tuple, Set
+from datetime import datetime
+from dataclasses import dataclass, field
 from enum import Enum
 
-try:
-    from scipy.sparse import csr_matrix
-    from scipy.sparse.csgraph import dijkstra, floyd_warshall
-    SCIPY_AVAILABLE = True
-except ImportError:
-    SCIPY_AVAILABLE = False
-    logging.warning("SciPy not available - route optimization will use fallback methods")
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_
 
-from src.models.sector import Sector
+from src.models.sector import Sector, sector_warps
 from src.models.station import Station
-from src.models.market_transaction import MarketTransaction
-from src.models.warp_tunnel import WarpTunnel
-from src.models.player import Player
-
+from src.models.warp_tunnel import WarpTunnel, WarpTunnelStatus
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +34,7 @@ class RouteObjective(Enum):
 
 @dataclass
 class TradingOpportunity:
-    """Represents a trading opportunity between two sectors"""
+    """Represents a trading opportunity between two sectors."""
     from_sector_id: str
     to_sector_id: str
     commodity_id: str
@@ -59,7 +50,7 @@ class TradingOpportunity:
 
 @dataclass
 class OptimizedRoute:
-    """Represents an optimized trading route"""
+    """Represents an optimized trading route."""
     sectors: List[str]
     opportunities: List[TradingOpportunity]
     total_profit: float
@@ -69,727 +60,734 @@ class OptimizedRoute:
     cargo_efficiency: float
     profit_per_hour: float
     route_confidence: float
-    route_type: str  # "linear", "circular", "hub_spoke"
+    route_type: str  # "direct", "linear", "circular", "hub_spoke"
+
+
+@dataclass(order=True)
+class _PQEntry:
+    """Priority-queue entry for Dijkstra."""
+    cost: float
+    sector_id: str = field(compare=False)
+
+
+# ------------------------------------------------------------------
+# Graph edge: a connection between two sector_id integers
+# ------------------------------------------------------------------
+@dataclass
+class _Edge:
+    target_sector_id: int
+    turn_cost: int
+    hazard: int          # 0-10 sector hazard of the *target*
+    stability: float     # warp tunnel stability 0.0-1.0
 
 
 class RouteOptimizer:
     """
-    Advanced route optimization using graph algorithms and dynamic programming
+    Graph-based route optimizer.
+
+    Builds an adjacency list from warp tunnel connections and the
+    ``sector_warps`` association table, then applies Dijkstra's
+    algorithm with configurable edge-weight functions to find
+    optimal routes.
     """
-    
+
     def __init__(self):
-        self.sector_graph: Optional[Dict[str, Dict[str, float]]] = None
-        self.distance_matrix: Optional[np.ndarray] = None
-        self.sector_index_map: Dict[str, int] = {}
-        self.max_route_length = 8  # Maximum sectors in a route
-        self.fuel_cost_per_distance = 10.0  # Credits per distance unit
-        self.time_per_distance = 0.5  # Hours per distance unit
-        
+        # adjacency list: sector_id (int) -> list of _Edge
+        self._graph: Dict[int, List[_Edge]] = {}
+        # sector_id (int) -> Sector UUID str
+        self._sid_to_uuid: Dict[int, str] = {}
+        # sector_id (int) -> hazard_level
+        self._hazard: Dict[int, int] = {}
+        self._graph_built = False
+        self.max_route_length = 10
+        self.turn_cost_default = 1
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
     async def find_optimal_route(
         self,
         db: AsyncSession,
         start_sector_id: str,
         player_id: str,
         cargo_capacity: int,
-        max_route_time: float = 24.0,  # Hours
+        max_route_time: float = 24.0,
         objective: RouteObjective = RouteObjective.MAX_PROFIT,
-        risk_tolerance: float = 0.5
+        risk_tolerance: float = 0.5,
     ) -> Optional[OptimizedRoute]:
         """
-        Find the optimal trading route based on specified objective
+        Find the optimal trading route starting from *start_sector_id*.
+
+        Parameters
+        ----------
+        start_sector_id : str
+            Human-readable sector number **or** UUID string of the start sector.
+        player_id : str
+            The player requesting the route (for future personalisation).
+        cargo_capacity : int
+            How many units the player can carry.
+        max_route_time : float
+            Maximum hours for the route.
+        objective : RouteObjective
+            What to optimise for.
+        risk_tolerance : float
+            0.0 (safe) to 1.0 (risky).
         """
         try:
-            # Build sector graph if not cached
-            if not self.sector_graph:
-                await self._build_sector_graph(db)
-            
-            # Get all trading opportunities
-            opportunities = await self._get_trading_opportunities(
-                db, start_sector_id, cargo_capacity, max_route_time, risk_tolerance
-            )
-            
-            if not opportunities:
-                logger.info("No trading opportunities found")
+            if not self._graph_built:
+                await self._build_graph(db)
+
+            # Resolve start sector to integer sector_id
+            start_sid = self._resolve_sector_id(start_sector_id)
+            if start_sid is None or start_sid not in self._graph:
+                logger.warning(f"Start sector {start_sector_id} not found in graph")
                 return None
-            
-            # Apply different optimization strategies based on objective
+
+            # Gather trading opportunities across the map
+            opportunities = await self._gather_trading_opportunities(
+                db, start_sid, cargo_capacity, risk_tolerance
+            )
+
+            if not opportunities:
+                logger.info("No trading opportunities found from this sector")
+                return None
+
+            # Build route depending on objective
             if objective == RouteObjective.MAX_PROFIT:
-                route = await self._optimize_for_profit(opportunities, start_sector_id, cargo_capacity)
+                route = self._build_profit_route(
+                    start_sid, opportunities, cargo_capacity, max_route_time
+                )
             elif objective == RouteObjective.MIN_TIME:
-                route = await self._optimize_for_time(opportunities, start_sector_id, max_route_time)
+                route = self._build_time_route(
+                    start_sid, opportunities, max_route_time
+                )
             elif objective == RouteObjective.MIN_RISK:
-                route = await self._optimize_for_risk(opportunities, start_sector_id, risk_tolerance)
+                route = self._build_risk_route(
+                    start_sid, opportunities, risk_tolerance, cargo_capacity
+                )
             else:  # BALANCED
-                route = await self._optimize_balanced(opportunities, start_sector_id, cargo_capacity, max_route_time, risk_tolerance)
-            
+                route = self._build_balanced_route(
+                    start_sid, opportunities, cargo_capacity,
+                    max_route_time, risk_tolerance,
+                )
+
             if route:
-                # Add route metadata
-                route.route_confidence = self._calculate_route_confidence(route.opportunities)
-                route.route_type = self._classify_route_type(route.sectors)
-                
-                logger.info(f"Optimized route found: {len(route.sectors)} sectors, {route.total_profit:.2f} profit")
-            
+                route.route_confidence = self._route_confidence(route.opportunities)
+                route.route_type = self._classify_route(route.sectors)
+
             return route
-            
+
         except Exception as e:
             logger.error(f"Error finding optimal route: {e}")
             return None
-    
+
+    async def find_shortest_path(
+        self,
+        db: AsyncSession,
+        from_sector_id: str,
+        to_sector_id: str,
+    ) -> Optional[List[int]]:
+        """
+        Find the shortest path (fewest warps) between two sectors.
+
+        Returns a list of integer sector_ids forming the path, or ``None``
+        if no path exists.
+        """
+        if not self._graph_built:
+            await self._build_graph(db)
+
+        src = self._resolve_sector_id(from_sector_id)
+        dst = self._resolve_sector_id(to_sector_id)
+        if src is None or dst is None:
+            return None
+
+        return self._dijkstra_path(src, dst, weight_fn=lambda e: e.turn_cost)
+
     async def find_arbitrage_opportunities(
         self,
         db: AsyncSession,
-        player_location: str,
-        max_distance: int = 5,
-        min_profit_margin: float = 0.1
+        player_sector_id: str,
+        max_hops: int = 5,
+        min_profit_margin: float = 0.10,
     ) -> List[TradingOpportunity]:
         """
-        Find immediate arbitrage opportunities within specified distance
+        Find immediate arbitrage opportunities within *max_hops* jumps.
         """
         try:
-            opportunities = []
-            
-            # Get nearby sectors
-            nearby_sectors = await self._get_sectors_within_distance(db, player_location, max_distance)
-            
-            # Check all commodity prices between sector pairs
-            for i, sector_a in enumerate(nearby_sectors):
-                for sector_b in nearby_sectors[i+1:]:
-                    sector_opportunities = await self._find_arbitrage_between_sectors(
-                        db, sector_a, sector_b, min_profit_margin
-                    )
-                    opportunities.extend(sector_opportunities)
-            
-            # Sort by profit potential
-            opportunities.sort(key=lambda x: x.profit_per_unit * x.max_quantity, reverse=True)
-            
-            return opportunities[:10]  # Top 10 opportunities
-            
+            if not self._graph_built:
+                await self._build_graph(db)
+
+            start = self._resolve_sector_id(player_sector_id)
+            if start is None:
+                return []
+
+            reachable = self._sectors_within_hops(start, max_hops)
+
+            # Get stations in reachable sectors
+            query = select(Station).where(
+                Station.sector_id.in_(list(reachable)),
+                Station.is_destroyed == False,  # noqa: E712
+            )
+            result = await db.execute(query)
+            stations = result.scalars().all()
+
+            return self._find_arbitrage_in_stations(
+                stations, min_profit_margin, start
+            )
+
         except Exception as e:
-            logger.error(f"Error finding arbitrage opportunities: {e}")
+            logger.error(f"Error finding arbitrage: {e}")
             return []
-    
-    async def calculate_route_efficiency(
-        self,
-        db: AsyncSession,
-        route_sectors: List[str],
-        cargo_capacity: int
-    ) -> Dict[str, float]:
-        """
-        Calculate various efficiency metrics for a given route
-        """
-        try:
-            if len(route_sectors) < 2:
-                return {}
-            
-            # Calculate distances
-            total_distance = 0
-            for i in range(len(route_sectors) - 1):
-                distance = await self._get_distance_between_sectors(db, route_sectors[i], route_sectors[i+1])
-                total_distance += distance
-            
-            # Calculate potential profit
-            total_profit = 0
-            trading_ops = []
-            
-            for i in range(len(route_sectors) - 1):
-                ops = await self._find_arbitrage_between_sectors(
-                    db, route_sectors[i], route_sectors[i+1], 0.05
-                )
-                if ops:
-                    best_op = max(ops, key=lambda x: x.profit_per_unit)
-                    total_profit += best_op.profit_per_unit * min(cargo_capacity, best_op.max_quantity)
-                    trading_ops.append(best_op)
-            
-            # Calculate metrics
-            travel_time = total_distance * self.time_per_distance
-            fuel_cost = total_distance * self.fuel_cost_per_distance
-            net_profit = total_profit - fuel_cost
-            
-            return {
-                'total_distance': total_distance,
-                'total_profit': total_profit,
-                'net_profit': net_profit,
-                'travel_time_hours': travel_time,
-                'fuel_cost': fuel_cost,
-                'profit_per_hour': net_profit / max(1, travel_time),
-                'profit_per_distance': net_profit / max(1, total_distance),
-                'cargo_utilization': len(trading_ops) / max(1, len(route_sectors) - 1),
-                'route_efficiency': (net_profit * 10) / (total_distance + travel_time)
-            }
-            
-        except Exception as e:
-            logger.error(f"Error calculating route efficiency: {e}")
-            return {}
-    
+
     async def get_route_recommendations(
         self,
         db: AsyncSession,
         player_id: str,
         current_sector: str,
-        player_preferences: Dict[str, Any]
+        player_preferences: Dict[str, Any],
     ) -> List[Dict[str, Any]]:
         """
-        Get personalized route recommendations based on player preferences
+        Return multiple route recommendations for different objectives.
+        """
+        cargo = player_preferences.get("cargo_capacity", 100)
+        risk = player_preferences.get("risk_tolerance", 0.5)
+        max_time = player_preferences.get("max_route_time", 12.0)
+
+        recommendations = []
+        for objective in [RouteObjective.MAX_PROFIT, RouteObjective.MIN_TIME, RouteObjective.BALANCED]:
+            route = await self.find_optimal_route(
+                db, current_sector, player_id, cargo, max_time, objective, risk
+            )
+            if route:
+                recommendations.append({
+                    "objective": objective.value,
+                    "sectors": route.sectors,
+                    "total_profit": route.total_profit,
+                    "total_time": route.total_time_hours,
+                    "total_distance": route.total_distance,
+                    "profit_per_hour": route.profit_per_hour,
+                    "risk_level": route.total_risk,
+                    "confidence": route.route_confidence,
+                    "route_type": route.route_type,
+                    "description": self._describe_route(route, objective),
+                    "opportunities": [
+                        {
+                            "from_sector": o.from_sector_id,
+                            "to_sector": o.to_sector_id,
+                            "commodity": o.commodity_id,
+                            "buy_price": o.buy_price,
+                            "sell_price": o.sell_price,
+                            "profit_per_unit": o.profit_per_unit,
+                            "max_quantity": o.max_quantity,
+                            "confidence": o.confidence,
+                        }
+                        for o in route.opportunities
+                    ],
+                })
+
+        recommendations.sort(
+            key=lambda r: r["total_profit"] * r["confidence"], reverse=True
+        )
+        return recommendations
+
+    # ------------------------------------------------------------------
+    # Graph construction
+    # ------------------------------------------------------------------
+
+    async def _build_graph(self, db: AsyncSession) -> None:
+        """
+        Build the adjacency list from warp tunnels and sector_warps.
         """
         try:
-            # Get player data
-            player = await self._get_player_data(db, player_id)
-            if not player:
-                return []
-            
-            cargo_capacity = player_preferences.get('cargo_capacity', 100)
-            risk_tolerance = player_preferences.get('risk_tolerance', 0.5)
-            max_time = player_preferences.get('max_route_time', 12.0)
-            
-            recommendations = []
-            
-            # Generate different types of routes
-            objectives = [RouteObjective.MAX_PROFIT, RouteObjective.MIN_TIME, RouteObjective.BALANCED]
-            
-            for objective in objectives:
-                route = await self.find_optimal_route(
-                    db, current_sector, player_id, cargo_capacity, max_time, objective, risk_tolerance
-                )
-                
-                if route:
-                    recommendation = {
-                        'route_id': f"{objective.value}_{int(datetime.utcnow().timestamp())}",
-                        'objective': objective.value,
-                        'sectors': route.sectors,
-                        'total_profit': route.total_profit,
-                        'total_time': route.total_time_hours,
-                        'profit_per_hour': route.profit_per_hour,
-                        'risk_level': route.total_risk,
-                        'confidence': route.route_confidence,
-                        'description': self._generate_route_description(route, objective),
-                        'detailed_opportunities': [
-                            {
-                                'from_sector': op.from_sector_id,
-                                'to_sector': op.to_sector_id,
-                                'commodity': op.commodity_id,
-                                'profit_per_unit': op.profit_per_unit,
-                                'max_quantity': op.max_quantity,
-                                'confidence': op.confidence
-                            }
-                            for op in route.opportunities
-                        ]
-                    }
-                    recommendations.append(recommendation)
-            
-            # Sort by expected value (profit * confidence)
-            recommendations.sort(key=lambda x: x['total_profit'] * x['confidence'], reverse=True)
-            
-            return recommendations
-            
-        except Exception as e:
-            logger.error(f"Error getting route recommendations: {e}")
-            return []
-    
-    # Private helper methods
-    
-    async def _build_sector_graph(self, db: AsyncSession) -> None:
-        """
-        Build graph representation of sector connections
-        """
-        try:
-            # Get all sectors
-            sectors_query = select(Sector)
-            sectors_result = await db.execute(sectors_query)
+            # 1. Load all sectors
+            sectors_result = await db.execute(select(Sector))
             sectors = sectors_result.scalars().all()
-            
-            # Create index mapping
-            self.sector_index_map = {str(sector.id): i for i, sector in enumerate(sectors)}
-            num_sectors = len(sectors)
-            
-            if num_sectors == 0:
-                logger.warning("No sectors found in database")
-                return
-            
-            # Initialize distance matrix
-            distance_matrix = np.full((num_sectors, num_sectors), np.inf)
-            np.fill_diagonal(distance_matrix, 0)
-            
-            # Get warp tunnel connections
-            tunnels_query = select(WarpTunnel)
-            tunnels_result = await db.execute(tunnels_query)
+
+            for s in sectors:
+                sid = s.sector_id  # integer sector number
+                self._graph.setdefault(sid, [])
+                self._sid_to_uuid[sid] = str(s.id)
+                self._hazard[sid] = s.hazard_level or 0
+
+            # 2. Load warp tunnels (dedicated table)
+            tunnels_result = await db.execute(
+                select(WarpTunnel).where(
+                    WarpTunnel.status == WarpTunnelStatus.ACTIVE
+                )
+            )
             tunnels = tunnels_result.scalars().all()
-            
-            # Build graph from warp tunnels
-            self.sector_graph = {}
-            for sector in sectors:
-                self.sector_graph[str(sector.id)] = {}
-            
+
             for tunnel in tunnels:
-                from_id = str(tunnel.from_sector_id)
-                to_id = str(tunnel.to_sector_id)
-                distance = tunnel.distance or 1
-                
-                # Add bidirectional connections
-                self.sector_graph[from_id][to_id] = distance
-                self.sector_graph[to_id][from_id] = distance
-                
-                # Update distance matrix
-                if from_id in self.sector_index_map and to_id in self.sector_index_map:
-                    from_idx = self.sector_index_map[from_id]
-                    to_idx = self.sector_index_map[to_id]
-                    distance_matrix[from_idx, to_idx] = distance
-                    distance_matrix[to_idx, from_idx] = distance
-            
-            self.distance_matrix = distance_matrix
-            
-            # Compute all-pairs shortest paths if scipy available
-            if SCIPY_AVAILABLE and num_sectors > 0:
-                try:
-                    self.shortest_paths = floyd_warshall(csr_matrix(distance_matrix), directed=False)
-                except Exception as e:
-                    logger.warning(f"Floyd-Warshall failed: {e}")
-                    self.shortest_paths = distance_matrix
-            else:
-                self.shortest_paths = distance_matrix
-            
-            logger.info(f"Built sector graph with {num_sectors} sectors and {len(tunnels)} connections")
-            
+                # Resolve origin/destination UUIDs to integer sector_ids
+                origin_sid = self._uuid_to_sid(str(tunnel.origin_sector_id))
+                dest_sid = self._uuid_to_sid(str(tunnel.destination_sector_id))
+                if origin_sid is None or dest_sid is None:
+                    continue
+
+                turn_cost = tunnel.turn_cost or self.turn_cost_default
+                stability = tunnel.stability if tunnel.stability is not None else 1.0
+
+                self._graph[origin_sid].append(
+                    _Edge(
+                        target_sector_id=dest_sid,
+                        turn_cost=turn_cost,
+                        hazard=self._hazard.get(dest_sid, 0),
+                        stability=stability,
+                    )
+                )
+
+                if tunnel.is_bidirectional:
+                    self._graph[dest_sid].append(
+                        _Edge(
+                            target_sector_id=origin_sid,
+                            turn_cost=turn_cost,
+                            hazard=self._hazard.get(origin_sid, 0),
+                            stability=stability,
+                        )
+                    )
+
+            # 3. Load sector_warps association table
+            warps_result = await db.execute(select(sector_warps))
+            warps = warps_result.fetchall()
+
+            for warp in warps:
+                src_uuid = str(warp.source_sector_id)
+                dst_uuid = str(warp.destination_sector_id)
+                src_sid = self._uuid_to_sid(src_uuid)
+                dst_sid = self._uuid_to_sid(dst_uuid)
+                if src_sid is None or dst_sid is None:
+                    continue
+
+                tc = warp.turn_cost if warp.turn_cost else self.turn_cost_default
+                stab = warp.warp_stability if warp.warp_stability else 1.0
+
+                self._graph[src_sid].append(
+                    _Edge(
+                        target_sector_id=dst_sid,
+                        turn_cost=tc,
+                        hazard=self._hazard.get(dst_sid, 0),
+                        stability=stab,
+                    )
+                )
+                if warp.is_bidirectional:
+                    self._graph[dst_sid].append(
+                        _Edge(
+                            target_sector_id=src_sid,
+                            turn_cost=tc,
+                            hazard=self._hazard.get(src_sid, 0),
+                            stability=stab,
+                        )
+                    )
+
+            total_edges = sum(len(v) for v in self._graph.values())
+            self._graph_built = True
+            logger.info(
+                f"Sector graph built: {len(self._graph)} sectors, {total_edges} edges"
+            )
+
         except Exception as e:
             logger.error(f"Error building sector graph: {e}")
-            self.sector_graph = {}
-    
-    async def _get_trading_opportunities(
+            self._graph_built = False
+
+    # ------------------------------------------------------------------
+    # Dijkstra's algorithm
+    # ------------------------------------------------------------------
+
+    def _dijkstra_path(
+        self,
+        src: int,
+        dst: int,
+        weight_fn=None,
+    ) -> Optional[List[int]]:
+        """
+        Standard Dijkstra returning the shortest path as a list of sector_ids.
+
+        *weight_fn* maps an ``_Edge`` to a numeric cost.  Defaults to turn_cost.
+        """
+        if weight_fn is None:
+            weight_fn = lambda e: e.turn_cost  # noqa: E731
+
+        dist: Dict[int, float] = {src: 0.0}
+        prev: Dict[int, Optional[int]] = {src: None}
+        pq: List[Tuple[float, int]] = [(0.0, src)]
+
+        while pq:
+            cost, node = heapq.heappop(pq)
+            if node == dst:
+                break
+            if cost > dist.get(node, math.inf):
+                continue
+
+            for edge in self._graph.get(node, []):
+                w = weight_fn(edge)
+                new_cost = cost + w
+                if new_cost < dist.get(edge.target_sector_id, math.inf):
+                    dist[edge.target_sector_id] = new_cost
+                    prev[edge.target_sector_id] = node
+                    heapq.heappush(pq, (new_cost, edge.target_sector_id))
+
+        if dst not in prev:
+            return None
+
+        # Reconstruct path
+        path: List[int] = []
+        current: Optional[int] = dst
+        while current is not None:
+            path.append(current)
+            current = prev.get(current)
+        path.reverse()
+        return path
+
+    def _dijkstra_distances(
+        self,
+        src: int,
+        max_cost: float = math.inf,
+        weight_fn=None,
+    ) -> Dict[int, float]:
+        """
+        Return dict of {sector_id: cost} for all reachable sectors from *src*.
+        """
+        if weight_fn is None:
+            weight_fn = lambda e: e.turn_cost  # noqa: E731
+
+        dist: Dict[int, float] = {src: 0.0}
+        pq: List[Tuple[float, int]] = [(0.0, src)]
+
+        while pq:
+            cost, node = heapq.heappop(pq)
+            if cost > max_cost:
+                break
+            if cost > dist.get(node, math.inf):
+                continue
+            for edge in self._graph.get(node, []):
+                w = weight_fn(edge)
+                new_cost = cost + w
+                if new_cost <= max_cost and new_cost < dist.get(edge.target_sector_id, math.inf):
+                    dist[edge.target_sector_id] = new_cost
+                    heapq.heappush(pq, (new_cost, edge.target_sector_id))
+
+        return dist
+
+    def _sectors_within_hops(self, start: int, max_hops: int) -> Set[int]:
+        """BFS to find all sectors within *max_hops* jumps."""
+        visited: Set[int] = {start}
+        frontier: Set[int] = {start}
+
+        for _ in range(max_hops):
+            next_frontier: Set[int] = set()
+            for sid in frontier:
+                for edge in self._graph.get(sid, []):
+                    if edge.target_sector_id not in visited:
+                        visited.add(edge.target_sector_id)
+                        next_frontier.add(edge.target_sector_id)
+            frontier = next_frontier
+            if not frontier:
+                break
+
+        return visited
+
+    # ------------------------------------------------------------------
+    # Trading opportunity discovery
+    # ------------------------------------------------------------------
+
+    async def _gather_trading_opportunities(
         self,
         db: AsyncSession,
-        start_sector: str,
+        start_sid: int,
         cargo_capacity: int,
-        max_time: float,
-        risk_tolerance: float
+        risk_tolerance: float,
     ) -> List[TradingOpportunity]:
         """
-        Get all viable trading opportunities within constraints
+        Gather trading opportunities from stations in sectors reachable
+        from start_sid within a reasonable number of hops.
         """
-        try:
-            opportunities = []
-            max_distance = int(max_time / self.time_per_distance)  # Convert time to distance
-            
-            # Get sectors within range
-            reachable_sectors = await self._get_sectors_within_distance(db, start_sector, max_distance)
-            
-            # Find trading opportunities between all sector pairs
-            for from_sector in reachable_sectors:
-                for to_sector in reachable_sectors:
-                    if from_sector != to_sector:
-                        sector_ops = await self._find_arbitrage_between_sectors(
-                            db, from_sector, to_sector, 0.05  # 5% minimum profit margin
-                        )
-                        
-                        # Filter by risk tolerance
-                        for op in sector_ops:
-                            if op.risk_factor <= risk_tolerance + 0.2:  # Allow some flexibility
-                                opportunities.append(op)
-            
-            # Sort by profit potential
-            opportunities.sort(key=lambda x: x.profit_per_unit * min(cargo_capacity, x.max_quantity), reverse=True)
-            
-            return opportunities[:50]  # Limit to top 50 opportunities
-            
-        except Exception as e:
-            logger.error(f"Error getting trading opportunities: {e}")
-            return []
-    
-    async def _optimize_for_profit(
+        reachable = self._sectors_within_hops(start_sid, self.max_route_length)
+
+        query = select(Station).where(
+            Station.sector_id.in_(list(reachable)),
+            Station.is_destroyed == False,  # noqa: E712
+        )
+        result = await db.execute(query)
+        stations = result.scalars().all()
+
+        return self._find_arbitrage_in_stations(stations, 0.05, start_sid)
+
+    def _find_arbitrage_in_stations(
         self,
-        opportunities: List[TradingOpportunity],
-        start_sector: str,
-        cargo_capacity: int
-    ) -> Optional[OptimizedRoute]:
+        stations: List[Any],
+        min_margin: float,
+        ref_sector: int,
+    ) -> List[TradingOpportunity]:
         """
-        Optimize route for maximum profit using dynamic programming
+        Find profitable commodity trades between station pairs.
         """
-        try:
-            if not opportunities:
-                return None
-            
-            # Group opportunities by sector pairs
-            sector_pairs = {}
-            for op in opportunities:
-                key = (op.from_sector_id, op.to_sector_id)
-                if key not in sector_pairs:
-                    sector_pairs[key] = []
-                sector_pairs[key].append(op)
-            
-            # Find best opportunity for each sector pair
-            best_opportunities = {}
-            for key, ops in sector_pairs.items():
-                best_op = max(ops, key=lambda x: x.profit_per_unit * min(cargo_capacity, x.max_quantity))
-                best_opportunities[key] = best_op
-            
-            # Use greedy algorithm to build route
-            current_sector = start_sector
-            route_sectors = [current_sector]
-            route_opportunities = []
-            total_profit = 0
-            total_distance = 0
-            total_time = 0
-            used_opportunities = set()
-            
-            for _ in range(self.max_route_length - 1):
-                best_next_op = None
-                best_profit_ratio = 0
-                
-                for key, op in best_opportunities.items():
-                    if key in used_opportunities or op.from_sector_id != current_sector:
+        opportunities: List[TradingOpportunity] = []
+
+        # Build per-commodity maps
+        sellers: Dict[str, List[Tuple[Any, float, int]]] = {}  # commodity -> [(station, price, qty)]
+        buyers: Dict[str, List[Tuple[Any, float, int]]] = {}
+
+        for station in stations:
+            if not station.commodities:
+                continue
+            for cname, cdata in station.commodities.items():
+                price = cdata.get("current_price", cdata.get("base_price", 0))
+                qty = cdata.get("quantity", 0)
+                if price <= 0 or qty <= 0:
+                    continue
+                if cdata.get("sells", False):
+                    sellers.setdefault(cname, []).append((station, float(price), qty))
+                if cdata.get("buys", False):
+                    buyers.setdefault(cname, []).append((station, float(price), qty))
+
+        for commodity in set(sellers.keys()) & set(buyers.keys()):
+            for sell_station, sell_price, sell_qty in sellers[commodity]:
+                for buy_station, buy_price, buy_qty in buyers[commodity]:
+                    if str(sell_station.id) == str(buy_station.id):
                         continue
-                    
-                    # Calculate profit ratio (profit per time)
-                    travel_time = op.travel_time_hours
-                    profit = op.profit_per_unit * min(cargo_capacity, op.max_quantity)
-                    profit_ratio = profit / max(1, travel_time) * op.confidence
-                    
-                    if profit_ratio > best_profit_ratio:
-                        best_profit_ratio = profit_ratio
-                        best_next_op = op
-                
-                if not best_next_op:
-                    break
-                
-                # Add to route
-                route_opportunities.append(best_next_op)
-                route_sectors.append(best_next_op.to_sector_id)
-                total_profit += best_next_op.profit_per_unit * min(cargo_capacity, best_next_op.max_quantity)
-                total_distance += best_next_op.distance
-                total_time += best_next_op.travel_time_hours
-                current_sector = best_next_op.to_sector_id
-                used_opportunities.add((best_next_op.from_sector_id, best_next_op.to_sector_id))
-            
-            if not route_opportunities:
-                return None
-            
-            # Calculate route metrics
-            fuel_cost = total_distance * self.fuel_cost_per_distance
-            net_profit = total_profit - fuel_cost
-            cargo_efficiency = len(route_opportunities) / len(route_sectors)
-            total_risk = sum(op.risk_factor for op in route_opportunities) / len(route_opportunities)
-            
-            return OptimizedRoute(
-                sectors=route_sectors,
-                opportunities=route_opportunities,
-                total_profit=net_profit,
-                total_distance=total_distance,
-                total_time_hours=total_time,
-                total_risk=total_risk,
-                cargo_efficiency=cargo_efficiency,
-                profit_per_hour=net_profit / max(1, total_time),
-                route_confidence=0.0,  # Will be calculated later
-                route_type=""  # Will be classified later
-            )
-            
-        except Exception as e:
-            logger.error(f"Error optimizing for profit: {e}")
-            return None
-    
-    async def _optimize_for_time(
+                    profit = buy_price - sell_price
+                    if sell_price <= 0:
+                        continue
+                    margin = profit / sell_price
+                    if margin < min_margin:
+                        continue
+
+                    from_sid = sell_station.sector_id
+                    to_sid = buy_station.sector_id
+
+                    # Compute hop distance via graph
+                    path = self._dijkstra_path(
+                        from_sid, to_sid,
+                        weight_fn=lambda e: e.turn_cost,
+                    )
+                    distance = len(path) - 1 if path else abs(from_sid - to_sid)
+                    travel_time = distance * 0.5  # half-hour per hop
+
+                    # Risk from sector hazard
+                    dest_hazard = self._hazard.get(to_sid, 0)
+                    risk_factor = dest_hazard / 10.0
+
+                    # Confidence based on market volatility
+                    vol = sell_station.market_volatility or 50
+                    confidence = max(0.3, 1.0 - vol / 100.0)
+
+                    max_qty = min(sell_qty, buy_qty)
+
+                    opportunities.append(
+                        TradingOpportunity(
+                            from_sector_id=str(from_sid),
+                            to_sector_id=str(to_sid),
+                            commodity_id=commodity,
+                            buy_price=sell_price,
+                            sell_price=buy_price,
+                            profit_per_unit=profit,
+                            max_quantity=max_qty,
+                            distance=distance,
+                            travel_time_hours=travel_time,
+                            risk_factor=risk_factor,
+                            confidence=confidence,
+                        )
+                    )
+
+        opportunities.sort(
+            key=lambda o: o.profit_per_unit * o.max_quantity, reverse=True
+        )
+        return opportunities[:50]
+
+    # ------------------------------------------------------------------
+    # Route-building strategies
+    # ------------------------------------------------------------------
+
+    def _build_profit_route(
         self,
+        start: int,
         opportunities: List[TradingOpportunity],
-        start_sector: str,
-        max_time: float
-    ) -> Optional[OptimizedRoute]:
-        """
-        Optimize route for minimum time while maintaining decent profit
-        """
-        try:
-            # Filter opportunities by time constraint
-            viable_ops = [op for op in opportunities if op.travel_time_hours <= max_time / 2]
-            
-            if not viable_ops:
-                return None
-            
-            # Sort by travel time and profit ratio
-            viable_ops.sort(key=lambda x: (x.travel_time_hours, -x.profit_per_unit))
-            
-            # Build quick route
-            current_sector = start_sector
-            route_sectors = [current_sector]
-            route_opportunities = []
-            total_time = 0
-            
-            for op in viable_ops:
-                if op.from_sector_id == current_sector and total_time + op.travel_time_hours <= max_time:
-                    route_opportunities.append(op)
-                    route_sectors.append(op.to_sector_id)
-                    total_time += op.travel_time_hours
-                    current_sector = op.to_sector_id
-                    
-                    if len(route_opportunities) >= 3:  # Limit for time optimization
-                        break
-            
-            if not route_opportunities:
-                return None
-            
-            # Calculate metrics
-            total_profit = sum(op.profit_per_unit * 50 for op in route_opportunities)  # Assume 50 units
-            total_distance = sum(op.distance for op in route_opportunities)
-            fuel_cost = total_distance * self.fuel_cost_per_distance
-            net_profit = total_profit - fuel_cost
-            
-            return OptimizedRoute(
-                sectors=route_sectors,
-                opportunities=route_opportunities,
-                total_profit=net_profit,
-                total_distance=total_distance,
-                total_time_hours=total_time,
-                total_risk=sum(op.risk_factor for op in route_opportunities) / len(route_opportunities),
-                cargo_efficiency=0.8,  # Approximate
-                profit_per_hour=net_profit / max(1, total_time),
-                route_confidence=0.0,
-                route_type=""
-            )
-            
-        except Exception as e:
-            logger.error(f"Error optimizing for time: {e}")
-            return None
-    
-    async def _optimize_for_risk(
-        self,
-        opportunities: List[TradingOpportunity],
-        start_sector: str,
-        risk_tolerance: float
-    ) -> Optional[OptimizedRoute]:
-        """
-        Optimize route for minimum risk
-        """
-        try:
-            # Filter by risk tolerance
-            safe_ops = [op for op in opportunities if op.risk_factor <= risk_tolerance]
-            
-            if not safe_ops:
-                return None
-            
-            # Sort by risk and confidence
-            safe_ops.sort(key=lambda x: (x.risk_factor, -x.confidence))
-            
-            # Use profit optimization on safe opportunities
-            return await self._optimize_for_profit(safe_ops, start_sector, 100)
-            
-        except Exception as e:
-            logger.error(f"Error optimizing for risk: {e}")
-            return None
-    
-    async def _optimize_balanced(
-        self,
-        opportunities: List[TradingOpportunity],
-        start_sector: str,
         cargo_capacity: int,
         max_time: float,
-        risk_tolerance: float
+    ) -> Optional[OptimizedRoute]:
+        """Greedy route maximising total profit."""
+        return self._greedy_route(
+            start, opportunities, cargo_capacity, max_time,
+            score_fn=lambda o, cap: o.profit_per_unit * min(cap, o.max_quantity) * o.confidence,
+        )
+
+    def _build_time_route(
+        self,
+        start: int,
+        opportunities: List[TradingOpportunity],
+        max_time: float,
+    ) -> Optional[OptimizedRoute]:
+        """Route prioritising short travel time per profit unit."""
+        return self._greedy_route(
+            start, opportunities, 100, max_time,
+            score_fn=lambda o, cap: (
+                o.profit_per_unit * o.confidence / max(0.1, o.travel_time_hours)
+            ),
+            max_stops=3,
+        )
+
+    def _build_risk_route(
+        self,
+        start: int,
+        opportunities: List[TradingOpportunity],
+        risk_tolerance: float,
+        cargo_capacity: int,
+    ) -> Optional[OptimizedRoute]:
+        """Route minimising risk while still profitable."""
+        safe = [o for o in opportunities if o.risk_factor <= risk_tolerance]
+        if not safe:
+            return None
+        return self._greedy_route(
+            start, safe, cargo_capacity, 24.0,
+            score_fn=lambda o, cap: (
+                o.profit_per_unit * min(cap, o.max_quantity)
+                * o.confidence * (1.0 - o.risk_factor)
+            ),
+        )
+
+    def _build_balanced_route(
+        self,
+        start: int,
+        opportunities: List[TradingOpportunity],
+        cargo_capacity: int,
+        max_time: float,
+        risk_tolerance: float,
+    ) -> Optional[OptimizedRoute]:
+        """Balanced route weighing profit, time, and risk."""
+        viable = [o for o in opportunities if o.risk_factor <= risk_tolerance + 0.1]
+        if not viable:
+            return None
+        return self._greedy_route(
+            start, viable, cargo_capacity, max_time,
+            score_fn=lambda o, cap: (
+                o.profit_per_unit * min(cap, o.max_quantity) * 0.4
+                + (1.0 / max(0.1, o.travel_time_hours)) * 100 * 0.2
+                + (1.0 - o.risk_factor) * 100 * 0.2
+                + o.confidence * 100 * 0.2
+            ),
+        )
+
+    def _greedy_route(
+        self,
+        start: int,
+        opportunities: List[TradingOpportunity],
+        cargo_capacity: int,
+        max_time: float,
+        score_fn=None,
+        max_stops: int = None,
     ) -> Optional[OptimizedRoute]:
         """
-        Optimize route using balanced scoring of profit, time, and risk
+        Build a route greedily: at each step pick the highest-scored
+        opportunity reachable from the current sector.
         """
-        try:
-            # Score each opportunity using weighted factors
-            scored_ops = []
+        if max_stops is None:
+            max_stops = self.max_route_length
+
+        current = start
+        route_sectors = [str(current)]
+        route_ops: List[TradingOpportunity] = []
+        visited_pairs: Set[Tuple[str, str]] = set()
+        total_time = 0.0
+
+        for _ in range(max_stops):
+            best_op = None
+            best_score = -1.0
+
             for op in opportunities:
-                # Normalize factors
-                profit_score = min(1.0, op.profit_per_unit / 100.0)  # Normalize to 100 credits
-                time_score = max(0.0, 1.0 - (op.travel_time_hours / max_time))
-                risk_score = max(0.0, 1.0 - (op.risk_factor / 1.0))
-                confidence_score = op.confidence
-                
-                # Weighted balanced score
-                balanced_score = (
-                    profit_score * 0.4 +
-                    time_score * 0.2 +
-                    risk_score * 0.2 +
-                    confidence_score * 0.2
-                )
-                
-                scored_ops.append((balanced_score, op))
-            
-            # Sort by balanced score
-            scored_ops.sort(key=lambda x: x[0], reverse=True)
-            
-            # Build route using balanced scoring
-            current_sector = start_sector
-            route_sectors = [current_sector]
-            route_opportunities = []
-            total_time = 0
-            
-            for score, op in scored_ops:
-                if (op.from_sector_id == current_sector and 
-                    total_time + op.travel_time_hours <= max_time and
-                    op.risk_factor <= risk_tolerance + 0.1):
-                    
-                    route_opportunities.append(op)
-                    route_sectors.append(op.to_sector_id)
-                    total_time += op.travel_time_hours
-                    current_sector = op.to_sector_id
-                    
-                    if len(route_opportunities) >= 4:  # Balanced route length
-                        break
-            
-            if not route_opportunities:
-                return None
-            
-            # Calculate metrics
-            total_profit = sum(op.profit_per_unit * min(cargo_capacity, op.max_quantity) for op in route_opportunities)
-            total_distance = sum(op.distance for op in route_opportunities)
-            fuel_cost = total_distance * self.fuel_cost_per_distance
-            net_profit = total_profit - fuel_cost
-            avg_risk = sum(op.risk_factor for op in route_opportunities) / len(route_opportunities)
-            
-            return OptimizedRoute(
-                sectors=route_sectors,
-                opportunities=route_opportunities,
-                total_profit=net_profit,
-                total_distance=total_distance,
-                total_time_hours=total_time,
-                total_risk=avg_risk,
-                cargo_efficiency=0.85,  # Balanced efficiency
-                profit_per_hour=net_profit / max(1, total_time),
-                route_confidence=0.0,
-                route_type=""
-            )
-            
-        except Exception as e:
-            logger.error(f"Error optimizing balanced route: {e}")
+                pair = (op.from_sector_id, op.to_sector_id)
+                if pair in visited_pairs:
+                    continue
+                if int(op.from_sector_id) != current:
+                    continue
+                if total_time + op.travel_time_hours > max_time:
+                    continue
+
+                score = score_fn(op, cargo_capacity) if score_fn else op.profit_per_unit
+                if score > best_score:
+                    best_score = score
+                    best_op = op
+
+            if best_op is None:
+                break
+
+            route_ops.append(best_op)
+            route_sectors.append(best_op.to_sector_id)
+            total_time += best_op.travel_time_hours
+            current = int(best_op.to_sector_id)
+            visited_pairs.add((best_op.from_sector_id, best_op.to_sector_id))
+
+        if not route_ops:
             return None
-    
-    def _calculate_route_confidence(self, opportunities: List[TradingOpportunity]) -> float:
-        """Calculate overall confidence in route success"""
+
+        total_profit = sum(
+            o.profit_per_unit * min(cargo_capacity, o.max_quantity)
+            for o in route_ops
+        )
+        total_distance = sum(o.distance for o in route_ops)
+        avg_risk = sum(o.risk_factor for o in route_ops) / len(route_ops)
+        cargo_eff = len(route_ops) / max(1, len(route_sectors))
+
+        return OptimizedRoute(
+            sectors=route_sectors,
+            opportunities=route_ops,
+            total_profit=total_profit,
+            total_distance=total_distance,
+            total_time_hours=total_time,
+            total_risk=avg_risk,
+            cargo_efficiency=cargo_eff,
+            profit_per_hour=total_profit / max(0.1, total_time),
+            route_confidence=0.0,  # filled by caller
+            route_type="",  # filled by caller
+        )
+
+    # ------------------------------------------------------------------
+    # Utility helpers
+    # ------------------------------------------------------------------
+
+    def _resolve_sector_id(self, value: str) -> Optional[int]:
+        """Convert a sector_id string (integer or UUID) to an int sector_id."""
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            pass
+        # Try UUID lookup
+        for sid, uuid_str in self._sid_to_uuid.items():
+            if uuid_str == value:
+                return sid
+        return None
+
+    def _uuid_to_sid(self, uuid_str: str) -> Optional[int]:
+        """Reverse lookup: UUID -> integer sector_id."""
+        for sid, u in self._sid_to_uuid.items():
+            if u == uuid_str:
+                return sid
+        return None
+
+    @staticmethod
+    def _route_confidence(opportunities: List[TradingOpportunity]) -> float:
         if not opportunities:
             return 0.0
-        
-        return sum(op.confidence for op in opportunities) / len(opportunities)
-    
-    def _classify_route_type(self, sectors: List[str]) -> str:
-        """Classify the type of route based on sector pattern"""
+        return sum(o.confidence for o in opportunities) / len(opportunities)
+
+    @staticmethod
+    def _classify_route(sectors: List[str]) -> str:
         if len(sectors) < 3:
             return "direct"
-        elif sectors[0] == sectors[-1]:
+        if sectors[0] == sectors[-1]:
             return "circular"
-        elif len(set(sectors)) < len(sectors) * 0.7:
+        unique_ratio = len(set(sectors)) / len(sectors)
+        if unique_ratio < 0.7:
             return "hub_spoke"
-        else:
-            return "linear"
-    
-    def _generate_route_description(self, route: OptimizedRoute, objective: RouteObjective) -> str:
-        """Generate human-readable route description"""
-        sector_count = len(route.sectors)
-        
+        return "linear"
+
+    @staticmethod
+    def _describe_route(route: OptimizedRoute, objective: RouteObjective) -> str:
+        n = len(route.sectors)
         if objective == RouteObjective.MAX_PROFIT:
-            return f"High-profit {sector_count}-sector route generating {route.total_profit:.0f} credits"
+            return f"High-profit {n}-sector route generating {route.total_profit:.0f} credits"
         elif objective == RouteObjective.MIN_TIME:
-            return f"Quick {sector_count}-sector route completed in {route.total_time_hours:.1f} hours"
+            return f"Quick {n}-sector route in {route.total_time_hours:.1f} hours"
         elif objective == RouteObjective.MIN_RISK:
-            return f"Safe {sector_count}-sector route with {route.total_risk:.1f} risk level"
-        else:
-            return f"Balanced {sector_count}-sector route: {route.total_profit:.0f} credits in {route.total_time_hours:.1f}h"
-    
-    async def _get_sectors_within_distance(self, db: AsyncSession, start_sector: str, max_distance: int) -> List[str]:
-        """Get all sectors within specified distance"""
-        # Simplified implementation - in real game would use graph traversal
-        return [start_sector, f"{int(start_sector)+1}", f"{int(start_sector)+2}", f"{int(start_sector)+3}"]
-    
-    async def _find_arbitrage_between_sectors(
-        self, 
-        db: AsyncSession, 
-        sector_a: str, 
-        sector_b: str, 
-        min_profit_margin: float
-    ) -> List[TradingOpportunity]:
-        """Find arbitrage opportunities between two sectors"""
-        # Real commodities from the Station model
-        commodities = ["ore", "organics", "equipment", "fuel", "luxury_goods", "gourmet_food", "exotic_technology"]
-        opportunities = []
-        
-        try:
-            # Query ports in both sectors
-            from src.models.station import Station
-            from sqlalchemy import select
-            ports_a_query = select(Station).where(Station.sector_id == int(sector_a))
-            ports_b_query = select(Station).where(Station.sector_id == int(sector_b))
-            
-            ports_a_result = await db.execute(ports_a_query)
-            ports_b_result = await db.execute(ports_b_query)
-            
-            ports_a = ports_a_result.scalars().all()
-            ports_b = ports_b_result.scalars().all()
-            
-            if not ports_a or not ports_b:
-                return opportunities
-            
-            # Check each commodity for trading opportunities
-            for commodity in commodities:
-                # Find best buy price in sector A (ports that sell this commodity)
-                best_buy_price = float('inf')
-                best_buy_station = None
-                for station in ports_a:
-                    commodity_data = station.commodities.get(commodity, {})
-                    if commodity_data.get('sells', False) and commodity_data.get('quantity', 0) > 0:
-                        current_price = commodity_data.get('current_price', commodity_data.get('base_price', 0))
-                        if current_price < best_buy_price:
-                            best_buy_price = current_price
-                            best_buy_station = port
-                
-                # Find best sell price in sector B (ports that buy this commodity)
-                best_sell_price = 0
-                best_sell_station = None
-                for station in ports_b:
-                    commodity_data = station.commodities.get(commodity, {})
-                    if commodity_data.get('buys', False):
-                        current_price = commodity_data.get('current_price', commodity_data.get('base_price', 0))
-                        if current_price > best_sell_price:
-                            best_sell_price = current_price
-                            best_sell_station = port
-                
-                # Check if profitable
-                if best_buy_station and best_sell_station and best_sell_price > best_buy_price * (1 + min_profit_margin):
-                    profit_per_unit = best_sell_price - best_buy_price
-                    distance = await self._get_distance_between_sectors(db, sector_a, sector_b)
-                    
-                    # Calculate risk factor based on sector conditions
-                    risk_factor = 0.1  # Base risk
-                    # Could add more risk calculations based on pirate activity, war zones, etc.
-                    
-                    # Calculate confidence based on market volatility
-                    avg_volatility = (best_buy_station.market_volatility + best_sell_station.market_volatility) / 2
-                    confidence = 1.0 - (avg_volatility / 100.0)  # Convert 0-100 to 0-1 scale
-                    
-                    opportunity = TradingOpportunity(
-                        from_sector_id=sector_a,
-                        to_sector_id=sector_b,
-                        commodity_id=commodity,
-                        buy_price=best_buy_price,
-                        sell_price=best_sell_price,
-                        profit_per_unit=profit_per_unit,
-                        max_quantity=min(
-                            best_buy_station.commodities[commodity].get('quantity', 0),
-                            best_sell_station.commodities[commodity].get('capacity', 0) - 
-                            best_sell_station.commodities[commodity].get('quantity', 0)
-                        ),
-                        distance=distance,
-                        travel_time_hours=distance * self.time_per_distance,
-                        risk_factor=risk_factor,
-                        confidence=confidence
-                    )
-                    opportunities.append(opportunity)
-                    
-        except Exception as e:
-            logger.error(f"Error finding arbitrage opportunities: {e}")
-        
-        return opportunities
-    
-    async def _get_distance_between_sectors(self, db: AsyncSession, sector_a: str, sector_b: str) -> int:
-        """Get distance between two sectors"""
-        # Simplified calculation
-        try:
-            return abs(int(sector_a) - int(sector_b))
-        except:
-            return 1
-    
-    async def _get_player_data(self, db: AsyncSession, player_id: str) -> Optional[Player]:
-        """Get player data"""
-        try:
-            query = select(Player).where(Player.id == player_id)
-            result = await db.execute(query)
-            return result.scalar_one_or_none()
-        except Exception as e:
-            logger.error(f"Error getting player data: {e}")
-            return None
+            return f"Safe {n}-sector route with risk level {route.total_risk:.2f}"
+        return f"Balanced {n}-sector route: {route.total_profit:.0f} credits in {route.total_time_hours:.1f}h"
