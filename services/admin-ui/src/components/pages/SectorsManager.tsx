@@ -25,10 +25,10 @@ interface Sector {
 const SectorsManager: React.FC = () => {
   const {
     galaxyState,
-    zones,
+    regions,
     clusters,
     loadGalaxyInfo,
-    loadZones,
+    loadRegions,
     loadClusters,
     isLoading,
     error
@@ -60,10 +60,10 @@ const SectorsManager: React.FC = () => {
     loadGalaxyInfo();
   }, []);
   
-  // Load zones when galaxy info is loaded
+  // Load regions when galaxy info is loaded
   useEffect(() => {
     if (galaxyState) {
-      loadZones();
+      loadRegions();
     }
   }, [galaxyState]);
   
@@ -116,10 +116,10 @@ const SectorsManager: React.FC = () => {
   useEffect(() => {
     if (selectedRegion) {
       loadClusters(selectedRegion);
-    } else if (zones.length > 0) {
+    } else if (regions.length > 0) {
       loadClusters();
     }
-  }, [selectedRegion, zones]);
+  }, [selectedRegion, regions]);
   
   // Reset cluster selection when region changes
   useEffect(() => {
@@ -236,9 +236,9 @@ const SectorsManager: React.FC = () => {
                     onChange={handleRegionChange}
                   >
                     <option value="">All Regions</option>
-                    {zones.map(zone => (
-                      <option key={zone.id} value={zone.id}>
-                        {zone.name} ({zone.type})
+                    {regions.map(region => (
+                      <option key={region.id} value={region.id}>
+                        {region.display_name} ({region.region_type})
                       </option>
                     ))}
                   </select>
