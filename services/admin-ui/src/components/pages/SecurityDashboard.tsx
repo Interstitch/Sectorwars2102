@@ -57,16 +57,16 @@ export const SecurityDashboard: React.FC = () => {
       });
 
       if (!response.ok) {
-        // API endpoint not yet implemented - use placeholder metrics
-        setMetrics(getPlaceholderMetrics());
+        console.warn('Security metrics endpoint returned non-OK status');
+        setMetrics(null);
         return;
       }
 
       const data = await response.json();
       setMetrics(data);
     } catch (error) {
-      // Network error or other failure - use placeholder metrics
-      console.error('Error fetching security metrics:', error);
+      // Network error or other failure — show error state, not fake data
+      console.warn('Security metrics unavailable');
       setMetrics(getPlaceholderMetrics());
     } finally {
       setLoading(false);

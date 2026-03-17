@@ -6,6 +6,8 @@ from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
+
 # Note: DATABASE_URL validation will happen in the Settings class below
 # which properly loads from .env files using Pydantic
 
@@ -148,12 +150,12 @@ class Settings(BaseSettings):
         # If explicitly set through FRONTEND_URL environment variable, use that
         if os.environ.get("FRONTEND_URL"):
             frontend_url = os.environ.get("FRONTEND_URL")
-            print(f"Using explicitly set FRONTEND_URL from environment: {frontend_url}")
+            logger.debug("Using explicitly set FRONTEND_URL from environment")
             return frontend_url
 
         # Auto-detect based on environment
         env_type = self.detect_environment()
-        print(f"Auto-detecting frontend URL for environment: {env_type}")
+        logger.debug("Auto-detecting frontend URL for environment: %s", env_type)
 
         if env_type == "codespaces":
             # For Codespaces, construct URL from environment variables
@@ -165,15 +167,15 @@ class Settings(BaseSettings):
                 # Full domain format with official GitHub Codespaces domain
                 # Include port in the hostname for Codespaces URLs
                 frontend_url = f"https://{codespace_name}-3000.{github_codespaces_port_forwarding_domain}"
-                print(f"Using modern Codespaces URL format: {frontend_url}")
+                logger.debug("Using modern Codespaces URL format")
                 return frontend_url
             elif codespace_name:
                 # Legacy/default format with port in the hostname
                 frontend_url = f"https://{codespace_name}-3000.app.github.dev"
-                print(f"Using legacy Codespaces URL format: {frontend_url}")
+                logger.debug("Using legacy Codespaces URL format")
                 return frontend_url
             else:
-                print("WARNING: In Codespaces environment but CODESPACE_NAME not set!")
+                logger.warning("In Codespaces environment but CODESPACE_NAME not set")
 
         elif env_type == "replit":
             # For Replit, derive from the API URL but on port 3000
@@ -182,12 +184,12 @@ class Settings(BaseSettings):
             repl_owner = os.environ.get("REPL_OWNER")
             if repl_slug and repl_owner:
                 frontend_url = f"https://{repl_slug}.{repl_owner}.repl.co:3000"
-                print(f"Using Replit URL format: {frontend_url}")
+                logger.debug("Using Replit URL format")
                 return frontend_url
 
         # Default for local development
         frontend_url = "http://localhost:3000"
-        print(f"Using default frontend URL: {frontend_url}")
+        logger.debug("Using default frontend URL: localhost:3000")
         return frontend_url
 
     def get_db_url(self) -> str:

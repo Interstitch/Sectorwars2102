@@ -65,6 +65,7 @@ services:
   # Regional Database Template
   regional-db-template:
     image: postgres:15-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${REGION_NAME:-default_region}
       POSTGRES_USER: ${REGION_DB_USER:-region_admin}
@@ -243,6 +244,7 @@ services:
       dockerfile: Dockerfile
       args:
         - ENVIRONMENT=${ENVIRONMENT:-production}
+    restart: unless-stopped
     environment:
       - DATABASE_URL=postgresql://${REGION_DB_USER:-region_admin}:${REGION_DB_PASSWORD:-dev_only_not_for_production}@${REGION_NAME:-default-region}-db:5432/${REGION_NAME:-default_region}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-dev_only_not_for_production}@redis-nexus:6379/1
