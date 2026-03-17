@@ -152,6 +152,14 @@ const FirstLoginContext = createContext<FirstLoginContextType | undefined>(undef
 export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   
+  // Clamp analysis scores to valid range (0-100), handling NaN/undefined
+  const clampScore = (v: unknown): number | undefined => {
+    if (v === undefined || v === null) return undefined;
+    const n = Number(v);
+    if (!Number.isFinite(n)) return undefined;
+    return Math.max(0, Math.min(100, n));
+  };
+
   // Basic state
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -288,9 +296,9 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
           {
             npc: '',
             player: response,
-            consistency: result.data.analysis?.consistency,
-            confidence: result.data.analysis?.confidence,
-            persuasiveness: result.data.analysis?.persuasiveness,
+            consistency: clampScore(result.data.analysis?.consistency),
+            confidence: clampScore(result.data.analysis?.confidence),
+            persuasiveness: clampScore(result.data.analysis?.persuasiveness),
           },
           { npc: result.data.npc_prompt, player: '' }
         ]);
@@ -304,9 +312,9 @@ export const FirstLoginProvider: React.FC<{ children: ReactNode }> = ({ children
           {
             npc: '',
             player: response,
-            consistency: result.data.analysis?.consistency,
-            confidence: result.data.analysis?.confidence,
-            persuasiveness: result.data.analysis?.persuasiveness,
+            consistency: clampScore(result.data.analysis?.consistency),
+            confidence: clampScore(result.data.analysis?.confidence),
+            persuasiveness: clampScore(result.data.analysis?.persuasiveness),
           },
           { npc: result.data.npc_prompt, player: '' }
         ]);
