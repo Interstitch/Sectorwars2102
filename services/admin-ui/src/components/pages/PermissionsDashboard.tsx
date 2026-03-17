@@ -9,9 +9,9 @@ export const PermissionsDashboard: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Mock user data for demonstration
   React.useEffect(() => {
     if (activeTab === 'users') {
       fetchUsers();
@@ -20,61 +20,25 @@ export const PermissionsDashboard: React.FC = () => {
 
   const fetchUsers = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const response = await fetch('/api/admin/users?include_permissions=true', {
+      const response = await fetch('/api/v1/admin/users?include_permissions=true', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
-      }).catch(() => ({
-        ok: true,
-        json: async () => ({
-          users: [
-            {
-              id: 'user1',
-              username: 'admin_user',
-              email: 'admin@sectorwars.com',
-              roles: ['super-admin'],
-              customPermissions: [],
-              lastLogin: '2024-05-28T10:00:00Z',
-              status: 'active'
-            },
-            {
-              id: 'user2',
-              username: 'moderator1',
-              email: 'mod1@sectorwars.com',
-              roles: ['moderator'],
-              customPermissions: ['analytics.read'],
-              lastLogin: '2024-05-28T09:30:00Z',
-              status: 'active'
-            },
-            {
-              id: 'user3',
-              username: 'analyst_john',
-              email: 'john@sectorwars.com',
-              roles: ['analyst'],
-              customPermissions: ['users.write', 'economy.intervene'],
-              lastLogin: '2024-05-27T15:00:00Z',
-              status: 'active'
-            },
-            {
-              id: 'user4',
-              username: 'support_sarah',
-              email: 'sarah@sectorwars.com',
-              roles: ['support'],
-              customPermissions: [],
-              lastLogin: '2024-05-28T08:00:00Z',
-              status: 'inactive'
-            }
-          ]
-        })
-      }));
+      });
 
       if (response.ok) {
         const data = await response.json();
-        setUsers(data.users);
+        setUsers(data.users || []);
+      } else {
+        setUsers([]);
+        setError('Failed to load users. Server returned an error.');
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      setUsers([]);
+      setError('Failed to load users. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -95,14 +59,14 @@ export const PermissionsDashboard: React.FC = () => {
 
   const handleUserPermissionChange = async (userId: string, changes: any) => {
     try {
-      const response = await fetch(`/api/admin/users/${userId}/permissions`, {
+      const response = await fetch(`/api/v1/admin/users/${userId}/permissions`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         },
         body: JSON.stringify(changes)
-      }).catch(() => ({ ok: true }));
+      });
 
       if (response.ok) {
         // Update local state
@@ -177,6 +141,13 @@ export const PermissionsDashboard: React.FC = () => {
                 />
               </div>
             </div>
+
+            {error && (
+              <div className="error-state" style={{ padding: '16px', margin: '16px 0', backgroundColor: 'rgba(231, 76, 60, 0.1)', border: '1px solid rgba(231, 76, 60, 0.3)', borderRadius: '8px', color: '#e74c3c' }}>
+                <i className="fas fa-exclamation-circle" style={{ marginRight: '8px' }}></i>
+                {error}
+              </div>
+            )}
 
             {loading ? (
               <div className="loading-state">

@@ -361,16 +361,7 @@ const Dashboard: React.FC = () => {
               <div className="dashboard-stat-value">
                 {dashboardData.universe_stats.total_ships.toLocaleString()}
               </div>
-              <div className="flex justify-between">
-                <div className="text-center">
-                  <div className="text-xl font-semibold text-secondary">{Math.floor(dashboardData.universe_stats.total_ships * 0.7)}</div>
-                  <div className="text-xs text-tertiary">Active</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-semibold text-secondary">{Math.floor(dashboardData.universe_stats.total_ships * 0.3)}</div>
-                  <div className="text-xs text-tertiary">Docked</div>
-                </div>
-              </div>
+              <div className="text-xs text-tertiary" style={{ textAlign: 'center' }}>Total Ships</div>
             </div>
 
             <div className="dashboard-stat-card">

@@ -315,21 +315,9 @@ export const SecurityDashboard: React.FC = () => {
                 </button>
               </div>
               <div className="blocked-ips-list">
-                <div className="blocked-ip">
-                  <span className="ip">192.168.1.100</span>
-                  <span className="reason">Brute force attempts</span>
-                  <span className="blocked-date">Blocked 2 hours ago</span>
-                  <button className="btn-icon" title="Remove from blocklist">
-                    <i className="fas fa-times"></i>
-                  </button>
-                </div>
-                <div className="blocked-ip">
-                  <span className="ip">10.0.0.50</span>
-                  <span className="reason">Suspicious API usage</span>
-                  <span className="blocked-date">Blocked 1 day ago</span>
-                  <button className="btn-icon" title="Remove from blocklist">
-                    <i className="fas fa-times"></i>
-                  </button>
+                <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af' }}>
+                  <i className="fas fa-shield-alt" style={{ fontSize: '1.5rem', marginBottom: '8px', display: 'block' }}></i>
+                  No blocked IPs. The blocklist is empty.
                 </div>
               </div>
             </div>

@@ -22,132 +22,58 @@ export const AdvancedAnalytics: React.FC = () => {
 
   const handleGenerateReport = async (template: any) => {
     try {
-      // In production, this would call the API to generate the report
-      const response = await fetch('/api/admin/reports/generate', {
+      const response = await fetch('/api/v1/admin/reports/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         },
         body: JSON.stringify(template)
-      }).catch(() => {
-        // Mock response
-        return {
-          ok: true,
-          json: async () => ({
-            id: `report-${Date.now()}`,
-            name: template.name,
-            generatedAt: new Date().toISOString(),
-            template,
-            data: {
-              summary: {
-                totalPlayers: 1234,
-                activeToday: 892,
-                revenue24h: 15420,
-                newPlayers24h: 67
-              },
-              rows: Array.from({ length: 100 }, (_, i) => ({
-                date: new Date(Date.now() - i * 86400000).toISOString(),
-                players: Math.floor(1000 + Math.random() * 500),
-                revenue: Math.floor(10000 + Math.random() * 10000),
-                battles: Math.floor(500 + Math.random() * 500),
-                trades: Math.floor(1000 + Math.random() * 1000)
-              }))
-            }
-          })
-        };
       });
 
       if (response.ok) {
         const report = await response.json();
         setGeneratedReports([report, ...generatedReports]);
         setSelectedReport(report);
-        
-        // Show success notification
         alert(`Report "${template.name}" generated successfully!`);
+      } else {
+        alert('Failed to generate report. Server returned an error.');
       }
     } catch (error) {
       console.error('Error generating report:', error);
-      alert('Failed to generate report');
+      alert('Failed to generate report. Please check your connection and try again.');
     }
   };
 
   const handleExportData = async (dataType: string) => {
     setExportLoading(true);
     try {
-      const response = await fetch(`/api/admin/analytics/export?type=${dataType}&format=${exportFormat}`, {
+      const response = await fetch(`/api/v1/admin/analytics/export?type=${dataType}&format=${exportFormat}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
-      }).catch(() => {
-        // Mock file download
-        const data = {
-          exportType: dataType,
-          format: exportFormat,
-          generatedAt: new Date().toISOString(),
-          data: {
-            players: Array.from({ length: 100 }, (_, i) => ({
-              id: `player-${i}`,
-              username: `player${i}`,
-              joinDate: new Date(Date.now() - Math.random() * 86400000 * 365).toISOString(),
-              lastLogin: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
-              totalPlaytime: Math.floor(Math.random() * 1000),
-              credits: Math.floor(Math.random() * 1000000)
-            }))
-          }
-        };
+      });
 
-        // Create blob and download
-        let blob;
-        let filename;
-        
-        if (exportFormat === 'csv') {
-          const csv = convertToCSV(data.data.players);
-          blob = new Blob([csv], { type: 'text/csv' });
-          filename = `${dataType}-export-${Date.now()}.csv`;
-        } else if (exportFormat === 'json') {
-          blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-          filename = `${dataType}-export-${Date.now()}.json`;
-        } else {
-          // For Excel and PDF, we'd need specialized libraries
-          blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-          filename = `${dataType}-export-${Date.now()}.json`;
-        }
-
+      if (response.ok) {
+        const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = filename;
+        a.download = `${dataType}-export-${Date.now()}.${exportFormat === 'excel' ? 'xlsx' : exportFormat}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-
-        return { ok: true };
-      });
-
-      if (response.ok) {
         alert(`Data exported successfully as ${exportFormat.toUpperCase()}`);
+      } else {
+        alert('Failed to export data. Server returned an error.');
       }
     } catch (error) {
       console.error('Error exporting data:', error);
-      alert('Failed to export data');
+      alert('Failed to export data. Please check your connection and try again.');
     } finally {
       setExportLoading(false);
     }
-  };
-
-  const convertToCSV = (data: any[]) => {
-    if (!data.length) return '';
-    
-    const headers = Object.keys(data[0]).join(',');
-    const rows = data.map(row => 
-      Object.values(row).map(value => 
-        typeof value === 'string' && value.includes(',') ? `"${value}"` : value
-      ).join(',')
-    );
-    
-    return [headers, ...rows].join('\n');
   };
 
   const exportOptions = [
@@ -348,29 +274,9 @@ export const AdvancedAnalytics: React.FC = () => {
             <div className="export-history">
               <h3>Recent Exports</h3>
               <div className="history-list">
-                <div className="history-item">
-                  <i className="fas fa-file-csv"></i>
-                  <div className="history-info">
-                    <span className="history-name">players-export-20240528.csv</span>
-                    <span className="history-time">2 hours ago</span>
-                  </div>
-                  <span className="history-size">2.4 MB</span>
-                </div>
-                <div className="history-item">
-                  <i className="fas fa-file-code"></i>
-                  <div className="history-info">
-                    <span className="history-name">economy-export-20240527.json</span>
-                    <span className="history-time">Yesterday</span>
-                  </div>
-                  <span className="history-size">5.1 MB</span>
-                </div>
-                <div className="history-item">
-                  <i className="fas fa-file-excel"></i>
-                  <div className="history-info">
-                    <span className="history-name">combat-logs-20240525.xlsx</span>
-                    <span className="history-time">3 days ago</span>
-                  </div>
-                  <span className="history-size">8.7 MB</span>
+                <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af' }}>
+                  <i className="fas fa-history" style={{ fontSize: '1.5rem', marginBottom: '8px', display: 'block' }}></i>
+                  No export history available.
                 </div>
               </div>
             </div>
