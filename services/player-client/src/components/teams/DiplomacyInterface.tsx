@@ -57,28 +57,14 @@ export const DiplomacyInterface: React.FC<DiplomacyInterfaceProps> = ({
       setRelations(relationsData);
       setAvailableTeams(teamsData.filter(t => t.id !== team.id));
       
-      // Mock treaties data
-      setTreaties([
-        {
-          id: 'treaty-1',
-          type: 'trade',
-          withTeam: 'Merchant Guild',
-          terms: ['Free passage through territories', 'Trade information sharing'],
-          status: 'active',
-          proposedBy: team.name,
-          proposedAt: '2102-03-01T00:00:00Z',
-          expiresAt: '2102-09-01T00:00:00Z'
-        },
-        {
-          id: 'treaty-2',
-          type: 'non-aggression',
-          withTeam: 'Neutral Zone',
-          terms: ['No hostile actions', 'Respect boundaries'],
-          status: 'proposed',
-          proposedBy: 'Neutral Zone',
-          proposedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      ]);
+      // Fetch treaties from API
+      try {
+        const treatiesData = await gameAPI.team.getTreaties(team.id);
+        setTreaties(Array.isArray(treatiesData) ? treatiesData : []);
+      } catch {
+        // Treaty endpoint may not be implemented yet - show empty state
+        setTreaties([]);
+      }
     } catch (error) {
       console.error('Failed to load diplomacy data:', error);
       setMessage('Failed to load diplomacy data');
@@ -363,7 +349,7 @@ export const DiplomacyInterface: React.FC<DiplomacyInterfaceProps> = ({
             <h3>Treaties & Agreements</h3>
             {treaties.length === 0 ? (
               <div className="empty-state">
-                <p>No treaties established</p>
+                <p>No active treaties. Use diplomacy to forge alliances with other teams.</p>
               </div>
             ) : (
               <div className="treaties-list">

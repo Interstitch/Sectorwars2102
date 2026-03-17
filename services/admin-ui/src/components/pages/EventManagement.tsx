@@ -43,6 +43,42 @@ interface EventStats {
   rewards_distributed: number;
 }
 
+// Fallback event templates used when the API is unavailable.
+// These provide a baseline set of templates so admins can still create events
+// even if the template endpoint is temporarily down.
+const DEFAULT_EVENT_TEMPLATES: EventTemplate[] = [
+  {
+    id: 'fallback-1',
+    name: 'Economic Boom',
+    description: 'Increases trade prices across affected regions',
+    event_type: 'economic',
+    default_effects: [
+      { type: 'price_modifier', target: 'all_commodities', modifier: 1.5, duration_hours: 24 }
+    ],
+    duration_hours: 24
+  },
+  {
+    id: 'fallback-2',
+    name: 'Pirate Raids',
+    description: 'Increased combat encounters in affected sectors',
+    event_type: 'combat',
+    default_effects: [
+      { type: 'spawn_rate', target: 'pirates', modifier: 2.0, duration_hours: 48 }
+    ],
+    duration_hours: 48
+  },
+  {
+    id: 'fallback-3',
+    name: 'Resource Rush',
+    description: 'Bonus resources from mining and trading',
+    event_type: 'exploration',
+    default_effects: [
+      { type: 'resource_bonus', target: 'mining', modifier: 2.0, duration_hours: 72 }
+    ],
+    duration_hours: 72
+  }
+];
+
 const EventManagement: React.FC = () => {
   const [events, setEvents] = useState<GameEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<GameEvent | null>(null);
@@ -114,39 +150,8 @@ const EventManagement: React.FC = () => {
       setTemplates(response.data as EventTemplate[]);
     } catch (error) {
       console.error('Error fetching event templates:', error);
-      // Use fallback templates on error
-      setTemplates([
-        {
-          id: '1',
-          name: 'Economic Boom',
-          description: 'Increases trade prices across affected regions',
-          event_type: 'economic',
-          default_effects: [
-            { type: 'price_modifier', target: 'all_commodities', modifier: 1.5, duration_hours: 24 }
-          ],
-          duration_hours: 24
-        },
-        {
-          id: '2',
-          name: 'Pirate Raids',
-          description: 'Increased combat encounters in affected sectors',
-          event_type: 'combat',
-          default_effects: [
-            { type: 'spawn_rate', target: 'pirates', modifier: 2.0, duration_hours: 48 }
-          ],
-          duration_hours: 48
-        },
-        {
-          id: '3',
-          name: 'Resource Rush',
-          description: 'Bonus resources from mining and trading',
-          event_type: 'exploration',
-          default_effects: [
-            { type: 'resource_bonus', target: 'mining', modifier: 2.0, duration_hours: 72 }
-          ],
-          duration_hours: 72
-        }
-      ]);
+      // Use fallback templates when API is unavailable
+      setTemplates(DEFAULT_EVENT_TEMPLATES);
     }
   };
 

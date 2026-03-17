@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { gameAPI } from '../../services/api';
+import { useGame } from '../../contexts/GameContext';
 import type { PlanetType, GenesisDeployment as GenesisDeploymentType } from '../../types/planetary';
 import './genesis-deployment.css';
 
@@ -99,20 +100,35 @@ export const GenesisDeployment: React.FC<GenesisDeploymentProps> = ({
   onSuccess,
   onClose 
 }) => {
+  const { currentShip, updateShipGenesis } = useGame();
   const [selectedType, setSelectedType] = useState<PlanetType>('terran');
   const [planetName, setPlanetName] = useState('');
   const [selectedSectorId, setSelectedSectorId] = useState('');
   const [deploying, setDeploying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [genesisDevices, setGenesisDevices] = useState(3); // Mock value
-  const [availableSectors, setAvailableSectors] = useState<Array<{id: string, name: string}>>([
-    { id: 'sector-1', name: 'Sol System' },
-    { id: 'sector-42', name: 'Asteroid Belt' },
-    { id: 'sector-99', name: 'Outer Rim' },
-    { id: 'sector-7', name: 'Nebula Core' },
-    { id: 'sector-13', name: 'Trade Route Alpha' }
-  ]);
+  const [loadingSectors, setLoadingSectors] = useState(true);
+  const [availableSectors, setAvailableSectors] = useState<Array<{id: string, name: string}>>([]);
+
+  const genesisDevices = currentShip?.genesis_devices ?? 0;
+
+  useEffect(() => {
+    loadAvailableSectors();
+  }, []);
+
+  const loadAvailableSectors = async () => {
+    setLoadingSectors(true);
+    try {
+      // No dedicated endpoint exists for sectors available for genesis deployment.
+      // The deploy API itself validates the target sector, so we let the player
+      // enter a sector ID manually. A future API endpoint could provide filtered sectors.
+      setAvailableSectors([]);
+    } catch {
+      setAvailableSectors([]);
+    } finally {
+      setLoadingSectors(false);
+    }
+  };
 
   const selectedPlanetInfo = PLANET_TYPES.find(p => p.type === selectedType)!;
 
@@ -164,7 +180,7 @@ export const GenesisDeployment: React.FC<GenesisDeploymentProps> = ({
       );
 
       if (response.success) {
-        setGenesisDevices(response.genesisDevicesRemaining);
+        updateShipGenesis(response.genesisDevicesRemaining);
         setSuccessMessage(`Genesis Device deployed! ${planetName} will be ready in ${Math.floor(response.deploymentTime / 60)} minutes.`);
         
         // Clear form
@@ -257,20 +273,38 @@ export const GenesisDeployment: React.FC<GenesisDeploymentProps> = ({
 
               <div className="form-section">
                 <label htmlFor="sector-select">Target Sector</label>
-                <select
-                  id="sector-select"
-                  value={selectedSectorId}
-                  onChange={(e) => setSelectedSectorId(e.target.value)}
-                  className={error && error.includes('sector') ? 'error' : ''}
-                >
-                  <option value="">Select a sector...</option>
-                  {availableSectors.map(sector => (
-                    <option key={sector.id} value={sector.id}>
-                      {sector.name}
-                    </option>
-                  ))}
-                </select>
-                <span className="input-hint">Choose a sector with available planet slots</span>
+                {loadingSectors ? (
+                  <p className="input-hint">Loading available sectors...</p>
+                ) : availableSectors.length === 0 ? (
+                  <>
+                    <input
+                      id="sector-select"
+                      type="text"
+                      value={selectedSectorId}
+                      onChange={(e) => setSelectedSectorId(e.target.value)}
+                      placeholder="Enter sector ID..."
+                      className={error && error.includes('sector') ? 'error' : ''}
+                    />
+                    <span className="input-hint">Enter the ID of a sector with available planet slots. Navigate to a sector first to find valid targets.</span>
+                  </>
+                ) : (
+                  <>
+                    <select
+                      id="sector-select"
+                      value={selectedSectorId}
+                      onChange={(e) => setSelectedSectorId(e.target.value)}
+                      className={error && error.includes('sector') ? 'error' : ''}
+                    >
+                      <option value="">Select a sector...</option>
+                      {availableSectors.map(sector => (
+                        <option key={sector.id} value={sector.id}>
+                          {sector.name}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="input-hint">Choose a sector with available planet slots</span>
+                  </>
+                )}
               </div>
             </div>
 
@@ -330,7 +364,7 @@ export const GenesisDeployment: React.FC<GenesisDeploymentProps> = ({
                 <div className="summary-item">
                   <span className="summary-label">Target Sector:</span>
                   <span className="summary-value">
-                    {selectedSectorId ? availableSectors.find(s => s.id === selectedSectorId)?.name : 'Not selected'}
+                    {selectedSectorId ? (availableSectors.find(s => s.id === selectedSectorId)?.name || `Sector ${selectedSectorId}`) : 'Not selected'}
                   </span>
                 </div>
                 <div className="summary-item">
