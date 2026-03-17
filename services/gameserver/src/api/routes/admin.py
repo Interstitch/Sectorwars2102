@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
-from typing import Optional
+from sqlalchemy import text, func, desc
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
+from datetime import datetime, timezone
 import random
 import math
 import logging
@@ -23,6 +24,7 @@ from src.models.warp_tunnel import WarpTunnel
 from src.models.station import Station
 from src.models.planet import Planet
 from src.models.team import Team
+from src.models.game_event import GameEvent, EventEffect, EventParticipation, EventType, EventStatus
 from src.schemas.user import UserAdminResponse
 
 # Request schemas for universe management
@@ -42,6 +44,24 @@ class WarpTunnelCreateRequest(BaseModel):
     source_sector_id: int
     target_sector_id: int
     stability: Optional[float] = 0.75
+
+# Event management schemas
+class QuickEventCreateRequest(BaseModel):
+    """Simplified event creation for admin dashboard quick-actions."""
+    title: str
+    description: str
+    event_type: str = "economic"  # economic, combat, exploration, seasonal, emergency, story
+    duration_hours: int = 24
+    affected_regions: Optional[List[str]] = None  # None = global
+    effects: Optional[List[Dict[str, Any]]] = None
+    auto_start: bool = False
+
+class EventUpdateRequest(BaseModel):
+    """Partial update for an existing event."""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None  # scheduled, active, completed, cancelled, paused
+    end_time: Optional[datetime] = None
 
 # Zone response schemas
 class ZoneResponse(BaseModel):
@@ -1657,3 +1677,643 @@ async def update_port(
         db.rollback()
         logger.error(f"Error updating port: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to update port: {str(e)}")
+
+
+# ============================================================================
+# Game Event Management Endpoints
+# ============================================================================
+# These provide dashboard-level event management alongside the more
+# comprehensive CRUD in /admin/events (events.py). These endpoints are
+# designed for the admin dashboard summary views and quick-action workflows.
+# ============================================================================
+
+@router.get("/game-events/summary", response_model=dict)
+async def get_game_events_summary(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get a summary of game events for the admin dashboard.
+
+    Returns counts by status, the most recent events, and currently
+    active effects so the dashboard can render an at-a-glance widget.
+    """
+    try:
+        total_events = db.query(GameEvent).count()
+        active_events = db.query(GameEvent).filter(
+            GameEvent.status == EventStatus.ACTIVE
+        ).count()
+        scheduled_events = db.query(GameEvent).filter(
+            GameEvent.status == EventStatus.SCHEDULED
+        ).count()
+        completed_events = db.query(GameEvent).filter(
+            GameEvent.status == EventStatus.COMPLETED
+        ).count()
+        cancelled_events = db.query(GameEvent).filter(
+            GameEvent.status == EventStatus.CANCELLED
+        ).count()
+
+        # Total participation across all events
+        total_participants = db.query(EventParticipation).count()
+
+        # Total rewards distributed
+        rewards_result = db.query(func.sum(GameEvent.rewards_distributed)).scalar()
+        total_rewards = int(rewards_result) if rewards_result else 0
+
+        # Fetch the 5 most recent events (any status)
+        recent_events = (
+            db.query(GameEvent)
+            .order_by(desc(GameEvent.created_at))
+            .limit(5)
+            .all()
+        )
+
+        recent_list = []
+        for event in recent_events:
+            creator = db.query(User).filter(User.id == event.created_by).first()
+            recent_list.append({
+                "id": str(event.id),
+                "title": event.title,
+                "event_type": event.event_type.value if isinstance(event.event_type, EventType) else str(event.event_type),
+                "status": event.status.value if isinstance(event.status, EventStatus) else str(event.status),
+                "start_time": event.start_time.isoformat() if event.start_time else None,
+                "end_time": event.end_time.isoformat() if event.end_time else None,
+                "created_by": creator.username if creator else "System",
+                "created_at": event.created_at.isoformat() if event.created_at else None,
+                "participation_count": event.participation_count or 0,
+            })
+
+        # Currently active effects
+        active_effects = (
+            db.query(EventEffect)
+            .filter(EventEffect.is_active == True)
+            .all()
+        )
+        effects_list = [
+            {
+                "id": str(eff.id),
+                "event_id": str(eff.event_id),
+                "effect_type": eff.effect_type,
+                "target": eff.target,
+                "modifier": eff.modifier,
+                "description": eff.description,
+                "applied_at": eff.applied_at.isoformat() if eff.applied_at else None,
+                "expires_at": eff.expires_at.isoformat() if eff.expires_at else None,
+            }
+            for eff in active_effects
+        ]
+
+        return {
+            "counts": {
+                "total": total_events,
+                "active": active_events,
+                "scheduled": scheduled_events,
+                "completed": completed_events,
+                "cancelled": cancelled_events,
+            },
+            "total_participants": total_participants,
+            "total_rewards_distributed": total_rewards,
+            "recent_events": recent_list,
+            "active_effects": effects_list,
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching game events summary: {e}")
+        return {
+            "counts": {"total": 0, "active": 0, "scheduled": 0, "completed": 0, "cancelled": 0},
+            "total_participants": 0,
+            "total_rewards_distributed": 0,
+            "recent_events": [],
+            "active_effects": [],
+        }
+
+
+@router.get("/game-events", response_model=dict)
+async def list_game_events(
+    status_filter: Optional[str] = None,
+    type_filter: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """List game events with optional filters.
+
+    Provides a simpler list view than the comprehensive paginated endpoint
+    in events.py, suitable for admin dashboard tables.
+    """
+    try:
+        query = db.query(GameEvent)
+
+        if status_filter and status_filter != "all":
+            try:
+                query = query.filter(GameEvent.status == EventStatus(status_filter))
+            except ValueError:
+                pass  # ignore invalid filter
+
+        if type_filter and type_filter != "all":
+            try:
+                query = query.filter(GameEvent.event_type == EventType(type_filter))
+            except ValueError:
+                pass
+
+        total = query.count()
+        events = query.order_by(desc(GameEvent.created_at)).offset(offset).limit(limit).all()
+
+        events_list = []
+        for event in events:
+            # Count effects
+            effect_count = db.query(EventEffect).filter(EventEffect.event_id == event.id).count()
+
+            # Get creator name
+            creator = db.query(User).filter(User.id == event.created_by).first()
+
+            events_list.append({
+                "id": str(event.id),
+                "title": event.title,
+                "description": event.description,
+                "event_type": event.event_type.value if isinstance(event.event_type, EventType) else str(event.event_type),
+                "status": event.status.value if isinstance(event.status, EventStatus) else str(event.status),
+                "start_time": event.start_time.isoformat() if event.start_time else None,
+                "end_time": event.end_time.isoformat() if event.end_time else None,
+                "actual_start_time": event.actual_start_time.isoformat() if event.actual_start_time else None,
+                "actual_end_time": event.actual_end_time.isoformat() if event.actual_end_time else None,
+                "affected_regions": event.affected_regions or [],
+                "global_event": event.global_event,
+                "effect_count": effect_count,
+                "participation_count": event.participation_count or 0,
+                "rewards_distributed": event.rewards_distributed or 0,
+                "auto_start": event.auto_start,
+                "priority": event.priority,
+                "created_by": creator.username if creator else "System",
+                "created_at": event.created_at.isoformat() if event.created_at else None,
+            })
+
+        return {"events": events_list, "total": total}
+
+    except Exception as e:
+        logger.error(f"Error listing game events: {e}")
+        return {"events": [], "total": 0}
+
+
+@router.post("/game-events", response_model=dict)
+async def create_game_event(
+    event_data: QuickEventCreateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Create a new game event with a simplified payload.
+
+    This is a quick-create pathway for the admin dashboard. For full
+    control (participation requirements, rewards config, etc.) use the
+    comprehensive POST /admin/events/ endpoint.
+    """
+    try:
+        # Validate event type
+        try:
+            event_type = EventType(event_data.event_type)
+        except ValueError:
+            valid_types = [t.value for t in EventType]
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid event_type '{event_data.event_type}'. Valid types: {valid_types}"
+            )
+
+        now = datetime.now(timezone.utc)
+        from datetime import timedelta
+        end_time = now + timedelta(hours=event_data.duration_hours)
+
+        new_event = GameEvent(
+            title=event_data.title,
+            description=event_data.description,
+            event_type=event_type,
+            status=EventStatus.ACTIVE if event_data.auto_start else EventStatus.SCHEDULED,
+            start_time=now if event_data.auto_start else now,
+            end_time=end_time,
+            actual_start_time=now if event_data.auto_start else None,
+            affected_regions=event_data.affected_regions,
+            global_event=(event_data.affected_regions is None or len(event_data.affected_regions) == 0),
+            auto_start=event_data.auto_start,
+            created_by=current_admin.id,
+            created_at=now,
+        )
+
+        db.add(new_event)
+        db.flush()  # get the id
+
+        # Create effects if provided
+        effects_created = 0
+        if event_data.effects:
+            for eff_data in event_data.effects:
+                effect = EventEffect(
+                    event_id=new_event.id,
+                    effect_type=eff_data.get("type", "modifier"),
+                    target=eff_data.get("target", "global"),
+                    modifier=float(eff_data.get("modifier", 1.0)),
+                    duration_hours=eff_data.get("duration_hours", event_data.duration_hours),
+                    description=eff_data.get("description", ""),
+                    is_active=event_data.auto_start,
+                    applied_at=now if event_data.auto_start else None,
+                )
+                db.add(effect)
+                effects_created += 1
+
+        db.commit()
+        db.refresh(new_event)
+
+        return {
+            "success": True,
+            "event": {
+                "id": str(new_event.id),
+                "title": new_event.title,
+                "description": new_event.description,
+                "event_type": new_event.event_type.value,
+                "status": new_event.status.value,
+                "start_time": new_event.start_time.isoformat(),
+                "end_time": new_event.end_time.isoformat() if new_event.end_time else None,
+                "affected_regions": new_event.affected_regions or [],
+                "global_event": new_event.global_event,
+                "effects_created": effects_created,
+                "created_by": current_admin.username,
+                "created_at": new_event.created_at.isoformat(),
+            },
+            "message": f"Event '{new_event.title}' created successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating game event: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create game event: {str(e)}")
+
+
+@router.get("/game-events/active/current", response_model=dict)
+async def get_active_game_events(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get all currently active game events with their effects.
+
+    This endpoint is designed for the admin dashboard to show what events
+    are actively affecting the game world right now.
+    """
+    try:
+        active_events = (
+            db.query(GameEvent)
+            .filter(GameEvent.status == EventStatus.ACTIVE)
+            .order_by(desc(GameEvent.actual_start_time))
+            .all()
+        )
+
+        events_list = []
+        for event in active_events:
+            effects = db.query(EventEffect).filter(
+                EventEffect.event_id == event.id,
+                EventEffect.is_active == True
+            ).all()
+
+            effects_list = [
+                {
+                    "effect_type": eff.effect_type,
+                    "target": eff.target,
+                    "modifier": eff.modifier,
+                    "description": eff.description,
+                }
+                for eff in effects
+            ]
+
+            events_list.append({
+                "id": str(event.id),
+                "title": event.title,
+                "description": event.description,
+                "event_type": event.event_type.value if isinstance(event.event_type, EventType) else str(event.event_type),
+                "start_time": event.start_time.isoformat() if event.start_time else None,
+                "end_time": event.end_time.isoformat() if event.end_time else None,
+                "actual_start_time": event.actual_start_time.isoformat() if event.actual_start_time else None,
+                "affected_regions": event.affected_regions or [],
+                "global_event": event.global_event,
+                "effects": effects_list,
+                "participation_count": event.participation_count or 0,
+                "priority": event.priority,
+            })
+
+        return {"active_events": events_list, "total": len(events_list)}
+
+    except Exception as e:
+        logger.error(f"Error fetching active game events: {e}")
+        return {"active_events": [], "total": 0}
+
+
+@router.get("/game-events/{event_id}", response_model=dict)
+async def get_game_event_detail(
+    event_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get detailed information about a specific game event."""
+    try:
+        event = db.query(GameEvent).filter(GameEvent.id == event_id).first()
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+
+        # Get effects
+        effects = db.query(EventEffect).filter(EventEffect.event_id == event.id).all()
+        effects_list = [
+            {
+                "id": str(eff.id),
+                "effect_type": eff.effect_type,
+                "target": eff.target,
+                "modifier": eff.modifier,
+                "duration_hours": eff.duration_hours,
+                "description": eff.description,
+                "is_active": eff.is_active,
+                "applied_at": eff.applied_at.isoformat() if eff.applied_at else None,
+                "expires_at": eff.expires_at.isoformat() if eff.expires_at else None,
+            }
+            for eff in effects
+        ]
+
+        # Get participation count
+        participation_count = db.query(EventParticipation).filter(
+            EventParticipation.event_id == event.id
+        ).count()
+
+        # Get creator
+        creator = db.query(User).filter(User.id == event.created_by).first()
+
+        # Get approver if applicable
+        approver_name = None
+        if event.approved_by:
+            approver = db.query(User).filter(User.id == event.approved_by).first()
+            approver_name = approver.username if approver else None
+
+        return {
+            "event": {
+                "id": str(event.id),
+                "title": event.title,
+                "description": event.description,
+                "event_type": event.event_type.value if isinstance(event.event_type, EventType) else str(event.event_type),
+                "status": event.status.value if isinstance(event.status, EventStatus) else str(event.status),
+                "start_time": event.start_time.isoformat() if event.start_time else None,
+                "end_time": event.end_time.isoformat() if event.end_time else None,
+                "actual_start_time": event.actual_start_time.isoformat() if event.actual_start_time else None,
+                "actual_end_time": event.actual_end_time.isoformat() if event.actual_end_time else None,
+                "affected_regions": event.affected_regions or [],
+                "affected_sectors": event.affected_sectors or [],
+                "global_event": event.global_event,
+                "auto_start": event.auto_start,
+                "auto_end": event.auto_end,
+                "repeatable": event.repeatable,
+                "priority": event.priority,
+                "participation_count": participation_count,
+                "max_participants": event.max_participants,
+                "rewards_distributed": event.rewards_distributed or 0,
+                "completion_rate": event.completion_rate or 0.0,
+                "requires_approval": event.requires_approval,
+                "approved_by": approver_name,
+                "approved_at": event.approved_at.isoformat() if event.approved_at else None,
+                "admin_notes": event.admin_notes,
+                "effects": effects_list,
+                "created_by": creator.username if creator else "System",
+                "created_at": event.created_at.isoformat() if event.created_at else None,
+                "updated_at": event.updated_at.isoformat() if event.updated_at else None,
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching game event {event_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch game event: {str(e)}")
+
+
+@router.patch("/game-events/{event_id}", response_model=dict)
+async def update_game_event(
+    event_id: str,
+    update_data: EventUpdateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Update a game event's basic fields (title, description, status, end_time)."""
+    try:
+        event = db.query(GameEvent).filter(GameEvent.id == event_id).first()
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+
+        if update_data.title is not None:
+            event.title = update_data.title
+        if update_data.description is not None:
+            event.description = update_data.description
+        if update_data.end_time is not None:
+            event.end_time = update_data.end_time
+
+        # Handle status transitions
+        if update_data.status is not None:
+            try:
+                new_status = EventStatus(update_data.status)
+            except ValueError:
+                valid_statuses = [s.value for s in EventStatus]
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid status '{update_data.status}'. Valid statuses: {valid_statuses}"
+                )
+
+            old_status = event.status
+            now = datetime.now(timezone.utc)
+
+            # Enforce valid transitions
+            if new_status == EventStatus.ACTIVE and old_status == EventStatus.SCHEDULED:
+                event.status = EventStatus.ACTIVE
+                event.actual_start_time = now
+                # Activate effects
+                effects = db.query(EventEffect).filter(EventEffect.event_id == event.id).all()
+                for eff in effects:
+                    eff.is_active = True
+                    eff.applied_at = now
+
+            elif new_status in (EventStatus.COMPLETED, EventStatus.CANCELLED) and old_status in (EventStatus.ACTIVE, EventStatus.SCHEDULED):
+                event.status = new_status
+                event.actual_end_time = now
+                # Deactivate effects
+                effects = db.query(EventEffect).filter(EventEffect.event_id == event.id).all()
+                for eff in effects:
+                    eff.is_active = False
+
+            elif new_status == EventStatus.PAUSED and old_status == EventStatus.ACTIVE:
+                event.status = EventStatus.PAUSED
+                # Deactivate effects while paused
+                effects = db.query(EventEffect).filter(EventEffect.event_id == event.id).all()
+                for eff in effects:
+                    eff.is_active = False
+
+            elif new_status == EventStatus.ACTIVE and old_status == EventStatus.PAUSED:
+                event.status = EventStatus.ACTIVE
+                # Reactivate effects
+                effects = db.query(EventEffect).filter(EventEffect.event_id == event.id).all()
+                for eff in effects:
+                    eff.is_active = True
+                    eff.applied_at = now
+
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot transition from '{old_status.value}' to '{new_status.value}'"
+                )
+
+        db.commit()
+        db.refresh(event)
+
+        return {
+            "success": True,
+            "event": {
+                "id": str(event.id),
+                "title": event.title,
+                "status": event.status.value if isinstance(event.status, EventStatus) else str(event.status),
+                "end_time": event.end_time.isoformat() if event.end_time else None,
+                "updated_at": event.updated_at.isoformat() if event.updated_at else None,
+            },
+            "message": f"Event '{event.title}' updated successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating game event {event_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update game event: {str(e)}")
+
+
+@router.post("/game-events/{event_id}/activate", response_model=dict)
+async def activate_game_event(
+    event_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Activate a scheduled or paused game event."""
+    try:
+        event = db.query(GameEvent).filter(GameEvent.id == event_id).first()
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+
+        if event.status not in (EventStatus.SCHEDULED, EventStatus.PAUSED):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot activate event with status '{event.status.value}'. Must be 'scheduled' or 'paused'."
+            )
+
+        now = datetime.now(timezone.utc)
+        event.status = EventStatus.ACTIVE
+        event.actual_start_time = event.actual_start_time or now
+
+        # Activate all effects
+        effects = db.query(EventEffect).filter(EventEffect.event_id == event.id).all()
+        for eff in effects:
+            eff.is_active = True
+            eff.applied_at = now
+
+        db.commit()
+
+        return {
+            "success": True,
+            "event_id": str(event.id),
+            "status": "active",
+            "message": f"Event '{event.title}' is now active"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error activating game event {event_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to activate game event: {str(e)}")
+
+
+@router.post("/game-events/{event_id}/deactivate", response_model=dict)
+async def deactivate_game_event(
+    event_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Deactivate (complete or cancel) an active or scheduled game event."""
+    try:
+        event = db.query(GameEvent).filter(GameEvent.id == event_id).first()
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+
+        if event.status not in (EventStatus.ACTIVE, EventStatus.SCHEDULED, EventStatus.PAUSED):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot deactivate event with status '{event.status.value}'"
+            )
+
+        now = datetime.now(timezone.utc)
+        # Scheduled events get cancelled; active/paused events get completed
+        if event.status == EventStatus.SCHEDULED:
+            event.status = EventStatus.CANCELLED
+        else:
+            event.status = EventStatus.COMPLETED
+        event.actual_end_time = now
+
+        # Deactivate all effects
+        effects = db.query(EventEffect).filter(EventEffect.event_id == event.id).all()
+        for eff in effects:
+            eff.is_active = False
+
+        db.commit()
+
+        return {
+            "success": True,
+            "event_id": str(event.id),
+            "status": event.status.value,
+            "message": f"Event '{event.title}' has been {event.status.value}"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deactivating game event {event_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to deactivate game event: {str(e)}")
+
+
+@router.delete("/game-events/{event_id}", response_model=dict)
+async def delete_game_event(
+    event_id: str,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Delete a game event. Active events must be deactivated first."""
+    try:
+        event = db.query(GameEvent).filter(GameEvent.id == event_id).first()
+        if not event:
+            raise HTTPException(status_code=404, detail="Event not found")
+
+        if event.status == EventStatus.ACTIVE:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete an active event. Deactivate it first."
+            )
+
+        event_title = event.title
+
+        # Delete associated effects and participations (cascade should handle this,
+        # but be explicit for safety)
+        db.query(EventEffect).filter(EventEffect.event_id == event.id).delete()
+        db.query(EventParticipation).filter(EventParticipation.event_id == event.id).delete()
+        db.delete(event)
+        db.commit()
+
+        return {
+            "success": True,
+            "event_id": event_id,
+            "message": f"Event '{event_title}' deleted successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting game event {event_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete game event: {str(e)}")
+
+

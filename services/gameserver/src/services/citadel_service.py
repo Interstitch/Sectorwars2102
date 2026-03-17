@@ -2,13 +2,14 @@
 Citadel Service - 5-level citadel upgrade system for planets.
 
 Handles citadel progression from Outpost to full Citadel, timed upgrades,
-resource costs, and safe credit storage for planetary owners.
+resource costs, safe credit storage, and defense building construction
+for planetary owners.
 """
 
 import logging
 import uuid
 from datetime import datetime, timedelta, UTC
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -16,6 +17,34 @@ from src.models.player import Player
 from src.models.planet import Planet
 
 logger = logging.getLogger(__name__)
+
+# Defense buildings unlocked by citadel level progression
+DEFENSE_BUILDINGS = {
+    "orbital_platform": {
+        "name": "Orbital Defense Platform",
+        "min_citadel_level": 4,
+        "max_count": {4: 1, 5: 3},
+        "cost": 500000,
+        "build_hours": 168,
+        "effects": {"sector_range": 2, "damage_per_round": 500},
+    },
+    "turret_network": {
+        "name": "Automated Turret Network",
+        "min_citadel_level": 3,
+        "max_count": {3: 2, 4: 4, 5: 6},
+        "cost": 150000,
+        "build_hours": 72,
+        "effects": {"anti_drone_kills_per_round": 3},
+    },
+    "scanner_array": {
+        "name": "Long-Range Scanner Array",
+        "min_citadel_level": 2,
+        "max_count": {2: 1, 3: 1, 4: 2, 5: 2},
+        "cost": 75000,
+        "build_hours": 48,
+        "effects": {"detection_range_sectors": 2},
+    },
+}
 
 CITADEL_LEVELS = {
     0: {
@@ -400,4 +429,181 @@ class CitadelService:
             "credits_withdrawn": amount,
             "safe_balance": safe_current - amount,
             "player_credits": player.credits,
+        }
+
+    def _get_defense_buildings(self, planet: Planet) -> Dict[str, int]:
+        """Extract defense_buildings sub-dict from planet.active_events JSONB.
+
+        The active_events field stores a dict (or list for legacy data).
+        Defense buildings are tracked under the 'defense_buildings' key as
+        a mapping of building_type -> count.
+        """
+        events = planet.active_events
+        if isinstance(events, dict):
+            return dict(events.get("defense_buildings", {}))
+        # Legacy format: active_events may be a list; treat as no buildings
+        return {}
+
+    def _set_defense_buildings(self, planet: Planet, buildings: Dict[str, int]) -> None:
+        """Persist defense_buildings into the planet.active_events JSONB."""
+        events = planet.active_events
+        if not isinstance(events, dict):
+            # Migrate from legacy list format, preserving old entries
+            events = {"legacy_events": events} if events else {}
+        # Shallow-copy to ensure SQLAlchemy detects the mutation
+        events = dict(events)
+        events["defense_buildings"] = buildings
+        planet.active_events = events
+
+    def get_available_buildings(self, planet_id: uuid.UUID) -> Dict[str, Any]:
+        """Return which defense buildings can be built based on the planet's current citadel level.
+
+        Each entry includes the building spec, current count, max allowed at this level,
+        and whether the player can build more.
+        """
+        planet = self.db.query(Planet).filter(Planet.id == planet_id).first()
+        if not planet:
+            return {"success": False, "message": "Planet not found"}
+
+        current_level = getattr(planet, "citadel_level", 0) or 0
+        if current_level < 1:
+            return {
+                "success": True,
+                "message": "No citadel — no buildings available",
+                "planet_id": str(planet_id),
+                "citadel_level": current_level,
+                "buildings": [],
+            }
+
+        existing = self._get_defense_buildings(planet)
+        buildings: List[Dict[str, Any]] = []
+
+        for building_type, spec in DEFENSE_BUILDINGS.items():
+            if current_level < spec["min_citadel_level"]:
+                continue
+
+            # Determine max count for the current citadel level
+            max_at_level = 0
+            for lvl in sorted(spec["max_count"]):
+                if current_level >= lvl:
+                    max_at_level = spec["max_count"][lvl]
+            current_count = existing.get(building_type, 0)
+
+            buildings.append({
+                "type": building_type,
+                "name": spec["name"],
+                "cost": spec["cost"],
+                "build_hours": spec["build_hours"],
+                "effects": spec["effects"],
+                "current_count": current_count,
+                "max_count": max_at_level,
+                "can_build": current_count < max_at_level,
+            })
+
+        return {
+            "success": True,
+            "message": "Available buildings retrieved",
+            "planet_id": str(planet_id),
+            "citadel_level": current_level,
+            "buildings": buildings,
+        }
+
+    def build_defense_building(
+        self,
+        planet_id: uuid.UUID,
+        player_id: uuid.UUID,
+        building_type: str,
+    ) -> Dict[str, Any]:
+        """Construct a defense building on a planet, gated by citadel level and credits.
+
+        Validates the building type, citadel prerequisites, max count, and player funds
+        before recording the building and deducting credits.
+        """
+        # --- Validate building type ---
+        if building_type not in DEFENSE_BUILDINGS:
+            valid = ", ".join(DEFENSE_BUILDINGS.keys())
+            return {
+                "success": False,
+                "message": f"Unknown building type '{building_type}'. Valid types: {valid}",
+            }
+
+        spec = DEFENSE_BUILDINGS[building_type]
+
+        # --- Load planet ---
+        planet = self.db.query(Planet).filter(Planet.id == planet_id).first()
+        if not planet:
+            return {"success": False, "message": "Planet not found"}
+
+        if planet.owner_id != player_id:
+            return {"success": False, "message": "You do not own this planet"}
+
+        # --- Citadel level check ---
+        current_level = getattr(planet, "citadel_level", 0) or 0
+        if current_level < spec["min_citadel_level"]:
+            return {
+                "success": False,
+                "message": (
+                    f"{spec['name']} requires citadel level {spec['min_citadel_level']}+. "
+                    f"Current level: {current_level}."
+                ),
+            }
+
+        # --- Max count check ---
+        max_at_level = 0
+        for lvl in sorted(spec["max_count"]):
+            if current_level >= lvl:
+                max_at_level = spec["max_count"][lvl]
+
+        existing = self._get_defense_buildings(planet)
+        current_count = existing.get(building_type, 0)
+
+        if current_count >= max_at_level:
+            return {
+                "success": False,
+                "message": (
+                    f"Maximum {spec['name']} capacity reached ({max_at_level}) "
+                    f"at citadel level {current_level}."
+                ),
+            }
+
+        # --- Credit check ---
+        player = self.db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            return {"success": False, "message": "Player not found"}
+
+        if player.credits < spec["cost"]:
+            return {
+                "success": False,
+                "message": (
+                    f"Insufficient credits. Need {spec['cost']:,}, have {player.credits:,}."
+                ),
+            }
+
+        # --- Execute construction ---
+        player.credits -= spec["cost"]
+
+        existing[building_type] = current_count + 1
+        self._set_defense_buildings(planet, existing)
+
+        self.db.flush()
+
+        logger.info(
+            f"Player {player_id} built {spec['name']} on planet {planet_id} "
+            f"(count: {current_count + 1}/{max_at_level})"
+        )
+
+        return {
+            "success": True,
+            "message": (
+                f"{spec['name']} construction started! "
+                f"Estimated completion: {spec['build_hours']} hours."
+            ),
+            "building_type": building_type,
+            "building_name": spec["name"],
+            "count": current_count + 1,
+            "max_count": max_at_level,
+            "credits_deducted": spec["cost"],
+            "player_credits": player.credits,
+            "build_hours": spec["build_hours"],
+            "effects": spec["effects"],
         }
