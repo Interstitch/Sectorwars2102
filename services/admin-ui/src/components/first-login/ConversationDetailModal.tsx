@@ -53,6 +53,14 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
     return new Date(dateStr).toLocaleString();
   };
 
+  const formatShipType = (shipType: string | null): string => {
+    if (!shipType) return 'None';
+    return shipType
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   const getMetricColor = (value: number | null): string => {
     if (value === null) return '#999';
     if (value >= 0.8) return '#22c55e'; // green
@@ -239,11 +247,11 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
               </div>
               <div className="summary-item">
                 <label>Ship Claimed</label>
-                <span>{session.ship_claimed || 'None'}</span>
+                <span>{formatShipType(session.ship_claimed)}</span>
               </div>
               <div className="summary-item">
                 <label>Ship Awarded</label>
-                <span>{session.awarded_ship || 'Pending'}</span>
+                <span>{session.awarded_ship ? formatShipType(session.awarded_ship) : 'Pending'}</span>
               </div>
               <div className="summary-item">
                 <label>Outcome</label>

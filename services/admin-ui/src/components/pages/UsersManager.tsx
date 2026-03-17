@@ -267,7 +267,7 @@ const UsersManager: React.FC = () => {
                 <tbody>
                   {filteredUsers.map((user: User) => (
                     <tr key={user.id}>
-                      <td className="font-medium">{user.username}</td>
+                      <td className="font-medium">{user.username || <span className="text-muted">[No Username]</span>}</td>
                       <td className="text-muted">{user.email || 'N/A'}</td>
                       <td>
                         <span className={`badge ${!user.is_active ? 'badge-error' : user.is_admin ? 'badge-warning' : 'badge-success'}`}>

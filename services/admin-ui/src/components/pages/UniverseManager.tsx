@@ -395,6 +395,7 @@ const UniverseManager: React.FC = () => {
                 <div key={region.id} className="region-item">
                   <div className="region-header">
                     <span className="region-name">{region.display_name}</span>
+                    {' '}
                     <span className={`region-badge ${
                       region.region_type === 'central_nexus' ? 'badge-primary' :
                       region.region_type === 'terran_space' ? 'badge-info' :

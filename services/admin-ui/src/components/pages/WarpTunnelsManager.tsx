@@ -71,10 +71,18 @@ const WarpTunnelsManager: React.FC = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedWarpTunnels = filteredWarpTunnels.slice(startIndex, startIndex + itemsPerPage);
 
+  const formatStability = (stability: number): string => {
+    // Backend returns stability as a 0-1 float; convert to percentage with 1 decimal
+    const pct = stability <= 1 ? stability * 100 : stability;
+    return `${pct.toFixed(1)}%`;
+  };
+
   const getStabilityColor = (stability: number) => {
-    if (stability >= 90) return 'high';
-    if (stability >= 70) return 'medium';
-    if (stability >= 50) return 'low';
+    // Normalise to 0-100 for threshold comparison
+    const pct = stability <= 1 ? stability * 100 : stability;
+    if (pct >= 90) return 'high';
+    if (pct >= 70) return 'medium';
+    if (pct >= 50) return 'low';
     return 'critical';
   };
 
@@ -164,7 +172,7 @@ const WarpTunnelsManager: React.FC = () => {
                 </td>
                 <td>
                   <span className={`stability ${getStabilityColor(tunnel.stability || 0)}`}>
-                    {tunnel.stability || 0}%
+                    {formatStability(tunnel.stability || 0)}
                   </span>
                 </td>
                 <td>{(tunnel.energy_cost || 0).toLocaleString()} units</td>

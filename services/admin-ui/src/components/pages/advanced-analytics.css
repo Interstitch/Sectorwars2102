@@ -9,41 +9,43 @@
 /* Analytics Tabs */
 .analytics-tabs {
   display: flex;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-xl);
-  border-bottom: 2px solid var(--border-color);
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid var(--border-color, #e0e0e0);
 }
 
-.tab {
+.analytics-tabs .tab {
   background: transparent;
   border: none;
-  padding: var(--spacing-md) var(--spacing-lg);
-  color: var(--text-secondary);
+  padding: 12px 20px;
+  color: var(--subtitle-color, #666);
   cursor: pointer;
   font-weight: 500;
+  font-size: 14px;
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 8px;
   transition: all 0.2s ease;
   position: relative;
+  white-space: nowrap;
 }
 
-.tab:hover {
-  color: var(--text-primary);
+.analytics-tabs .tab:hover {
+  color: var(--text-color, #333);
 }
 
-.tab.active {
-  color: var(--primary);
+.analytics-tabs .tab.active {
+  color: var(--primary-color, #4f46e5);
 }
 
-.tab.active::after {
+.analytics-tabs .tab.active::after {
   content: '';
   position: absolute;
   bottom: -2px;
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--primary);
+  background: var(--primary-color, #4f46e5);
 }
 
 /* Analytics Content */

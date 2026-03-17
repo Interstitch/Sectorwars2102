@@ -58,6 +58,14 @@ export const ConversationTable: React.FC<ConversationTableProps> = ({
     return `$${cost.toFixed(4)}`;
   };
 
+  const formatShipType = (shipType: string | null): string => {
+    if (!shipType) return '-';
+    return shipType
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   if (loading && conversations.length === 0) {
     return (
       <div className="table-loading">
@@ -111,10 +119,10 @@ export const ConversationTable: React.FC<ConversationTableProps> = ({
                 )}
               </td>
               <td className="ship-cell">
-                {conversation.ship_claimed || '-'}
+                {formatShipType(conversation.ship_claimed)}
               </td>
               <td className="ship-cell">
-                {conversation.awarded_ship || '-'}
+                {formatShipType(conversation.awarded_ship)}
               </td>
               <td className="outcome-cell">
                 {conversation.outcome ? (
