@@ -1,76 +1,130 @@
 # Fleets & Drones API
 
-OVERVIEW: Fleet management for team-based coordinated combat and drone operations for autonomous sector control.
+OVERVIEW: Fleet management for team-scoped coordinated combat (formations, morale, supply, role assignments, multi-ship coordination bonuses) and drone operations (deployable autonomous units for sector defense, mining, scouting, repair).
 
 BASE_PATH: /api/v1
 AUTH_REQUIRED: Yes (JWT Bearer token)
 TEAM_REQUIRED: Yes for fleets (player must be in a team)
+CANONICAL_DOCS: sw2102-docs/SYSTEMS/fleet-coordination.md, FEATURES/gameplay/fleet-tactics.md, DATA_MODELS/combat.md (Fleet/FleetMember/FleetBattle/Drone sections), ADR/0061
 
 ## FACTS
 
-* Fleets are team-based - player must be in a team to create/manage fleets
-* Fleet formations: standard, wedge, defensive, offensive, scatter
-* Fleet roles: attacker, defender, scout, support, commander
-* Fleet status: forming, ready, deployed, in_combat, disbanded
-* Drones are autonomous units that control sectors for players
-* Drone types: combat, mining, scout, defense, research
-* Drones have health, shields, and can be upgraded/repaired
-* Drones can deploy to sectors and recall to ship
-* Fleet battles are multi-ship coordinated combat operations
+* Fleets are owned by a Team — fleet.team_id == team
+* Ships join via FleetMember; one ship belongs to at most one fleet (uniqueness on FleetMember.ship_id)
+* Fleet status state machine: forming → ready → in_battle → disbanded (with `retreating` as transient sub-state during pursuit)
+* Disbanded fleets are tombstones — kept for audit, never reactivated
+* Ships can only be added while status ∈ {forming, ready}; movement blocked while in_battle
+* Fleet aggregated stats (total_firepower, total_shields, total_hull, average_speed) recomputed from members on every add/remove via `_recalculate_fleet_stats`
+* total_firepower = Σ ship.combat["attack_rating"] (read from Ship.combat JSONB, missing keys default 0)
+* Coordination bonus is STATIC: computed at fleet init, recomputed only on roster change events at next round boundary, never mid-round (ADR-0061 S-I3)
+* Coordination bonus formula: `coord_bonus = min(0.20, max(0, (ships - 2) * 0.025))`; flat addition to formation attack modifier
+* Coordination bonus is design-only (target spec, not yet applied in code)
+* Morale 0-100, initialized 100; scales formation modifier as `formation_attack × (morale/100)`
+* Morale drops: -20 after every battle, -30 one-shot if flagship destroyed, -1/tick if supply < 25
+* Morale below 20 triggers automatic battle end (fleet breaks)
+* Morale never auto-recovers from time alone — only via successful battle (+10) or docked-at-friendly-station replenishment
+* Supply 0-100; tracks fuel/ammo/food. 25-50 → -5% atk/def; <25 → -15% + morale decay; 0 → cannot initiate combat
+* Supply replenishes at friendly station: `supply_level += station_class` per tick, capped at 100
+* Supply combat-math integration is design-only (Fleet.supply_level exists but not yet read by combat math or written by station refuel)
+* Fleet has at most one Flagship; flagship destruction triggers fleet morale -30 one-shot
+* Only Flagship role has implemented combat behavior; Defender/Support/Scout role bonuses are design-only
+* Battle phase transitions on round count: 1-5 engagement, 6-15 main_battle, 16+ pursuit, end → aftermath
+* Battle round simulator uses row lock on FleetBattle row (concurrent invocation serializes)
+* Battle round: 70% hit chance per attacker ship → `damage = attack_rating × 10 × attack_bonus × U(0.8, 1.2)` against random defender ship
+* Damage application: shields absorb first then hull; `damage = max(1, int(damage / target_defense_bonus))`
+* On kill, fleet round-resolution DELEGATES to canonical destruction handler `combat_resolver._handle_ship_destroyed` (no duplicated insurance/wreck/eject logic)
+* Surviving ships below 30% hull have 30% chance to retreat (recorded as casualty with retreated=True)
+* Battle ends if: one side has 0 active ships, OR either fleet morale < 20, OR either fleet > 70% losses, OR 30 rounds elapsed
+* Winner determination: 1.5× strength advantage required for decisive; otherwise draw
+* Loot: winner team gains 10% of loser team treasury (only cross-team credit transfer in the system)
+* After battle end: both fleets' status returns to READY, both fleets' morale -20
+* `fleet.morale` and `fleet.supply_level` clamped to [0, 100]
+* `FleetBattleCasualty.destroyed XOR retreated` (exactly one true per row)
+* Drones are deployable autonomous units — combat/sector defense/mining/scouting/repair
+* Drones live in sectors (per DroneDeployment row), accumulate kills/damage/battles_fought lifetime stats
+* Drone status: deployed/combat/returning/destroyed/damaged
+* Drone types: attack/defense/scout/mining/repair (`DroneType` enum)
+* Sector-deployed drones get +5% effectiveness vs ship-deployed (`SECTOR_DEFENSE` modifier)
+* DroneDeployment.deployment_type = defense/mining/etc.; `patrol` is reserved for NPC-spawned patrol drones — players cannot deploy as patrols
+* DroneCombat is per-engagement record between two drones (attacker_drone_id, defender_drone_id, rounds, winner_drone_id)
+* Fleet GET /{fleet_id} has a known bug: NameError at runtime due to undefined symbol in response builder
 
 ## ENDPOINTS
 
-### Fleet Management
+### Fleet Management (router prefix `/fleets`)
 
-* POST /api/fleets/ - Create a new fleet for your team
-* GET /api/fleets/ - Get all fleets for your team
-* GET /api/fleets/my-fleets - Get fleets where you are a member
-* GET /api/fleets/{fleet_id} - Get detailed fleet information
-* GET /api/fleets/{fleet_id}/members - Get all ships in fleet
-* POST /api/fleets/{fleet_id}/add-ship - Add ship to fleet
-* DELETE /api/fleets/{fleet_id}/remove-ship/{ship_id} - Remove ship from fleet
-* PUT /api/fleets/{fleet_id}/formation - Update fleet formation
-* PUT /api/fleets/{fleet_id}/commander - Set fleet commander
-* DELETE /api/fleets/{fleet_id} - Disband fleet
-* POST /api/fleets/{fleet_id}/move - Move fleet to sector
-* POST /api/fleets/{fleet_id}/battle - Initiate fleet battle
-* GET /api/fleets/{fleet_id}/battle-status - Get ongoing battle status
+* POST /api/v1/fleets/ - Create a new fleet for your team
+* GET /api/v1/fleets/ - Get all fleets for your team
+* GET /api/v1/fleets/my-fleets - Get fleets where you are a member
+* GET /api/v1/fleets/battles - List fleet battles (must be defined before /{fleet_id} due to FastAPI ordering)
+* POST /api/v1/fleets/battles/{battle_id}/simulate-round - Run one round of an ongoing battle
+* GET /api/v1/fleets/{fleet_id} - Get detailed fleet information [BUG: NameError at runtime]
+* GET /api/v1/fleets/{fleet_id}/members - Get all ships in fleet
+* POST /api/v1/fleets/{fleet_id}/add-ship - Add ship to fleet
+* DELETE /api/v1/fleets/{fleet_id}/remove-ship/{ship_id} - Remove ship from fleet
+* PATCH /api/v1/fleets/{fleet_id}/formation - Update fleet formation
+* PATCH /api/v1/fleets/{fleet_id}/commander - Set fleet commander
+* DELETE /api/v1/fleets/{fleet_id} - Disband fleet
+* POST /api/v1/fleets/{fleet_id}/initiate-battle - Initiate fleet battle vs another fleet
 
-### Drone Operations
+### Admin Fleet Management (router prefix `/admin/fleets`)
 
-* POST /drones/ - Create/build a new drone
-* GET /drones/ - Get all your drones
-* GET /drones/types - Get available drone types and specifications
-* GET /drones/{drone_id} - Get detailed drone information
-* POST /drones/{drone_id}/deploy - Deploy drone to current sector
-* POST /drones/{drone_id}/recall - Recall drone to ship
-* POST /drones/{drone_id}/repair - Repair damaged drone
-* POST /drones/{drone_id}/upgrade - Upgrade drone systems
-* POST /drones/{drone_id}/set-mode - Set drone operational mode
-* DELETE /drones/{drone_id} - Scrap/destroy drone
-* GET /drones/sector/{sector_id} - Get all drones in a sector
-* POST /drones/{drone_id}/transfer - Transfer drone to another player
-* POST /drones/batch-deploy - Deploy multiple drones at once
-* POST /drones/batch-recall - Recall multiple drones at once
-* GET /drones/statistics - Get player's drone statistics
-* POST /drones/{drone_id}/self-destruct - Activate drone self-destruct
+* GET /api/v1/admin/fleets/ - List all fleets across all teams
+* GET /api/v1/admin/fleets/stats - Aggregated fleet statistics
+* GET /api/v1/admin/fleets/battles - List all fleet battles
+* GET /api/v1/admin/fleets/battles/{battle_id} - Get battle detail
+* POST /api/v1/admin/fleets/battles/{battle_id}/intervene - Admin intervention on active battle
+* GET /api/v1/admin/fleets/{fleet_id} - Get fleet detail (admin view)
+* GET /api/v1/admin/fleets/{fleet_id}/members - Get fleet members
+* PATCH /api/v1/admin/fleets/{fleet_id}/morale - Adjust fleet morale (admin)
+* DELETE /api/v1/admin/fleets/{fleet_id}/force-dissolve - Force disband fleet
+
+### Drone Operations (router prefix `/drones`)
+
+* POST /api/v1/drones/ - Create/build a new drone
+* GET /api/v1/drones/ - Get all your drones
+* GET /api/v1/drones/types - Get available drone types and specifications
+* GET /api/v1/drones/deployments - Get your active drone deployments
+* GET /api/v1/drones/deployed - Get currently deployed drones
+* GET /api/v1/drones/combat/history - Get drone combat engagement history
+* GET /api/v1/drones/sector/{sector_id} - Get all drones in a sector
+* GET /api/v1/drones/team/{team_id} - Get team's drones
+* GET /api/v1/drones/{drone_id} - Get detailed drone information
+* POST /api/v1/drones/deploy - Deploy drones to a sector (count-based contract)
+* POST /api/v1/drones/{drone_id}/deploy - Deploy specific drone to a sector
+* POST /api/v1/drones/{drone_id}/recall - Recall drone to ship
+* POST /api/v1/drones/{drone_id}/repair - Repair damaged drone
+* POST /api/v1/drones/{drone_id}/upgrade - Upgrade drone systems
+* POST /api/v1/drones/combat/initiate - Initiate drone-vs-drone combat
+* DELETE /api/v1/drones/{deploymentId}/recall - Recall by deployment ID
+
+### Admin Drone Management (router prefix `/admin/drones`)
+
+* GET /api/v1/admin/drones/ - List all drones across all players
+* GET /api/v1/admin/drones/statistics - Drone statistics (admin)
+* GET /api/v1/admin/drones/sector/{sector_id}/summary - Sector drone summary
+* GET /api/v1/admin/drones/{drone_id} - Get drone detail
+* PATCH /api/v1/admin/drones/{drone_id} - Modify drone state
+* DELETE /api/v1/admin/drones/{drone_id} - Delete drone
+* POST /api/v1/admin/drones/{drone_id}/force-recall - Force-recall drone
+* POST /api/v1/admin/drones/{drone_id}/restore - Restore destroyed/damaged drone
 
 ## SCHEMAS
 
 CreateFleetRequest:
   name: string (1-100 chars), required
-  formation: string (standard|wedge|defensive|offensive|scatter), default "standard"
+  formation: string (default "standard"), one of formation enum
   commander_id: UUID (optional)
 
 AddShipRequest:
   ship_id: UUID, required
-  role: string (attacker|defender|scout|support|commander), default "attacker"
+  role: string, default "attacker", one of FleetRole enum
 
 FleetResponse:
   id: UUID
   team_id: UUID
   name: string
-  status: string (forming|ready|deployed|in_combat|disbanded)
+  status: string (FleetStatus enum)
   formation: string
   total_ships: integer
   total_firepower: integer
@@ -92,7 +146,7 @@ FleetMemberResponse:
   ship_type: string
   player_id: UUID
   player_name: string
-  role: string
+  role: string (FleetRole enum)
   position: integer (formation position)
   ready_status: boolean
 
@@ -101,7 +155,7 @@ BattleInitiateRequest:
 
 BattleResponse:
   battle_id: UUID
-  phase: string (positioning|engagement|resolution|completed)
+  phase: string (BattlePhase enum: preparation|engagement|main_battle|pursuit|aftermath)
   attacker_fleet_id: UUID
   attacker_fleet_name: string
   defender_fleet_id: UUID
@@ -113,23 +167,76 @@ BattleResponse:
   winner: string (optional, "attacker"|"defender"|"draw")
 
 CreateDroneRequest:
-  drone_type: string (combat|mining|scout|defense|research), required
+  drone_type: string (DroneType enum), required
   name: string (optional)
+  team_id: UUID (optional)
+
+DeployDroneRequest (single-drone path `/drones/{id}/deploy`):
+  sector_id: UUID, required
+  deployment_type: string (default "defense")
+  target_id: UUID (optional)
+
+DeployDronesRequest (count-based path `/drones/deploy`):
+  sectorId: string
+  droneCount: integer
+
+InitiateCombatRequest (drone-vs-drone):
+  attacker_drone_id: UUID
+  defender_drone_id: UUID
+  sector_id: UUID
+
+RepairDroneRequest:
+  repair_amount: integer
 
 DroneResponse:
   id: UUID
-  owner_id: UUID
-  name: string
-  drone_type: string
-  status: string (docked|deployed|damaged|destroyed)
+  player_id: UUID
+  team_id: UUID (optional)
+  drone_type: string (DroneType enum)
+  name: string (optional)
+  level: integer (default 1)
+  health: integer (default 100; not a percentage — absolute HP)
+  max_health: integer (default 100)
+  attack_power: integer (default 10)
+  defense_power: integer (default 10)
+  speed: float (default 1.0)
+  status: string (DroneStatus enum, optional)
   sector_id: UUID (optional, if deployed)
-  health: integer (0-100)
-  shields: integer (0-100)
-  level: integer (upgrade level)
-  operational_mode: string (passive|aggressive|defensive|mining)
-  cargo: object (resources collected)
   deployed_at: ISO datetime (optional)
-  last_action: ISO datetime
+  last_action: ISO datetime (optional)
+  kills: integer (lifetime)
+  damage_dealt: integer (lifetime)
+  damage_taken: integer (lifetime)
+  battles_fought: integer (lifetime)
+  abilities: string (optional, comma-separated ability IDs)
+  created_at: ISO datetime
+  destroyed_at: ISO datetime (optional)
+
+DroneDeploymentResponse:
+  id: UUID
+  drone_id: UUID
+  player_id: UUID
+  sector_id: UUID
+  deployed_at: ISO datetime
+  recalled_at: ISO datetime (optional)
+  is_active: boolean
+  deployment_type: string (defense|mining|...; `patrol` is NPC-only, rejected for players)
+  target_id: UUID (optional)
+  enemies_destroyed: integer
+  resources_collected: integer (or JSONB depending on impl)
+  damage_prevented: integer
+
+DroneCombatResponse:
+  attacker_drone_id: UUID
+  defender_drone_id: UUID
+  sector_id: UUID
+  started_at: ISO datetime
+  ended_at: ISO datetime (optional)
+  rounds: integer
+  winner_drone_id: UUID (optional)
+  attacker_damage_dealt: integer
+  defender_damage_dealt: integer
+  combat_log: string (JSON-encoded, max 2000 chars)
 
 DroneTypeResponse:
   type: string
@@ -137,9 +244,73 @@ DroneTypeResponse:
   description: string
   base_cost: integer (credits)
   base_health: integer
-  base_shields: integer
+  base_attack: integer
+  base_defense: integer
   capabilities: array of strings
-  upgrade_levels: integer
+
+## ENUMS
+
+FleetStatus: forming | ready | in_battle | retreating | disbanded
+FleetRole: flagship | attacker | defender | support | scout
+BattlePhase: preparation | engagement | main_battle | pursuit | aftermath
+DroneType: attack | defense | scout | mining | repair
+DroneStatus: deployed | combat | returning | destroyed | damaged
+
+Formation values (string field on Fleet):
+  standard   — ×1.00 atk / ×1.00 def — default, no specialization
+  aggressive — ×1.15 atk / ×0.85 def — Wedge; pushing into enemy fleet
+  defensive  — ×0.85 atk / ×1.15 def — protecting high-value target / cargo run
+  flanking   — ×1.10 atk / ×0.90 def — Offensive; flank attack with moderate aggression
+  turtle     — ×0.60 atk / ×1.40 def — Scatter; max defense, surviving until reinforcements
+
+UI surface uses friendly names (Standard / Wedge / Defensive / Offensive / Scatter); code stores enum.
+
+## FORMATION + MORALE MATH
+
+```
+attack_modifier  = formation_attack  × (morale / 100)
+defense_modifier = formation_defense × (morale / 100)
+coord_bonus      = min(0.20, max(0, (ships - 2) × 0.025))  # design-only; flat add to attack_modifier
+```
+
+Supply penalties (read-time, not stored on row):
+  supply ≥ 50  → no penalty
+  25 ≤ supply < 50 → atk × 0.95, def × 0.95
+  supply < 25  → atk × 0.85, def × 0.85, AND morale -1 per tick
+  supply == 0  → cannot initiate combat
+
+## BATTLE TERMINATION CONDITIONS
+
+Battle ends if ANY are true:
+* One side has 0 active ships
+* Either fleet morale < 20
+* Either fleet > 70% losses (destroyed + retreated of initial)
+* 30 rounds elapsed
+
+## WINNER DETERMINATION
+
+```
+attacker_strength = Σ (hull + shields) of attacker_active
+defender_strength = Σ (hull + shields) of defender_active
+
+if attacker_strength > defender_strength * 1.5: winner = "attacker"
+elif defender_strength > attacker_strength * 1.5: winner = "defender"
+elif len(attacker) > 0 and len(defender) == 0: winner = "attacker"
+elif len(defender) > 0 and len(attacker) == 0: winner = "defender"
+else: winner = "draw"
+```
+
+## LOOT
+
+```
+if winner == "attacker" and defender.team:
+    loot = defender.team.treasury_credits // 10
+    attacker.team.treasury_credits += loot
+    defender.team.treasury_credits -= loot
+    battle.credits_looted = loot
+```
+
+10% of loser's team treasury, capped at available balance. Only cross-team credit transfer in the system.
 
 ## ERROR RESPONSES
 
@@ -147,15 +318,20 @@ DroneTypeResponse:
   - Player must be in a team to create fleets
   - Invalid formation type
   - Invalid drone type
-  - Ship already in another fleet
+  - Ship already in another fleet (uniqueness violation)
   - Drone already deployed
   - Insufficient resources to build/upgrade drone
+  - Add ship while fleet IN_BATTLE
+  - Initiate battle: fleets in different sectors
+  - Initiate battle: either fleet already in battle
+  - `patrol` deployment_type rejected for player
 
 403 FORBIDDEN:
   - Not authorized to manage this fleet
   - Not a member of this team
-  - Cannot remove fleet commander
+  - Cannot remove fleet commander (must transfer first)
   - Cannot deploy drone (not in ship cargo)
+  - Admin-only endpoint without admin role
 
 404 NOT_FOUND:
   - Fleet not found
@@ -165,185 +341,146 @@ DroneTypeResponse:
 
 409 CONFLICT:
   - Fleet already in combat
-  - Drone already exists in sector
   - Cannot disband fleet during battle
+  - Concurrent round simulator (row-locked; second waits then sees state)
 
 500 INTERNAL_SERVER_ERROR:
   - Fleet creation failed
   - Battle initiation failed
   - Drone deployment failed
+  - GET /fleets/{fleet_id} NameError (known bug)
+
+## INVARIANTS
+
+* `fleet.total_ships == len(fleet.members)` always
+* `fleet.status == DISBANDED ⟺ fleet.disbanded_at IS NOT NULL`
+* A ship belongs to at most one fleet (FleetMember.ship_id unique in active rows)
+* While `fleet.status == IN_BATTLE`, fleet.move and fleet.disband are rejected
+* While battle open (ended_at IS NULL), only one round simulator can run at a time
+* `fleet.morale` and `fleet.supply_level` clamped to [0, 100]
+* Coordination bonus is non-negative and capped at +0.20
+* After battle end, both fleets' status is READY (not IN_BATTLE)
+* `FleetBattleCasualty.destroyed XOR retreated` (exactly one true)
+* `FleetBattle.credits_looted ≤ original loser team treasury`
 
 ## EXAMPLES
 
-### Fleet Management
-
 ```bash
-# 1. Create a fleet
-curl -X POST http://localhost:8080/api/v1/api/fleets/ \
+# Create a fleet
+curl -X POST http://localhost:8080/api/v1/fleets/ \
   -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "Alpha Strike Force",
-    "formation": "wedge",
-    "commander_id": "player-uuid"
-  }'
+  -d '{"name": "Alpha Strike Force", "formation": "aggressive", "commander_id": "<player-uuid>"}'
 
-# 2. Get all team fleets
-curl -X GET http://localhost:8080/api/v1/api/fleets/ \
-  -H "Authorization: Bearer {token}"
+# Get all team fleets
+curl -X GET http://localhost:8080/api/v1/fleets/ -H "Authorization: Bearer {token}"
 
-# 3. Get fleets where you're a member
-curl -X GET http://localhost:8080/api/v1/api/fleets/my-fleets \
-  -H "Authorization: Bearer {token}"
+# Get fleets where you're a member
+curl -X GET http://localhost:8080/api/v1/fleets/my-fleets -H "Authorization: Bearer {token}"
 
-# 4. Add ship to fleet
-curl -X POST http://localhost:8080/api/v1/api/fleets/fleet-uuid/add-ship \
+# Add ship to fleet
+curl -X POST http://localhost:8080/api/v1/fleets/<fleet-uuid>/add-ship \
   -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "ship_id": "ship-uuid",
-    "role": "attacker"
-  }'
+  -d '{"ship_id": "<ship-uuid>", "role": "attacker"}'
 
-# 5. Update fleet formation
-curl -X PUT http://localhost:8080/api/v1/api/fleets/fleet-uuid/formation \
+# Update fleet formation
+curl -X PATCH http://localhost:8080/api/v1/fleets/<fleet-uuid>/formation \
   -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "formation": "defensive"
-  }'
+  -d '{"formation": "defensive"}'
 
-# 6. Initiate fleet battle
-curl -X POST http://localhost:8080/api/v1/api/fleets/fleet-uuid/battle \
+# Initiate fleet battle
+curl -X POST http://localhost:8080/api/v1/fleets/<fleet-uuid>/initiate-battle \
   -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "defender_fleet_id": "enemy-fleet-uuid"
-  }'
+  -d '{"defender_fleet_id": "<enemy-fleet-uuid>"}'
 
-# 7. Check battle status
-curl -X GET http://localhost:8080/api/v1/api/fleets/fleet-uuid/battle-status \
-  -H "Authorization: Bearer {token}"
-```
-
-### Drone Operations
-
-```bash
-# 1. Get available drone types
-curl -X GET http://localhost:8080/api/v1/drones/types \
+# Run one round of an ongoing battle
+curl -X POST http://localhost:8080/api/v1/fleets/battles/<battle-uuid>/simulate-round \
   -H "Authorization: Bearer {token}"
 
-# 2. Build a new drone
+# List battles
+curl -X GET http://localhost:8080/api/v1/fleets/battles -H "Authorization: Bearer {token}"
+
+# Build a new drone
 curl -X POST http://localhost:8080/api/v1/drones/ \
   -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "drone_type": "mining",
-    "name": "Ore Collector Alpha"
-  }'
+  -d '{"drone_type": "mining", "name": "Ore Collector Alpha"}'
 
-# 3. Get all your drones
-curl -X GET http://localhost:8080/api/v1/drones/ \
-  -H "Authorization: Bearer {token}"
-
-# 4. Deploy drone to current sector
-curl -X POST http://localhost:8080/api/v1/drones/drone-uuid/deploy \
-  -H "Authorization: Bearer {token}"
-
-# 5. Set drone operational mode
-curl -X POST http://localhost:8080/api/v1/drones/drone-uuid/set-mode \
+# Deploy a specific drone to current sector
+curl -X POST http://localhost:8080/api/v1/drones/<drone-uuid>/deploy \
   -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "mode": "aggressive"
-  }'
+  -d '{"sector_id": "<sector-uuid>", "deployment_type": "defense"}'
 
-# 6. Upgrade drone
-curl -X POST http://localhost:8080/api/v1/drones/drone-uuid/upgrade \
+# Count-based deploy
+curl -X POST http://localhost:8080/api/v1/drones/deploy \
   -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "upgrade_type": "shields"
-  }'
+  -d '{"sectorId": "<sector-uuid>", "droneCount": 5}'
 
-# 7. Recall drone to ship
-curl -X POST http://localhost:8080/api/v1/drones/drone-uuid/recall \
-  -H "Authorization: Bearer {token}"
-
-# 8. Get drones in a sector
-curl -X GET http://localhost:8080/api/v1/drones/sector/sector-uuid \
-  -H "Authorization: Bearer {token}"
-
-# 9. Batch deploy multiple drones
-curl -X POST http://localhost:8080/api/v1/drones/batch-deploy \
+# Initiate drone-vs-drone combat
+curl -X POST http://localhost:8080/api/v1/drones/combat/initiate \
   -H "Authorization: Bearer {token}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "drone_ids": ["uuid1", "uuid2", "uuid3"],
-    "sector_id": "sector-uuid"
-  }'
+  -d '{"attacker_drone_id": "<a>", "defender_drone_id": "<d>", "sector_id": "<s>"}'
 
-# 10. Get drone statistics
-curl -X GET http://localhost:8080/api/v1/drones/statistics \
-  -H "Authorization: Bearer {token}"
+# Get drones in a sector
+curl -X GET http://localhost:8080/api/v1/drones/sector/<sector-uuid> -H "Authorization: Bearer {token}"
+
+# Admin: adjust fleet morale
+curl -X PATCH http://localhost:8080/api/v1/admin/fleets/<fleet-uuid>/morale \
+  -H "Authorization: Bearer {admin_token}" \
+  -H "Content-Type: application/json" \
+  -d '{"morale": 80}'
+
+# Admin: force-dissolve fleet
+curl -X DELETE http://localhost:8080/api/v1/admin/fleets/<fleet-uuid>/force-dissolve \
+  -H "Authorization: Bearer {admin_token}"
 ```
 
-## GAME MECHANICS
+## GAME MECHANICS NOTES
 
-**Fleet System:**
-- Fleets are team-based coordinated combat units
-- Each fleet has a commander who directs tactics
-- Formation affects combat effectiveness (wedge for offense, defensive for tanking)
-- Fleet morale affects combat performance
-- Supply level determines how long fleet can operate
-- Ships retain individual stats but fight as coordinated unit
-- Fleet battles resolve round-by-round with tactical positioning
+* Solo combat resolution lives in `combat-resolver.md`; fleet round-resolution composes the same single-ship destruction handler — no duplicate insurance/wreck/eject logic
+* Per-ship contribution: each ship contributes `attack_rating` (firepower), shields, hull from its `Ship.combat` JSONB
+* Casualty rows persist `ship_name` and `ship_type` denormalized in case the ship row is later deleted
+* `FleetBattleCasualty.damage_dealt` and `kills` are target-spec — currently not populated
+* Per-tick fleet maintenance: 5-minute default tick; supply-driven morale decay, friendly-station refuel
+* Drone vs ship combat: attack drones screen first; survivor count carries to ship-vs-ship phase
+* Drone modifiers in combat: +5% per 10 attack drones; -5% incoming per 10 defense drones
+* Sector-deployed drones get +5% effectiveness over ship-based
 
-**Fleet Formations:**
-- Standard: Balanced offense/defense
-- Wedge: +20% offense, -10% defense
-- Defensive: +30% defense, -20% offense
-- Offensive: +30% offense, -30% defense
-- Scatter: +30% evasion, -40% coordination
+## DESIGN-ONLY (per canonical docs — design intent, not in code)
 
-**Drone System:**
-- Autonomous units that control sectors
-- Combat drones attack enemy ships automatically
-- Mining drones collect resources from sector
-- Scout drones provide sector visibility
-- Defense drones protect ports/planets
-- Research drones gather scientific data
-
-**Drone Types:**
-- Combat: High firepower, attacks enemies
-- Mining: Collects ore and resources
-- Scout: Extended sensor range, intel gathering
-- Defense: Protects locations, high shields
-- Research: Gathers data, discovers anomalies
-
-**Drone Operational Modes:**
-- Passive: Ignore enemies unless attacked
-- Aggressive: Attack any enemy ships
-- Defensive: Protect specific location
-- Mining: Focus on resource collection
-
-**Drone Upgrades:**
-- Shields: Increase defensive capability
-- Weapons: Increase attack power
-- Sensors: Increase detection range
-- Cargo: Increase storage capacity
-- Engines: Increase speed/maneuverability
+* Coordination bonus formula (formula spec'd, not yet applied)
+* Supply system combat-math integration (Fleet.supply_level exists; not yet read by combat)
+* Defender / Support / Scout role bonuses (only Flagship has implemented behavior)
+* Flagship succession on commander-survives-in-other-ship (currently manual)
+* Hot-join, reinforcement waves, multi-team battles (3-8 teams), battle scale taxonomy, adaptive UI by chaos level — all design-only future work captured in FEATURES/gameplay/combat.md
+* Drone "operational modes" (passive/aggressive/defensive/mining) — NOT in current codebase; aispec previously documented these in error
+* `POST /drones/{id}/set-mode`, `/transfer`, `/batch-deploy`, `/batch-recall`, `/self-destruct` — NOT in current codebase
 
 ## RELATED ENDPOINTS
 
-- GET /teams/{team_id} - View team information for fleet management
-- GET /player/state - View current ship and available drones
-- POST /api/combat/engage - Individual ship combat (non-fleet)
-- GET /sectors/{sector_id}/planets - View sector contents for deployment
-- POST /trading/buy - Purchase drone components
+* GET /api/v1/teams/{team_id} - Team info for fleet management
+* GET /api/v1/player/state - Current ship and available drones
+* POST /api/v1/api/combat/engage - Solo ship combat (non-fleet)
+* GET /api/v1/sectors/{sector_id} - Sector contents for deployment
+
+## SOURCE MAP
+
+* services/gameserver/src/api/routes/fleets.py
+* services/gameserver/src/api/routes/admin_fleets.py
+* services/gameserver/src/api/routes/drones.py
+* services/gameserver/src/api/routes/admin_drones.py
+* services/gameserver/src/services/fleet_service.py (~908 lines)
+* services/gameserver/src/services/drone_service.py
+* services/gameserver/src/models/fleet.py (Fleet, FleetMember, FleetBattle, FleetBattleCasualty; FleetRole, FleetStatus, BattlePhase enums)
+* services/gameserver/src/models/drone.py (Drone, DroneDeployment, DroneCombat; DroneType, DroneStatus enums)
 
 ---
 
-*Documentation Status: Complete (29 endpoints)*
-*Last Updated: 2025-11-16*
-*Validated Against: services/gameserver/src/api/routes/fleets.py, drones.py*
+*Documentation Status: Aligned to canonical sw2102-docs (Apr 2026)*
+*Validated Against: SYSTEMS/fleet-coordination.md, FEATURES/gameplay/fleet-tactics.md, DATA_MODELS/combat.md (Drone, Fleet, FleetBattle), ADR/0061*

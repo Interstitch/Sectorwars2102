@@ -1,370 +1,228 @@
-# Admin API
-
-OVERVIEW: Administrative tools for game management, player moderation, galaxy editing, and analytics.
+OVERVIEW:
+Administrative tools for game management, player moderation, galaxy editing, multi-regional ops, and analytics. Authorization is scope-based per ADR-0058 (supersedes ADR-0027) -- the legacy flat User.is_admin boolean is now a derived view (`is_admin = EXISTS scope grant`) and is no longer the authorization gate. Each admin route is gated by one or more scopes from a 19-entry scope set, granted per-admin via the AdminScopeGrant join table.
 
 BASE_PATH: /api/v1/admin
-AUTH_REQUIRED: Yes (JWT Bearer token + admin role)
-PERMISSIONS: Admin-only endpoints
+AUTH_REQUIRED: Yes (JWT Bearer access token + applicable scope grant)
+PERMISSIONS: Per-scope (see SCOPE_SET below)
 
-## FACTS
+FACTS:
+* All endpoints require admin authentication (valid bearer + at least one matching scope grant)
+* Authorization is per-scope, not role-based and not the legacy flat boolean (per ADR-0058 / supersedes ADR-0027)
+* Scope-gated routes return 403 with the missing scope name in the response body so clients can render "you need scope X"
+* Admin actions are recorded in `AdminActionLog` (admin_user_id, scope_used, action, target_type, target_id, payload_snapshot, result, at)
+* High-impact actions (anything in admin.subscriptions.*, admin.webhooks.replay, admin.regions.terminate, admin.scopes.*) populate a daily review queue for retrospective acknowledgement by another scope holder; acknowledgements are themselves logged
+* No two-person pre-action gate -- accountability is delivered via scope precision + audit log + review queue
+* HTTP-trail audit log (`audit_logs` table) captures method/path/status/duration/security_flags/violation alongside the admin-action-specific log
+* Per-resource moderation flags coexist with the scope model: MarketTransaction.flagged_suspicious/reviewed_by, CombatLog.admin_resolved/admin_reviewed/disputed, Message.flagged/moderated_by, PriceAlert.acknowledged_by, Reputation.is_locked/lock_reason/lock_expires
+* The legacy RBAC proposal (40+ permission enum, 5 predefined roles, AdminRestriction TIME_LIMIT/IP_WHITELIST/ACTION_LIMIT/RESOURCE_LIMIT, SecurityAlert table, AccessControl table, AdminActionType enum) was DROPPED per ADR-0027 and replaced with the 19-scope model in ADR-0058; do not reintroduce those structures
+* Admin REST rate limits are 📐 Design-only at launch (per OPERATIONS/admin-ui.md): Read 100/min, Write 30/min, Bulk POSTs 10/min, Reports/exports 5/hour
+* MFA exists at the user level (MFASecret 1:1 User) and is opt-in; not role-gated and not admin-required by the canonical auth model
 
-* All endpoints require admin authentication
-* Admin endpoints provide full CRUD operations on game entities
-* Galaxy can be generated, cleared, or edited
-* Player data can be viewed, edited, or deleted
-* Analytics provide insights into game health and player behavior
-* Admin actions are logged for audit trail
+SCOPE_SET (19 launch scopes per ADR-0058):
+* admin.players.view             - Read player records, ARIA logs, conversation history (subject to GDPR-anonymized fields)
+* admin.players.suspend          - Suspend a player account (in-game or full-platform)
+* admin.players.adjust_rep       - Manually adjust personal or faction reputation (audit-noted)
+* admin.players.transfer_assets  - Move assets between accounts (player-merge, account-recovery)
+* admin.subscriptions.view       - Read subscription state
+* admin.subscriptions.modify     - Create/cancel/change-tier subscriptions outside the PayPal flow (e.g. comp accounts)
+* admin.subscriptions.refund     - Issue refunds outside the PayPal interface
+* admin.webhooks.view            - Inspect webhook event log
+* admin.webhooks.replay          - Replay a previously-rejected or held webhook event
+* admin.regions.view             - Read region state
+* admin.regions.create           - Provision a new region outside the standard Region-Owner flow
+* admin.regions.terminate        - Force-terminate a region (cleanup-cascade trigger)
+* admin.regions.transfer_ownership - Transfer region ownership (account-recovery)
+* admin.aria.audit               - Read ARIA security logs (90-day raw window per ADR-0057 A-V3)
+* admin.multi_account.review     - Decide on MultiAccountCluster review-queue entries (per ADR-0056)
+* admin.bang.regenerate          - Trigger a region or galaxy regeneration via the bang integration
+* admin.scopes.grant             - Grant scopes to other admin users (meta-scope; bootstrap superadmin starts with this)
+* admin.scopes.revoke            - Revoke scopes from admin users
+* admin.audit.view               - Read the admin-action audit log
 
-## ENDPOINT CATEGORIES
+BOOTSTRAP_AND_MIGRATION:
+* The first user is granted admin.scopes.grant + admin.scopes.revoke + admin.audit.view via a one-time migration; from there scopes are assigned through the admin UI
+* Existing legacy admins (User.is_admin=True at migration time) are granted ALL 19 scopes by the migration; operators trim down from there
+* Backfill is forward-only; the legacy `User.is_admin` boolean stays as a derived computed property
 
-### User & Player Management (22 endpoints)
+CANONICAL_ENDPOINT_REFERENCES:
+The following admin endpoints are enumerated by name in canonical sw2102-docs and are authoritative:
 
-* GET /admin/users - Get all users (paginated)
-* GET /admin/players - Get all players with stats (paginated)
-* GET /admin/players/{player_id} - Get specific player details
-* PATCH /admin/players/{player_id} - Update player data
-* DELETE /admin/players/{player_id} - Delete player
-* GET /admin/stats - Get admin dashboard statistics
+GALAXY_GENERATION:
+* POST /api/v1/admin/galaxy/generate                              - Initial galaxy create (Central Nexus + Terran Space)
+* POST /api/v1/admin/regions/{region_id}/generate-content?force=true - Per-region content (re-)generate
+* POST /api/v1/admin/nexus/generate                               - Central Nexus generation (when Nexus does not yet exist)
 
-### Galaxy Management (16 endpoints)
+PLANETARY:
+* POST /api/v1/admin/planets/{planet_id}/tick                     - Manual planetary production tick
 
-* GET /admin/galaxy - Get galaxy information
-* POST /admin/galaxy/generate - Generate new galaxy structure
-* DELETE /admin/galaxy/clear - Clear all galaxy data
-* DELETE /admin/galaxy/{galaxy_id} - Delete specific galaxy
-* GET /admin/galaxy/{galaxy_id}/zones - Get zones in galaxy
-* GET /admin/zones/{zone_id}/clusters - Get clusters in zone
-* GET /admin/clusters - Get all clusters
-* GET /admin/sectors - Get all sectors (filterable)
-* GET /admin/sectors/{sector_id}/port - Get sector's port
-* GET /admin/sectors/{sector_id}/planet - Get sector's planet
-* GET /admin/sectors/{sector_id}/ships - Get ships in sector
-* POST /admin/warp-tunnels/create - Create warp tunnel between sectors
-* POST /admin/sectors/create - Create new sector
-* PATCH /admin/sectors/{sector_id} - Edit sector properties
-* DELETE /admin/sectors/{sector_id} - Delete sector
+MEDALS:
+* POST /api/v1/admin/medals/grant                                 - Direct medal grant (awarded_via = admin_grant)
 
-### Team Management (8 endpoints)
+MESSAGE_MODERATION (per FEATURES/gameplay/messaging.md):
+* GET  /api/v1/admin/moderation/messages?status=pending&limit=50  - Paginated by flagged_at DESC
+* POST /api/v1/admin/moderation/messages/{id}/accept              - Clear flag, message stays visible
+* POST /api/v1/admin/moderation/messages/{id}/redact              - Replace body with [Moderated]; both parties see redaction; -50 personal_reputation
+* POST /api/v1/admin/moderation/messages/{id}/block               - Hide from recipient; warn sender; -100 personal_reputation
 
-* GET /admin/teams - Get all teams (paginated)
-* GET /admin/teams/analytics - Get team analytics
-* GET /admin/teams/{team_id} - Get specific team details
-* PATCH /admin/teams/{team_id} - Update team data
-* DELETE /admin/teams/{team_id} - Delete team
-* POST /admin/teams/{team_id}/disband - Force disband team
-* GET /admin/teams/{team_id}/members - Get team members
-* POST /admin/teams/{team_id}/remove-member/{player_id} - Remove member
+UI_PAGE_SURFACES (per OPERATIONS/admin-ui.md):
+* /admin/scopes        - Scope-grant management; gated by admin.scopes.grant / admin.scopes.revoke; backed by AdminScopeGrant
+* /admin/audit         - Admin-action audit log; gated by admin.audit.view
+* /admin/review-queue  - Daily queue of high-impact actions for retrospective acknowledgement
 
-### Fleet Management (9 endpoints)
+CODE_DERIVED_ENDPOINTS:
+The remaining admin endpoint families below exist in the gameserver code but are NOT individually enumerated in canonical sw2102-docs. They follow the /api/v1/admin/* convention and are scope-gated. Treat as implementation-derived; the authoritative scope mappings are the SCOPE_SET above. Categories:
 
-* GET /admin/fleets - Get all fleets
-* GET /admin/fleets/{fleet_id} - Get fleet details
-* PATCH /admin/fleets/{fleet_id} - Update fleet data
-* DELETE /admin/fleets/{fleet_id} - Disband fleet
-* GET /admin/fleets/{fleet_id}/members - Get fleet ships
-* POST /admin/fleets/{fleet_id}/force-move - Force move fleet
-* POST /admin/fleets/{fleet_id}/end-battle - End ongoing battle
-* GET /admin/fleets/battles - Get active fleet battles
-* POST /admin/fleets/battles/{battle_id}/resolve - Resolve battle
+* User & Player Management   - /admin/users, /admin/players, /admin/players/{id} (GET/PATCH/DELETE)             [admin.players.view, admin.players.suspend, admin.players.transfer_assets]
+* Galaxy Drill-down          - /admin/galaxy, /admin/galaxy/{id}, /admin/zones, /admin/clusters, /admin/sectors  [no specific scope -- read paths under admin.regions.view; mutations under admin.regions.create / admin.bang.regenerate]
+* Sector & Warp Tunnel ops   - /admin/sectors/create, /admin/sectors/{id} (PATCH/DELETE), /admin/warp-tunnels/create
+* Team Management            - /admin/teams, /admin/teams/{id}, /admin/teams/{id}/disband, /admin/teams/{id}/members
+* Fleet Management           - /admin/fleets, /admin/fleets/{id}, /admin/fleets/{id}/force-move, /admin/fleets/battles
+* Drone Management           - /admin/drones, /admin/drones/{id}, /admin/drones/{id}/force-recall, /admin/drones/sector/{id}, /admin/drones/mass-recall, /admin/drones/statistics
+* Ship Management            - /admin/ships, /admin/ships/{id}
+* Colonization               - /admin/colonies, /admin/colonies/{id}
+* Faction Management         - /admin/factions, /admin/factions/{id}, /admin/factions/{id}/members, /admin/factions/{id}/set-territory, /admin/factions/wars, /admin/factions/wars/end
+* Region Management          - /admin/regions, /admin/regions/{id}, /admin/regions/{id}/players, /admin/regions/{id}/sectors, /admin/regions/{id}/transfer-player, /admin/regions/governance, /admin/regions/{id}/governance      [admin.regions.view / .create / .terminate / .transfer_ownership]
+* ARIA Audit                 - ARIA security log read endpoints                                                  [admin.aria.audit]
+* Multi-account Review       - MultiAccountCluster decisions                                                     [admin.multi_account.review]
+* Bang Integration           - Region/galaxy regeneration                                                        [admin.bang.regenerate]
+* Subscriptions / Webhooks   - Subscription view/modify/refund; webhook view/replay                              [admin.subscriptions.* / admin.webhooks.*]
+* Scope Management           - Grant/revoke admin scopes                                                         [admin.scopes.grant / admin.scopes.revoke]
+* Audit Log                  - Read AdminActionLog entries                                                       [admin.audit.view]
 
-### Drone Management (8 endpoints)
+AUDIT_AND_REVIEW_QUEUE:
+* Every admin action persists an `AdminActionLog` row (admin_user_id, scope_used, action, target_type, target_id, payload_snapshot, result, at)
+* Default retention: 5 years (compliance). Append-only; no in-place edits.
+* Daily review queue surfaces high-impact actions: anything in admin.subscriptions.*, admin.webhooks.replay, admin.regions.terminate, admin.scopes.*
+* Reviewers must hold admin.audit.view; review acknowledgements are themselves logged
+* Sweep-test alarm fires if 30-day-old unacknowledged count crosses a threshold (target: review acknowledged within 7 days)
 
-* GET /admin/drones - Get all drones
-* GET /admin/drones/{drone_id} - Get drone details
-* PATCH /admin/drones/{drone_id} - Update drone data
-* DELETE /admin/drones/{drone_id} - Delete drone
-* POST /admin/drones/{drone_id}/force-recall - Force recall drone
-* GET /admin/drones/sector/{sector_id} - Get drones in sector
-* POST /admin/drones/mass-recall - Recall all drones in region
-* GET /admin/drones/statistics - Get drone usage statistics
+PER_RESOURCE_MODERATION_FLAGS (canonical per DATA_MODELS/admin.md):
+* MarketTransaction (enhanced_market_transactions): admin_notes, flagged_suspicious, reviewed_by (FK users.id)
+* CombatLog: admin_notes, admin_resolved, admin_resolved_at, disputed, resolved, admin_reviewed
+* Message: flagged, flagged_reason, moderated_at, moderated_by (FK users.id)
+* PriceAlert: acknowledged_by (FK users.id), acknowledged_at, resolved_at
+* Reputation: is_locked, lock_reason, lock_expires, special_status
 
-### Ship Management (4 endpoints)
+DATA_MODELS:
+* AdminScopeGrant (user_id, scope, granted_by, granted_at) -- join table; primary authorization gate
+* AdminActionLog  (admin_user_id, scope_used, action, target_type, target_id, payload_snapshot, result, at)
+* AdminCredentials (user_id PK CASCADE, password_hash String(255) Argon2, last_password_change DateTime) -- 1:1 with User
+* AuditLog (HTTP-trail middleware): id, timestamp, method, path, status_code, duration_ms, user_id, user_type, client_ip, user_agent, action, resource_type, resource_id, query_params, request_body, security_flags, response_summary, violation_detected
+* User.is_admin remains as a DERIVED computed view (`= EXISTS scope grant`) for backwards compatibility only
 
-* GET /admin/ships - Get all ships
-* GET /admin/ships/{ship_id} - Get ship details
-* PATCH /admin/ships/{ship_id} - Update ship data
-* DELETE /admin/ships/{ship_id} - Delete ship
-
-### Colonization Management (3 endpoints)
-
-* GET /admin/colonies - Get all colonies
-* GET /admin/colonies/{colony_id} - Get colony details
-* DELETE /admin/colonies/{colony_id} - Delete colony
-
-### Faction Management (8 endpoints)
-
-* GET /admin/factions - Get all factions
-* POST /admin/factions - Create new faction
-* PATCH /admin/factions/{faction_id} - Update faction
-* DELETE /admin/factions/{faction_id} - Delete faction
-* GET /admin/factions/{faction_id}/members - Get faction members
-* POST /admin/factions/{faction_id}/set-territory - Set faction territory
-* GET /admin/factions/wars - Get active faction wars
-* POST /admin/factions/wars/end - End faction war
-
-### Message Moderation (4 endpoints)
-
-* GET /admin/messages/flagged - Get flagged messages
-* GET /admin/messages/{message_id} - Get message details
-* DELETE /admin/messages/{message_id} - Delete message
-* POST /admin/messages/{message_id}/unflag - Remove flag
-
-### Region Management (17 endpoints - Multi-Regional)
-
-* GET /admin/regions - Get all regions
-* POST /admin/regions - Create new region
-* PATCH /admin/regions/{region_id} - Update region
-* DELETE /admin/regions/{region_id} - Delete region
-* GET /admin/regions/{region_id}/players - Get players in region
-* GET /admin/regions/{region_id}/sectors - Get sectors in region
-* POST /admin/regions/{region_id}/transfer-player - Transfer player to region
-* GET /admin/regions/governance - Get regional governance settings
-* PATCH /admin/regions/{region_id}/governance - Update governance
-
-### Comprehensive Admin Tools (49 endpoints)
-
-These endpoints provide detailed analytics, monitoring, and management:
-- Player analytics (login patterns, activity, retention)
-- Economy monitoring (trade volumes, inflation, market health)
-- Combat analytics (battle statistics, balance metrics)
-- System health monitoring (server performance, database metrics)
-- Security tools (suspicious activity detection, ban management)
-- Content management (announcements, news, events)
-- Audit logging (admin action history, player reports)
-
-### Enhanced Admin Features (6 endpoints)
-
-* GET /admin/audit-log - Get admin action audit log
-* GET /admin/security/suspicious-activity - Detect suspicious patterns
-* POST /admin/security/ban-player - Ban player account
-* POST /admin/security/unban-player - Unban player account
-* GET /admin/reports - Get player reports
-* POST /admin/reports/{report_id}/resolve - Resolve player report
-
-## COMMON QUERY PARAMETERS
-
+COMMON_QUERY_PARAMETERS:
 Pagination:
-  skip: integer (>=0), default 0
-  limit: integer (1-1000), default 100
+  skip:  integer >=0, default 0
+  limit: integer 1-1000, default 100
 
 Filtering:
-  region_id: UUID (filter by region)
-  team_id: UUID (filter by team)
-  active_only: boolean (filter active entities)
-  sort_by: string (field to sort by)
-  sort_order: string (asc|desc)
+  region_id:    UUID
+  team_id:      UUID
+  active_only:  boolean
+  sort_by:      string
+  sort_order:   asc | desc
 
-## COMMON RESPONSE SCHEMAS
-
+COMMON_RESPONSE_SCHEMAS:
 PaginatedResponse:
-  items: array (entity data)
-  total: integer (total count)
-  skip: integer (offset)
-  limit: integer (page size)
+  items: array
+  total: integer
+  skip:  integer
+  limit: integer
 
 AdminStatsResponse:
-  total_players: integer
-  active_players_24h: integer
-  total_teams: integer
-  total_fleets: integer
-  total_sectors: integer
-  total_regions: integer
-  server_uptime: integer (seconds)
-  database_size: integer (bytes)
+  total_players, active_players_24h, total_teams, total_fleets,
+  total_sectors, total_regions, server_uptime (seconds), database_size (bytes)
 
-## ERROR RESPONSES
+ScopeForbiddenResponse (per ADR-0058 / OPERATIONS/admin-ui.md):
+  status: 403
+  body: { detail: "missing scope", required_scope: "admin.<family>.<verb>" }
 
+ERROR_RESPONSES:
 401 UNAUTHORIZED:
-  - Not authenticated
-  - Token expired
+  - Not authenticated / token expired / refresh required
 
 403 FORBIDDEN:
-  - Not an admin user
-  - Insufficient admin permissions
+  - Caller authenticated but missing the required scope. Response body names the missing scope.
 
 404 NOT_FOUND:
   - Entity not found
-  - Region not found
-  - Player not found
 
 409 CONFLICT:
-  - Cannot delete entity with dependencies
-  - Galaxy already exists
-  - Operation conflicts with game state
+  - Galaxy already exists; entity has dependencies; takeover claim lost (ERR_REGION_TAKEOVER_LOST per ADR-0058 A-F3)
 
 500 INTERNAL_SERVER_ERROR:
-  - Database operation failed
-  - Galaxy generation failed
-  - Admin action failed
+  - Database / generation / admin action failure
 
-## EXAMPLES
+ADMIN_REST_RATE_LIMITS (📐 Design-only per OPERATIONS/admin-ui.md):
+* Read     (GET    /api/v1/admin/*)             - 100 / minute per admin user
+* Write    (POST/PATCH/DELETE /api/v1/admin/*)  -  30 / minute per admin user
+* Bulk     (POST   /api/v1/admin/*/bulk)        -  10 / minute per admin user (market interventions, combat overrides, mass moderation, asset transfers)
+* Reports  (analytics / exports)                -   5 / hour    per admin user
 
-### Player Management
-
+EXAMPLES:
 ```bash
-# Get all players (paginated)
-curl -X GET "http://localhost:8080/api/v1/admin/players?limit=50&skip=0" \
-  -H "Authorization: Bearer {admin_token}"
-
-# Update player
-curl -X PATCH http://localhost:8080/api/v1/admin/players/player-uuid \
-  -H "Authorization: Bearer {admin_token}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "credits": 100000,
-    "turns": 1000,
-    "current_sector_id": 1
-  }'
-
-# Get admin stats
-curl -X GET http://localhost:8080/api/v1/admin/stats \
-  -H "Authorization: Bearer {admin_token}"
-```
-
-### Galaxy Management
-
-```bash
-# Generate new galaxy (automatically creates Terran Space + Central Nexus)
+# Generate galaxy (requires admin.regions.create or admin.bang.regenerate)
 curl -X POST http://localhost:8080/api/v1/admin/galaxy/generate \
   -H "Authorization: Bearer {admin_token}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "size": 5000,
-    "density": "medium",
-    "generate_stations": true,
-    "generate_planets": true
-  }'
+  -d '{"size": 5000, "density": "medium"}'
 
-# Response includes:
-# {
-#   "galaxy_id": "uuid",
-#   "name": "Sector Wars Galaxy",
-#   "terran_space_created": true,
-#   "terran_space_sectors": 300,
-#   "central_nexus_created": true,
-#   "central_nexus_sectors": 5000,
-#   "total_sectors_created": 5300,
-#   "message": "Galaxy 'Sector Wars Galaxy' created successfully with 5300 sectors"
-# }
-
-# Clear all galaxy data (DANGEROUS)
-curl -X DELETE http://localhost:8080/api/v1/admin/galaxy/clear \
+# Per-region regenerate (force)
+curl -X POST 'http://localhost:8080/api/v1/admin/regions/{region_id}/generate-content?force=true' \
   -H "Authorization: Bearer {admin_token}"
 
-# Create warp tunnel
-curl -X POST http://localhost:8080/api/v1/admin/warp-tunnels/create \
+# Manual planetary tick
+curl -X POST http://localhost:8080/api/v1/admin/planets/{planet_id}/tick \
+  -H "Authorization: Bearer {admin_token}"
+
+# Direct medal grant (awarded_via = admin_grant)
+curl -X POST http://localhost:8080/api/v1/admin/medals/grant \
   -H "Authorization: Bearer {admin_token}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "source_sector_id": 1,
-    "destination_sector_id": 5000,
-    "bidirectional": true
-  }'
+  -d '{"player_id": "...", "medal_id": "..."}'
 
-# Get all sectors
-curl -X GET "http://localhost:8080/api/v1/admin/sectors?limit=100" \
+# Message moderation
+curl -X GET 'http://localhost:8080/api/v1/admin/moderation/messages?status=pending&limit=50' \
   -H "Authorization: Bearer {admin_token}"
+curl -X POST http://localhost:8080/api/v1/admin/moderation/messages/{id}/redact \
+  -H "Authorization: Bearer {admin_token}"
+
+# 403 example with scope name in the body
+# HTTP/1.1 403 Forbidden
+# { "detail": "missing scope", "required_scope": "admin.subscriptions.modify" }
 ```
 
-### Team & Fleet Management
+SECURITY_NOTES:
+* Authorization is per-scope (ADR-0058); the flat is_admin boolean is back-compat only
+* All admin actions persist to AdminActionLog with scope_used; HTTP-trail also goes to audit_logs
+* High-impact actions land in the daily review queue for retrospective ack by another scope holder
+* No bypass code in the production binary -- bypass env vars fail-fast at module load if environment=='production' (ADR-0058 A-D3 pattern, applies to webhook handler; admin endpoints follow the same fail-fast posture for any future bypass code)
+* Region takeover races serialize via SELECT FOR UPDATE on the Region row; losing claim refunds escrow inside the same transaction (ADR-0058 A-F3)
+* Webhook handler validates signature + 5-minute timestamp window + idempotency on event_id; failure → HTTP 401 (ADR-0058 A-D3)
 
-```bash
-# Get team analytics
-curl -X GET http://localhost:8080/api/v1/admin/teams/analytics \
-  -H "Authorization: Bearer {admin_token}"
+SUPERSEDED_OR_REMOVED:
+* Legacy `AdminPermission` enum (40+ entries across galaxy/players/economy/combat/content/system) -- DROPPED per ADR-0027
+* 5 predefined admin roles (Super-Admin, Game Master, Economy Manager, Player Support, Read-Only Analyst) -- DROPPED per ADR-0027
+* `AdminRestriction` types (TIME_LIMIT, IP_WHITELIST, ACTION_LIMIT, RESOURCE_LIMIT) -- DROPPED per ADR-0027
+* `SecurityAlert` table -- DROPPED per ADR-0027 (SecurityDashboard.tsx reads from audit_logs instead)
+* `AccessControl` per-admin policy table -- DROPPED per ADR-0027
+* Fixed `AdminActionType` enum -- replaced by free-form `audit_logs.action` String(100) per ADR-0027 + scope-tagged `AdminActionLog.scope_used` per ADR-0058
+* Per-role MFA enforcement -- not part of the canonical model; MFA is opt-in user-level only
+* The "comprehensive admin tools (49 endpoints)" and "enhanced admin features (6 endpoints)" categories that previously appeared in this spec are NOT canonically enumerated. Real admin functionality is captured by the SCOPE_SET above; specific endpoint paths beyond CANONICAL_ENDPOINT_REFERENCES are code-derived and may drift from the docs.
 
-# Force disband team
-curl -X POST http://localhost:8080/api/v1/admin/teams/team-uuid/disband \
-  -H "Authorization: Bearer {admin_token}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "reason": "Violation of terms of service"
-  }'
+UNVERIFIED_AGAINST_CANONICAL:
+* Specific endpoint paths under /admin/teams, /admin/fleets, /admin/drones, /admin/ships, /admin/colonies, /admin/factions, /admin/regions/{...}, /admin/sectors/{...}, and /admin/users (beyond what is enumerated above) are NOT individually documented in canonical sw2102-docs. The aispec lists them as code-derived references; treat scope mappings as authoritative and route names as best-effort.
+* Pagination defaults / max page sizes -- not canonically documented; treat skip=0 / limit=100 / max=1000 as conventional.
+* `/admin/security/ban-player` and `/admin/security/unban-player` -- not in canonical docs; the closest canonical primitive is `admin.players.suspend` plus the per-resource flags on User (is_active) and Reputation (is_locked).
+* Admin authentication implementation note: the canonical model derives is_admin from scope existence; the legacy /auth/login admin/player ordering is preserved (admin tried first, then player) per ARCHITECTURE/auth.md.
 
-# Get active fleet battles
-curl -X GET http://localhost:8080/api/v1/admin/fleets/battles \
-  -H "Authorization: Bearer {admin_token}"
-
-# End fleet battle
-curl -X POST http://localhost:8080/api/v1/admin/fleets/battles/battle-uuid/resolve \
-  -H "Authorization: Bearer {admin_token}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "winner": "defender",
-    "reason": "Technical issue resolved in defender favor"
-  }'
-```
-
-### Security & Moderation
-
-```bash
-# Get flagged messages
-curl -X GET http://localhost:8080/api/v1/admin/messages/flagged \
-  -H "Authorization: Bearer {admin_token}"
-
-# Ban player
-curl -X POST http://localhost:8080/api/v1/admin/security/ban-player \
-  -H "Authorization: Bearer {admin_token}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "player_id": "player-uuid",
-    "reason": "Cheating - unauthorized client modifications",
-    "duration_days": 30
-  }'
-
-# Get suspicious activity
-curl -X GET http://localhost:8080/api/v1/admin/security/suspicious-activity \
-  -H "Authorization: Bearer {admin_token}"
-
-# Get audit log
-curl -X GET "http://localhost:8080/api/v1/admin/audit-log?limit=100" \
-  -H "Authorization: Bearer {admin_token}"
-```
-
-## ADMIN RESPONSIBILITIES
-
-**Galaxy Management:**
-- Generate and configure galaxy structure
-- Create/edit/delete sectors, zones, clusters
-- Manage warp tunnel network
-- Balance resource distribution
-
-**Player Moderation:**
-- Monitor player activity
-- Investigate reports
-- Ban/unban accounts
-- Resolve disputes
-- Edit player data for bug fixes
-
-**Game Balance:**
-- Monitor economy health
-- Review combat statistics
-- Adjust faction territories
-- Manage game events
-
-**System Maintenance:**
-- Monitor server health
-- Review audit logs
-- Manage database performance
-- Handle emergency interventions
-
-## SECURITY NOTES
-
-* All admin actions are logged in audit trail
-* Admin endpoints require elevated authentication
-* Dangerous operations (clear galaxy, ban player) require confirmation
-* Admin access should be restricted to trusted personnel only
-* Regular audit log reviews recommended
-
-## RELATED ENDPOINTS
-
-- All player-facing endpoints can be accessed by admins
-- Admin endpoints extend player endpoints with management capabilities
-- Audit logging captures all admin actions
-- Multi-regional architecture supported throughout admin tools
-
----
-
-*Documentation Status: Complete (123 endpoints)*
-*Last Updated: 2025-11-16*
-*Validated Against: services/gameserver/src/api/routes/admin*.py, comprehensive*.py, enhanced*.py*
+RELATED_DOCS:
+* DOCS/API/v1/auth.aispec (authentication, JWT, OAuth, MFA tables)
+* sw2102-docs/ADR/0027-adm1-flat-is-admin-rbac-dropped.md (legacy RBAC drop)
+* sw2102-docs/ADR/0058-group-m-monetization-admin-webhook.md (current scope model -- supersedes 0027)
+* sw2102-docs/OPERATIONS/admin-ui.md (admin app, scope UI, audit / review queue, REST rate limits)
+* sw2102-docs/DATA_MODELS/admin.md (AdminCredentials, AuditLog, per-resource moderation flags)
+* sw2102-docs/SYSTEMS/galaxy-generation.md, galaxy-generator-design.md (galaxy/region generation endpoints)
+* sw2102-docs/FEATURES/gameplay/messaging.md (message moderation endpoints + reputation deltas)
+* sw2102-docs/SYSTEMS/medal-service.md (admin medal grant)
+* sw2102-docs/SYSTEMS/planetary-production-tick.md (manual tick endpoint)
